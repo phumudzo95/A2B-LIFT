@@ -65,7 +65,7 @@ export default function NotificationsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16) }]}>
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => router.navigate("/client/profile")}>
           <Ionicons name="chevron-back" size={24} color={Colors.white} />
         </Pressable>
         <Text style={styles.title}>Notifications</Text>

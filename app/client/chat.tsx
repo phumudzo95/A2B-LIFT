@@ -66,7 +66,7 @@ export default function ChatScreen() {
       keyboardVerticalOffset={0}
     >
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => router.navigate("/client")}>
           <Ionicons name="chevron-back" size={24} color={Colors.white} />
         </Pressable>
         <View style={styles.headerInfo}>

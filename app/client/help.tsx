@@ -24,7 +24,7 @@ export default function HelpScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => router.navigate("/client/profile")}>
           <Ionicons name="chevron-back" size={24} color={Colors.white} />
         </Pressable>
         <Text style={styles.title}>Help & Support</Text>
