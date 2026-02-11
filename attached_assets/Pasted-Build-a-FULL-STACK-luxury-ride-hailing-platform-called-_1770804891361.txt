@@ -1,0 +1,362 @@
+Build a FULL STACK luxury ride-hailing platform called:
+
+"A2B LIFT — Premium Ride Experience"
+
+This must be an ORIGINAL luxury chauffeur platform. Do NOT copy any existing company branding or proprietary design.
+
+==================================================
+GLOBAL BRANDING & THEME
+=======================
+
+App Name: A2B LIFT
+Official slogan: "Premium Ride Experience"
+
+Theme:
+Premium BLACK & WHITE luxury design.
+
+Colors:
+#000000 primary background
+#111111 secondary background
+#121212 cards & sheets
+#FFFFFF main text
+#BDBDBD secondary text
+#2A2A2A accents
+#FF4D4D error
+
+Design Rules:
+
+* Minimal luxury interface
+* Smooth animated bottom sheets
+* Rounded premium cards
+* No bright colors
+* Create global ThemeProvider
+
+Show slogan on:
+Splash screen
+Login screen
+Rider home header
+Chauffeur dashboard header
+
+==================================================
+TECH STACK
+==========
+
+Frontend:
+React Native (Expo)
+TypeScript
+React Navigation
+Google Maps SDK
+
+Backend:
+Node.js + Express
+Socket.io WebSocket server
+Runs as Replit Deployment (always-on)
+
+Database:
+Supabase PostgreSQL
+Supabase Auth
+Supabase Realtime
+
+==================================================
+APPLICATION MODES
+=================
+
+User selects role after login:
+
+1. Client Mode (Rider)
+2. Chauffeur Mode (Driver)
+
+==================================================
+LUXURY VEHICLE POSITIONING
+==========================
+
+A2B LIFT provides premium chauffeur transport using luxury vehicles such as:
+
+* Executive V-Class
+* VIP Chauffeur
+* Luxury Airport Transfer
+* Premium Reserve
+
+Use wording:
+Executive Ride
+Luxury Transfer
+Chauffeur Service
+
+Never use "economy" or "cheap".
+
+==================================================
+LUXURY PRICING ENGINE (BACKEND ONLY)
+====================================
+
+Formula:
+
+price = luxuryBaseFare + (distance_km * luxuryPricePerKm) + (duration_min * luxuryPricePerMinute)
+
+CONFIG:
+luxuryBaseFare = 120 ZAR
+luxuryPricePerKm = 18 ZAR
+luxuryPricePerMinute = 3 ZAR
+
+Optional extras:
+airportFee
+waitingTimeFee
+lateNightPremium toggle
+
+Frontend wording:
+"Estimated Premium Fare"
+"Executive Ride Price"
+
+==================================================
+CLIENT (RIDER) FEATURES
+=======================
+
+Authentication:
+Supabase Auth login/register
+
+Map Screen:
+Live map
+Pickup & dropoff search
+Google Places autocomplete
+Confirm pickup pin
+
+Ride Flow:
+requested
+searching
+chauffeur_assigned
+chauffeur_arriving
+trip_started
+trip_completed
+cancelled
+
+Live Tracking:
+Moving vehicle marker
+Route line
+Pickup countdown
+
+Chauffeur Card:
+Photo
+Name
+Rating
+Vehicle
+Plate
+Message button
+Call button
+
+Wallet & Payments:
+Visa / PayPal / Cash / EFT placeholders
+Wallet balance screen
+
+Trip History:
+Past rides list
+Price + status
+Help button
+
+Realtime Chat:
+Client ↔ Chauffeur messaging via Supabase realtime
+
+==================================================
+CHAUFFEUR REGISTRATION SYSTEM
+=============================
+
+Registration form must include:
+
+Full Name
+Phone Number
+Profile Photo Upload
+Vehicle Model
+Plate Number
+Vehicle Type (V-Class, Executive)
+Car Color
+Passenger Capacity
+Luggage Capacity
+
+Driver role saved in Supabase.
+
+==================================================
+CHAUFFEUR DASHBOARD (DRIVER APP)
+================================
+
+Home Screen:
+Online / Offline toggle
+Live map
+Today's earnings
+Current trip card
+
+Incoming Ride Requests:
+Accept / Decline buttons
+Show estimated premium fare
+
+Trip Flow:
+Accept ride
+Navigate to pickup
+Start trip
+End trip
+
+Live GPS Sender:
+Send location every 3 seconds using Expo Location
+Emit via WebSocket
+
+==================================================
+CHAUFFEUR EARNINGS & WITHDRAWALS
+================================
+
+Earnings Dashboard:
+Daily earnings
+Total earnings
+Completed luxury trips
+Commission example: 20%
+
+Withdrawal Logic:
+Request withdrawal
+Enter amount
+Status:
+pending
+approved
+paid
+
+No real banking integration yet.
+
+==================================================
+ADMIN / OPERATOR PANEL
+======================
+
+Admin Dashboard (web view):
+
+Approve or reject chauffeur registrations
+View live trips on map
+Adjust pricing config
+View platform earnings
+View withdrawal requests
+Toggle chauffeur status
+
+==================================================
+REALTIME ENGINE
+===============
+
+Socket.io handles:
+Live GPS movement
+Ride assignments
+Ride state updates
+
+Supabase realtime handles:
+Chat messages
+Database sync
+
+==================================================
+SUPABASE DATABASE TABLES
+========================
+
+users:
+id
+name
+phone
+role
+rating
+wallet_balance
+
+chauffeurs:
+id
+user_id
+vehicle_model
+plate_number
+vehicle_type
+car_color
+is_online
+earnings_total
+
+chauffeur_locations:
+chauffeur_id
+lat
+lng
+updated_at
+
+rides:
+id
+client_id
+chauffeur_id
+pickup_lat
+pickup_lng
+dropoff_lat
+dropoff_lng
+status
+price
+payment_method
+
+earnings:
+id
+chauffeur_id
+ride_id
+amount
+commission
+created_at
+
+withdrawals:
+id
+chauffeur_id
+amount
+status
+
+messages:
+id
+ride_id
+sender_id
+message_text
+
+payments:
+id
+user_id
+method
+is_default
+
+==================================================
+BACKEND LOGIC
+=============
+
+Ride Matching:
+Find nearest online chauffeur
+Send realtime request via WebSocket
+First accept locks ride
+
+Security:
+Only backend calculates price
+Clients and chauffeurs cannot edit pricing
+
+==================================================
+PROJECT STRUCTURE
+=================
+
+/app
+/client
+/chauffeur
+/admin
+/components
+/navigation
+/services
+/hooks
+/theme
+
+/backend
+server.js
+sockets/
+routes/
+luxuryPricingEngine.js
+rideMatcher.js
+
+/supabase
+schema.sql
+
+==================================================
+IMPLEMENTATION ORDER
+====================
+
+1 Navigation & ThemeProvider
+2 Authentication
+3 Client Map Screen
+4 Chauffeur Registration + Dashboard
+5 Admin Panel scaffold
+6 WebSocket server
+7 Supabase schema
+8 Luxury pricing engine
+9 Earnings & withdrawal system
+
+Generate CLEAN, MODULAR, PRODUCTION-READY starter architecture with comments.
