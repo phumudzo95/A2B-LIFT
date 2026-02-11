@@ -14,10 +14,11 @@
     .nav button { background: #1a1a1a; border: 1px solid #2a2a2a; color: #bdbdbd; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; white-space: nowrap; }
     .nav button.active { background: #fff; color: #000; border-color: #fff; }
     .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
     .stat-card { background: #121212; border: 1px solid #2a2a2a; border-radius: 14px; padding: 24px; text-align: center; }
     .stat-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
     .stat-label { font-size: 12px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-alert { color: #ff4d4d; }
     .section { margin-bottom: 32px; }
     .section-title { font-size: 14px; font-weight: 600; color: #bdbdbd; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
     table { width: 100%; border-collapse: collapse; }
@@ -30,14 +31,23 @@
     .badge-rejected { background: rgba(255,77,77,0.15); color: #ff4d4d; }
     .badge-online { background: rgba(76,175,80,0.15); color: #4caf50; }
     .badge-offline { background: rgba(107,107,107,0.15); color: #6b6b6b; }
+    .badge-high { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+    .badge-medium { background: rgba(255,183,77,0.15); color: #ffb74d; }
+    .badge-low { background: rgba(107,107,107,0.15); color: #bdbdbd; }
+    .badge-open { background: rgba(255,183,77,0.15); color: #ffb74d; }
+    .badge-resolved { background: rgba(76,175,80,0.15); color: #4caf50; }
     .btn { padding: 6px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; }
     .btn-approve { background: #4caf50; color: #fff; }
     .btn-reject { background: #ff4d4d; color: #fff; }
     .btn-small { padding: 4px 10px; font-size: 11px; }
+    .btn-resolve { background: #4caf50; color: #fff; }
     .loading { text-align: center; padding: 40px; color: #6b6b6b; }
     .hidden { display: none; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
+    .desc-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: #bdbdbd; }
+    .refresh-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #bdbdbd; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .refresh-btn:hover { background: #2a2a2a; }
     @media (max-width: 768px) {
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
       table { font-size: 12px; }
@@ -51,6 +61,7 @@
       <h1>A2B LIFT</h1>
       <span>ADMIN PANEL</span>
     </div>
+    <button class="refresh-btn" onclick="refreshAll()">Refresh</button>
   </div>
 
   <div class="nav">
@@ -58,6 +69,7 @@
     <button onclick="switchTab('chauffeurs')">Chauffeurs</button>
     <button onclick="switchTab('rides')">Rides</button>
     <button onclick="switchTab('withdrawals')">Withdrawals</button>
+    <button onclick="switchTab('safety')">Safety Reports</button>
   </div>
 
   <div class="content">
@@ -87,6 +99,13 @@
         <div id="withdrawals-table"><div class="loading">Loading...</div></div>
       </div>
     </div>
+
+    <div id="tab-safety" class="tab-content">
+      <div class="section">
+        <div class="section-title">Safety Reports & Complaints</div>
+        <div id="safety-table"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -100,6 +119,19 @@
       if (tab === 'chauffeurs') loadChauffeurs();
       if (tab === 'rides') loadRides();
       if (tab === 'withdrawals') loadWithdrawals();
+      if (tab === 'safety') loadSafetyReports();
+    }
+
+    function refreshAll() {
+      loadStats();
+      const active = document.querySelector('.tab-content.active');
+      if (active) {
+        const id = active.id.replace('tab-', '');
+        if (id === 'chauffeurs') loadChauffeurs();
+        if (id === 'rides') loadRides();
+        if (id === 'withdrawals') loadWithdrawals();
+        if (id === 'safety') loadSafetyReports();
+      }
     }
 
     async function loadStats() {
@@ -115,6 +147,8 @@
           <div class="stat-card"><div class="stat-value">${stats.onlineChauffeurs}</div><div class="stat-label">Online Now</div></div>
           <div class="stat-card"><div class="stat-value">${stats.pendingApprovals}</div><div class="stat-label">Pending Approvals</div></div>
           <div class="stat-card"><div class="stat-value">${stats.pendingWithdrawals}</div><div class="stat-label">Pending Withdrawals</div></div>
+          <div class="stat-card"><div class="stat-value ${stats.openReports > 0 ? 'stat-alert' : ''}">${stats.openReports}</div><div class="stat-label">Open Reports</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.totalReports}</div><div class="stat-label">Total Reports</div></div>
         `;
       } catch(e) {
         document.getElementById('stats-grid').innerHTML = '<div class="loading">Failed to load stats</div>';
@@ -129,11 +163,13 @@
           document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">No chauffeurs registered</div>';
           return;
         }
-        let html = '<table><thead><tr><th>Vehicle</th><th>Plate</th><th>Type</th><th>Status</th><th>Online</th><th>Actions</th></tr></thead><tbody>';
+        let html = '<table><thead><tr><th>Vehicle</th><th>Plate</th><th>Color</th><th>Phone</th><th>Type</th><th>Status</th><th>Online</th><th>Actions</th></tr></thead><tbody>';
         for (const c of chauffeurs) {
           html += `<tr>
             <td>${c.vehicleModel}</td>
             <td>${c.plateNumber}</td>
+            <td>${c.carColor}</td>
+            <td>${c.phone || '—'}</td>
             <td>${c.vehicleType}</td>
             <td><span class="badge ${c.isApproved ? 'badge-approved' : 'badge-pending'}">${c.isApproved ? 'Approved' : 'Pending'}</span></td>
             <td><span class="badge ${c.isOnline ? 'badge-online' : 'badge-offline'}">${c.isOnline ? 'Online' : 'Offline'}</span></td>
@@ -206,6 +242,35 @@
       }
     }
 
+    async function loadSafetyReports() {
+      try {
+        const res = await fetch(API + '/api/safety-reports');
+        const reports = await res.json();
+        if (!reports.length) {
+          document.getElementById('safety-table').innerHTML = '<div class="loading">No safety reports</div>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Type</th><th>Priority</th><th>Description</th><th>AI Response</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+        for (const r of reports) {
+          html += `<tr>
+            <td style="text-transform:capitalize">${r.type}</td>
+            <td><span class="badge badge-${r.priority}">${r.priority}</span></td>
+            <td class="desc-cell" title="${(r.description || '').replace(/"/g, '&quot;')}">${r.description || '—'}</td>
+            <td class="desc-cell" title="${(r.aiResponse || '').replace(/"/g, '&quot;')}">${r.aiResponse || '—'}</td>
+            <td><span class="badge badge-${r.status}">${r.status}</span></td>
+            <td>${new Date(r.createdAt).toLocaleDateString()}</td>
+            <td>
+              ${r.status === 'open' ? `<button class="btn btn-resolve btn-small" onclick="resolveReport('${r.id}')">Resolve</button>` : ''}
+            </td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('safety-table').innerHTML = html;
+      } catch(e) {
+        document.getElementById('safety-table').innerHTML = '<div class="loading">Failed to load</div>';
+      }
+    }
+
     async function approveChauffeur(id) {
       try {
         await fetch(API + '/api/chauffeurs/' + id, {
@@ -230,7 +295,20 @@
       } catch(e) { alert('Failed to update'); }
     }
 
+    async function resolveReport(id) {
+      try {
+        await fetch(API + '/api/safety-reports/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'resolved' })
+        });
+        loadSafetyReports();
+        loadStats();
+      } catch(e) { alert('Failed to resolve'); }
+    }
+
     loadStats();
+    setInterval(loadStats, 15000);
   </script>
 </body>
 </html>

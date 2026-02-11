@@ -10,9 +10,11 @@ import {
   Modal,
   FlatList,
   Alert,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
@@ -30,6 +32,16 @@ const VEHICLE_TYPES = [
 
 type RideStatus = "idle" | "selecting" | "confirming" | "requested" | "assigned" | "arriving" | "in_trip" | "completed";
 
+interface ChauffeurDetails {
+  driverName: string;
+  driverPhone: string | null;
+  driverRating: number;
+  vehicleModel: string;
+  plateNumber: string;
+  carColor: string;
+  vehicleType: string;
+}
+
 export default function ClientHomeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -44,10 +56,19 @@ export default function ClientHomeScreen() {
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
   const [currentRide, setCurrentRide] = useState<any>(null);
   const [showVehicleSheet, setShowVehicleSheet] = useState(false);
+  const [chauffeurDetails, setChauffeurDetails] = useState<ChauffeurDetails | null>(null);
 
   useEffect(() => {
     requestLocation();
   }, []);
+
+  async function fetchChauffeurDetails(chauffeurId: string) {
+    try {
+      const res = await apiRequest("GET", `/api/chauffeurs/${chauffeurId}/details`);
+      const details = await res.json();
+      setChauffeurDetails(details);
+    } catch {}
+  }
 
   useEffect(() => {
     const handleStatusUpdate = (ride: any) => {
@@ -55,6 +76,7 @@ export default function ClientHomeScreen() {
         setCurrentRide(ride);
         if (ride.status === "chauffeur_assigned") {
           setRideStatus("assigned");
+          if (ride.chauffeurId) fetchChauffeurDetails(ride.chauffeurId);
           if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } else if (ride.status === "chauffeur_arriving") {
           setRideStatus("arriving");
@@ -164,6 +186,7 @@ export default function ClientHomeScreen() {
     setCurrentRide(null);
     setEstimatedPrice(null);
     setDropoffAddress("");
+    setChauffeurDetails(null);
   }
 
   return (
@@ -300,14 +323,40 @@ export default function ClientHomeScreen() {
               <Ionicons name="person" size={24} color={Colors.white} />
             </View>
             <View style={styles.chauffeurInfo}>
-              <Text style={styles.chauffeurName}>Your Chauffeur</Text>
-              <Text style={styles.chauffeurVehicle}>{selectedVehicle.name}</Text>
+              <Text style={styles.chauffeurName}>{chauffeurDetails?.driverName || "Your Chauffeur"}</Text>
+              <Text style={styles.chauffeurVehicle}>{chauffeurDetails?.vehicleModel || selectedVehicle.name}</Text>
+              {chauffeurDetails && (
+                <View style={styles.driverMeta}>
+                  <View style={styles.ratingChip}>
+                    <Ionicons name="star" size={11} color={Colors.warning} />
+                    <Text style={styles.ratingChipText}>{(chauffeurDetails.driverRating || 5.0).toFixed(1)}</Text>
+                  </View>
+                  <Text style={styles.plateText}>{chauffeurDetails.plateNumber}</Text>
+                  <Text style={styles.colorDot}>{chauffeurDetails.carColor}</Text>
+                </View>
+              )}
             </View>
             <View style={styles.chauffeurActions}>
-              <Pressable style={styles.actionBtn}>
+              <Pressable
+                style={styles.actionBtn}
+                onPress={() => {
+                  if (currentRide?.id) {
+                    router.push({ pathname: "/client/chat", params: { rideId: currentRide.id, driverName: chauffeurDetails?.driverName || "Chauffeur" } });
+                  }
+                }}
+              >
                 <Ionicons name="chatbubble" size={18} color={Colors.white} />
               </Pressable>
-              <Pressable style={styles.actionBtn}>
+              <Pressable
+                style={styles.actionBtn}
+                onPress={() => {
+                  if (chauffeurDetails?.driverPhone) {
+                    Linking.openURL(`tel:${chauffeurDetails.driverPhone}`);
+                  } else {
+                    Alert.alert("Call", "Phone number not available. Use chat instead.");
+                  }
+                }}
+              >
                 <Ionicons name="call" size={18} color={Colors.white} />
               </Pressable>
             </View>
@@ -662,6 +711,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
+  },
+  driverMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  ratingChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(255,183,77,0.15)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  ratingChipText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.warning,
+  },
+  plateText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textMuted,
+  },
+  colorDot: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
   },
   chauffeurActions: {
     flexDirection: "row",
