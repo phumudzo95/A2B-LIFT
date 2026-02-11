@@ -172,9 +172,22 @@ function configureExpoAndLanding(app: express.Application) {
 
   log("Serving static Expo files with dynamic manifest routing");
 
+  const adminTemplatePath = path.resolve(
+    process.cwd(),
+    "server",
+    "templates",
+    "admin.html",
+  );
+  const adminTemplate = fs.readFileSync(adminTemplatePath, "utf-8");
+
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith("/api")) {
       return next();
+    }
+
+    if (req.path === "/admin") {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.status(200).send(adminTemplate);
     }
 
     if (req.path !== "/" && req.path !== "/manifest") {

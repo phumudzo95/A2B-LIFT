@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A2B LIFT - Admin Panel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #000; color: #fff; min-height: 100vh; }
+    .header { background: #111; border-bottom: 1px solid #2a2a2a; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+    .header span { font-size: 11px; color: #6b6b6b; letter-spacing: 1px; }
+    .nav { display: flex; gap: 8px; background: #111; padding: 12px 24px; border-bottom: 1px solid #2a2a2a; overflow-x: auto; }
+    .nav button { background: #1a1a1a; border: 1px solid #2a2a2a; color: #bdbdbd; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+    .nav button.active { background: #fff; color: #000; border-color: #fff; }
+    .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .stat-card { background: #121212; border: 1px solid #2a2a2a; border-radius: 14px; padding: 24px; text-align: center; }
+    .stat-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+    .stat-label { font-size: 12px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 1px; }
+    .section { margin-bottom: 32px; }
+    .section-title { font-size: 14px; font-weight: 600; color: #bdbdbd; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 12px 16px; font-size: 11px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #2a2a2a; }
+    td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid #1a1a1a; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+    .badge-pending { background: rgba(255,183,77,0.15); color: #ffb74d; }
+    .badge-approved { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-paid { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-rejected { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+    .badge-online { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-offline { background: rgba(107,107,107,0.15); color: #6b6b6b; }
+    .btn { padding: 6px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; }
+    .btn-approve { background: #4caf50; color: #fff; }
+    .btn-reject { background: #ff4d4d; color: #fff; }
+    .btn-small { padding: 4px 10px; font-size: 11px; }
+    .loading { text-align: center; padding: 40px; color: #6b6b6b; }
+    .hidden { display: none; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    @media (max-width: 768px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      table { font-size: 12px; }
+      td, th { padding: 10px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>A2B LIFT</h1>
+      <span>ADMIN PANEL</span>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="active" onclick="switchTab('overview')">Overview</button>
+    <button onclick="switchTab('chauffeurs')">Chauffeurs</button>
+    <button onclick="switchTab('rides')">Rides</button>
+    <button onclick="switchTab('withdrawals')">Withdrawals</button>
+  </div>
+
+  <div class="content">
+    <div id="tab-overview" class="tab-content active">
+      <div class="stats-grid" id="stats-grid">
+        <div class="loading">Loading stats...</div>
+      </div>
+    </div>
+
+    <div id="tab-chauffeurs" class="tab-content">
+      <div class="section">
+        <div class="section-title">All Chauffeurs</div>
+        <div id="chauffeurs-table"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <div id="tab-rides" class="tab-content">
+      <div class="section">
+        <div class="section-title">All Rides</div>
+        <div id="rides-table"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <div id="tab-withdrawals" class="tab-content">
+      <div class="section">
+        <div class="section-title">Withdrawal Requests</div>
+        <div id="withdrawals-table"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '';
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav button').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      event.target.classList.add('active');
+      if (tab === 'chauffeurs') loadChauffeurs();
+      if (tab === 'rides') loadRides();
+      if (tab === 'withdrawals') loadWithdrawals();
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch(API + '/api/admin/stats');
+        const stats = await res.json();
+        document.getElementById('stats-grid').innerHTML = `
+          <div class="stat-card"><div class="stat-value">${stats.totalRides}</div><div class="stat-label">Total Rides</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.completedRides}</div><div class="stat-label">Completed</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.activeRides}</div><div class="stat-label">Active Rides</div></div>
+          <div class="stat-card"><div class="stat-value">R ${stats.totalRevenue}</div><div class="stat-label">Total Revenue</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.totalChauffeurs}</div><div class="stat-label">Chauffeurs</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.onlineChauffeurs}</div><div class="stat-label">Online Now</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.pendingApprovals}</div><div class="stat-label">Pending Approvals</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.pendingWithdrawals}</div><div class="stat-label">Pending Withdrawals</div></div>
+        `;
+      } catch(e) {
+        document.getElementById('stats-grid').innerHTML = '<div class="loading">Failed to load stats</div>';
+      }
+    }
+
+    async function loadChauffeurs() {
+      try {
+        const res = await fetch(API + '/api/chauffeurs');
+        const chauffeurs = await res.json();
+        if (!chauffeurs.length) {
+          document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">No chauffeurs registered</div>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Vehicle</th><th>Plate</th><th>Type</th><th>Status</th><th>Online</th><th>Actions</th></tr></thead><tbody>';
+        for (const c of chauffeurs) {
+          html += `<tr>
+            <td>${c.vehicleModel}</td>
+            <td>${c.plateNumber}</td>
+            <td>${c.vehicleType}</td>
+            <td><span class="badge ${c.isApproved ? 'badge-approved' : 'badge-pending'}">${c.isApproved ? 'Approved' : 'Pending'}</span></td>
+            <td><span class="badge ${c.isOnline ? 'badge-online' : 'badge-offline'}">${c.isOnline ? 'Online' : 'Offline'}</span></td>
+            <td>
+              ${!c.isApproved ? `<button class="btn btn-approve btn-small" onclick="approveChauffeur('${c.id}')">Approve</button>` : ''}
+            </td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('chauffeurs-table').innerHTML = html;
+      } catch(e) {
+        document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">Failed to load</div>';
+      }
+    }
+
+    async function loadRides() {
+      try {
+        const res = await fetch(API + '/api/rides');
+        const rides = await res.json();
+        if (!rides.length) {
+          document.getElementById('rides-table').innerHTML = '<div class="loading">No rides</div>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Date</th></tr></thead><tbody>';
+        for (const r of rides) {
+          html += `<tr>
+            <td>${r.pickupAddress || 'N/A'}</td>
+            <td>${r.dropoffAddress || 'N/A'}</td>
+            <td><span class="badge badge-${r.status === 'trip_completed' ? 'approved' : r.status === 'cancelled' ? 'rejected' : 'pending'}">${r.status}</span></td>
+            <td>R ${r.price || '—'}</td>
+            <td>${new Date(r.createdAt).toLocaleDateString()}</td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('rides-table').innerHTML = html;
+      } catch(e) {
+        document.getElementById('rides-table').innerHTML = '<div class="loading">Failed to load</div>';
+      }
+    }
+
+    async function loadWithdrawals() {
+      try {
+        const res = await fetch(API + '/api/withdrawals');
+        const withdrawals = await res.json();
+        if (!withdrawals.length) {
+          document.getElementById('withdrawals-table').innerHTML = '<div class="loading">No withdrawals</div>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Chauffeur ID</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+        for (const w of withdrawals) {
+          html += `<tr>
+            <td style="font-size:11px">${w.chauffeurId.substring(0,8)}...</td>
+            <td>R ${w.amount}</td>
+            <td><span class="badge badge-${w.status === 'paid' ? 'paid' : w.status === 'approved' ? 'approved' : 'pending'}">${w.status}</span></td>
+            <td>${new Date(w.createdAt).toLocaleDateString()}</td>
+            <td>
+              ${w.status === 'pending' ? `
+                <button class="btn btn-approve btn-small" onclick="updateWithdrawal('${w.id}', 'approved')">Approve</button>
+                <button class="btn btn-reject btn-small" onclick="updateWithdrawal('${w.id}', 'rejected')" style="margin-left:4px">Reject</button>
+              ` : w.status === 'approved' ? `
+                <button class="btn btn-approve btn-small" onclick="updateWithdrawal('${w.id}', 'paid')">Mark Paid</button>
+              ` : ''}
+            </td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('withdrawals-table').innerHTML = html;
+      } catch(e) {
+        document.getElementById('withdrawals-table').innerHTML = '<div class="loading">Failed to load</div>';
+      }
+    }
+
+    async function approveChauffeur(id) {
+      try {
+        await fetch(API + '/api/chauffeurs/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isApproved: true })
+        });
+        loadChauffeurs();
+        loadStats();
+      } catch(e) { alert('Failed to approve'); }
+    }
+
+    async function updateWithdrawal(id, status) {
+      try {
+        await fetch(API + '/api/withdrawals/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        loadWithdrawals();
+        loadStats();
+      } catch(e) { alert('Failed to update'); }
+    }
+
+    loadStats();
+  </script>
+</body>
+</html>
