@@ -9,13 +9,25 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 
 const VEHICLE_TYPES = ["Executive V-Class", "VIP Sedan", "Airport Transfer", "Premium Reserve"];
-const CAR_COLORS = ["Black", "White", "Silver", "Grey", "Navy"];
+const CAR_COLORS = ["Black", "White", "Silver", "Grey", "Navy", "Burgundy", "Midnight Blue", "Champagne"];
+
+const COLOR_SWATCHES: Record<string, string> = {
+  Black: "#000000",
+  White: "#FFFFFF",
+  Silver: "#C0C0C0",
+  Grey: "#808080",
+  Navy: "#1B2A4A",
+  Burgundy: "#6B1C2A",
+  "Midnight Blue": "#191970",
+  Champagne: "#F7E7CE",
+};
 
 export default function ChauffeurRegisterScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [vehicleModel, setVehicleModel] = useState("");
   const [plateNumber, setPlateNumber] = useState("");
+  const [phone, setPhone] = useState(user?.phone || "");
   const [vehicleType, setVehicleType] = useState(VEHICLE_TYPES[0]);
   const [carColor, setCarColor] = useState(CAR_COLORS[0]);
   const [passengerCapacity, setPassengerCapacity] = useState("4");
@@ -24,8 +36,8 @@ export default function ChauffeurRegisterScreen() {
   const [error, setError] = useState("");
 
   async function handleSubmit() {
-    if (!vehicleModel.trim() || !plateNumber.trim()) {
-      setError("Please fill in all required fields");
+    if (!vehicleModel.trim() || !plateNumber.trim() || !phone.trim()) {
+      setError("Please fill in all required fields including phone number");
       return;
     }
     if (!user) return;
@@ -38,6 +50,7 @@ export default function ChauffeurRegisterScreen() {
         plateNumber: plateNumber.trim().toUpperCase(),
         vehicleType,
         carColor,
+        phone: phone.trim(),
         passengerCapacity: parseInt(passengerCapacity) || 4,
         luggageCapacity: parseInt(luggageCapacity) || 2,
       });
@@ -72,14 +85,22 @@ export default function ChauffeurRegisterScreen() {
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Vehicle Model</Text>
+            <Text style={styles.label}>Phone Number *</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="call-outline" size={18} color={Colors.textMuted} />
+              <TextInput style={styles.inputWithIcon} placeholder="e.g. +27 61 234 5678" placeholderTextColor={Colors.textMuted} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Vehicle Model *</Text>
             <View style={styles.inputWrapper}>
               <TextInput style={styles.input} placeholder="e.g. Mercedes V-Class 2024" placeholderTextColor={Colors.textMuted} value={vehicleModel} onChangeText={setVehicleModel} />
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Plate Number</Text>
+            <Text style={styles.label}>Plate Number *</Text>
             <View style={styles.inputWrapper}>
               <TextInput style={styles.input} placeholder="e.g. CA 123 456" placeholderTextColor={Colors.textMuted} value={plateNumber} onChangeText={setPlateNumber} autoCapitalize="characters" />
             </View>
@@ -102,14 +123,15 @@ export default function ChauffeurRegisterScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Car Color</Text>
-            <View style={styles.chipRow}>
+            <View style={styles.colorRow}>
               {CAR_COLORS.map((c) => (
                 <Pressable
                   key={c}
-                  style={[styles.chip, carColor === c && styles.chipActive]}
+                  style={[styles.colorChip, carColor === c && styles.colorChipActive]}
                   onPress={() => setCarColor(c)}
                 >
-                  <Text style={[styles.chipText, carColor === c && styles.chipTextActive]}>{c}</Text>
+                  <View style={[styles.colorSwatch, { backgroundColor: COLOR_SWATCHES[c] }, c === "White" && { borderWidth: 1, borderColor: Colors.textMuted }]} />
+                  <Text style={[styles.colorText, carColor === c && styles.colorTextActive]}>{c}</Text>
                 </Pressable>
               ))}
             </View>
@@ -157,13 +179,20 @@ const styles = StyleSheet.create({
   form: { gap: 18 },
   inputGroup: { gap: 8 },
   label: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 1 },
-  inputWrapper: { backgroundColor: Colors.card, borderRadius: 12, paddingHorizontal: 16, borderWidth: 1, borderColor: Colors.border },
-  input: { paddingVertical: 14, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.white },
+  inputWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.card, borderRadius: 12, paddingHorizontal: 16, borderWidth: 1, borderColor: Colors.border, gap: 10 },
+  input: { flex: 1, paddingVertical: 14, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.white },
+  inputWithIcon: { flex: 1, paddingVertical: 14, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.white },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   chipActive: { backgroundColor: Colors.white, borderColor: Colors.white },
   chipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
   chipTextActive: { color: Colors.primary },
+  colorRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  colorChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  colorChipActive: { borderColor: Colors.white, backgroundColor: Colors.accent },
+  colorSwatch: { width: 16, height: 16, borderRadius: 8 },
+  colorText: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
+  colorTextActive: { color: Colors.white },
   rowInputs: { flexDirection: "row", gap: 12 },
   submitBtn: { backgroundColor: Colors.white, paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 24 },
   submitBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.primary },
