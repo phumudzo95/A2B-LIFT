@@ -7,6 +7,8 @@ import {
   earnings,
   withdrawals,
   messages,
+  safetyReports,
+  notifications,
   type User,
   type InsertUser,
   type Chauffeur,
@@ -14,6 +16,8 @@ import {
   type Earning,
   type Withdrawal,
   type Message,
+  type SafetyReport,
+  type Notification,
 } from "@shared/schema";
 
 if (!process.env.DATABASE_URL) {
@@ -53,6 +57,15 @@ export interface IStorage {
 
   createMessage(data: any): Promise<Message>;
   getMessagesByRide(rideId: string): Promise<Message[]>;
+
+  createSafetyReport(data: any): Promise<SafetyReport>;
+  getSafetyReportsByUser(userId: string): Promise<SafetyReport[]>;
+  getAllSafetyReports(): Promise<SafetyReport[]>;
+  updateSafetyReport(id: string, data: Partial<SafetyReport>): Promise<SafetyReport | undefined>;
+
+  createNotification(data: any): Promise<Notification>;
+  getNotificationsByUser(userId: string): Promise<Notification[]>;
+  markNotificationRead(id: string): Promise<Notification | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -171,6 +184,38 @@ export class DatabaseStorage implements IStorage {
 
   async getMessagesByRide(rideId: string): Promise<Message[]> {
     return db.select().from(messages).where(eq(messages.rideId, rideId)).orderBy(messages.createdAt);
+  }
+
+  async createSafetyReport(data: any): Promise<SafetyReport> {
+    const [report] = await db.insert(safetyReports).values(data).returning();
+    return report;
+  }
+
+  async getSafetyReportsByUser(userId: string): Promise<SafetyReport[]> {
+    return db.select().from(safetyReports).where(eq(safetyReports.userId, userId)).orderBy(desc(safetyReports.createdAt));
+  }
+
+  async getAllSafetyReports(): Promise<SafetyReport[]> {
+    return db.select().from(safetyReports).orderBy(desc(safetyReports.createdAt));
+  }
+
+  async updateSafetyReport(id: string, data: Partial<SafetyReport>): Promise<SafetyReport | undefined> {
+    const [report] = await db.update(safetyReports).set(data).where(eq(safetyReports.id, id)).returning();
+    return report;
+  }
+
+  async createNotification(data: any): Promise<Notification> {
+    const [notification] = await db.insert(notifications).values(data).returning();
+    return notification;
+  }
+
+  async getNotificationsByUser(userId: string): Promise<Notification[]> {
+    return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt));
+  }
+
+  async markNotificationRead(id: string): Promise<Notification | undefined> {
+    const [notification] = await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id)).returning();
+    return notification;
   }
 }
 

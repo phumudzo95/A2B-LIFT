@@ -5,6 +5,26 @@ import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { calculatePrice, calculateChauffeurEarnings, getPricingConfig } from "./luxuryPricingEngine";
 
+function generateAIResponse(type: string, description: string): string {
+  const responses: Record<string, string[]> = {
+    safety: [
+      "We take your safety seriously. Your report has been logged and our safety team has been notified immediately. If you are in immediate danger, please call emergency services (10111). We will follow up within 24 hours.",
+      "Thank you for reporting this safety concern. A safety specialist has been assigned to review your case. Please stay in a safe location. Emergency contacts have been alerted.",
+    ],
+    complaint: [
+      "We apologize for the inconvenience. Your complaint has been recorded and will be reviewed by our quality assurance team within 24 hours. We strive to maintain the highest standards of service.",
+      "Your feedback is important to us. This complaint has been escalated to our management team for immediate review. You may be eligible for a ride credit pending investigation.",
+    ],
+    emergency: [
+      "EMERGENCY ALERT: Your report has been flagged as urgent. Our emergency response team has been notified. If you are in immediate danger, please call 10111 (police) or 10177 (ambulance). Your GPS location has been logged.",
+      "This emergency has been escalated to the highest priority. Safety team and local authorities will be contacted. Please remain calm and stay connected. Your location is being tracked for your safety.",
+    ],
+  };
+
+  const options = responses[type] || responses.complaint;
+  return options[Math.floor(Math.random() * options.length)];
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
@@ -51,7 +71,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Auth routes
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       const { username, password, name, phone, role } = req.body;
@@ -103,6 +122,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/users/:id", async (req: Request, res: Response) => {
+    try {
+      const user = await storage.updateUser(req.params.id, req.body);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const { password: _, ...safeUser } = user;
+      return res.json(safeUser);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   app.put("/api/users/:id/role", async (req: Request, res: Response) => {
     try {
       const { role } = req.body;
@@ -115,7 +145,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chauffeur routes
+  app.post("/api/users/:id/topup", async (req: Request, res: Response) => {
+    try {
+      const { amount } = req.body;
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const newBalance = (user.walletBalance || 0) + amount;
+      const updated = await storage.updateUser(req.params.id, { walletBalance: newBalance });
+      if (!updated) return res.status(500).json({ message: "Failed to update balance" });
+      await storage.createNotification({
+        userId: req.params.id,
+        title: "Wallet Top Up",
+        body: `R ${amount.toFixed(2)} has been added to your wallet. New balance: R ${newBalance.toFixed(2)}`,
+        type: "wallet",
+      });
+      const { password: _, ...safeUser } = updated;
+      return res.json(safeUser);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post("/api/chauffeurs", async (req: Request, res: Response) => {
     try {
       const chauffeur = await storage.createChauffeur(req.body);
@@ -141,6 +194,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const chauffeur = await storage.getChauffeur(req.params.id);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
       return res.json(chauffeur);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/chauffeurs/:id/details", async (req: Request, res: Response) => {
+    try {
+      const chauffeur = await storage.getChauffeur(req.params.id);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
+      const user = await storage.getUser(chauffeur.userId);
+      return res.json({
+        ...chauffeur,
+        driverName: user?.name || "Chauffeur",
+        driverPhone: chauffeur.phone || user?.phone || null,
+        driverRating: user?.rating || 5.0,
+      });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
@@ -178,7 +247,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Pricing
   app.post("/api/pricing/estimate", async (req: Request, res: Response) => {
     try {
       const { distanceKm, durationMin, isAirport, isLateNight } = req.body;
@@ -193,7 +261,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json(getPricingConfig());
   });
 
-  // Ride routes
   app.post("/api/rides", async (req: Request, res: Response) => {
     try {
       const { distanceKm, durationMin, isAirport, isLateNight, ...rideData } = req.body;
@@ -249,6 +316,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "chauffeur_assigned",
       });
       io.emit("ride:accepted", updated);
+      if (ride.clientId) {
+        await storage.createNotification({
+          userId: ride.clientId,
+          title: "Chauffeur Assigned",
+          body: "Your premium chauffeur has been assigned and is on the way.",
+          type: "ride",
+        });
+      }
       return res.json(updated);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -278,6 +353,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             earningsTotal: (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings,
           });
         }
+        await storage.createNotification({
+          userId: ride.clientId,
+          title: "Trip Completed",
+          body: `Your trip has been completed. Fare: R ${ride.price}. Thank you for choosing A2B LIFT.`,
+          type: "ride",
+        });
       }
 
       io.emit("ride:statusUpdate", ride);
@@ -314,7 +395,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Earnings
   app.get("/api/earnings/chauffeur/:chauffeurId", async (req: Request, res: Response) => {
     try {
       const earningsList = await storage.getEarningsByChauffeur(req.params.chauffeurId);
@@ -324,7 +404,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Withdrawals
   app.post("/api/withdrawals", async (req: Request, res: Response) => {
     try {
       const withdrawal = await storage.createWithdrawal(req.body);
@@ -362,7 +441,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Messages
   app.post("/api/messages", async (req: Request, res: Response) => {
     try {
       const message = await storage.createMessage(req.body);
@@ -382,12 +460,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin stats
+  app.post("/api/safety-reports", async (req: Request, res: Response) => {
+    try {
+      const { userId, rideId, type, description } = req.body;
+      const aiResponse = generateAIResponse(type, description);
+      const priority = type === "emergency" ? "high" : type === "safety" ? "medium" : "low";
+      const report = await storage.createSafetyReport({
+        userId,
+        rideId: rideId || null,
+        type,
+        description,
+        aiResponse,
+        priority,
+        status: "open",
+      });
+      await storage.createNotification({
+        userId,
+        title: type === "emergency" ? "Emergency Report Filed" : "Report Received",
+        body: aiResponse,
+        type: "safety",
+      });
+      io.emit("safety:newReport", report);
+      return res.json({ report, aiResponse });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/safety-reports/user/:userId", async (req: Request, res: Response) => {
+    try {
+      const reports = await storage.getSafetyReportsByUser(req.params.userId);
+      return res.json(reports);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/safety-reports", async (_req: Request, res: Response) => {
+    try {
+      const allReports = await storage.getAllSafetyReports();
+      return res.json(allReports);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put("/api/safety-reports/:id", async (req: Request, res: Response) => {
+    try {
+      const report = await storage.updateSafetyReport(req.params.id, req.body);
+      if (!report) return res.status(404).json({ message: "Report not found" });
+      return res.json(report);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/notifications/user/:userId", async (req: Request, res: Response) => {
+    try {
+      const notifs = await storage.getNotificationsByUser(req.params.userId);
+      return res.json(notifs);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put("/api/notifications/:id/read", async (req: Request, res: Response) => {
+    try {
+      const notif = await storage.markNotificationRead(req.params.id);
+      if (!notif) return res.status(404).json({ message: "Notification not found" });
+      return res.json(notif);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/admin/stats", async (_req: Request, res: Response) => {
     try {
       const allRides = await storage.getAllRides();
       const allChauffeurs = await storage.getAllChauffeurs();
       const allWithdrawals = await storage.getAllWithdrawals();
+      const allReports = await storage.getAllSafetyReports();
 
       const completedRides = allRides.filter((r) => r.status === "trip_completed");
       const totalRevenue = completedRides.reduce((sum, r) => sum + (r.price || 0), 0);
@@ -396,6 +548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       const pendingApprovals = allChauffeurs.filter((c) => !c.isApproved);
       const pendingWithdrawals = allWithdrawals.filter((w) => w.status === "pending");
+      const openReports = allReports.filter((r) => r.status === "open");
 
       return res.json({
         totalRides: allRides.length,
@@ -406,6 +559,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         onlineChauffeurs: allChauffeurs.filter((c) => c.isOnline).length,
         pendingApprovals: pendingApprovals.length,
         pendingWithdrawals: pendingWithdrawals.length,
+        openReports: openReports.length,
+        totalReports: allReports.length,
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });

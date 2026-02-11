@@ -36,6 +36,7 @@ export const chauffeurs = pgTable("chauffeurs", {
   plateNumber: text("plate_number").notNull(),
   vehicleType: text("vehicle_type").notNull(),
   carColor: text("car_color").notNull(),
+  phone: text("phone"),
   passengerCapacity: integer("passenger_capacity").default(4),
   luggageCapacity: integer("luggage_capacity").default(2),
   isOnline: boolean("is_online").default(false),
@@ -110,6 +111,36 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const safetyReports = pgTable("safety_reports", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id),
+  rideId: varchar("ride_id").references(() => rides.id),
+  type: text("type").notNull(),
+  description: text("description").notNull(),
+  status: text("status").notNull().default("open"),
+  aiResponse: text("ai_response"),
+  priority: text("priority").default("medium"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const notifications = pgTable("notifications", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  type: text("type").notNull().default("general"),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -124,6 +155,7 @@ export const insertChauffeurSchema = createInsertSchema(chauffeurs).pick({
   plateNumber: true,
   vehicleType: true,
   carColor: true,
+  phone: true,
   passengerCapacity: true,
   luggageCapacity: true,
 });
@@ -147,3 +179,5 @@ export type Ride = typeof rides.$inferSelect;
 export type Earning = typeof earnings.$inferSelect;
 export type Withdrawal = typeof withdrawals.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+export type SafetyReport = typeof safetyReports.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
