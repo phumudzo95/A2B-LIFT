@@ -75,7 +75,7 @@ export default function ChauffeurRegisterScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20) }]}>
-      <Pressable style={styles.backBtn} onPress={() => router.back()}>
+      <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace("/")}>
         <Ionicons name="chevron-back" size={24} color={Colors.white} />
       </Pressable>
 
