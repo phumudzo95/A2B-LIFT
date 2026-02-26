@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/query-client";
 import { useSocket } from "@/lib/socket-context";
 import Colors from "@/constants/colors";
+import A2BMap from "@/components/A2BMap";
 
 const VEHICLE_TYPES = [
   { id: "budget", name: "Budget", desc: "Toyota Corolla, Toyota Quest", icon: "car-outline" as const, pricePerKm: 7, baseFare: 50 },
@@ -70,6 +71,9 @@ export default function ClientHomeScreen() {
   const [currentRide, setCurrentRide] = useState<any>(null);
   const [showVehicleSheet, setShowVehicleSheet] = useState(false);
   const [chauffeurDetails, setChauffeurDetails] = useState<ChauffeurDetails | null>(null);
+  const [routePolyline, setRoutePolyline] = useState<string | null>(null);
+  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [etaText, setEtaText] = useState<string | null>(null);
 
   useEffect(() => {
     requestLocation();
@@ -110,6 +114,29 @@ export default function ClientHomeScreen() {
       off("ride:accepted", handleStatusUpdate);
     };
   }, [currentRide]);
+
+  useEffect(() => {
+    const handleDriverLocation = (data: any) => {
+      if (currentRide && data.chauffeurId === currentRide.chauffeurId) {
+        setDriverLocation({ lat: data.lat, lng: data.lng });
+      }
+    };
+    on("location:update", handleDriverLocation);
+    return () => { off("location:update", handleDriverLocation); };
+  }, [currentRide]);
+
+  async function fetchRoute(origin: { lat: number; lng: number }, dest: { lat: number; lng: number }) {
+    try {
+      const res = await apiRequest("GET",
+        `/api/directions?originLat=${origin.lat}&originLng=${origin.lng}&destLat=${dest.lat}&destLng=${dest.lng}`
+      );
+      const data = await res.json();
+      if (data.polyline) {
+        setRoutePolyline(data.polyline);
+        setEtaText(`ETA: ${data.durationText}`);
+      }
+    } catch {}
+  }
 
   async function requestLocation() {
     try {
@@ -201,6 +228,9 @@ export default function ClientHomeScreen() {
       setEstimatedPrice(data.totalPrice);
       setLateNightPremium(data.lateNightPremium || 0);
       setRideStatus("confirming");
+      if (location && dest) {
+        fetchRoute(location, dest);
+      }
     } catch (e) {
       Alert.alert("Error", "Failed to get estimate");
     }
@@ -241,6 +271,9 @@ export default function ClientHomeScreen() {
     setEstimatedDistance(null);
     setDropoffAddress("");
     setDropoffCoords(null);
+    setRoutePolyline(null);
+    setDriverLocation(null);
+    setEtaText(null);
   }
 
   function resetAfterComplete() {
@@ -251,6 +284,9 @@ export default function ClientHomeScreen() {
     setDropoffAddress("");
     setDropoffCoords(null);
     setChauffeurDetails(null);
+    setRoutePolyline(null);
+    setDriverLocation(null);
+    setEtaText(null);
   }
 
   return (
@@ -266,35 +302,22 @@ export default function ClientHomeScreen() {
       </View>
 
       <View style={styles.mapArea}>
-        <View style={styles.mapOverlay}>
-          {locationLoading ? (
-            <ActivityIndicator size="large" color={Colors.white} />
-          ) : (
-            <>
-              <View style={styles.mapPinContainer}>
-                <Ionicons name="navigate-circle" size={48} color={Colors.white} />
-              </View>
-              <Text style={styles.mapText}>
-                {location ? pickupAddress : "Location unavailable"}
-              </Text>
-              {location && (
-                <Text style={styles.mapCoords}>
-                  {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
-                </Text>
-              )}
-            </>
-          )}
-        </View>
-        <View style={styles.mapGrid}>
-          {Array.from({ length: 12 }).map((_, i) => (
-            <View key={i} style={[styles.mapGridLine, { top: `${(i + 1) * 8}%` }]} />
-          ))}
-          {Array.from({ length: 8 }).map((_, i) => (
-            <View key={`v${i}`} style={[styles.mapGridLineV, { left: `${(i + 1) * 12}%` }]} />
-          ))}
-        </View>
-        <View style={styles.mapGradientTop} />
-        <View style={styles.mapGradientBottom} />
+        <A2BMap
+          pickupLocation={location}
+          dropoffLocation={dropoffCoords}
+          driverLocation={driverLocation}
+          routePolyline={routePolyline}
+          showDriver={rideStatus === "assigned" || rideStatus === "arriving" || rideStatus === "in_trip"}
+          followDriver={rideStatus === "arriving" || rideStatus === "in_trip"}
+          loading={locationLoading}
+          etaText={etaText || undefined}
+          statusText={
+            rideStatus === "assigned" ? "Your Chauffeur is En Route" :
+            rideStatus === "arriving" ? "Your Chauffeur is Arriving" :
+            rideStatus === "in_trip" ? "Trip In Progress" :
+            undefined
+          }
+        />
       </View>
 
       {rideStatus === "idle" && (
@@ -566,65 +589,7 @@ const styles = StyleSheet.create({
   },
   mapArea: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
-    justifyContent: "center",
-    alignItems: "center",
     overflow: "hidden",
-  },
-  mapOverlay: {
-    alignItems: "center",
-    gap: 8,
-    zIndex: 2,
-  },
-  mapPinContainer: {
-    marginBottom: 4,
-  },
-  mapText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: Colors.white,
-  },
-  mapCoords: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    color: Colors.textMuted,
-  },
-  mapGrid: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  mapGridLine: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
-  mapGridLineV: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    width: 1,
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
-  mapGradientTop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  mapGradientBottom: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 80,
-    backgroundColor: "rgba(0,0,0,0.7)",
   },
   bottomSheet: {
     backgroundColor: Colors.card,

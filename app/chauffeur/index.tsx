@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/query-client";
 import { useSocket } from "@/lib/socket-context";
 import Colors from "@/constants/colors";
+import A2BMap from "@/components/A2BMap";
 
 export default function ChauffeurDashboard() {
   const insets = useSafeAreaInsets();
@@ -32,6 +33,8 @@ export default function ChauffeurDashboard() {
   const [incomingRide, setIncomingRide] = useState<any>(null);
   const [currentRide, setCurrentRide] = useState<any>(null);
   const [locationInterval, setLocationIntervalId] = useState<any>(null);
+  const [myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [routePolyline, setRoutePolyline] = useState<string | null>(null);
 
   useEffect(() => {
     loadChauffeur();
@@ -110,17 +113,31 @@ export default function ChauffeurDashboard() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") return;
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setMyLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
       const interval = setInterval(async () => {
         try {
           const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+          setMyLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
           emit("chauffeur:location", {
             chauffeurId: chauffeur?.id,
             lat: loc.coords.latitude,
             lng: loc.coords.longitude,
           });
         } catch {}
-      }, 3000);
+      }, 5000);
       setLocationIntervalId(interval);
+    } catch {}
+  }
+
+  async function fetchDriverRoute(destLat: number, destLng: number) {
+    if (!myLocation) return;
+    try {
+      const res = await apiRequest("GET",
+        `/api/directions?originLat=${myLocation.lat}&originLng=${myLocation.lng}&destLat=${destLat}&destLng=${destLng}`
+      );
+      const data = await res.json();
+      if (data.polyline) setRoutePolyline(data.polyline);
     } catch {}
   }
 
@@ -140,6 +157,9 @@ export default function ChauffeurDashboard() {
       const ride = await res.json();
       setCurrentRide(ride);
       setIncomingRide(null);
+      if (ride.pickupLat && ride.pickupLng) {
+        fetchDriverRoute(parseFloat(ride.pickupLat), parseFloat(ride.pickupLng));
+      }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
       Alert.alert("Error", "Ride may have been taken by another chauffeur");
@@ -158,10 +178,14 @@ export default function ChauffeurDashboard() {
       const ride = await res.json();
       if (status === "trip_completed") {
         setCurrentRide(null);
+        setRoutePolyline(null);
         if (chauffeur) refreshChauffeur(chauffeur.id);
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         setCurrentRide(ride);
+        if (status === "trip_started" && ride.dropoffLat && ride.dropoffLng) {
+          fetchDriverRoute(parseFloat(ride.dropoffLat), parseFloat(ride.dropoffLng));
+        }
       }
     } catch {
       Alert.alert("Error", "Failed to update ride status");
@@ -229,6 +253,20 @@ export default function ChauffeurDashboard() {
           <View style={[styles.toggleKnob, isOnline && styles.toggleKnobOn]} />
         </View>
       </Pressable>
+
+      {(isOnline || currentRide) && (
+        <View style={styles.mapContainer}>
+          <A2BMap
+            pickupLocation={myLocation || (currentRide ? { lat: parseFloat(currentRide.pickupLat), lng: parseFloat(currentRide.pickupLng) } : null)}
+            dropoffLocation={currentRide ? { lat: parseFloat(currentRide.dropoffLat), lng: parseFloat(currentRide.dropoffLng) } : undefined}
+            driverLocation={myLocation}
+            routePolyline={routePolyline}
+            showDriver={true}
+            followDriver={!!currentRide}
+            loading={!myLocation}
+          />
+        </View>
+      )}
 
       {incomingRide && (
         <View style={styles.incomingCard}>
@@ -331,6 +369,7 @@ export default function ChauffeurDashboard() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.primary, paddingHorizontal: 20 },
+  mapContainer: { height: 220, borderRadius: 16, overflow: "hidden", marginBottom: 16, borderWidth: 1, borderColor: Colors.border },
   center: { alignItems: "center", justifyContent: "center" },
   scrollContent: { paddingBottom: 40 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 16 },

@@ -131,6 +131,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/directions", async (req: Request, res: Response) => {
+    try {
+      const { originLat, originLng, destLat, destLng } = req.query;
+      if (!originLat || !originLng || !destLat || !destLng) {
+        return res.status(400).json({ message: "Origin and destination coordinates are required" });
+      }
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ message: "Google Maps API key not configured" });
+      }
+      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&key=${apiKey}`;
+      const response = await fetch(url);
+      const data = await response.json() as any;
+      if (data.status === "OK" && data.routes?.length > 0) {
+        const route = data.routes[0];
+        const leg = route.legs[0];
+        return res.json({
+          polyline: route.overview_polyline.points,
+          distanceKm: leg.distance.value / 1000,
+          durationMin: Math.ceil(leg.duration.value / 60),
+          durationText: leg.duration.text,
+        });
+      }
+      return res.status(404).json({ message: "No route found" });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/users/:id", async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.params.id);

@@ -60,12 +60,19 @@ Fare formula: `base_fare + (distance × price_per_km)`
 Late night premium (22:00-05:00): 30% surcharge
 Commission rate: 20%
 
+## Maps
+- Platform-specific map components: `A2BMap.web.tsx` (Google Maps JS API) and `A2BMap.native.tsx` (react-native-maps pinned to 1.18.0)
+- Dark luxury map styling on both platforms
+- Google Directions API for route polylines (`/api/directions` endpoint)
+- Socket event `location:update` broadcasts driver GPS to clients
+- Chauffeur dashboard shows live map when online with route to pickup/dropoff
+
 ## Key Features
 - Authentication with bcrypt password hashing
 - Role-based UI (Client vs Driver)
 - 5 vehicle categories with transparent pricing
 - Real-time ride status via Socket.io
-- Driver GPS location tracking
+- Driver GPS location tracking with live map on both client and driver screens
 - Haversine distance calculation with Nominatim geocoding (server-side fallback for web)
 - Late-night premium (30% surcharge 22:00-05:00) shown in fare breakdown
 - Earnings tracking with 20% commission
