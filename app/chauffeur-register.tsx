@@ -8,7 +8,14 @@ import { apiRequest } from "@/lib/query-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 
-const VEHICLE_TYPES = ["Executive V-Class", "VIP Sedan", "Airport Transfer", "Premium Reserve"];
+const VEHICLE_CATEGORIES = [
+  { id: "budget", name: "Budget", examples: "Toyota Corolla, Toyota Quest" },
+  { id: "luxury", name: "Luxury", examples: "BMW 3 Series, Mercedes C Class" },
+  { id: "business", name: "Business Class", examples: "BMW 5 Series, Mercedes E Class" },
+  { id: "van", name: "Van", examples: "Hyundai H1, Mercedes Vito, Staria" },
+  { id: "luxury_van", name: "Luxury Van", examples: "Mercedes V Class" },
+];
+
 const CAR_COLORS = ["Black", "White", "Silver", "Grey", "Navy", "Burgundy", "Midnight Blue", "Champagne"];
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -25,10 +32,11 @@ const COLOR_SWATCHES: Record<string, string> = {
 export default function ChauffeurRegisterScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const [carMake, setCarMake] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
   const [plateNumber, setPlateNumber] = useState("");
   const [phone, setPhone] = useState(user?.phone || "");
-  const [vehicleType, setVehicleType] = useState(VEHICLE_TYPES[0]);
+  const [vehicleType, setVehicleType] = useState(VEHICLE_CATEGORIES[0].id);
   const [carColor, setCarColor] = useState(CAR_COLORS[0]);
   const [passengerCapacity, setPassengerCapacity] = useState("4");
   const [luggageCapacity, setLuggageCapacity] = useState("2");
@@ -36,8 +44,8 @@ export default function ChauffeurRegisterScreen() {
   const [error, setError] = useState("");
 
   async function handleSubmit() {
-    if (!vehicleModel.trim() || !plateNumber.trim() || !phone.trim()) {
-      setError("Please fill in all required fields including phone number");
+    if (!carMake.trim() || !vehicleModel.trim() || !plateNumber.trim() || !phone.trim()) {
+      setError("Please fill in all required fields");
       return;
     }
     if (!user) return;
@@ -46,6 +54,7 @@ export default function ChauffeurRegisterScreen() {
     try {
       const res = await apiRequest("POST", "/api/chauffeurs", {
         userId: user.id,
+        carMake: carMake.trim(),
         vehicleModel: vehicleModel.trim(),
         plateNumber: plateNumber.trim().toUpperCase(),
         vehicleType,
@@ -72,7 +81,7 @@ export default function ChauffeurRegisterScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.title}>Chauffeur Registration</Text>
+          <Text style={styles.title}>Driver Registration</Text>
           <Text style={styles.subtitle}>Register your vehicle to start driving</Text>
         </View>
 
@@ -93,9 +102,16 @@ export default function ChauffeurRegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Vehicle Model *</Text>
+            <Text style={styles.label}>Car Make *</Text>
             <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} placeholder="e.g. Mercedes V-Class 2024" placeholderTextColor={Colors.textMuted} value={vehicleModel} onChangeText={setVehicleModel} />
+              <TextInput style={styles.input} placeholder="e.g. Toyota, BMW, Mercedes" placeholderTextColor={Colors.textMuted} value={carMake} onChangeText={setCarMake} />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Car Model *</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput style={styles.input} placeholder="e.g. Corolla, 3 Series, V Class" placeholderTextColor={Colors.textMuted} value={vehicleModel} onChangeText={setVehicleModel} />
             </View>
           </View>
 
@@ -107,18 +123,21 @@ export default function ChauffeurRegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Vehicle Type</Text>
+            <Text style={styles.label}>Vehicle Category</Text>
             <View style={styles.chipRow}>
-              {VEHICLE_TYPES.map((vt) => (
+              {VEHICLE_CATEGORIES.map((vc) => (
                 <Pressable
-                  key={vt}
-                  style={[styles.chip, vehicleType === vt && styles.chipActive]}
-                  onPress={() => setVehicleType(vt)}
+                  key={vc.id}
+                  style={[styles.chip, vehicleType === vc.id && styles.chipActive]}
+                  onPress={() => setVehicleType(vc.id)}
                 >
-                  <Text style={[styles.chipText, vehicleType === vt && styles.chipTextActive]}>{vt}</Text>
+                  <Text style={[styles.chipText, vehicleType === vc.id && styles.chipTextActive]}>{vc.name}</Text>
                 </Pressable>
               ))}
             </View>
+            <Text style={styles.categoryHint}>
+              {VEHICLE_CATEGORIES.find(c => c.id === vehicleType)?.examples}
+            </Text>
           </View>
 
           <View style={styles.inputGroup}>
@@ -187,6 +206,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: Colors.white, borderColor: Colors.white },
   chipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
   chipTextActive: { color: Colors.primary },
+  categoryHint: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: -4 },
   colorRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   colorChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   colorChipActive: { borderColor: Colors.white, backgroundColor: Colors.accent },

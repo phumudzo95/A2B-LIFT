@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import { Server as SocketIOServer } from "socket.io";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
-import { calculatePrice, calculateChauffeurEarnings, getPricingConfig } from "./luxuryPricingEngine";
+import { calculatePrice, calculateChauffeurEarnings, getPricingConfig, getVehicleCategories } from "./luxuryPricingEngine";
 
 function generateAIResponse(type: string, description: string): string {
   const responses: Record<string, string[]> = {
@@ -106,6 +106,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const { password: _, ...safeUser } = user;
       return res.json(safeUser);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/geocode", async (req: Request, res: Response) => {
+    try {
+      const address = req.query.address as string;
+      if (!address) {
+        return res.status(400).json({ message: "Address is required" });
+      }
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
+        { headers: { "User-Agent": "A2BLIFT/1.0" } }
+      );
+      const results = await response.json() as any[];
+      if (results.length > 0) {
+        return res.json({ lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) });
+      }
+      return res.status(404).json({ message: "Location not found" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
@@ -249,8 +269,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/pricing/estimate", async (req: Request, res: Response) => {
     try {
-      const { distanceKm, durationMin, isAirport, isLateNight } = req.body;
-      const estimate = calculatePrice(distanceKm, durationMin, { isAirport, isLateNight });
+      const { distanceKm, categoryId, isLateNight } = req.body;
+      const estimate = calculatePrice(distanceKm, categoryId || "budget", { isLateNight });
       return res.json(estimate);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -261,18 +281,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json(getPricingConfig());
   });
 
+  app.get("/api/pricing/categories", async (_req: Request, res: Response) => {
+    return res.json(getVehicleCategories());
+  });
+
   app.post("/api/rides", async (req: Request, res: Response) => {
     try {
-      const { distanceKm, durationMin, isAirport, isLateNight, ...rideData } = req.body;
-      const priceEstimate = calculatePrice(distanceKm || 10, durationMin || 15, {
-        isAirport,
-        isLateNight,
-      });
+      const { distanceKm, isLateNight, ...rideData } = req.body;
+      const categoryId = rideData.vehicleType || "budget";
+      const priceEstimate = calculatePrice(distanceKm || 10, categoryId, { isLateNight });
       const ride = await storage.createRide({
         ...rideData,
         price: priceEstimate.totalPrice,
         distanceKm: distanceKm || 10,
-        durationMin: durationMin || 15,
+        pricePerKm: priceEstimate.pricePerKm,
+        baseFare: priceEstimate.baseFare,
         status: "requested",
       });
       io.emit("ride:new", ride);

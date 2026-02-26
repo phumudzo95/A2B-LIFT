@@ -1,9 +1,12 @@
+export const VEHICLE_CATEGORIES: Record<string, { name: string; pricePerKm: number; baseFare: number; examples: string }> = {
+  budget: { name: "Budget", pricePerKm: 7, baseFare: 50, examples: "Toyota Corolla, Toyota Quest" },
+  luxury: { name: "Luxury", pricePerKm: 13, baseFare: 100, examples: "BMW 3 Series, Mercedes C Class" },
+  business: { name: "Business Class", pricePerKm: 40, baseFare: 150, examples: "BMW 5 Series, Mercedes E Class" },
+  van: { name: "Van", pricePerKm: 13, baseFare: 120, examples: "Hyundai H1, Mercedes Vito, Staria" },
+  luxury_van: { name: "Luxury Van", pricePerKm: 50, baseFare: 200, examples: "Mercedes V Class" },
+};
+
 const PRICING_CONFIG = {
-  luxuryBaseFare: 120,
-  luxuryPricePerKm: 18,
-  luxuryPricePerMinute: 3,
-  airportFee: 80,
-  waitingTimeFee: 5,
   lateNightPremiumMultiplier: 1.3,
   commissionRate: 0.20,
 };
@@ -11,31 +14,26 @@ const PRICING_CONFIG = {
 export interface PriceEstimate {
   baseFare: number;
   distanceFare: number;
-  timeFare: number;
-  airportFee: number;
-  lateNightPremium: number;
   totalPrice: number;
+  pricePerKm: number;
+  distanceKm: number;
+  category: string;
   currency: string;
+  lateNightPremium: number;
 }
 
 export function calculatePrice(
   distanceKm: number,
-  durationMin: number,
+  categoryId: string,
   options?: {
-    isAirport?: boolean;
     isLateNight?: boolean;
   }
 ): PriceEstimate {
-  const baseFare = PRICING_CONFIG.luxuryBaseFare;
-  const distanceFare = distanceKm * PRICING_CONFIG.luxuryPricePerKm;
-  const timeFare = durationMin * PRICING_CONFIG.luxuryPricePerMinute;
+  const category = VEHICLE_CATEGORIES[categoryId] || VEHICLE_CATEGORIES.budget;
+  const baseFare = category.baseFare;
+  const distanceFare = distanceKm * category.pricePerKm;
 
-  let airportFee = 0;
-  if (options?.isAirport) {
-    airportFee = PRICING_CONFIG.airportFee;
-  }
-
-  let subtotal = baseFare + distanceFare + timeFare + airportFee;
+  let subtotal = baseFare + distanceFare;
 
   let lateNightPremium = 0;
   if (options?.isLateNight) {
@@ -46,11 +44,12 @@ export function calculatePrice(
   return {
     baseFare: Math.round(baseFare),
     distanceFare: Math.round(distanceFare),
-    timeFare: Math.round(timeFare),
-    airportFee: Math.round(airportFee),
-    lateNightPremium: Math.round(lateNightPremium),
     totalPrice: Math.round(subtotal),
+    pricePerKm: category.pricePerKm,
+    distanceKm: Math.round(distanceKm * 10) / 10,
+    category: category.name,
     currency: "ZAR",
+    lateNightPremium: Math.round(lateNightPremium),
   };
 }
 
@@ -64,6 +63,10 @@ export function calculateChauffeurEarnings(totalPrice: number) {
   };
 }
 
+export function getVehicleCategories() {
+  return VEHICLE_CATEGORIES;
+}
+
 export function getPricingConfig() {
-  return { ...PRICING_CONFIG };
+  return { ...PRICING_CONFIG, categories: VEHICLE_CATEGORIES };
 }

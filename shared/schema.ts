@@ -32,6 +32,7 @@ export const chauffeurs = pgTable("chauffeurs", {
   userId: varchar("user_id")
     .notNull()
     .references(() => users.id),
+  carMake: text("car_make"),
   vehicleModel: text("vehicle_model").notNull(),
   plateNumber: text("plate_number").notNull(),
   vehicleType: text("vehicle_type").notNull(),
@@ -64,6 +65,8 @@ export const rides = pgTable("rides", {
   dropoffAddress: text("dropoff_address"),
   status: text("status").notNull().default("requested"),
   price: real("price"),
+  pricePerKm: real("price_per_km"),
+  baseFare: real("base_fare"),
   distanceKm: real("distance_km"),
   durationMin: real("duration_min"),
   vehicleType: text("vehicle_type"),
@@ -151,6 +154,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export const insertChauffeurSchema = createInsertSchema(chauffeurs).pick({
   userId: true,
+  carMake: true,
   vehicleModel: true,
   plateNumber: true,
   vehicleType: true,

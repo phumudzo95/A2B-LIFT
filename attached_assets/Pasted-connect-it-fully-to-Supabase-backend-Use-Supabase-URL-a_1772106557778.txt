@@ -1,0 +1,179 @@
+connect it fully to Supabase backend.
+
+Use Supabase URL and anon key from environment variables SUPABASE_URL and SUPABASE_ANON_KEY.
+
+Use GOOGLE_MAPS_API_KEY from environment variables to display real Google Maps, enable current location, autocomplete search, and route directions.
+
+VEHICLE CATEGORIES AND PRICING:
+
+Create 5 ride categories with pricing:
+
+Budget
+price_per_km = 7
+base_fare = 50
+examples = Toyota Corolla, Toyota Quest
+
+Luxury
+price_per_km = 13
+base_fare = 100
+examples = BMW 3 Series, Mercedes C Class
+
+Business Class
+price_per_km = 40
+base_fare = 150
+examples = BMW 5 Series, Mercedes E Class
+
+Van
+price_per_km = 13
+base_fare = 120
+examples = Hyundai H1, Mercedes Vito, Staria
+
+Luxury Van
+price_per_km = 50
+base_fare = 200
+examples = Mercedes V Class
+
+Store category, price_per_km, and base_fare in ride requests.
+
+DRIVER REGISTRATION:
+
+Create driver registration form with fields:
+
+• full_name
+• phone
+• email
+• car_make
+• car_model
+• car_color
+• plate_number
+• vehicle_category
+• passenger_capacity
+• luggage_capacity
+
+When driver registers:
+
+Insert into profiles table:
+
+role = driver
+full_name
+phone
+
+Insert into drivers table:
+
+profile_id
+car_make
+car_model
+car_color
+plate_number
+vehicle_category
+rating = 5.0
+is_online = false
+status = pending
+
+PASSENGER REGISTRATION:
+
+Create passenger registration form.
+
+Insert into profiles table:
+
+role = passenger
+full_name
+phone
+
+RIDE REQUEST SYSTEM:
+
+Create ride booking screen:
+
+• show real Google Map
+• show current location
+• destination autocomplete
+• select vehicle category
+• show estimated fare using:
+
+fare = base_fare + (distance × price_per_km)
+
+When passenger requests ride:
+
+Insert into rides table:
+
+passenger_id
+driver_id (nullable)
+pickup_lat
+pickup_lng
+destination_lat
+destination_lng
+vehicle_category
+price_per_km
+base_fare
+estimated_fare
+status = pending
+created_at
+
+MAP FEATURES:
+
+Enable:
+
+• Google Maps display
+• current GPS location
+• destination autocomplete
+• route drawing
+• distance calculation
+
+DATA CONNECTION:
+
+Ensure:
+
+• all driver registrations save to Supabase
+• all passenger registrations save to Supabase
+• all ride requests save to Supabase
+• all data loads from Supabase automatically
+
+DRIVER MODE:
+
+Driver can:
+
+• go online/offline
+• view incoming ride requests
+• accept ride
+• update ride status
+
+PASSENGER MODE:
+
+Passenger can:
+
+• register
+• request ride
+• view trip history
+• see ride status
+
+ADMIN SUPPORT:
+
+Drivers have status:
+
+pending
+approved
+
+Only approved drivers can accept rides.
+
+GENERAL REQUIREMENTS:
+
+Use:
+
+• React frontend
+• Supabase backend
+• Google Maps API
+• mobile responsive design
+• production ready code
+
+✅ What this prompt will fix
+
+After Replit runs this:
+
+✔ Supabase fully connected
+✔ Drivers save to database
+✔ Passengers save to database
+✔ Ride requests save to database
+✔ Maps work properly
+✔ Pricing works properly
+✔ Categories work properly
+✔ Backend and frontend fully connected

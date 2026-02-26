@@ -163,10 +163,10 @@
           document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">No chauffeurs registered</div>';
           return;
         }
-        let html = '<table><thead><tr><th>Vehicle</th><th>Plate</th><th>Color</th><th>Phone</th><th>Type</th><th>Status</th><th>Online</th><th>Actions</th></tr></thead><tbody>';
+        let html = '<table><thead><tr><th>Vehicle</th><th>Plate</th><th>Color</th><th>Phone</th><th>Category</th><th>Status</th><th>Online</th><th>Actions</th></tr></thead><tbody>';
         for (const c of chauffeurs) {
           html += `<tr>
-            <td>${c.vehicleModel}</td>
+            <td>${c.carMake ? c.carMake + ' ' : ''}${c.vehicleModel}</td>
             <td>${c.plateNumber}</td>
             <td>${c.carColor}</td>
             <td>${c.phone || '—'}</td>

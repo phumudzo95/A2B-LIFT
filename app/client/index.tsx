@@ -24,10 +24,11 @@ import { useSocket } from "@/lib/socket-context";
 import Colors from "@/constants/colors";
 
 const VEHICLE_TYPES = [
-  { id: "v-class", name: "Executive V-Class", desc: "Mercedes V-Class", icon: "car-sport" as const, multiplier: 1.0 },
-  { id: "vip", name: "VIP Chauffeur", desc: "Luxury sedan", icon: "car" as const, multiplier: 1.2 },
-  { id: "airport", name: "Airport Transfer", desc: "Premium airport service", icon: "airplane" as const, multiplier: 1.3 },
-  { id: "reserve", name: "Premium Reserve", desc: "Top-tier experience", icon: "diamond" as const, multiplier: 1.5 },
+  { id: "budget", name: "Budget", desc: "Toyota Corolla, Toyota Quest", icon: "car-outline" as const, pricePerKm: 7, baseFare: 50 },
+  { id: "luxury", name: "Luxury", desc: "BMW 3 Series, Mercedes C Class", icon: "car-sport" as const, pricePerKm: 13, baseFare: 100 },
+  { id: "business", name: "Business Class", desc: "BMW 5 Series, Mercedes E Class", icon: "briefcase" as const, pricePerKm: 40, baseFare: 150 },
+  { id: "van", name: "Van", desc: "Hyundai H1, Mercedes Vito, Staria", icon: "bus" as const, pricePerKm: 13, baseFare: 120 },
+  { id: "luxury_van", name: "Luxury Van", desc: "Mercedes V Class", icon: "car" as const, pricePerKm: 50, baseFare: 200 },
 ];
 
 type RideStatus = "idle" | "selecting" | "confirming" | "requested" | "assigned" | "arriving" | "in_trip" | "completed";
@@ -39,7 +40,16 @@ interface ChauffeurDetails {
   vehicleModel: string;
   plateNumber: string;
   carColor: string;
+  carMake: string | null;
   vehicleType: string;
+}
+
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 export default function ClientHomeScreen() {
@@ -51,9 +61,12 @@ export default function ClientHomeScreen() {
   const [locationLoading, setLocationLoading] = useState(true);
   const [pickupAddress, setPickupAddress] = useState("Current Location");
   const [dropoffAddress, setDropoffAddress] = useState("");
+  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState(VEHICLE_TYPES[0]);
   const [rideStatus, setRideStatus] = useState<RideStatus>("idle");
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
+  const [estimatedDistance, setEstimatedDistance] = useState<number | null>(null);
+  const [lateNightPremium, setLateNightPremium] = useState<number>(0);
   const [currentRide, setCurrentRide] = useState<any>(null);
   const [showVehicleSheet, setShowVehicleSheet] = useState(false);
   const [chauffeurDetails, setChauffeurDetails] = useState<ChauffeurDetails | null>(null);
@@ -100,6 +113,20 @@ export default function ClientHomeScreen() {
 
   async function requestLocation() {
     try {
+      if (Platform.OS === "web") {
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+          });
+          setLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+          setPickupAddress("Current Location");
+        } catch {
+          setLocation({ lat: -26.2041, lng: 28.0473 });
+          setPickupAddress("Johannesburg, South Africa");
+        }
+        setLocationLoading(false);
+        return;
+      }
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -113,12 +140,36 @@ export default function ClientHomeScreen() {
             setPickupAddress(`${addr.street || addr.name || ""}, ${addr.city || addr.region || ""}`.replace(/^, /, ""));
           }
         } catch {}
+      } else {
+        setLocation({ lat: -26.2041, lng: 28.0473 });
+        setPickupAddress("Johannesburg, South Africa");
       }
     } catch (e) {
-      console.log("Location error:", e);
+      setLocation({ lat: -26.2041, lng: 28.0473 });
+      setPickupAddress("Johannesburg, South Africa");
     } finally {
       setLocationLoading(false);
     }
+  }
+
+  async function geocodeDestination(): Promise<{ lat: number; lng: number } | null> {
+    if (!dropoffAddress.trim()) return null;
+    if (Platform.OS !== "web") {
+      try {
+        const results = await Location.geocodeAsync(dropoffAddress);
+        if (results.length > 0) {
+          return { lat: results[0].latitude, lng: results[0].longitude };
+        }
+      } catch {}
+    }
+    try {
+      const res = await apiRequest("GET", `/api/geocode?address=${encodeURIComponent(dropoffAddress)}`);
+      const data = await res.json();
+      if (data.lat && data.lng) {
+        return { lat: data.lat, lng: data.lng };
+      }
+    } catch {}
+    return null;
   }
 
   async function getEstimate() {
@@ -126,17 +177,29 @@ export default function ClientHomeScreen() {
       Alert.alert("Enter Destination", "Please enter your dropoff location");
       return;
     }
+    if (!location) {
+      Alert.alert("Location Error", "Unable to determine your location");
+      return;
+    }
     try {
-      const distanceKm = 5 + Math.random() * 25;
-      const durationMin = 10 + Math.random() * 30;
+      const dest = await geocodeDestination();
+      if (!dest) {
+        Alert.alert("Error", "Could not determine destination coordinates");
+        return;
+      }
+      setDropoffCoords(dest);
+      const distanceKm = haversineDistance(location.lat, location.lng, dest.lat, dest.lng) * 1.3;
+      const finalDistance = Math.max(distanceKm, 2);
+      setEstimatedDistance(Math.round(finalDistance * 10) / 10);
+
       const res = await apiRequest("POST", "/api/pricing/estimate", {
-        distanceKm,
-        durationMin,
-        isAirport: selectedVehicle.id === "airport",
+        distanceKm: finalDistance,
+        categoryId: selectedVehicle.id,
         isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
       });
       const data = await res.json();
-      setEstimatedPrice(Math.round(data.totalPrice * selectedVehicle.multiplier));
+      setEstimatedPrice(data.totalPrice);
+      setLateNightPremium(data.lateNightPremium || 0);
       setRideStatus("confirming");
     } catch (e) {
       Alert.alert("Error", "Failed to get estimate");
@@ -144,22 +207,19 @@ export default function ClientHomeScreen() {
   }
 
   async function requestRide() {
-    if (!user || !location) return;
+    if (!user || !location || !dropoffCoords) return;
     try {
-      const distanceKm = 5 + Math.random() * 25;
-      const durationMin = 10 + Math.random() * 30;
+      const distanceKm = estimatedDistance || 10;
       const res = await apiRequest("POST", "/api/rides", {
         clientId: user.id,
         pickupLat: location.lat,
         pickupLng: location.lng,
         pickupAddress,
-        dropoffLat: location.lat + (Math.random() - 0.5) * 0.1,
-        dropoffLng: location.lng + (Math.random() - 0.5) * 0.1,
+        dropoffLat: dropoffCoords.lat,
+        dropoffLng: dropoffCoords.lng,
         dropoffAddress,
         vehicleType: selectedVehicle.id,
         distanceKm,
-        durationMin,
-        isAirport: selectedVehicle.id === "airport",
         isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
       });
       const ride = await res.json();
@@ -178,14 +238,18 @@ export default function ClientHomeScreen() {
     setRideStatus("idle");
     setCurrentRide(null);
     setEstimatedPrice(null);
+    setEstimatedDistance(null);
     setDropoffAddress("");
+    setDropoffCoords(null);
   }
 
   function resetAfterComplete() {
     setRideStatus("idle");
     setCurrentRide(null);
     setEstimatedPrice(null);
+    setEstimatedDistance(null);
     setDropoffAddress("");
+    setDropoffCoords(null);
     setChauffeurDetails(null);
   }
 
@@ -201,18 +265,33 @@ export default function ClientHomeScreen() {
         </View>
       </View>
 
-      <View style={styles.mapPlaceholder}>
+      <View style={styles.mapArea}>
         <View style={styles.mapOverlay}>
           {locationLoading ? (
             <ActivityIndicator size="large" color={Colors.white} />
           ) : (
             <>
-              <Ionicons name="location" size={32} color={Colors.white} />
+              <View style={styles.mapPinContainer}>
+                <Ionicons name="navigate-circle" size={48} color={Colors.white} />
+              </View>
               <Text style={styles.mapText}>
-                {location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : "Location unavailable"}
+                {location ? pickupAddress : "Location unavailable"}
               </Text>
+              {location && (
+                <Text style={styles.mapCoords}>
+                  {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+                </Text>
+              )}
             </>
           )}
+        </View>
+        <View style={styles.mapGrid}>
+          {Array.from({ length: 12 }).map((_, i) => (
+            <View key={i} style={[styles.mapGridLine, { top: `${(i + 1) * 8}%` }]} />
+          ))}
+          {Array.from({ length: 8 }).map((_, i) => (
+            <View key={`v${i}`} style={[styles.mapGridLineV, { left: `${(i + 1) * 12}%` }]} />
+          ))}
         </View>
         <View style={styles.mapGradientTop} />
         <View style={styles.mapGradientBottom} />
@@ -244,7 +323,10 @@ export default function ClientHomeScreen() {
             onPress={() => setShowVehicleSheet(true)}
           >
             <Ionicons name={selectedVehicle.icon} size={20} color={Colors.white} />
-            <Text style={styles.vehicleName}>{selectedVehicle.name}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.vehicleName}>{selectedVehicle.name}</Text>
+              <Text style={styles.vehiclePrice}>R{selectedVehicle.baseFare} base + R{selectedVehicle.pricePerKm}/km</Text>
+            </View>
             <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
           </Pressable>
 
@@ -260,12 +342,32 @@ export default function ClientHomeScreen() {
       {rideStatus === "confirming" && (
         <Animated.View entering={FadeInDown.duration(400)} style={styles.bottomSheet}>
           <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Estimated Premium Fare</Text>
+          <Text style={styles.sheetTitle}>Fare Estimate</Text>
 
           <View style={styles.priceCard}>
             <Text style={styles.priceLabel}>{selectedVehicle.name}</Text>
             <Text style={styles.priceValue}>R {estimatedPrice}</Text>
             <Text style={styles.priceCurrency}>ZAR</Text>
+            {estimatedDistance && (
+              <Text style={styles.distanceInfo}>{estimatedDistance} km estimated distance</Text>
+            )}
+          </View>
+
+          <View style={styles.fareBreakdown}>
+            <View style={styles.fareRow}>
+              <Text style={styles.fareLabel}>Base fare</Text>
+              <Text style={styles.fareValue}>R {selectedVehicle.baseFare}</Text>
+            </View>
+            <View style={styles.fareRow}>
+              <Text style={styles.fareLabel}>Distance ({estimatedDistance} km × R{selectedVehicle.pricePerKm})</Text>
+              <Text style={styles.fareValue}>R {Math.round((estimatedDistance || 0) * selectedVehicle.pricePerKm)}</Text>
+            </View>
+            {lateNightPremium > 0 && (
+              <View style={styles.fareRow}>
+                <Text style={styles.fareLabel}>Late night surcharge (30%)</Text>
+                <Text style={styles.fareValue}>R {lateNightPremium}</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.routeSummary}>
@@ -299,8 +401,8 @@ export default function ClientHomeScreen() {
           <View style={styles.sheetHandle} />
           <View style={styles.searchingContainer}>
             <ActivityIndicator size="large" color={Colors.white} />
-            <Text style={styles.searchingText}>Finding your chauffeur...</Text>
-            <Text style={styles.searchingSubtext}>Searching for available premium drivers nearby</Text>
+            <Text style={styles.searchingText}>Finding your driver...</Text>
+            <Text style={styles.searchingSubtext}>Searching for available {selectedVehicle.name} drivers nearby</Text>
           </View>
           <Pressable style={styles.cancelFullBtn} onPress={cancelRide}>
             <Text style={styles.cancelFullBtnText}>Cancel Request</Text>
@@ -314,7 +416,7 @@ export default function ClientHomeScreen() {
           <View style={styles.statusBadge}>
             <View style={[styles.statusDot, { backgroundColor: Colors.success }]} />
             <Text style={styles.statusText}>
-              {rideStatus === "assigned" ? "Chauffeur Assigned" : rideStatus === "arriving" ? "Chauffeur Arriving" : "Trip In Progress"}
+              {rideStatus === "assigned" ? "Driver Assigned" : rideStatus === "arriving" ? "Driver Arriving" : "Trip In Progress"}
             </Text>
           </View>
 
@@ -323,8 +425,10 @@ export default function ClientHomeScreen() {
               <Ionicons name="person" size={24} color={Colors.white} />
             </View>
             <View style={styles.chauffeurInfo}>
-              <Text style={styles.chauffeurName}>{chauffeurDetails?.driverName || "Your Chauffeur"}</Text>
-              <Text style={styles.chauffeurVehicle}>{chauffeurDetails?.vehicleModel || selectedVehicle.name}</Text>
+              <Text style={styles.chauffeurName}>{chauffeurDetails?.driverName || "Your Driver"}</Text>
+              <Text style={styles.chauffeurVehicle}>
+                {chauffeurDetails?.carMake ? `${chauffeurDetails.carMake} ` : ""}{chauffeurDetails?.vehicleModel || selectedVehicle.name}
+              </Text>
               {chauffeurDetails && (
                 <View style={styles.driverMeta}>
                   <View style={styles.ratingChip}>
@@ -341,7 +445,7 @@ export default function ClientHomeScreen() {
                 style={styles.actionBtn}
                 onPress={() => {
                   if (currentRide?.id) {
-                    router.push({ pathname: "/client/chat", params: { rideId: currentRide.id, driverName: chauffeurDetails?.driverName || "Chauffeur" } });
+                    router.push({ pathname: "/client/chat", params: { rideId: currentRide.id, driverName: chauffeurDetails?.driverName || "Driver" } });
                   }
                 }}
               >
@@ -364,7 +468,7 @@ export default function ClientHomeScreen() {
 
           {currentRide?.price && (
             <View style={styles.tripPriceRow}>
-              <Text style={styles.tripPriceLabel}>Executive Ride Price</Text>
+              <Text style={styles.tripPriceLabel}>Ride Price</Text>
               <Text style={styles.tripPriceValue}>R {currentRide.price}</Text>
             </View>
           )}
@@ -380,7 +484,7 @@ export default function ClientHomeScreen() {
             </View>
             <Text style={styles.completedTitle}>Trip Completed</Text>
             <Text style={styles.completedPrice}>R {currentRide?.price || estimatedPrice}</Text>
-            <Text style={styles.completedLabel}>Executive Ride Price</Text>
+            <Text style={styles.completedLabel}>Thank you for riding with A2B LIFT</Text>
           </View>
           <Pressable
             style={({ pressed }) => [styles.confirmBtn, pressed && { opacity: 0.9 }]}
@@ -395,7 +499,7 @@ export default function ClientHomeScreen() {
         <Pressable style={styles.modalOverlay} onPress={() => setShowVehicleSheet(false)}>
           <View style={[styles.modalSheet, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 16) }]}>
             <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Select Vehicle</Text>
+            <Text style={styles.sheetTitle}>Select Vehicle Category</Text>
             {VEHICLE_TYPES.map((vt) => (
               <Pressable
                 key={vt.id}
@@ -413,6 +517,7 @@ export default function ClientHomeScreen() {
                 <View style={styles.vehicleOptionInfo}>
                   <Text style={styles.vehicleOptionName}>{vt.name}</Text>
                   <Text style={styles.vehicleOptionDesc}>{vt.desc}</Text>
+                  <Text style={styles.vehicleOptionPrice}>R{vt.baseFare} + R{vt.pricePerKm}/km</Text>
                 </View>
                 {selectedVehicle.id === vt.id && (
                   <Ionicons name="checkmark-circle" size={22} color={Colors.white} />
@@ -459,9 +564,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  mapPlaceholder: {
+  mapArea: {
     flex: 1,
-    backgroundColor: Colors.secondary,
+    backgroundColor: "#1a1a2e",
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
@@ -469,11 +574,41 @@ const styles = StyleSheet.create({
   mapOverlay: {
     alignItems: "center",
     gap: 8,
+    zIndex: 2,
+  },
+  mapPinContainer: {
+    marginBottom: 4,
   },
   mapText: {
-    fontSize: 12,
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.white,
+  },
+  mapCoords: {
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
     color: Colors.textMuted,
+  },
+  mapGrid: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  mapGridLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  mapGridLineV: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: "rgba(255,255,255,0.04)",
   },
   mapGradientTop: {
     position: "absolute",
@@ -556,10 +691,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   vehicleName: {
-    flex: 1,
     fontSize: 15,
     fontFamily: "Inter_500Medium",
     color: Colors.white,
+  },
+  vehiclePrice: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+    marginTop: 1,
   },
   confirmBtn: {
     backgroundColor: Colors.white,
@@ -593,6 +733,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     color: Colors.textMuted,
+  },
+  distanceInfo: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    marginTop: 4,
+  },
+  fareBreakdown: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+  },
+  fareRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  fareLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+  },
+  fareValue: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
   },
   routeSummary: {
     gap: 4,
@@ -654,6 +821,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: Colors.textMuted,
+    textAlign: "center",
   },
   cancelFullBtn: {
     paddingVertical: 16,
@@ -837,5 +1005,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     color: Colors.textMuted,
+  },
+  vehicleOptionPrice: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
 });
