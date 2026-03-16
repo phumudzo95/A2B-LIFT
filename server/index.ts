@@ -1,6 +1,9 @@
+import "dotenv/config";
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -40,7 +43,7 @@ function setupCors(app: express.Application) {
         "Access-Control-Allow-Methods",
         "GET, POST, PUT, DELETE, OPTIONS",
       );
-      res.header("Access-Control-Allow-Headers", "Content-Type");
+      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
       res.header("Access-Control-Allow-Credentials", "true");
     }
 
@@ -50,6 +53,11 @@ function setupCors(app: express.Application) {
 
     next();
   });
+}
+
+function setupSecurity(app: express.Application) {
+  app.use(helmet());
+  app.use(cookieParser());
 }
 
 function setupBodyParsing(app: express.Application) {
@@ -67,7 +75,7 @@ function setupBodyParsing(app: express.Application) {
 function setupRequestLogging(app: express.Application) {
   app.use((req, res, next) => {
     const start = Date.now();
-    const path = req.path;
+    const requestPath = req.path;
     let capturedJsonResponse: Record<string, unknown> | undefined = undefined;
 
     const originalResJson = res.json;
@@ -77,11 +85,11 @@ function setupRequestLogging(app: express.Application) {
     };
 
     res.on("finish", () => {
-      if (!path.startsWith("/api")) return;
+      if (!requestPath.startsWith("/api")) return;
 
       const duration = Date.now() - start;
 
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      let logLine = `${req.method} ${requestPath} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
@@ -240,6 +248,7 @@ function setupErrorHandler(app: express.Application) {
 
 (async () => {
   setupCors(app);
+  setupSecurity(app);
   setupBodyParsing(app);
   setupRequestLogging(app);
 
@@ -249,15 +258,20 @@ function setupErrorHandler(app: express.Application) {
 
   setupErrorHandler(app);
 
+  // Use process.env.PORT for deployment (Heroku, Railway, Render, etc.)
+  // Falls back to 5000 for local development
   const port = parseInt(process.env.PORT || "5000", 10);
+  const portSource = process.env.PORT ? "process.env.PORT" : "default (5000)";
+  
   server.listen(
     {
       port,
-      host: "0.0.0.0",
+      host: "0.0.0.0", // Listen on all interfaces for deployment
       reusePort: true,
     },
     () => {
-      log(`express server serving on port ${port}`);
+      log(`express server serving on port ${port} (from ${portSource})`);
     },
   );
 })();
+

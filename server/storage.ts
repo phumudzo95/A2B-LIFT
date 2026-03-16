@@ -1,9 +1,13 @@
 import { drizzle } from "drizzle-orm/node-postgres";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, avg } from "drizzle-orm";
 import {
   users,
   chauffeurs,
   rides,
+  payments,
+  driverApplications,
+  documents,
+  rideRatings,
   earnings,
   withdrawals,
   messages,
@@ -13,12 +17,16 @@ import {
   type InsertUser,
   type Chauffeur,
   type Ride,
+  type Payment,
+  type DriverApplication,
+  type Document,
+  type RideRating,
   type Earning,
   type Withdrawal,
   type Message,
   type SafetyReport,
   type Notification,
-} from "@shared/schema";
+} from "../shared/schema";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set");
@@ -27,11 +35,13 @@ if (!process.env.DATABASE_URL) {
 const db = drizzle(process.env.DATABASE_URL);
 
 export interface IStorage {
+  // Users / Auth
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, data: Partial<User>): Promise<User | undefined>;
 
+  // Chauffeurs (Drivers)
   getChauffeur(id: string): Promise<Chauffeur | undefined>;
   getChauffeurByUserId(userId: string): Promise<Chauffeur | undefined>;
   createChauffeur(data: any): Promise<Chauffeur>;
@@ -39,6 +49,23 @@ export interface IStorage {
   getOnlineChauffeurs(): Promise<Chauffeur[]>;
   getAllChauffeurs(): Promise<Chauffeur[]>;
 
+  // Driver Applications + Documents
+  createDriverApplication(data: any): Promise<DriverApplication>;
+  getDriverApplication(id: string): Promise<DriverApplication | undefined>;
+  getDriverApplications(): Promise<DriverApplication[]>;
+  getDriverApplicationByUserId(userId: string): Promise<DriverApplication | undefined>;
+  updateDriverApplication(
+    id: string,
+    data: Partial<DriverApplication>,
+  ): Promise<DriverApplication | undefined>;
+
+  createDocument(data: any): Promise<Document>;
+  getDocumentsByApplication(applicationId: string): Promise<Document[]>;
+  getDocumentsByUser(userId: string): Promise<Document[]>;
+  getAllDocuments(): Promise<Document[]>;
+  updateDocument(id: string, data: Partial<Document>): Promise<Document | undefined>;
+
+  // Rides
   createRide(data: any): Promise<Ride>;
   getRide(id: string): Promise<Ride | undefined>;
   updateRide(id: string, data: Partial<Ride>): Promise<Ride | undefined>;
@@ -47,6 +74,17 @@ export interface IStorage {
   getActiveRides(): Promise<Ride[]>;
   getAllRides(): Promise<Ride[]>;
 
+  // Payments
+  createPayment(data: any): Promise<Payment>;
+  getPaymentsByRide(rideId: string): Promise<Payment[]>;
+  updatePayment(id: string, data: Partial<Payment>): Promise<Payment | undefined>;
+
+  // Ratings
+  createRideRating(data: any): Promise<RideRating>;
+  getRatingsByChauffeur(chauffeurId: string): Promise<RideRating[]>;
+  getAverageRatingForUser(userId: string): Promise<number | null>;
+
+  // Earnings / withdrawals
   createEarning(data: any): Promise<Earning>;
   getEarningsByChauffeur(chauffeurId: string): Promise<Earning[]>;
 
@@ -55,13 +93,18 @@ export interface IStorage {
   getAllWithdrawals(): Promise<Withdrawal[]>;
   updateWithdrawal(id: string, data: Partial<Withdrawal>): Promise<Withdrawal | undefined>;
 
+  // Chat
   createMessage(data: any): Promise<Message>;
   getMessagesByRide(rideId: string): Promise<Message[]>;
 
+  // Safety + Notifications
   createSafetyReport(data: any): Promise<SafetyReport>;
   getSafetyReportsByUser(userId: string): Promise<SafetyReport[]>;
   getAllSafetyReports(): Promise<SafetyReport[]>;
-  updateSafetyReport(id: string, data: Partial<SafetyReport>): Promise<SafetyReport | undefined>;
+  updateSafetyReport(
+    id: string,
+    data: Partial<SafetyReport>,
+  ): Promise<SafetyReport | undefined>;
 
   createNotification(data: any): Promise<Notification>;
   getNotificationsByUser(userId: string): Promise<Notification[]>;
@@ -75,7 +118,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username));
     return user;
   }
 
@@ -85,17 +131,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: string, data: Partial<User>): Promise<User | undefined> {
-    const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+    const [user] = await db
+      .update(users)
+      .set(data)
+      .where(eq(users.id, id))
+      .returning();
     return user;
   }
 
   async getChauffeur(id: string): Promise<Chauffeur | undefined> {
-    const [chauffeur] = await db.select().from(chauffeurs).where(eq(chauffeurs.id, id));
+    const [chauffeur] = await db
+      .select()
+      .from(chauffeurs)
+      .where(eq(chauffeurs.id, id));
     return chauffeur;
   }
 
   async getChauffeurByUserId(userId: string): Promise<Chauffeur | undefined> {
-    const [chauffeur] = await db.select().from(chauffeurs).where(eq(chauffeurs.userId, userId));
+    const [chauffeur] = await db
+      .select()
+      .from(chauffeurs)
+      .where(eq(chauffeurs.userId, userId));
     return chauffeur;
   }
 
@@ -104,19 +160,110 @@ export class DatabaseStorage implements IStorage {
     return chauffeur;
   }
 
-  async updateChauffeur(id: string, data: Partial<Chauffeur>): Promise<Chauffeur | undefined> {
-    const [chauffeur] = await db.update(chauffeurs).set(data).where(eq(chauffeurs.id, id)).returning();
+  async updateChauffeur(
+    id: string,
+    data: Partial<Chauffeur>,
+  ): Promise<Chauffeur | undefined> {
+    const [chauffeur] = await db
+      .update(chauffeurs)
+      .set(data)
+      .where(eq(chauffeurs.id, id))
+      .returning();
     return chauffeur;
   }
 
   async getOnlineChauffeurs(): Promise<Chauffeur[]> {
-    return db.select().from(chauffeurs).where(
-      and(eq(chauffeurs.isOnline, true), eq(chauffeurs.isApproved, true))
-    );
+    return db
+      .select()
+      .from(chauffeurs)
+      .where(and(eq(chauffeurs.isOnline, true), eq(chauffeurs.isApproved, true)));
   }
 
   async getAllChauffeurs(): Promise<Chauffeur[]> {
     return db.select().from(chauffeurs).orderBy(desc(chauffeurs.createdAt));
+  }
+
+  async createDriverApplication(data: any): Promise<DriverApplication> {
+    const [app] = await db
+      .insert(driverApplications)
+      .values(data)
+      .returning();
+    return app;
+  }
+
+  async getDriverApplication(id: string): Promise<DriverApplication | undefined> {
+    const [app] = await db
+      .select()
+      .from(driverApplications)
+      .where(eq(driverApplications.id, id));
+    return app;
+  }
+
+  async getDriverApplications(): Promise<DriverApplication[]> {
+    return db
+      .select()
+      .from(driverApplications)
+      .orderBy(desc(driverApplications.submittedAt));
+  }
+
+  async getDriverApplicationByUserId(
+    userId: string,
+  ): Promise<DriverApplication | undefined> {
+    const [app] = await db
+      .select()
+      .from(driverApplications)
+      .where(eq(driverApplications.userId, userId))
+      .orderBy(desc(driverApplications.submittedAt));
+    return app;
+  }
+
+  async updateDriverApplication(
+    id: string,
+    data: Partial<DriverApplication>,
+  ): Promise<DriverApplication | undefined> {
+    const [app] = await db
+      .update(driverApplications)
+      .set(data)
+      .where(eq(driverApplications.id, id))
+      .returning();
+    return app;
+  }
+
+  async createDocument(data: any): Promise<Document> {
+    const [doc] = await db.insert(documents).values(data).returning();
+    return doc;
+  }
+
+  async getDocumentsByApplication(applicationId: string): Promise<Document[]> {
+    return db
+      .select()
+      .from(documents)
+      .where(eq(documents.applicationId, applicationId))
+      .orderBy(desc(documents.uploadedAt));
+  }
+
+  async getDocumentsByUser(userId: string): Promise<Document[]> {
+    return db
+      .select()
+      .from(documents)
+      .where(eq(documents.userId, userId))
+      .orderBy(desc(documents.uploadedAt));
+  }
+
+  async getAllDocuments(): Promise<Document[]> {
+    return db.select().from(documents).orderBy(desc(documents.uploadedAt));
+  }
+
+  async updateDocument(
+    id: string,
+    data: Partial<Document>,
+  ): Promise<Document | undefined> {
+    const [doc] = await db
+      .update(documents)
+      .set(data)
+      .where(eq(documents.id, id))
+      .returning();
+    return doc;
   }
 
   async createRide(data: any): Promise<Ride> {
@@ -130,16 +277,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateRide(id: string, data: Partial<Ride>): Promise<Ride | undefined> {
-    const [ride] = await db.update(rides).set(data).where(eq(rides.id, id)).returning();
+    const [ride] = await db
+      .update(rides)
+      .set(data)
+      .where(eq(rides.id, id))
+      .returning();
     return ride;
   }
 
   async getRidesByClient(clientId: string): Promise<Ride[]> {
-    return db.select().from(rides).where(eq(rides.clientId, clientId)).orderBy(desc(rides.createdAt));
+    return db
+      .select()
+      .from(rides)
+      .where(eq(rides.clientId, clientId))
+      .orderBy(desc(rides.createdAt));
   }
 
   async getRidesByChauffeur(chauffeurId: string): Promise<Ride[]> {
-    return db.select().from(rides).where(eq(rides.chauffeurId, chauffeurId)).orderBy(desc(rides.createdAt));
+    return db
+      .select()
+      .from(rides)
+      .where(eq(rides.chauffeurId, chauffeurId))
+      .orderBy(desc(rides.createdAt));
   }
 
   async getActiveRides(): Promise<Ride[]> {
@@ -150,13 +309,64 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(rides).orderBy(desc(rides.createdAt));
   }
 
+  async createPayment(data: any): Promise<Payment> {
+    const [payment] = await db.insert(payments).values(data).returning();
+    return payment;
+  }
+
+  async getPaymentsByRide(rideId: string): Promise<Payment[]> {
+    return db
+      .select()
+      .from(payments)
+      .where(eq(payments.rideId, rideId))
+      .orderBy(desc(payments.createdAt));
+  }
+
+  async updatePayment(id: string, data: Partial<Payment>): Promise<Payment | undefined> {
+    const [payment] = await db
+      .update(payments)
+      .set(data)
+      .where(eq(payments.id, id))
+      .returning();
+    return payment;
+  }
+
+  async createRideRating(data: any): Promise<RideRating> {
+    const [rating] = await db.insert(rideRatings).values(data).returning();
+    return rating;
+  }
+
+  async getRatingsByChauffeur(chauffeurId: string): Promise<RideRating[]> {
+    return db
+      .select()
+      .from(rideRatings)
+      .where(eq(rideRatings.chauffeurId, chauffeurId))
+      .orderBy(desc(rideRatings.createdAt));
+  }
+
+  async getAverageRatingForUser(userId: string): Promise<number | null> {
+    // Average based on all ratings where the rated chauffeur belongs to the userId.
+    const chauffeur = await this.getChauffeurByUserId(userId);
+    if (!chauffeur) return null;
+    const [row] = await db
+      .select({ value: avg(rideRatings.rating) })
+      .from(rideRatings)
+      .where(eq(rideRatings.chauffeurId, chauffeur.id));
+    const value = (row?.value as unknown as number | null) ?? null;
+    return value;
+  }
+
   async createEarning(data: any): Promise<Earning> {
     const [earning] = await db.insert(earnings).values(data).returning();
     return earning;
   }
 
   async getEarningsByChauffeur(chauffeurId: string): Promise<Earning[]> {
-    return db.select().from(earnings).where(eq(earnings.chauffeurId, chauffeurId)).orderBy(desc(earnings.createdAt));
+    return db
+      .select()
+      .from(earnings)
+      .where(eq(earnings.chauffeurId, chauffeurId))
+      .orderBy(desc(earnings.createdAt));
   }
 
   async createWithdrawal(data: any): Promise<Withdrawal> {
@@ -165,15 +375,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWithdrawalsByChauffeur(chauffeurId: string): Promise<Withdrawal[]> {
-    return db.select().from(withdrawals).where(eq(withdrawals.chauffeurId, chauffeurId)).orderBy(desc(withdrawals.createdAt));
+    return db
+      .select()
+      .from(withdrawals)
+      .where(eq(withdrawals.chauffeurId, chauffeurId))
+      .orderBy(desc(withdrawals.createdAt));
   }
 
   async getAllWithdrawals(): Promise<Withdrawal[]> {
     return db.select().from(withdrawals).orderBy(desc(withdrawals.createdAt));
   }
 
-  async updateWithdrawal(id: string, data: Partial<Withdrawal>): Promise<Withdrawal | undefined> {
-    const [withdrawal] = await db.update(withdrawals).set(data).where(eq(withdrawals.id, id)).returning();
+  async updateWithdrawal(
+    id: string,
+    data: Partial<Withdrawal>,
+  ): Promise<Withdrawal | undefined> {
+    const [withdrawal] = await db
+      .update(withdrawals)
+      .set(data)
+      .where(eq(withdrawals.id, id))
+      .returning();
     return withdrawal;
   }
 
@@ -183,7 +404,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMessagesByRide(rideId: string): Promise<Message[]> {
-    return db.select().from(messages).where(eq(messages.rideId, rideId)).orderBy(messages.createdAt);
+    return db
+      .select()
+      .from(messages)
+      .where(eq(messages.rideId, rideId))
+      .orderBy(messages.createdAt);
   }
 
   async createSafetyReport(data: any): Promise<SafetyReport> {
@@ -192,31 +417,54 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSafetyReportsByUser(userId: string): Promise<SafetyReport[]> {
-    return db.select().from(safetyReports).where(eq(safetyReports.userId, userId)).orderBy(desc(safetyReports.createdAt));
+    return db
+      .select()
+      .from(safetyReports)
+      .where(eq(safetyReports.userId, userId))
+      .orderBy(desc(safetyReports.createdAt));
   }
 
   async getAllSafetyReports(): Promise<SafetyReport[]> {
     return db.select().from(safetyReports).orderBy(desc(safetyReports.createdAt));
   }
 
-  async updateSafetyReport(id: string, data: Partial<SafetyReport>): Promise<SafetyReport | undefined> {
-    const [report] = await db.update(safetyReports).set(data).where(eq(safetyReports.id, id)).returning();
+  async updateSafetyReport(
+    id: string,
+    data: Partial<SafetyReport>,
+  ): Promise<SafetyReport | undefined> {
+    const [report] = await db
+      .update(safetyReports)
+      .set(data)
+      .where(eq(safetyReports.id, id))
+      .returning();
     return report;
   }
 
   async createNotification(data: any): Promise<Notification> {
-    const [notification] = await db.insert(notifications).values(data).returning();
+    const [notification] = await db
+      .insert(notifications)
+      .values(data)
+      .returning();
     return notification;
   }
 
   async getNotificationsByUser(userId: string): Promise<Notification[]> {
-    return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt));
+    return db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
   }
 
   async markNotificationRead(id: string): Promise<Notification | undefined> {
-    const [notification] = await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id)).returning();
+    const [notification] = await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, id))
+      .returning();
     return notification;
   }
 }
 
 export const storage = new DatabaseStorage();
+

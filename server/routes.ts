@@ -2,8 +2,17 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
 import { Server as SocketIOServer } from "socket.io";
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import { storage } from "./storage";
-import { calculatePrice, calculateChauffeurEarnings, getPricingConfig, getVehicleCategories } from "./luxuryPricingEngine";
+import {
+  calculatePrice,
+  calculateChauffeurEarnings,
+  getPricingConfig,
+  getVehicleCategories,
+} from "./luxuryPricingEngine";
+import { authOptional, requireAuth, requireRole, type AuthedRequest } from "./auth-middleware";
+import { signAccessToken, type UserRole } from "./auth";
+import { externalApiService } from "./external-api-service";
 
 function generateAIResponse(type: string, description: string): string {
   const responses: Record<string, string[]> = {
@@ -22,11 +31,36 @@ function generateAIResponse(type: string, description: string): string {
   };
 
   const options = responses[type] || responses.complaint;
+  void description;
   return options[Math.floor(Math.random() * options.length)];
+}
+
+function setAuthCookie(res: Response, token: string) {
+  const isProd = process.env.NODE_ENV === "production";
+  res.cookie("a2b_token", token, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+}
+
+function getPaystackConfig() {
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!secret) {
+    throw new Error("PAYSTACK_SECRET_KEY is not configured");
+  }
+  const currency = process.env.PAYSTACK_CURRENCY || "ZAR";
+  const callbackUrl = process.env.PAYSTACK_CALLBACK_URL;
+  return { secret, currency, callbackUrl };
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+
+  // Attach optional auth to all API requests (doesn't break legacy endpoints)
+  app.use("/api", authOptional);
 
   const io = new SocketIOServer(httpServer, {
     cors: {
@@ -71,6 +105,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // -----------------------------
+  // Auth (JWT)
+  // -----------------------------
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       const { username, password, name, phone, role } = req.body;
@@ -84,10 +121,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: hashedPassword,
         name,
         phone,
-        role: role || "client",
+        role: (role || "client") as UserRole,
       });
-      const { password: _, ...safeUser } = user;
-      return res.json(safeUser);
+      const token = signAccessToken({ sub: user.id, role: user.role as UserRole });
+      setAuthCookie(res, token);
+      const { password: _pw, ...safeUser } = user;
+      return res.json({ user: safeUser, accessToken: token });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
@@ -104,13 +143,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!valid) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
-      const { password: _, ...safeUser } = user;
-      return res.json(safeUser);
+      const token = signAccessToken({ sub: user.id, role: user.role as UserRole });
+      setAuthCookie(res, token);
+      const { password: _pw, ...safeUser } = user;
+      return res.json({ user: safeUser, accessToken: token });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
   });
 
+  app.post("/api/auth/logout", async (_req: Request, res: Response) => {
+    res.clearCookie("a2b_token", { path: "/" });
+    return res.json({ ok: true });
+  });
+
+  app.get("/api/auth/me", requireAuth, async (req: AuthedRequest, res: Response) => {
+    const user = await storage.getUser(req.auth!.sub);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const { password: _pw, ...safeUser } = user;
+    return res.json(safeUser);
+  });
+
+  // -----------------------------
+  // Maps helpers
+  // -----------------------------
   app.get("/api/geocode", async (req: Request, res: Response) => {
     try {
       const address = req.query.address as string;
@@ -119,11 +175,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
-        { headers: { "User-Agent": "A2BLIFT/1.0" } }
+        { headers: { "User-Agent": "A2BLIFT/1.0" } },
       );
-      const results = await response.json() as any[];
+      const results = (await response.json()) as any[];
       if (results.length > 0) {
-        return res.json({ lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) });
+        return res.json({
+          lat: parseFloat(results[0].lat),
+          lng: parseFloat(results[0].lon),
+        });
       }
       return res.status(404).json({ message: "Location not found" });
     } catch (error: any) {
@@ -135,15 +194,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { originLat, originLng, destLat, destLng } = req.query;
       if (!originLat || !originLng || !destLat || !destLng) {
-        return res.status(400).json({ message: "Origin and destination coordinates are required" });
+        return res
+          .status(400)
+          .json({ message: "Origin and destination coordinates are required" });
       }
       const apiKey = process.env.GOOGLE_MAPS_API_KEY;
       if (!apiKey) {
-        return res.status(500).json({ message: "Google Maps API key not configured" });
+        return res
+          .status(500)
+          .json({ message: "Google Maps API key not configured" });
       }
       const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&key=${apiKey}`;
       const response = await fetch(url);
-      const data = await response.json() as any;
+      const data = (await response.json()) as any;
       if (data.status === "OK" && data.routes?.length > 0) {
         const route = data.routes[0];
         const leg = route.legs[0];
@@ -160,11 +223,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // -----------------------------
+  // Users
+  // -----------------------------
   app.get("/api/users/:id", async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.params.id);
       if (!user) return res.status(404).json({ message: "User not found" });
-      const { password: _, ...safeUser } = user;
+      const { password: _pw, ...safeUser } = user;
       return res.json(safeUser);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -175,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.updateUser(req.params.id, req.body);
       if (!user) return res.status(404).json({ message: "User not found" });
-      const { password: _, ...safeUser } = user;
+      const { password: _pw, ...safeUser } = user;
       return res.json(safeUser);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -187,7 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { role } = req.body;
       const user = await storage.updateUser(req.params.id, { role });
       if (!user) return res.status(404).json({ message: "User not found" });
-      const { password: _, ...safeUser } = user;
+      const { password: _pw, ...safeUser } = user;
       return res.json(safeUser);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -203,7 +269,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.params.id);
       if (!user) return res.status(404).json({ message: "User not found" });
       const newBalance = (user.walletBalance || 0) + amount;
-      const updated = await storage.updateUser(req.params.id, { walletBalance: newBalance });
+      const updated = await storage.updateUser(req.params.id, {
+        walletBalance: newBalance,
+      });
       if (!updated) return res.status(500).json({ message: "Failed to update balance" });
       await storage.createNotification({
         userId: req.params.id,
@@ -211,17 +279,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body: `R ${amount.toFixed(2)} has been added to your wallet. New balance: R ${newBalance.toFixed(2)}`,
         type: "wallet",
       });
-      const { password: _, ...safeUser } = updated;
+      const { password: _pw, ...safeUser } = updated;
       return res.json(safeUser);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
   });
 
+  // -----------------------------
+  // Chauffeurs
+  // -----------------------------
   app.post("/api/chauffeurs", async (req: Request, res: Response) => {
     try {
       const chauffeur = await storage.createChauffeur(req.body);
       await storage.updateUser(req.body.userId, { role: "chauffeur" });
+
+      // Create/ensure a driver application (pending) for admin review
+      const existing = await storage.getDriverApplicationByUserId(req.body.userId);
+      if (!existing) {
+        await storage.createDriverApplication({
+          userId: req.body.userId,
+          chauffeurId: chauffeur.id,
+          status: "pending",
+        });
+      }
+
       return res.json(chauffeur);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -296,6 +378,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // -----------------------------
+  // Driver Applications + Documents (Admin + Driver)
+  // -----------------------------
+  app.get("/api/driver/applications/me", requireAuth, async (req: AuthedRequest, res: Response) => {
+    const appRow = await storage.getDriverApplicationByUserId(req.auth!.sub);
+    return res.json(appRow || null);
+  });
+
+  app.get(
+    "/api/admin/driver-applications",
+    requireAuth,
+    requireRole(["admin"]),
+    async (_req: AuthedRequest, res: Response) => {
+      const apps = await storage.getDriverApplications();
+      return res.json(apps);
+    },
+  );
+
+  app.put(
+    "/api/admin/driver-applications/:id",
+    requireAuth,
+    requireRole(["admin"]),
+    async (req: AuthedRequest, res: Response) => {
+      const { status, notes } = req.body;
+      const updated = await storage.updateDriverApplication(req.params.id, {
+        status,
+        notes,
+        reviewedAt: new Date(),
+        reviewerAdminId: req.auth!.sub,
+      });
+      if (!updated) return res.status(404).json({ message: "Application not found" });
+
+      if (updated.chauffeurId) {
+        if (status === "approved") {
+          await storage.updateChauffeur(updated.chauffeurId, { isApproved: true });
+        }
+        if (status === "rejected") {
+          await storage.updateChauffeur(updated.chauffeurId, { isApproved: false });
+        }
+      }
+
+      return res.json(updated);
+    },
+  );
+
+  app.post("/api/driver/documents", requireAuth, async (req: AuthedRequest, res: Response) => {
+    const { applicationId, chauffeurId, type, url } = req.body;
+    if (!type || !url) return res.status(400).json({ message: "type and url are required" });
+    const doc = await storage.createDocument({
+      userId: req.auth!.sub,
+      applicationId: applicationId || null,
+      chauffeurId: chauffeurId || null,
+      type,
+      url,
+      status: "pending",
+    });
+    return res.json(doc);
+  });
+
+  app.get("/api/driver/documents", requireAuth, async (req: AuthedRequest, res: Response) => {
+    const docs = await storage.getDocumentsByUser(req.auth!.sub);
+    return res.json(docs);
+  });
+
+  app.get(
+    "/api/admin/documents",
+    requireAuth,
+    requireRole(["admin"]),
+    async (_req: AuthedRequest, res: Response) => {
+      const docs = await storage.getAllDocuments();
+      return res.json(docs);
+    },
+  );
+
+  app.put(
+    "/api/admin/documents/:id",
+    requireAuth,
+    requireRole(["admin"]),
+    async (req: AuthedRequest, res: Response) => {
+      const { status } = req.body;
+      const doc = await storage.updateDocument(req.params.id, {
+        status,
+        reviewedAt: new Date(),
+        reviewerAdminId: req.auth!.sub,
+      });
+      if (!doc) return res.status(404).json({ message: "Document not found" });
+      return res.json(doc);
+    },
+  );
+
+  // -----------------------------
+  // Pricing
+  // -----------------------------
   app.post("/api/pricing/estimate", async (req: Request, res: Response) => {
     try {
       const { distanceKm, categoryId, isLateNight } = req.body;
@@ -314,6 +489,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json(getVehicleCategories());
   });
 
+  // -----------------------------
+  // Rides
+  // -----------------------------
   app.post("/api/rides", async (req: Request, res: Response) => {
     try {
       const { distanceKm, isLateNight, ...rideData } = req.body;
@@ -326,11 +504,180 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pricePerKm: priceEstimate.pricePerKm,
         baseFare: priceEstimate.baseFare,
         status: "requested",
+        paymentStatus: "unpaid",
       });
       io.emit("ride:new", ride);
       return res.json(ride);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // -----------------------------
+  // Paystack Payments
+  // -----------------------------
+  app.post(
+    "/api/paystack/initialize",
+    requireAuth,
+    async (req: AuthedRequest, res: Response) => {
+      try {
+        const { rideId } = req.body as { rideId?: string };
+        if (!rideId) {
+          return res.status(400).json({ message: "rideId is required" });
+        }
+
+        const ride = await storage.getRide(rideId);
+        if (!ride) {
+          return res.status(404).json({ message: "Ride not found" });
+        }
+        if (!ride.price || ride.price <= 0) {
+          return res
+            .status(400)
+            .json({ message: "Ride does not have a valid price" });
+        }
+
+        const user = await storage.getUser(req.auth!.sub);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        const { secret, currency, callbackUrl } = getPaystackConfig();
+
+        const amountInMinorUnits = Math.round(ride.price * 100); // kobo/cents
+        const email =
+          user.username.includes("@")
+            ? user.username
+            : `${user.username}@example.com`;
+
+        const initBody: Record<string, unknown> = {
+          email,
+          amount: amountInMinorUnits,
+          currency,
+          metadata: {
+            rideId: ride.id,
+            userId: user.id,
+          },
+        };
+        if (callbackUrl) {
+          initBody.callback_url = callbackUrl;
+        }
+
+        const response = await fetch(
+          "https://api.paystack.co/transaction/initialize",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${secret}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(initBody),
+          },
+        );
+
+        const data = (await response.json()) as any;
+        if (!response.ok || !data?.status) {
+          return res
+            .status(502)
+            .json({ message: "Failed to initialize Paystack", raw: data });
+        }
+
+        return res.json({
+          authorizationUrl: data.data.authorization_url,
+          reference: data.data.reference,
+        });
+      } catch (error: any) {
+        if (error instanceof Error && error.message.includes("PAYSTACK")) {
+          return res.status(500).json({ message: error.message });
+        }
+        return res.status(500).json({ message: error.message || "Server error" });
+      }
+    },
+  );
+
+  app.post("/api/paystack/webhook", async (req: Request, res: Response) => {
+    try {
+      const signature = req.header("x-paystack-signature");
+      if (!signature) {
+        return res.status(400).json({ message: "Missing signature" });
+      }
+
+      let secret: string;
+      try {
+        secret = getPaystackConfig().secret;
+      } catch (e: any) {
+        console.error("Paystack webhook misconfigured:", e);
+        return res.status(500).json({ message: "Paystack not configured" });
+      }
+
+      const rawBody = (req as any).rawBody as Buffer | string | undefined;
+      const raw =
+        typeof rawBody === "string"
+          ? rawBody
+          : Buffer.isBuffer(rawBody)
+          ? rawBody
+          : JSON.stringify(req.body);
+
+      const hash = crypto
+        .createHmac("sha512", secret)
+        .update(raw)
+        .digest("hex");
+
+      if (hash !== signature) {
+        console.warn("Invalid Paystack webhook signature");
+        return res.status(401).json({ message: "Invalid signature" });
+      }
+
+      const payload = req.body as any;
+      if (payload?.event !== "charge.success") {
+        // Acknowledge but ignore other events for now
+        return res.status(200).json({ received: true });
+      }
+
+      const eventData = payload.data || {};
+      const metadata = eventData.metadata || {};
+      const rideId = metadata.rideId as string | undefined;
+      const userId = (metadata.userId as string | undefined) ?? undefined;
+
+      if (!rideId) {
+        return res
+          .status(200)
+          .json({ received: true, message: "No rideId in metadata" });
+      }
+
+      const amountMinor = eventData.amount as number | undefined;
+      const amount = typeof amountMinor === "number" ? amountMinor / 100 : 0;
+
+      try {
+        const ride = await storage.getRide(rideId);
+        if (!ride) {
+          console.warn("Paystack webhook for unknown ride:", rideId);
+          return res.status(200).json({ received: true });
+        }
+
+        await storage.createPayment({
+          rideId: ride.id,
+          payerUserId: userId || ride.clientId,
+          amount: amount || ride.price || 0,
+          method: "paystack",
+          status: "paid",
+          provider: "paystack",
+          providerRef: eventData.reference,
+        });
+
+        await storage.updateRide(ride.id, {
+          paymentStatus: "paid",
+          paymentMethod: "card",
+        });
+      } catch (dbError) {
+        console.error("Error applying Paystack payment:", dbError);
+        // Still return 200 so Paystack does not retry indefinitely
+        return res.status(200).json({ received: true, error: "db_error" });
+      }
+
+      return res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error("Paystack webhook error:", error);
+      return res.status(500).json({ message: "Webhook processing failed" });
     }
   });
 
@@ -402,7 +749,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const chauffeur = await storage.getChauffeur(ride.chauffeurId);
         if (chauffeur) {
           await storage.updateChauffeur(ride.chauffeurId, {
-            earningsTotal: (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings,
+            earningsTotal:
+              (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings,
           });
         }
         await storage.createNotification({
@@ -411,6 +759,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           body: `Your trip has been completed. Fare: R ${ride.price}. Thank you for choosing A2B LIFT.`,
           type: "ride",
         });
+
+        // Auto-handle cash payments: if payment method is cash and no payment record exists, create one and mark as paid
+        const paymentMethod = ride.paymentMethod || "cash";
+        if (paymentMethod === "cash" && ride.price) {
+          // Check if payment already exists
+          const existingPayments = await storage.getPaymentsByRide(ride.id);
+          if (existingPayments.length === 0) {
+            // Create cash payment record and mark as paid
+            await storage.createPayment({
+              rideId: ride.id,
+              payerUserId: ride.clientId,
+              amount: ride.price,
+              method: "cash",
+              status: "paid",
+              provider: "cash",
+              providerRef: `cash_${ride.id}_${Date.now()}`,
+            });
+
+            // Update ride payment status
+            await storage.updateRide(ride.id, {
+              paymentStatus: "paid",
+              paymentMethod: "cash",
+            });
+          } else {
+            // If payment exists but status is pending, mark as paid
+            const pendingPayment = existingPayments.find((p) => p.status === "pending" && p.method === "cash");
+            if (pendingPayment) {
+              await storage.updatePayment(pendingPayment.id, {
+                status: "paid",
+              });
+              await storage.updateRide(ride.id, {
+                paymentStatus: "paid",
+              });
+            }
+          }
+        }
       }
 
       io.emit("ride:statusUpdate", ride);
@@ -418,6 +802,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
+  });
+
+  app.post("/api/rides/:id/pay", requireAuth, async (req: AuthedRequest, res: Response) => {
+    const ride = await storage.getRide(req.params.id);
+    if (!ride) return res.status(404).json({ message: "Ride not found" });
+    if (ride.clientId !== req.auth!.sub) return res.status(403).json({ message: "Forbidden" });
+    const amount = ride.price || 0;
+    const method = (req.body?.method || ride.paymentMethod || "cash") as string;
+
+    const payment = await storage.createPayment({
+      rideId: ride.id,
+      payerUserId: req.auth!.sub,
+      amount,
+      method,
+      status: method === "cash" ? "pending" : "paid",
+    });
+
+    await storage.updateRide(ride.id, {
+      paymentStatus: payment.status === "paid" ? "paid" : "pending",
+      paymentMethod: method,
+    });
+
+    return res.json({ payment });
+  });
+
+  app.post("/api/rides/:id/rate", requireAuth, async (req: AuthedRequest, res: Response) => {
+    const { rating, comment } = req.body;
+    const ride = await storage.getRide(req.params.id);
+    if (!ride) return res.status(404).json({ message: "Ride not found" });
+    if (ride.clientId !== req.auth!.sub) return res.status(403).json({ message: "Forbidden" });
+    if (!ride.chauffeurId) return res.status(400).json({ message: "Ride has no chauffeur" });
+    if (ride.status !== "trip_completed") return res.status(400).json({ message: "Ride not completed" });
+
+    const rr = await storage.createRideRating({
+      rideId: ride.id,
+      clientId: ride.clientId,
+      chauffeurId: ride.chauffeurId,
+      rating,
+      comment: comment || null,
+    });
+
+    const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+    if (chauffeur) {
+      const avgRating = await storage.getAverageRatingForUser(chauffeur.userId);
+      if (avgRating != null) {
+        await storage.updateUser(chauffeur.userId, { rating: avgRating });
+      }
+    }
+
+    return res.json(rr);
   });
 
   app.get("/api/rides/client/:clientId", async (req: Request, res: Response) => {
@@ -447,6 +881,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // -----------------------------
+  // Earnings / Withdrawals
+  // -----------------------------
   app.get("/api/earnings/chauffeur/:chauffeurId", async (req: Request, res: Response) => {
     try {
       const earningsList = await storage.getEarningsByChauffeur(req.params.chauffeurId);
@@ -493,6 +930,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // -----------------------------
+  // Chat
+  // -----------------------------
   app.post("/api/messages", async (req: Request, res: Response) => {
     try {
       const message = await storage.createMessage(req.body);
@@ -512,11 +952,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // -----------------------------
+  // Safety + Notifications
+  // -----------------------------
   app.post("/api/safety-reports", async (req: Request, res: Response) => {
     try {
       const { userId, rideId, type, description } = req.body;
       const aiResponse = generateAIResponse(type, description);
-      const priority = type === "emergency" ? "high" : type === "safety" ? "medium" : "low";
+      const priority =
+        type === "emergency" ? "high" : type === "safety" ? "medium" : "low";
       const report = await storage.createSafetyReport({
         userId,
         rideId: rideId || null,
@@ -586,38 +1030,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/admin/stats", async (_req: Request, res: Response) => {
+  // -----------------------------
+  // Admin
+  // -----------------------------
+  app.get(
+    "/api/admin/stats",
+    requireAuth,
+    requireRole(["admin"]),
+    async (_req: AuthedRequest, res: Response) => {
+      try {
+        const allRides = await storage.getAllRides();
+        const allChauffeurs = await storage.getAllChauffeurs();
+        const allWithdrawals = await storage.getAllWithdrawals();
+        const allReports = await storage.getAllSafetyReports();
+
+        const completedRides = allRides.filter((r) => r.status === "trip_completed");
+        const totalRevenue = completedRides.reduce((sum, r) => sum + (r.price || 0), 0);
+        const activeRides = allRides.filter(
+          (r) => !["trip_completed", "cancelled"].includes(r.status as string),
+        );
+        const pendingApprovals = allChauffeurs.filter((c) => !c.isApproved);
+        const pendingWithdrawals = allWithdrawals.filter((w) => w.status === "pending");
+        const openReports = allReports.filter((r) => r.status === "open");
+
+        return res.json({
+          totalRides: allRides.length,
+          completedRides: completedRides.length,
+          activeRides: activeRides.length,
+          totalRevenue: Math.round(totalRevenue),
+          totalChauffeurs: allChauffeurs.length,
+          onlineChauffeurs: allChauffeurs.filter((c) => c.isOnline).length,
+          pendingApprovals: pendingApprovals.length,
+          pendingWithdrawals: pendingWithdrawals.length,
+          openReports: openReports.length,
+          totalReports: allReports.length,
+        });
+      } catch (error: any) {
+        return res.status(500).json({ message: error.message });
+      }
+    },
+  );
+
+  // -----------------------------
+  // External API Proxy (103.154.2.122)
+  // -----------------------------
+  app.get("/api/external/health", async (_req: Request, res: Response) => {
     try {
-      const allRides = await storage.getAllRides();
-      const allChauffeurs = await storage.getAllChauffeurs();
-      const allWithdrawals = await storage.getAllWithdrawals();
-      const allReports = await storage.getAllSafetyReports();
-
-      const completedRides = allRides.filter((r) => r.status === "trip_completed");
-      const totalRevenue = completedRides.reduce((sum, r) => sum + (r.price || 0), 0);
-      const activeRides = allRides.filter(
-        (r) => !["trip_completed", "cancelled"].includes(r.status)
-      );
-      const pendingApprovals = allChauffeurs.filter((c) => !c.isApproved);
-      const pendingWithdrawals = allWithdrawals.filter((w) => w.status === "pending");
-      const openReports = allReports.filter((r) => r.status === "open");
-
-      return res.json({
-        totalRides: allRides.length,
-        completedRides: completedRides.length,
-        activeRides: activeRides.length,
-        totalRevenue: Math.round(totalRevenue),
-        totalChauffeurs: allChauffeurs.length,
-        onlineChauffeurs: allChauffeurs.filter((c) => c.isOnline).length,
-        pendingApprovals: pendingApprovals.length,
-        pendingWithdrawals: pendingWithdrawals.length,
-        openReports: openReports.length,
-        totalReports: allReports.length,
-      });
+      const result = await externalApiService.healthCheck();
+      return res.status(result.statusCode || 200).json(result);
     } catch (error: any) {
-      return res.status(500).json({ message: error.message });
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get("/api/external/status", async (_req: Request, res: Response) => {
+    try {
+      const result = await externalApiService.getStatus();
+      return res.status(result.statusCode || 200).json(result);
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Generic proxy for all external API routes (catch-all)
+  app.use("/api/external", async (req: Request, res: Response, next: any) => {
+    try {
+      const endpoint = req.path.replace("/api/external", "") || "/";
+      const result = await externalApiService.request(endpoint, {
+        method: (req.method as "GET" | "POST" | "PUT" | "DELETE" | "PATCH") || "GET",
+        body: Object.keys(req.body || {}).length > 0 ? req.body : undefined,
+        headers: req.headers as Record<string, string>,
+      });
+      return res.status(result.statusCode || 200).json(result);
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
     }
   });
 
   return httpServer;
 }
+

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, Platform, ScrollView, Modal, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, Platform, ScrollView, Modal, Alert, ActivityIndicator, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAuth } from "@/lib/auth-context";
-import { apiRequest } from "@/lib/query-client";
+import { apiRequest, queryClient } from "@/lib/query-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
+import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 
 export default function ChauffeurSettingsScreen() {
@@ -15,7 +17,21 @@ export default function ChauffeurSettingsScreen() {
   const [showDocuments, setShowDocuments] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showApplicationStatus, setShowApplicationStatus] = useState(false);
   const [chauffeur, setChauffeur] = useState<any>(null);
+  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
+
+  // Fetch driver application status
+  const { data: application, refetch: refetchApplication } = useQuery({
+    queryKey: ["/api/driver/applications/me"],
+    enabled: !!user,
+  });
+
+  // Fetch user documents
+  const { data: userDocuments, refetch: refetchDocuments } = useQuery({
+    queryKey: ["/api/driver/documents"],
+    enabled: !!user,
+  });
 
   useEffect(() => {
     loadChauffeur();
@@ -40,6 +56,75 @@ export default function ChauffeurSettingsScreen() {
   async function handleLogout() {
     await logout();
     router.replace("/");
+  }
+
+  async function pickAndUploadDocument(type: string) {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert("Permission Required", "Please grant camera roll access to upload documents");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+        aspect: [4, 3],
+      });
+
+      if (result.canceled || !result.assets[0]) return;
+
+      setUploadingDoc(type);
+      const asset = result.assets[0];
+      
+      // Convert image to base64 data URL (in production, upload to Supabase Storage first)
+      const response = await fetch(asset.uri);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      // Upload document to backend
+      const docRes = await apiRequest("POST", "/api/driver/documents", {
+        type,
+        url: dataUrl, // In production, use Supabase Storage URL
+        chauffeurId: chauffeur?.id || null,
+        applicationId: application?.id || null,
+      });
+
+      await docRes.json();
+      Alert.alert("Success", `${type} uploaded successfully. Admin will review it.`);
+      refetchDocuments();
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/documents"] });
+    } catch (error: any) {
+      Alert.alert("Upload Failed", error.message || "Failed to upload document");
+    } finally {
+      setUploadingDoc(null);
+    }
+  }
+
+  function getDocumentStatus(type: string): "pending" | "approved" | "rejected" | "missing" {
+    if (!userDocuments || !Array.isArray(userDocuments)) return "missing";
+    const doc = userDocuments.find((d: any) => d.type === type);
+    if (!doc) return "missing";
+    return doc.status as "pending" | "approved" | "rejected";
+  }
+
+  function getStatusBadge(status: "pending" | "approved" | "rejected" | "missing") {
+    switch (status) {
+      case "approved":
+        return { bg: styles.docVerified, text: "Verified" };
+      case "pending":
+        return { bg: styles.docPendingBadge, text: "Pending" };
+      case "rejected":
+        return { bg: styles.docRejected, text: "Rejected" };
+      default:
+        return { bg: styles.docMissing, text: "Not Uploaded" };
+    }
   }
 
   return (
@@ -72,6 +157,14 @@ export default function ChauffeurSettingsScreen() {
             <Ionicons name="document-text-outline" size={20} color={Colors.white} />
           </View>
           <Text style={styles.menuText}>Documents</Text>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </Pressable>
+
+        <Pressable style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]} onPress={() => setShowApplicationStatus(true)}>
+          <View style={styles.menuIconCircle}>
+            <Ionicons name="clipboard-outline" size={20} color={Colors.white} />
+          </View>
+          <Text style={styles.menuText}>Application Status</Text>
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </Pressable>
 
@@ -176,45 +269,94 @@ export default function ChauffeurSettingsScreen() {
           <View style={[styles.modalSheet, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 16) }]} onStartShouldSetResponder={() => true}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Documents</Text>
-            <View style={styles.docItem}>
-              <View style={styles.docIconCircle}>
-                <Ionicons name="id-card" size={20} color={Colors.white} />
-              </View>
-              <View style={styles.docInfo}>
-                <Text style={styles.docName}>Driver's License</Text>
-                <Text style={styles.docStatus}>Required for verification</Text>
-              </View>
-              <View style={[styles.docBadge, chauffeur?.isApproved ? styles.docVerified : styles.docPendingBadge]}>
-                <Text style={styles.docBadgeText}>{chauffeur?.isApproved ? "Verified" : "Pending"}</Text>
-              </View>
-            </View>
-            <View style={styles.docItem}>
-              <View style={styles.docIconCircle}>
-                <Ionicons name="car" size={20} color={Colors.white} />
-              </View>
-              <View style={styles.docInfo}>
-                <Text style={styles.docName}>Vehicle Registration</Text>
-                <Text style={styles.docStatus}>Required for verification</Text>
-              </View>
-              <View style={[styles.docBadge, chauffeur?.isApproved ? styles.docVerified : styles.docPendingBadge]}>
-                <Text style={styles.docBadgeText}>{chauffeur?.isApproved ? "Verified" : "Pending"}</Text>
-              </View>
-            </View>
-            <View style={styles.docItem}>
-              <View style={styles.docIconCircle}>
-                <Ionicons name="shield-checkmark" size={20} color={Colors.white} />
-              </View>
-              <View style={styles.docInfo}>
-                <Text style={styles.docName}>Insurance</Text>
-                <Text style={styles.docStatus}>Required for verification</Text>
-              </View>
-              <View style={[styles.docBadge, chauffeur?.isApproved ? styles.docVerified : styles.docPendingBadge]}>
-                <Text style={styles.docBadgeText}>{chauffeur?.isApproved ? "Verified" : "Pending"}</Text>
-              </View>
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {["driver_license", "vehicle_registration", "insurance"].map((type) => {
+                const status = getDocumentStatus(type);
+                const badge = getStatusBadge(status);
+                const typeName = type === "driver_license" ? "Driver's License" : type === "vehicle_registration" ? "Vehicle Registration" : "Insurance";
+                const icon = type === "driver_license" ? "id-card" : type === "vehicle_registration" ? "car" : "shield-checkmark";
+                const isUploading = uploadingDoc === type;
+                
+                return (
+                  <Pressable
+                    key={type}
+                    style={[styles.docItem, isUploading && { opacity: 0.6 }]}
+                    onPress={() => !isUploading && pickAndUploadDocument(type)}
+                    disabled={isUploading}
+                  >
+                    <View style={styles.docIconCircle}>
+                      <Ionicons name={icon as any} size={20} color={Colors.white} />
+                    </View>
+                    <View style={styles.docInfo}>
+                      <Text style={styles.docName}>{typeName}</Text>
+                      <Text style={styles.docStatus}>Required for verification</Text>
+                    </View>
+                    {isUploading ? (
+                      <ActivityIndicator size="small" color={Colors.white} />
+                    ) : (
+                      <View style={[styles.docBadge, badge.bg]}>
+                        <Text style={styles.docBadgeText}>{badge.text}</Text>
+                      </View>
+                    )}
+                    {status === "missing" && (
+                      <Ionicons name="cloud-upload-outline" size={18} color={Colors.textMuted} style={{ marginLeft: 8 }} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
             <Text style={styles.docNote}>
-              Documents are reviewed by our admin team. Your driver status will be updated once all documents are verified.
+              Tap on a document to upload. Documents are reviewed by our admin team. Your driver status will be updated once all documents are verified.
             </Text>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={showApplicationStatus} transparent animationType="slide" onRequestClose={() => setShowApplicationStatus(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowApplicationStatus(false)}>
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 16) }]} onStartShouldSetResponder={() => true}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Application Status</Text>
+            {application ? (
+              <View style={styles.appStatusContainer}>
+                <View style={[styles.statusBadgeLarge, 
+                  application.status === "approved" ? styles.statusApprovedLarge :
+                  application.status === "rejected" ? styles.statusRejectedLarge :
+                  styles.statusPendingLarge
+                ]}>
+                  <Ionicons 
+                    name={application.status === "approved" ? "checkmark-circle" : application.status === "rejected" ? "close-circle" : "time"} 
+                    size={32} 
+                    color={Colors.white} 
+                  />
+                  <Text style={styles.statusTextLarge}>
+                    {application.status === "approved" ? "Approved" : 
+                     application.status === "rejected" ? "Rejected" : 
+                     "Pending Review"}
+                  </Text>
+                </View>
+                {application.notes && (
+                  <View style={styles.notesCard}>
+                    <Text style={styles.notesLabel}>Admin Notes:</Text>
+                    <Text style={styles.notesText}>{application.notes}</Text>
+                  </View>
+                )}
+                {application.reviewedAt && (
+                  <Text style={styles.reviewedText}>
+                    Reviewed on {new Date(application.reviewedAt).toLocaleDateString()}
+                  </Text>
+                )}
+                {!application.reviewedAt && (
+                  <Text style={styles.pendingText}>
+                    Your application is being reviewed. We'll notify you once a decision is made.
+                  </Text>
+                )}
+              </View>
+            ) : (
+              <View style={styles.appStatusContainer}>
+                <Text style={styles.noApplicationText}>No application found. Please complete your driver registration.</Text>
+              </View>
+            )}
           </View>
         </Pressable>
       </Modal>
@@ -338,6 +480,20 @@ const styles = StyleSheet.create({
   docPendingBadge: { backgroundColor: "rgba(255,183,77,0.2)" },
   docBadgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: Colors.white },
   docNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", paddingTop: 4 },
+  docRejected: { backgroundColor: "rgba(244,67,54,0.2)" },
+  docMissing: { backgroundColor: "rgba(158,158,158,0.2)" },
+  appStatusContainer: { gap: 16, alignItems: "center" },
+  statusBadgeLarge: { alignItems: "center", gap: 8, padding: 24, borderRadius: 16, width: "100%" },
+  statusApprovedLarge: { backgroundColor: "rgba(76,175,80,0.2)" },
+  statusRejectedLarge: { backgroundColor: "rgba(244,67,54,0.2)" },
+  statusPendingLarge: { backgroundColor: "rgba(255,183,77,0.2)" },
+  statusTextLarge: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.white },
+  notesCard: { backgroundColor: Colors.surface, borderRadius: 12, padding: 14, width: "100%", borderWidth: 1, borderColor: Colors.border },
+  notesLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, marginBottom: 6 },
+  notesText: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.white, lineHeight: 20 },
+  reviewedText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center" },
+  pendingText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, textAlign: "center", lineHeight: 18 },
+  noApplicationText: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", padding: 20 },
   notifItem: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: Colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.border },
   notifInfo: { flex: 1, gap: 2 },
   notifName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },

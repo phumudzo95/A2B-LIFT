@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   name: text("name").notNull(),
   phone: text("phone"),
+  // client (passenger) | chauffeur (driver) | admin
   role: text("role").notNull().default("client"),
   rating: real("rating").default(5.0),
   walletBalance: real("wallet_balance").default(0),
@@ -71,8 +72,77 @@ export const rides = pgTable("rides", {
   durationMin: real("duration_min"),
   vehicleType: text("vehicle_type"),
   paymentMethod: text("payment_method").default("cash"),
+  paymentStatus: text("payment_status").notNull().default("unpaid"), // unpaid|pending|paid|failed|refunded
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
+});
+
+export const payments = pgTable("payments", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  rideId: varchar("ride_id")
+    .notNull()
+    .references(() => rides.id),
+  payerUserId: varchar("payer_user_id")
+    .notNull()
+    .references(() => users.id),
+  amount: real("amount").notNull(),
+  method: text("method").notNull().default("cash"),
+  status: text("status").notNull().default("pending"), // pending|paid|failed|refunded
+  provider: text("provider"),
+  providerRef: text("provider_ref"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const driverApplications = pgTable("driver_applications", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id),
+  chauffeurId: varchar("chauffeur_id").references(() => chauffeurs.id),
+  status: text("status").notNull().default("pending"), // pending|approved|rejected
+  notes: text("notes"),
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewerAdminId: varchar("reviewer_admin_id").references(() => users.id),
+});
+
+export const documents = pgTable("documents", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id),
+  applicationId: varchar("application_id").references(() => driverApplications.id),
+  chauffeurId: varchar("chauffeur_id").references(() => chauffeurs.id),
+  type: text("type").notNull(),
+  url: text("url").notNull(),
+  status: text("status").notNull().default("pending"),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewerAdminId: varchar("reviewer_admin_id").references(() => users.id),
+});
+
+export const rideRatings = pgTable("ride_ratings", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  rideId: varchar("ride_id")
+    .notNull()
+    .references(() => rides.id),
+  clientId: varchar("client_id")
+    .notNull()
+    .references(() => users.id),
+  chauffeurId: varchar("chauffeur_id")
+    .notNull()
+    .references(() => chauffeurs.id),
+  rating: integer("rating").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const earnings = pgTable("earnings", {
@@ -180,8 +250,13 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Chauffeur = typeof chauffeurs.$inferSelect;
 export type Ride = typeof rides.$inferSelect;
+export type Payment = typeof payments.$inferSelect;
+export type DriverApplication = typeof driverApplications.$inferSelect;
+export type Document = typeof documents.$inferSelect;
+export type RideRating = typeof rideRatings.$inferSelect;
 export type Earning = typeof earnings.$inferSelect;
 export type Withdrawal = typeof withdrawals.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type SafetyReport = typeof safetyReports.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+

@@ -42,17 +42,24 @@
     .btn-small { padding: 4px 10px; font-size: 11px; }
     .btn-resolve { background: #4caf50; color: #fff; }
     .loading { text-align: center; padding: 40px; color: #6b6b6b; }
-    .hidden { display: none; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
     .desc-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: #bdbdbd; }
     .refresh-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #bdbdbd; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
     .refresh-btn:hover { background: #2a2a2a; }
-    @media (max-width: 768px) {
-      .stats-grid { grid-template-columns: repeat(2, 1fr); }
-      table { font-size: 12px; }
-      td, th { padding: 10px 8px; }
-    }
+
+    .login-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.75); }
+    .login-overlay.show { display: flex; }
+    .login-card { width: min(420px, 92vw); background: #121212; border: 1px solid #2a2a2a; border-radius: 16px; padding: 24px; }
+    .login-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .login-sub { font-size: 12px; color: #8a8a8a; margin-bottom: 18px; }
+    .field { display: grid; gap: 6px; margin-bottom: 12px; }
+    .label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #8a8a8a; }
+    .input { background: #0d0d0d; border: 1px solid #2a2a2a; color: #fff; padding: 12px 12px; border-radius: 12px; outline: none; }
+    .login-actions { display: flex; gap: 10px; margin-top: 12px; }
+    .btn-primary { background: #fff; color: #000; border: 1px solid #fff; padding: 10px 14px; border-radius: 12px; font-weight: 700; cursor: pointer; flex: 1; }
+    .btn-secondary { background: transparent; color: #bdbdbd; border: 1px solid #2a2a2a; padding: 10px 14px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+    .error { color: #ff4d4d; font-size: 12px; margin-top: 10px; display: none; }
   </style>
 </head>
 <body>
@@ -61,7 +68,10 @@
       <h1>A2B LIFT</h1>
       <span>ADMIN PANEL</span>
     </div>
-    <button class="refresh-btn" onclick="refreshAll()">Refresh</button>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="refresh-btn" onclick="refreshAll()">Refresh</button>
+      <button class="refresh-btn" onclick="logout()">Logout</button>
+    </div>
   </div>
 
   <div class="nav">
@@ -108,8 +118,89 @@
     </div>
   </div>
 
+  <div id="login" class="login-overlay">
+    <div class="login-card">
+      <div class="login-title">Admin Login</div>
+      <div class="login-sub">Sign in with an account whose role is <b>admin</b>.</div>
+      <div class="field">
+        <div class="label">Username</div>
+        <input id="username" class="input" placeholder="admin" autocomplete="username" />
+      </div>
+      <div class="field">
+        <div class="label">Password</div>
+        <input id="password" class="input" type="password" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <div class="login-actions">
+        <button class="btn-primary" onclick="doLogin()">Login</button>
+        <button class="btn-secondary" onclick="clearToken()">Clear Token</button>
+      </div>
+      <div id="login-error" class="error"></div>
+    </div>
+  </div>
+
   <script>
     const API = '';
+    const TOKEN_KEY = 'a2b_admin_token';
+
+    function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+    function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+    function clearToken() { localStorage.removeItem(TOKEN_KEY); showLogin(true); }
+
+    function showLogin(show) {
+      document.getElementById('login').classList.toggle('show', !!show);
+    }
+
+    function authHeaders() {
+      const t = getToken();
+      return t ? { 'Authorization': 'Bearer ' + t } : {};
+    }
+
+    async function apiFetch(path, opts = {}) {
+      const headers = Object.assign({}, opts.headers || {}, authHeaders());
+      const res = await fetch(API + path, Object.assign({}, opts, { headers, credentials: 'include' }));
+      if (res.status === 401 || res.status === 403) {
+        showLogin(true);
+      }
+      return res;
+    }
+
+    async function doLogin() {
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value;
+      const errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+      try {
+        const res = await fetch(API + '/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p }),
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          errEl.textContent = 'Login failed: ' + text;
+          errEl.style.display = 'block';
+          return;
+        }
+        const data = await res.json();
+        if (!data?.user || data.user.role !== 'admin') {
+          errEl.textContent = 'This account is not an admin.';
+          errEl.style.display = 'block';
+          return;
+        }
+        if (data.accessToken) setToken(data.accessToken);
+        showLogin(false);
+        refreshAll();
+      } catch(e) {
+        errEl.textContent = 'Login failed.';
+        errEl.style.display = 'block';
+      }
+    }
+
+    async function logout() {
+      clearToken();
+      try { await fetch(API + '/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
+    }
 
     function switchTab(tab) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -136,7 +227,8 @@
 
     async function loadStats() {
       try {
-        const res = await fetch(API + '/api/admin/stats');
+        const res = await apiFetch('/api/admin/stats');
+        if (!res.ok) throw new Error();
         const stats = await res.json();
         document.getElementById('stats-grid').innerHTML = `
           <div class="stat-card"><div class="stat-value">${stats.totalRides}</div><div class="stat-label">Total Rides</div></div>
@@ -157,7 +249,7 @@
 
     async function loadChauffeurs() {
       try {
-        const res = await fetch(API + '/api/chauffeurs');
+        const res = await apiFetch('/api/chauffeurs');
         const chauffeurs = await res.json();
         if (!chauffeurs.length) {
           document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">No chauffeurs registered</div>';
@@ -187,19 +279,20 @@
 
     async function loadRides() {
       try {
-        const res = await fetch(API + '/api/rides');
+        const res = await apiFetch('/api/rides');
         const rides = await res.json();
         if (!rides.length) {
           document.getElementById('rides-table').innerHTML = '<div class="loading">No rides</div>';
           return;
         }
-        let html = '<table><thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Date</th></tr></thead><tbody>';
+        let html = '<table><thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th></tr></thead><tbody>';
         for (const r of rides) {
           html += `<tr>
             <td>${r.pickupAddress || 'N/A'}</td>
             <td>${r.dropoffAddress || 'N/A'}</td>
             <td><span class="badge badge-${r.status === 'trip_completed' ? 'approved' : r.status === 'cancelled' ? 'rejected' : 'pending'}">${r.status}</span></td>
             <td>R ${r.price || '—'}</td>
+            <td><span class="badge badge-${r.paymentStatus === 'paid' ? 'paid' : 'pending'}">${r.paymentStatus || '—'}</span></td>
             <td>${new Date(r.createdAt).toLocaleDateString()}</td>
           </tr>`;
         }
@@ -212,7 +305,7 @@
 
     async function loadWithdrawals() {
       try {
-        const res = await fetch(API + '/api/withdrawals');
+        const res = await apiFetch('/api/withdrawals');
         const withdrawals = await res.json();
         if (!withdrawals.length) {
           document.getElementById('withdrawals-table').innerHTML = '<div class="loading">No withdrawals</div>';
@@ -221,9 +314,9 @@
         let html = '<table><thead><tr><th>Chauffeur ID</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
         for (const w of withdrawals) {
           html += `<tr>
-            <td style="font-size:11px">${w.chauffeurId.substring(0,8)}...</td>
+            <td style="font-size:11px">${(w.chauffeurId || '').substring(0,8)}...</td>
             <td>R ${w.amount}</td>
-            <td><span class="badge badge-${w.status === 'paid' ? 'paid' : w.status === 'approved' ? 'approved' : 'pending'}">${w.status}</span></td>
+            <td><span class="badge badge-${w.status === 'paid' ? 'paid' : w.status === 'approved' ? 'approved' : w.status === 'rejected' ? 'rejected' : 'pending'}">${w.status}</span></td>
             <td>${new Date(w.createdAt).toLocaleDateString()}</td>
             <td>
               ${w.status === 'pending' ? `
@@ -244,7 +337,7 @@
 
     async function loadSafetyReports() {
       try {
-        const res = await fetch(API + '/api/safety-reports');
+        const res = await apiFetch('/api/safety-reports');
         const reports = await res.json();
         if (!reports.length) {
           document.getElementById('safety-table').innerHTML = '<div class="loading">No safety reports</div>';
@@ -273,7 +366,7 @@
 
     async function approveChauffeur(id) {
       try {
-        await fetch(API + '/api/chauffeurs/' + id, {
+        await apiFetch('/api/chauffeurs/' + id, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ isApproved: true })
@@ -285,7 +378,7 @@
 
     async function updateWithdrawal(id, status) {
       try {
-        await fetch(API + '/api/withdrawals/' + id, {
+        await apiFetch('/api/withdrawals/' + id, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status })
@@ -297,7 +390,7 @@
 
     async function resolveReport(id) {
       try {
-        await fetch(API + '/api/safety-reports/' + id, {
+        await apiFetch('/api/safety-reports/' + id, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'resolved' })
@@ -307,8 +400,11 @@
       } catch(e) { alert('Failed to resolve'); }
     }
 
+    // Boot
+    if (!getToken()) showLogin(true);
     loadStats();
     setInterval(loadStats, 15000);
   </script>
 </body>
 </html>
+

@@ -74,6 +74,10 @@ export default function ClientHomeScreen() {
   const [routePolyline, setRoutePolyline] = useState<string | null>(null);
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [etaText, setEtaText] = useState<string | null>(null);
+  const [showRating, setShowRating] = useState(false);
+  const [rating, setRating] = useState<number>(0);
+  const [ratingComment, setRatingComment] = useState<string>("");
+  const [submittingRating, setSubmittingRating] = useState(false);
 
   useEffect(() => {
     requestLocation();
@@ -101,6 +105,10 @@ export default function ClientHomeScreen() {
           setRideStatus("in_trip");
         } else if (ride.status === "trip_completed") {
           setRideStatus("completed");
+          // Show rating screen after a brief delay
+          setTimeout(() => {
+            setShowRating(true);
+          }, 1000);
           if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       }
@@ -276,6 +284,27 @@ export default function ClientHomeScreen() {
     setEtaText(null);
   }
 
+  async function submitRating() {
+    if (!currentRide || rating === 0) {
+      Alert.alert("Rating Required", "Please select a rating");
+      return;
+    }
+    try {
+      setSubmittingRating(true);
+      await apiRequest("POST", `/api/rides/${currentRide.id}/rate`, {
+        rating,
+        comment: ratingComment.trim() || null,
+      });
+      setShowRating(false);
+      resetAfterComplete();
+      Alert.alert("Thank You", "Your rating has been submitted!");
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to submit rating");
+    } finally {
+      setSubmittingRating(false);
+    }
+  }
+
   function resetAfterComplete() {
     setRideStatus("idle");
     setCurrentRide(null);
@@ -287,6 +316,9 @@ export default function ClientHomeScreen() {
     setRoutePolyline(null);
     setDriverLocation(null);
     setEtaText(null);
+    setShowRating(false);
+    setRating(0);
+    setRatingComment("");
   }
 
   return (
@@ -498,7 +530,7 @@ export default function ClientHomeScreen() {
         </Animated.View>
       )}
 
-      {rideStatus === "completed" && (
+      {rideStatus === "completed" && !showRating && (
         <Animated.View entering={FadeInDown.duration(400)} style={styles.bottomSheet}>
           <View style={styles.sheetHandle} />
           <View style={styles.completedContainer}>
@@ -511,10 +543,77 @@ export default function ClientHomeScreen() {
           </View>
           <Pressable
             style={({ pressed }) => [styles.confirmBtn, pressed && { opacity: 0.9 }]}
-            onPress={resetAfterComplete}
+            onPress={() => setShowRating(true)}
           >
-            <Text style={styles.confirmBtnText}>Done</Text>
+            <Text style={styles.confirmBtnText}>Rate Your Driver</Text>
           </Pressable>
+        </Animated.View>
+      )}
+
+      {showRating && (
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.bottomSheet}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>Rate Your Driver</Text>
+          
+          <View style={styles.ratingContainer}>
+            <Text style={styles.ratingLabel}>How was your ride?</Text>
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Pressable
+                  key={star}
+                  onPress={() => setRating(star)}
+                  style={({ pressed }) => [styles.starButton, pressed && { opacity: 0.7 }]}
+                >
+                  <Ionicons
+                    name={star <= rating ? "star" : "star-outline"}
+                    size={40}
+                    color={star <= rating ? Colors.warning : Colors.textMuted}
+                  />
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.commentContainer}>
+            <Text style={styles.commentLabel}>Optional: Add a comment</Text>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Share your experience..."
+              placeholderTextColor={Colors.textMuted}
+              value={ratingComment}
+              onChangeText={setRatingComment}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+          </View>
+
+          <View style={styles.ratingActions}>
+            <Pressable
+              style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.8 }]}
+              onPress={() => {
+                setShowRating(false);
+                resetAfterComplete();
+              }}
+            >
+              <Text style={styles.skipButtonText}>Skip</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.submitRatingButton,
+                rating === 0 && styles.submitRatingButtonDisabled,
+                pressed && { opacity: 0.9 },
+              ]}
+              onPress={submitRating}
+              disabled={rating === 0 || submittingRating}
+            >
+              {submittingRating ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <Text style={styles.submitRatingButtonText}>Submit</Text>
+              )}
+            </Pressable>
+          </View>
         </Animated.View>
       )}
 
@@ -976,5 +1075,74 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  ratingContainer: {
+    alignItems: "center",
+    gap: 16,
+    paddingVertical: 8,
+  },
+  ratingLabel: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  starsContainer: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+  },
+  starButton: {
+    padding: 4,
+  },
+  commentContainer: {
+    gap: 8,
+  },
+  commentLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textSecondary,
+  },
+  commentInput: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.white,
+    minHeight: 80,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  ratingActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  skipButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  skipButtonText: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textSecondary,
+  },
+  submitRatingButton: {
+    flex: 1,
+    backgroundColor: Colors.white,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  submitRatingButtonDisabled: {
+    opacity: 0.5,
+  },
+  submitRatingButtonText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.primary,
   },
 });

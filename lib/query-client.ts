@@ -1,4 +1,5 @@
 import { fetch } from "expo/fetch";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 /**
@@ -6,22 +7,33 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
  * @returns {string} The API base URL
  */
 export function getApiUrl(): string {
-  let host = process.env.EXPO_PUBLIC_DOMAIN;
+  const host = process.env.EXPO_PUBLIC_DOMAIN;
 
   if (!host) {
     throw new Error("EXPO_PUBLIC_DOMAIN is not set");
   }
 
-  let url = new URL(`https://${host}`);
-
+  const url = new URL(`https://${host}`);
   return url.href;
 }
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
+    // Clone the response before reading to avoid consuming the body
+    const clonedRes = res.clone();
+    const text = (await clonedRes.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }
+}
+
+async function getAuthHeader(): Promise<Record<string, string>> {
+  try {
+    const token = await AsyncStorage.getItem("a2b_token");
+    if (token) return { Authorization: `Bearer ${token}` };
+  } catch {
+    // ignore
+  }
+  return {};
 }
 
 export async function apiRequest(
@@ -32,9 +44,15 @@ export async function apiRequest(
   const baseUrl = getApiUrl();
   const url = new URL(route, baseUrl);
 
+  const authHeader = await getAuthHeader();
+  const headers: Record<string, string> = {
+    ...(data ? { "Content-Type": "application/json" } : {}),
+    ...authHeader,
+  };
+
   const res = await fetch(url.toString(), {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -52,12 +70,14 @@ export const getQueryFn: <T>(options: {
     const baseUrl = getApiUrl();
     const url = new URL(queryKey.join("/") as string, baseUrl);
 
+    const authHeader = await getAuthHeader();
     const res = await fetch(url.toString(), {
       credentials: "include",
+      headers: authHeader,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+      return null as any;
     }
 
     await throwIfResNotOk(res);
@@ -78,3 +98,4 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
