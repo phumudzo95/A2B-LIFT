@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -79,6 +79,12 @@ export default function ClientHomeScreen() {
   const [ratingComment, setRatingComment] = useState<string>("");
   const [submittingRating, setSubmittingRating] = useState(false);
 
+  // Keep a ref so socket callbacks always see the latest ride without stale closure
+  const currentRideRef = useRef<any>(null);
+  useEffect(() => {
+    currentRideRef.current = currentRide;
+  }, [currentRide]);
+
   useEffect(() => {
     requestLocation();
   }, []);
@@ -91,26 +97,30 @@ export default function ClientHomeScreen() {
     } catch {}
   }
 
+  // Apply a ride status update received from socket or polling
+  const applyRideUpdate = useCallback((ride: any) => {
+    setCurrentRide(ride);
+    if (ride.status === "chauffeur_assigned") {
+      setRideStatus("assigned");
+      if (ride.chauffeurId) fetchChauffeurDetails(ride.chauffeurId);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else if (ride.status === "chauffeur_arriving") {
+      setRideStatus("arriving");
+    } else if (ride.status === "trip_started") {
+      setRideStatus("in_trip");
+    } else if (ride.status === "trip_completed") {
+      setRideStatus("completed");
+      setTimeout(() => setShowRating(true), 1000);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  }, []);
+
   useEffect(() => {
+    // Use ref so the callback always sees the latest ride id without re-registering
     const handleStatusUpdate = (ride: any) => {
-      if (currentRide && ride.id === currentRide.id) {
-        setCurrentRide(ride);
-        if (ride.status === "chauffeur_assigned") {
-          setRideStatus("assigned");
-          if (ride.chauffeurId) fetchChauffeurDetails(ride.chauffeurId);
-          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } else if (ride.status === "chauffeur_arriving") {
-          setRideStatus("arriving");
-        } else if (ride.status === "trip_started") {
-          setRideStatus("in_trip");
-        } else if (ride.status === "trip_completed") {
-          setRideStatus("completed");
-          // Show rating screen after a brief delay
-          setTimeout(() => {
-            setShowRating(true);
-          }, 1000);
-          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
+      const active = currentRideRef.current;
+      if (active && ride.id === active.id) {
+        applyRideUpdate(ride);
       }
     };
 
@@ -121,7 +131,24 @@ export default function ClientHomeScreen() {
       off("ride:statusUpdate", handleStatusUpdate);
       off("ride:accepted", handleStatusUpdate);
     };
-  }, [currentRide]);
+  }, []); // register once — uses ref internally
+
+  // Polling fallback: while searching, poll every 4s in case socket event is missed
+  useEffect(() => {
+    if (rideStatus !== "requested" || !currentRide?.id) return;
+
+    const pollId = setInterval(async () => {
+      try {
+        const res = await apiRequest("GET", `/api/rides/${currentRideRef.current?.id}`);
+        const ride = await res.json();
+        if (ride.status && ride.status !== "searching" && ride.status !== "requested") {
+          applyRideUpdate(ride);
+        }
+      } catch {}
+    }, 4000);
+
+    return () => clearInterval(pollId);
+  }, [rideStatus, currentRide?.id]);
 
   useEffect(() => {
     const handleDriverLocation = (data: any) => {

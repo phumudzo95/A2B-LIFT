@@ -1,4 +1,14 @@
-import React, { createContext, useContext, useMemo, useRef, useCallback, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useRef,
+  useCallback,
+  useEffect,
+  ReactNode,
+} from "react";
+import { io, Socket } from "socket.io-client";
+import { getApiUrl } from "@/lib/query-client";
 
 type EventCallback = (...args: any[]) => void;
 
@@ -12,28 +22,80 @@ interface SocketContextValue {
 const SocketContext = createContext<SocketContextValue | null>(null);
 
 export function SocketProvider({ children }: { children: ReactNode }) {
+  const socketRef = useRef<Socket | null>(null);
+  // Local listeners map — used to re-attach after reconnect and for triggerEvent
   const listenersRef = useRef<Map<string, Set<EventCallback>>>(new Map());
+
+  useEffect(() => {
+    let baseUrl: string;
+    try {
+      baseUrl = getApiUrl();
+    } catch {
+      console.warn("SocketProvider: EXPO_PUBLIC_DOMAIN not set, skipping socket connection");
+      return;
+    }
+
+    const socket = io(baseUrl, {
+      transports: ["websocket", "polling"],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+      timeout: 10000,
+    });
+
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("[Socket] connected:", socket.id);
+      // Re-attach all registered listeners after reconnect
+      listenersRef.current.forEach((callbacks, event) => {
+        callbacks.forEach((cb) => socket.on(event, cb));
+      });
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("[Socket] disconnected:", reason);
+    });
+
+    socket.on("connect_error", (err) => {
+      console.warn("[Socket] connection error:", err.message);
+    });
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, []);
 
   const on = useCallback((event: string, callback: EventCallback) => {
     if (!listenersRef.current.has(event)) {
       listenersRef.current.set(event, new Set());
     }
     listenersRef.current.get(event)!.add(callback);
+    // Attach to live socket if already connected
+    socketRef.current?.on(event, callback);
   }, []);
 
   const off = useCallback((event: string, callback?: EventCallback) => {
     if (!callback) {
       listenersRef.current.delete(event);
+      socketRef.current?.removeAllListeners(event);
     } else {
       listenersRef.current.get(event)?.delete(callback);
+      socketRef.current?.off(event, callback);
     }
   }, []);
 
-  const triggerEvent = useCallback((event: string, data: any) => {
-    listenersRef.current.get(event)?.forEach((cb) => cb(data));
+  const emit = useCallback((event: string, data: any) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit(event, data);
+    } else {
+      console.warn("[Socket] emit called while disconnected, event:", event);
+    }
   }, []);
 
-  const emit = useCallback((_event: string, _data: any) => {
+  // Allows manually triggering local listeners (e.g. for HTTP-polling fallback)
+  const triggerEvent = useCallback((event: string, data: any) => {
+    listenersRef.current.get(event)?.forEach((cb) => cb(data));
   }, []);
 
   const value = useMemo(

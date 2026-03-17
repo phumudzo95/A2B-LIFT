@@ -543,36 +543,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentStatus: "unpaid",
       });
 
-      // Try to find an available driver (optional - don't fail if none found)
-      let assignedDriver = null;
-      try {
-        const onlineChauffeurs = await storage.getOnlineChauffeurs();
-        if (onlineChauffeurs.length > 0) {
-          // Assign the first available driver (you can add distance-based logic here)
-          assignedDriver = onlineChauffeurs[0];
-          await storage.updateRide(ride.id, {
-            chauffeurId: assignedDriver.id,
-            status: "chauffeur_assigned",
-          });
-          // Update ride object for response
-          ride.chauffeurId = assignedDriver.id;
-          ride.status = "chauffeur_assigned";
-        }
-      } catch (driverError) {
-        // Log but don't fail - ride is already created
-        console.log("No drivers available or error finding drivers:", driverError);
-      }
-
-      // Emit socket event for new ride
+      // Broadcast to all online drivers so they can accept the ride
       io.emit("ride:new", ride);
 
-      // Always return success
+      // Always return success immediately — client shows "searching" UI
       return res.json({
         success: true,
         status: ride.status,
-        message: ride.status === "chauffeur_assigned" 
-          ? "Driver assigned" 
-          : "Searching for drivers nearby...",
+        message: "Searching for drivers nearby...",
         ride: ride,
       });
     } catch (error: any) {
