@@ -56,10 +56,17 @@ function decodePolyline(encoded: string): { latitude: number; longitude: number 
   return points;
 }
 
+interface NearbyDriver {
+  id: string | number;
+  lat: number;
+  lng: number;
+}
+
 interface A2BMapProps {
   pickupLocation: { lat: number; lng: number } | null;
   dropoffLocation?: { lat: number; lng: number } | null;
   driverLocation?: { lat: number; lng: number } | null;
+  nearbyDrivers?: NearbyDriver[];
   routePolyline?: string | null;
   showDriver?: boolean;
   followDriver?: boolean;
@@ -72,6 +79,7 @@ export default function A2BMap({
   pickupLocation,
   dropoffLocation,
   driverLocation,
+  nearbyDrivers = [],
   routePolyline,
   showDriver = false,
   followDriver = false,
@@ -179,6 +187,20 @@ export default function A2BMap({
           </Marker>
         )}
 
+        {/* Nearby idle drivers shown when not in an active ride */}
+        {!showDriver && nearbyDrivers.map((driver) => (
+          <Marker
+            key={`nearby-${driver.id}`}
+            coordinate={{ latitude: driver.lat, longitude: driver.lng }}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={false}
+          >
+            <View style={styles.nearbyDriverMarker}>
+              <Ionicons name="car-sport" size={16} color="#000" />
+            </View>
+          </Marker>
+        ))}
+
         {showDriver && driverLocation && (
           <Marker
             coordinate={{ latitude: driverLocation.lat, longitude: driverLocation.lng }}
@@ -259,6 +281,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
+    borderColor: "#000",
+  },
+  nearbyDriverMarker: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#FFD700",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
     borderColor: "#000",
   },
   statusOverlay: {

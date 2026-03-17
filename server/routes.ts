@@ -224,6 +224,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/places/autocomplete", async (req: Request, res: Response) => {
+    try {
+      const input = req.query.input as string;
+      if (!input || input.trim().length < 2) {
+        return res.json({ predictions: [] });
+      }
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+      if (!apiKey) return res.status(500).json({ message: "Maps API key not configured" });
+
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${apiKey}&language=en&components=country:za`;
+      const response = await fetch(url);
+      const data = (await response.json()) as any;
+      return res.json({
+        predictions: (data.predictions || []).map((p: any) => ({
+          placeId: p.place_id,
+          description: p.description,
+          mainText: p.structured_formatting?.main_text || p.description,
+          secondaryText: p.structured_formatting?.secondary_text || "",
+        })),
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/places/details", async (req: Request, res: Response) => {
+    try {
+      const placeId = req.query.placeId as string;
+      if (!placeId) return res.status(400).json({ message: "placeId is required" });
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+      if (!apiKey) return res.status(500).json({ message: "Maps API key not configured" });
+
+      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address&key=${apiKey}`;
+      const response = await fetch(url);
+      const data = (await response.json()) as any;
+      const loc = data.result?.geometry?.location;
+      if (!loc) return res.status(404).json({ message: "Place not found" });
+      return res.json({
+        lat: loc.lat,
+        lng: loc.lng,
+        address: data.result.formatted_address,
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/directions", async (req: Request, res: Response) => {
     try {
       const { originLat, originLng, destLat, destLng } = req.query;

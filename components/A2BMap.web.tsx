@@ -34,10 +34,17 @@ function decodePolyline(encoded: string): { lat: number; lng: number }[] {
   return points;
 }
 
+interface NearbyDriver {
+  id: string | number;
+  lat: number;
+  lng: number;
+}
+
 interface A2BMapProps {
   pickupLocation: { lat: number; lng: number } | null;
   dropoffLocation?: { lat: number; lng: number } | null;
   driverLocation?: { lat: number; lng: number } | null;
+  nearbyDrivers?: NearbyDriver[];
   routePolyline?: string | null;
   showDriver?: boolean;
   followDriver?: boolean;
@@ -50,6 +57,7 @@ export default function A2BMap({
   pickupLocation,
   dropoffLocation,
   driverLocation,
+  nearbyDrivers = [],
   routePolyline,
   showDriver = false,
   loading = false,
@@ -100,7 +108,7 @@ export default function A2BMap({
   useEffect(() => {
     if (!mapInstanceRef.current || !pickupLocation) return;
     updateMarkers();
-  }, [pickupLocation, dropoffLocation, driverLocation, showDriver]);
+  }, [pickupLocation, dropoffLocation, driverLocation, showDriver, nearbyDrivers]);
 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
@@ -175,6 +183,24 @@ export default function A2BMap({
         },
       });
       markersRef.current.push(dropoffMarker);
+    }
+
+    if (!showDriver && nearbyDrivers.length > 0) {
+      nearbyDrivers.forEach((driver) => {
+        const m = new google.maps.Marker({
+          position: { lat: driver.lat, lng: driver.lng },
+          map: mapInstanceRef.current,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 7,
+            fillColor: "#FFD700",
+            fillOpacity: 1,
+            strokeColor: "#000000",
+            strokeWeight: 1.5,
+          },
+        });
+        markersRef.current.push(m);
+      });
     }
 
     if (showDriver && driverLocation) {

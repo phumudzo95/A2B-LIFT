@@ -11,6 +11,7 @@ import {
   FlatList,
   Alert,
   Linking,
+  ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -32,7 +33,7 @@ const VEHICLE_TYPES = [
   { id: "luxury_van", name: "Luxury Van", desc: "Mercedes V Class", icon: "car" as const, pricePerKm: 50, baseFare: 200 },
 ];
 
-type RideStatus = "idle" | "selecting" | "confirming" | "requested" | "assigned" | "arriving" | "in_trip" | "completed";
+type RideStatus = "idle" | "selecting" | "confirming" | "requested" | "assigned" | "arriving" | "in_trip" | "completed" | "no_drivers";
 
 interface ChauffeurDetails {
   driverName: string;
@@ -78,6 +79,15 @@ export default function ClientHomeScreen() {
   const [rating, setRating] = useState<number>(0);
   const [ratingComment, setRatingComment] = useState<string>("");
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [onlineDrivers, setOnlineDrivers] = useState<{ id: string; lat: number; lng: number }[]>([]);
+
+  // Location picker modal
+  const [locationPickerVisible, setLocationPickerVisible] = useState(false);
+  const [locationPickerTarget, setLocationPickerTarget] = useState<"pickup" | "dropoff">("dropoff");
+  const [locationPickerQuery, setLocationPickerQuery] = useState("");
+  const [locationSuggestions, setLocationSuggestions] = useState<{ placeId: string; description: string; mainText: string; secondaryText: string }[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const autocompleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep a ref so socket callbacks always see the latest ride without stale closure
   const currentRideRef = useRef<any>(null);
@@ -89,12 +99,106 @@ export default function ClientHomeScreen() {
     requestLocation();
   }, []);
 
+  // Fetch online drivers periodically to show on map and check availability
+  useEffect(() => {
+    async function fetchOnlineDrivers() {
+      try {
+        const res = await apiRequest("GET", "/api/chauffeurs");
+        const all = await res.json();
+        const online = (all as any[])
+          .filter((c: any) => c.isOnline && c.currentLat && c.currentLng)
+          .map((c: any) => ({ id: String(c.id), lat: Number(c.currentLat), lng: Number(c.currentLng) }));
+        setOnlineDrivers(online);
+      } catch {}
+    }
+    fetchOnlineDrivers();
+    const interval = setInterval(fetchOnlineDrivers, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Cancel ride and show "no drivers" if no driver accepts within 45 seconds
+  useEffect(() => {
+    if (rideStatus !== "requested") return;
+    const timeout = setTimeout(async () => {
+      if (currentRideRef.current) {
+        try {
+          await apiRequest("PUT", `/api/rides/${currentRideRef.current.id}/status`, { status: "cancelled" });
+        } catch {}
+      }
+      setCurrentRide(null);
+      setRideStatus("no_drivers");
+    }, 45000);
+    return () => clearTimeout(timeout);
+  }, [rideStatus]);
+
   async function fetchChauffeurDetails(chauffeurId: string) {
     try {
       const res = await apiRequest("GET", `/api/chauffeurs/${chauffeurId}/details`);
       const details = await res.json();
       setChauffeurDetails(details);
     } catch {}
+  }
+
+  function openLocationPicker(target: "pickup" | "dropoff") {
+    const current = target === "pickup" ? pickupAddress : dropoffAddress;
+    setLocationPickerTarget(target);
+    setLocationPickerQuery(current === "Current Location" ? "" : current);
+    setLocationSuggestions([]);
+    setLocationPickerVisible(true);
+  }
+
+  function onLocationQueryChange(text: string) {
+    setLocationPickerQuery(text);
+    // Clear previously resolved coords when user edits the query
+    if (locationPickerTarget === "dropoff") setDropoffCoords(null);
+    if (locationPickerTarget === "pickup") setLocation(null);
+    if (autocompleteTimerRef.current) clearTimeout(autocompleteTimerRef.current);
+    if (text.trim().length < 2) {
+      setLocationSuggestions([]);
+      return;
+    }
+    autocompleteTimerRef.current = setTimeout(async () => {
+      setSuggestionsLoading(true);
+      try {
+        const res = await apiRequest("GET", `/api/places/autocomplete?input=${encodeURIComponent(text)}`);
+        const data = await res.json();
+        setLocationSuggestions(data.predictions || []);
+      } catch {
+        setLocationSuggestions([]);
+      } finally {
+        setSuggestionsLoading(false);
+      }
+    }, 350);
+  }
+
+  async function selectSuggestion(suggestion: { placeId: string; description: string; mainText: string; secondaryText: string }) {
+    try {
+      setSuggestionsLoading(true);
+      const res = await apiRequest("GET", `/api/places/details?placeId=${suggestion.placeId}`);
+      const data = await res.json();
+      const coords = { lat: data.lat, lng: data.lng };
+      const address = data.address || suggestion.description;
+
+      if (locationPickerTarget === "pickup") {
+        setLocation(coords);
+        setPickupAddress(address);
+      } else {
+        setDropoffCoords(coords);
+        setDropoffAddress(address);
+      }
+      setLocationPickerVisible(false);
+      setLocationSuggestions([]);
+    } catch {
+      Alert.alert("Error", "Could not load location details. Try again.");
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  }
+
+  async function useCurrentLocationForPickup() {
+    setLocationPickerVisible(false);
+    setLocationLoading(true);
+    await requestLocation();
   }
 
   // Apply a ride status update received from socket or polling
@@ -244,9 +348,10 @@ export default function ClientHomeScreen() {
       return;
     }
     try {
-      const dest = await geocodeDestination();
+      // Use already-resolved coords from autocomplete selection, or geocode the typed address
+      const dest = dropoffCoords ?? await geocodeDestination();
       if (!dest) {
-        Alert.alert("Error", "Could not determine destination coordinates");
+        Alert.alert("Error", "Could not determine destination. Please select from the suggestions.");
         return;
       }
       setDropoffCoords(dest);
@@ -365,6 +470,7 @@ export default function ClientHomeScreen() {
           pickupLocation={location}
           dropoffLocation={dropoffCoords}
           driverLocation={driverLocation}
+          nearbyDrivers={onlineDrivers}
           routePolyline={routePolyline}
           showDriver={rideStatus === "assigned" || rideStatus === "arriving" || rideStatus === "in_trip"}
           followDriver={rideStatus === "arriving" || rideStatus === "in_trip"}
@@ -384,20 +490,34 @@ export default function ClientHomeScreen() {
           <View style={styles.sheetHandle} />
           <Text style={styles.sheetTitle}>Where to?</Text>
 
-          <Pressable style={styles.locationRow}>
-            <View style={styles.dotGreen} />
-            <Text style={styles.locationText} numberOfLines={1}>{pickupAddress}</Text>
-          </Pressable>
+          {/* Location inputs */}
+          <View style={styles.locationInputsCard}>
+            <Pressable style={styles.locationInputRow} onPress={() => openLocationPicker("pickup")}>
+              <View style={styles.dotGreen} />
+              <View style={styles.locationInputInner}>
+                <Text style={styles.locationInputLabel}>Pickup</Text>
+                <Text style={styles.locationInputValue} numberOfLines={1}>
+                  {pickupAddress || "Set pickup location"}
+                </Text>
+              </View>
+              <Ionicons name="pencil-outline" size={15} color={Colors.textMuted} />
+            </Pressable>
 
-          <View style={styles.locationRow}>
-            <View style={styles.dotRed} />
-            <TextInput
-              style={styles.locationInput}
-              placeholder="Enter destination"
-              placeholderTextColor={Colors.textMuted}
-              value={dropoffAddress}
-              onChangeText={setDropoffAddress}
-            />
+            <View style={styles.locationDivider} />
+
+            <Pressable style={styles.locationInputRow} onPress={() => openLocationPicker("dropoff")}>
+              <View style={styles.dotRed} />
+              <View style={styles.locationInputInner}>
+                <Text style={styles.locationInputLabel}>Dropoff</Text>
+                <Text
+                  style={[styles.locationInputValue, !dropoffAddress && { color: Colors.textMuted }]}
+                  numberOfLines={1}
+                >
+                  {dropoffAddress || "Where are you going?"}
+                </Text>
+              </View>
+              <Ionicons name="pencil-outline" size={15} color={Colors.textMuted} />
+            </Pressable>
           </View>
 
           <Pressable
@@ -422,59 +542,74 @@ export default function ClientHomeScreen() {
       )}
 
       {rideStatus === "confirming" && (
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.bottomSheet}>
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.confirmingSheet}>
           <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Fare Estimate</Text>
 
-          <View style={styles.priceCard}>
-            <Text style={styles.priceLabel}>{selectedVehicle.name}</Text>
-            <Text style={styles.priceValue}>R {estimatedPrice}</Text>
-            <Text style={styles.priceCurrency}>ZAR</Text>
-            {estimatedDistance && (
-              <Text style={styles.distanceInfo}>{estimatedDistance} km estimated distance</Text>
-            )}
-          </View>
-
-          <View style={styles.fareBreakdown}>
-            <View style={styles.fareRow}>
-              <Text style={styles.fareLabel}>Base fare</Text>
-              <Text style={styles.fareValue}>R {selectedVehicle.baseFare}</Text>
-            </View>
-            <View style={styles.fareRow}>
-              <Text style={styles.fareLabel}>Distance ({estimatedDistance} km × R{selectedVehicle.pricePerKm})</Text>
-              <Text style={styles.fareValue}>R {Math.round((estimatedDistance || 0) * selectedVehicle.pricePerKm)}</Text>
-            </View>
-            {lateNightPremium > 0 && (
-              <View style={styles.fareRow}>
-                <Text style={styles.fareLabel}>Late night surcharge (30%)</Text>
-                <Text style={styles.fareValue}>R {lateNightPremium}</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.routeSummary}>
-            <View style={styles.routeRow}>
-              <View style={styles.dotGreen} />
-              <Text style={styles.routeText} numberOfLines={1}>{pickupAddress}</Text>
-            </View>
-            <View style={styles.routeLine} />
-            <View style={styles.routeRow}>
-              <View style={styles.dotRed} />
-              <Text style={styles.routeText} numberOfLines={1}>{dropoffAddress}</Text>
-            </View>
-          </View>
-
-          <View style={styles.btnRow}>
-            <Pressable style={styles.cancelBtn} onPress={cancelRide}>
-              <Ionicons name="close" size={22} color={Colors.textSecondary} />
+          {/* Header row with dismiss button */}
+          <View style={styles.confirmingHeader}>
+            <Text style={styles.sheetTitle}>Fare Estimate</Text>
+            <Pressable style={styles.dismissBtn} onPress={cancelRide} hitSlop={12}>
+              <Ionicons name="close" size={20} color={Colors.textSecondary} />
             </Pressable>
+          </View>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.confirmingScroll,
+              { paddingBottom: insets.bottom + 100 },
+            ]}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.priceCard}>
+              <Text style={styles.priceLabel}>{selectedVehicle.name}</Text>
+              <Text style={styles.priceValue}>R {estimatedPrice}</Text>
+              <Text style={styles.priceCurrency}>ZAR</Text>
+              {estimatedDistance && (
+                <Text style={styles.distanceInfo}>{estimatedDistance} km estimated distance</Text>
+              )}
+            </View>
+
+            <View style={styles.fareBreakdown}>
+              <View style={styles.fareRow}>
+                <Text style={styles.fareLabel}>Base fare</Text>
+                <Text style={styles.fareValue}>R {selectedVehicle.baseFare}</Text>
+              </View>
+              <View style={styles.fareRow}>
+                <Text style={styles.fareLabel}>Distance ({estimatedDistance} km × R{selectedVehicle.pricePerKm})</Text>
+                <Text style={styles.fareValue}>R {Math.round((estimatedDistance || 0) * selectedVehicle.pricePerKm)}</Text>
+              </View>
+              {lateNightPremium > 0 && (
+                <View style={styles.fareRow}>
+                  <Text style={styles.fareLabel}>Late night surcharge (30%)</Text>
+                  <Text style={styles.fareValue}>R {lateNightPremium}</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.routeSummary}>
+              <View style={styles.routeRow}>
+                <View style={styles.dotGreen} />
+                <Text style={styles.routeText} numberOfLines={2}>{pickupAddress}</Text>
+              </View>
+              <View style={styles.routeLine} />
+              <View style={styles.routeRow}>
+                <View style={styles.dotRed} />
+                <Text style={styles.routeText} numberOfLines={2}>{dropoffAddress}</Text>
+              </View>
+            </View>
+
             <Pressable
               style={({ pressed }) => [styles.requestBtn, pressed && { opacity: 0.9 }]}
               onPress={requestRide}
             >
               <Text style={styles.requestBtnText}>Request Ride</Text>
             </Pressable>
-          </View>
+
+            <Pressable style={styles.cancelFullBtn} onPress={cancelRide}>
+              <Text style={styles.cancelFullBtnText}>Cancel</Text>
+            </Pressable>
+          </ScrollView>
         </Animated.View>
       )}
 
@@ -488,6 +623,22 @@ export default function ClientHomeScreen() {
           </View>
           <Pressable style={styles.cancelFullBtn} onPress={cancelRide}>
             <Text style={styles.cancelFullBtnText}>Cancel Request</Text>
+          </Pressable>
+        </Animated.View>
+      )}
+
+      {rideStatus === "no_drivers" && (
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.bottomSheet}>
+          <View style={styles.sheetHandle} />
+          <View style={styles.noDriversContainer}>
+            <Ionicons name="car-outline" size={48} color={Colors.textSecondary} />
+            <Text style={styles.noDriversTitle}>No Cars Available</Text>
+            <Text style={styles.noDriversSubtext}>
+              There are no {selectedVehicle.name} drivers available in your area right now. Please try again shortly.
+            </Text>
+          </View>
+          <Pressable style={styles.retryBtn} onPress={() => setRideStatus("idle")}>
+            <Text style={styles.retryBtnText}>Back to Home</Text>
           </Pressable>
         </Animated.View>
       )}
@@ -644,6 +795,82 @@ export default function ClientHomeScreen() {
         </Animated.View>
       )}
 
+      {/* Location Picker Modal */}
+      <Modal
+        visible={locationPickerVisible}
+        animationType="slide"
+        onRequestClose={() => setLocationPickerVisible(false)}
+      >
+        <View style={[styles.locationPickerContainer, { paddingTop: insets.top }]}>
+          {/* Header */}
+          <View style={styles.locationPickerHeader}>
+            <Pressable onPress={() => setLocationPickerVisible(false)} hitSlop={12}>
+              <Ionicons name="arrow-back" size={24} color={Colors.white} />
+            </Pressable>
+            <Text style={styles.locationPickerTitle}>
+              {locationPickerTarget === "pickup" ? "Set Pickup" : "Set Destination"}
+            </Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          {/* Search input */}
+          <View style={styles.locationPickerInputRow}>
+            <View style={locationPickerTarget === "pickup" ? styles.dotGreen : styles.dotRed} />
+            <TextInput
+              style={styles.locationPickerInput}
+              placeholder={locationPickerTarget === "pickup" ? "Search pickup location..." : "Search destination..."}
+              placeholderTextColor={Colors.textMuted}
+              value={locationPickerQuery}
+              onChangeText={onLocationQueryChange}
+              autoFocus
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+            {suggestionsLoading && <ActivityIndicator size="small" color={Colors.textMuted} />}
+          </View>
+
+          {/* Use current location (pickup only) */}
+          {locationPickerTarget === "pickup" && (
+            <Pressable style={styles.currentLocationBtn} onPress={useCurrentLocationForPickup}>
+              <Ionicons name="locate" size={18} color={Colors.white} />
+              <Text style={styles.currentLocationText}>Use my current location</Text>
+            </Pressable>
+          )}
+
+          {/* Suggestions list */}
+          <FlatList
+            data={locationSuggestions}
+            keyExtractor={(item) => item.placeId}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+            ItemSeparatorComponent={() => <View style={styles.suggestionDivider} />}
+            ListEmptyComponent={
+              locationPickerQuery.length >= 2 && !suggestionsLoading ? (
+                <View style={styles.noSuggestionsContainer}>
+                  <Text style={styles.noSuggestionsText}>No results found</Text>
+                </View>
+              ) : null
+            }
+            renderItem={({ item }) => (
+              <Pressable
+                style={({ pressed }) => [styles.suggestionRow, pressed && { backgroundColor: Colors.surface }]}
+                onPress={() => selectSuggestion(item)}
+              >
+                <View style={styles.suggestionIcon}>
+                  <Ionicons name="location-outline" size={18} color={Colors.textSecondary} />
+                </View>
+                <View style={styles.suggestionText}>
+                  <Text style={styles.suggestionMain} numberOfLines={1}>{item.mainText}</Text>
+                  {item.secondaryText ? (
+                    <Text style={styles.suggestionSecondary} numberOfLines={1}>{item.secondaryText}</Text>
+                  ) : null}
+                </View>
+              </Pressable>
+            )}
+          />
+        </View>
+      </Modal>
+
       <Modal visible={showVehicleSheet} transparent animationType="slide" onRequestClose={() => setShowVehicleSheet(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setShowVehicleSheet(false)}>
           <View style={[styles.modalSheet, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 16) }]}>
@@ -722,8 +949,36 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    paddingBottom: 40,
+    // Extra bottom padding so content clears the absolute-positioned tab bar (~83px) + safe area
+    paddingBottom: 100,
     gap: 16,
+  },
+  confirmingSheet: {
+    backgroundColor: Colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    // Cap height so map stays visible, but allow scroll for all content
+    maxHeight: "75%",
+    paddingTop: 20,
+    paddingHorizontal: 20,
+  },
+  confirmingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  dismissBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmingScroll: {
+    rowGap: 16,
+    paddingTop: 12,
   },
   sheetHandle: {
     width: 36,
@@ -771,6 +1026,132 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,
+  },
+  // Tappable location card on idle sheet
+  locationInputsCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  locationInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  locationInputInner: {
+    flex: 1,
+  },
+  locationInputLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textMuted,
+    marginBottom: 2,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  locationInputValue: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.white,
+  },
+  locationDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginLeft: 38,
+  },
+  // Full-screen location picker modal
+  locationPickerContainer: {
+    flex: 1,
+    backgroundColor: Colors.primary,
+  },
+  locationPickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  locationPickerTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  locationPickerInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    margin: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+  },
+  locationPickerInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: Colors.white,
+  },
+  currentLocationBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  currentLocationText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.white,
+  },
+  suggestionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    gap: 14,
+  },
+  suggestionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  suggestionText: {
+    flex: 1,
+  },
+  suggestionMain: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.white,
+  },
+  suggestionSecondary: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  suggestionDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginLeft: 70,
+  },
+  noSuggestionsContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+  },
+  noSuggestionsText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
   },
   vehicleSelector: {
     flexDirection: "row",
@@ -887,7 +1268,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   requestBtn: {
-    flex: 1,
     backgroundColor: Colors.white,
     paddingVertical: 16,
     borderRadius: 14,
@@ -925,6 +1305,36 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_500Medium",
     color: Colors.textSecondary,
+  },
+  noDriversContainer: {
+    alignItems: "center",
+    paddingVertical: 24,
+    gap: 12,
+  },
+  noDriversTitle: {
+    fontSize: 20,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  noDriversSubtext: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 8,
+  },
+  retryBtn: {
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: "center",
+    backgroundColor: Colors.white,
+    marginTop: 8,
+  },
+  retryBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.primary,
   },
   statusBadge: {
     flexDirection: "row",
