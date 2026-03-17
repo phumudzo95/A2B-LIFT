@@ -102,14 +102,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string;
     phone: string;
   }) {
-    const res = await apiRequest("POST", "/api/auth/register", data);
-    const payload = (await res.json()) as LoginResponse;
-    const normalized = normalizeAuthPayload(payload);
-    setUser(normalized.user);
-    setAccessToken(normalized.accessToken);
-    await AsyncStorage.setItem("a2b_user", JSON.stringify(normalized.user));
-    if (normalized.accessToken) {
-      await AsyncStorage.setItem("a2b_token", normalized.accessToken);
+    try {
+      const res = await apiRequest("POST", "/api/auth/register", data);
+      const payload = (await res.json()) as LoginResponse;
+      const normalized = normalizeAuthPayload(payload);
+      setUser(normalized.user);
+      setAccessToken(normalized.accessToken);
+      await AsyncStorage.setItem("a2b_user", JSON.stringify(normalized.user));
+      if (normalized.accessToken) {
+        await AsyncStorage.setItem("a2b_token", normalized.accessToken);
+      }
+    } catch (error: any) {
+      console.error("Register API error:", error);
+      // Try to extract error message from response
+      let errorMessage = error.message || "Registration failed. Please try again.";
+      
+      // If error message contains status code and response, try to parse JSON
+      if (error.message && error.message.includes(":")) {
+        const parts = error.message.split(":");
+        if (parts.length > 1) {
+          try {
+            const jsonError = JSON.parse(parts.slice(1).join(":"));
+            if (jsonError.message) {
+              errorMessage = jsonError.message;
+            }
+          } catch {
+            // If parsing fails, use the original message
+          }
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
   }
 

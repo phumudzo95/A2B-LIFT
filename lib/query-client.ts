@@ -13,7 +13,14 @@ export function getApiUrl(): string {
     throw new Error("EXPO_PUBLIC_DOMAIN is not set");
   }
 
-  const url = new URL(`https://${host}`);
+  // Use http:// for localhost, IP addresses, or development; https:// for production
+  const isLocal = host.includes("localhost") || 
+                  host.includes("127.0.0.1") || 
+                  host.match(/^192\.168\.\d+\.\d+/) || 
+                  host.match(/^10\.\d+\.\d+\.\d+/) ||
+                  host.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+/);
+  const protocol = isLocal ? "http" : "https";
+  const url = new URL(`${protocol}://${host}`);
   return url.href;
 }
 

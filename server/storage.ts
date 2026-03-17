@@ -1,4 +1,5 @@
 import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { eq, and, desc, avg } from "drizzle-orm";
 import {
   users,
@@ -32,7 +33,13 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set");
 }
 
-const db = drizzle(process.env.DATABASE_URL);
+// Create a connection pool for Supabase
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL.includes("supabase") ? { rejectUnauthorized: false } : false,
+});
+
+const db = drizzle(pool);
 
 export interface IStorage {
   // Users / Auth

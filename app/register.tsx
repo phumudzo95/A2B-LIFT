@@ -31,7 +31,18 @@ export default function RegisterScreen() {
       await register({ username: username.trim(), password, name: name.trim(), phone: phone.trim() });
       router.replace("/role-select");
     } catch (e: any) {
-      setError(e.message?.includes("400") ? "Username already exists" : "Registration failed. Please try again.");
+      console.error("Registration error:", e);
+      // Show actual error message if available
+      const errorMsg = e.message || "Registration failed. Please try again.";
+      if (errorMsg.includes("400") || errorMsg.includes("already exists")) {
+        setError("Username already exists");
+      } else if (errorMsg.includes("500") || errorMsg.includes("Database")) {
+        setError("Server error. Please check if the server is running on port 5000.");
+      } else if (errorMsg.includes("fetch") || errorMsg.includes("network")) {
+        setError("Cannot connect to server. Make sure the server is running on port 5000.");
+      } else {
+        setError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }

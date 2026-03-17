@@ -111,24 +111,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       const { username, password, name, phone, role } = req.body;
+      
+      // Validate required fields
+      if (!username || !password || !name) {
+        return res.status(400).json({ message: "Username, password, and name are required" });
+      }
+      
+      // Check if username already exists
       const existing = await storage.getUserByUsername(username);
       if (existing) {
         return res.status(400).json({ message: "Username already exists" });
       }
+      
+      // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Create user
       const user = await storage.createUser({
-        username,
+        username: username.trim(),
         password: hashedPassword,
-        name,
-        phone,
+        name: name.trim(),
+        phone: phone ? phone.trim() : null,
         role: (role || "client") as UserRole,
       });
+      
+      // Generate JWT token
       const token = signAccessToken({ sub: user.id, role: user.role as UserRole });
       setAuthCookie(res, token);
+      
+      // Return user without password
       const { password: _pw, ...safeUser } = user;
       return res.json({ user: safeUser, accessToken: token });
     } catch (error: any) {
-      return res.status(500).json({ message: error.message });
+      console.error("Registration error:", error);
+      console.error("Error stack:", error.stack);
+      
+      // Handle specific database errors
+      if (error.code === "23505") {
+        // PostgreSQL unique constraint violation
+        return res.status(400).json({ message: "Username already exists" });
+      }
+      if (error.code === "42P01") {
+        // Table doesn't exist
+        return res.status(500).json({ message: "Database table not found. Please run: npm run db:push" });
+      }
+      if (error.message?.includes("relation") && error.message?.includes("does not exist")) {
+        return res.status(500).json({ message: "Database tables not initialized. Please run: npm run db:push" });
+      }
+      
+      return res.status(500).json({ 
+        message: error.message || "Registration failed. Please try again.",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined
+      });
     }
   });
 
