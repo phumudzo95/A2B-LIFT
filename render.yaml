@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: a2b-lift-backend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: PORT
+        fromService:
+          type: web
+          name: a2b-lift-backend
+          property: port
