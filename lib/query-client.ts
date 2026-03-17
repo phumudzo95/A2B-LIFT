@@ -3,7 +3,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 /**
- * Gets the base URL for the Express API server (e.g., "http://localhost:3000")
+ * Gets the base URL for the Express API server
+ * Production: https://a2b-lift.onrender.com
+ * Development: http://localhost:5000 or http://192.168.x.x:5000
  * @returns {string} The API base URL
  */
 export function getApiUrl(): string {

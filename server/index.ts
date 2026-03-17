@@ -20,6 +20,9 @@ function setupCors(app: express.Application) {
   app.use((req, res, next) => {
     const origins = new Set<string>();
 
+    // Add production domain
+    origins.add("https://a2b-lift.onrender.com");
+
     if (process.env.REPLIT_DEV_DOMAIN) {
       origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
     }

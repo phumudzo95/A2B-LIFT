@@ -531,19 +531,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { distanceKm, isLateNight, ...rideData } = req.body;
       const categoryId = rideData.vehicleType || "budget";
       const priceEstimate = calculatePrice(distanceKm || 10, categoryId, { isLateNight });
+      
+      // Always create the ride with "searching" status
       const ride = await storage.createRide({
         ...rideData,
         price: priceEstimate.totalPrice,
         distanceKm: distanceKm || 10,
         pricePerKm: priceEstimate.pricePerKm,
         baseFare: priceEstimate.baseFare,
-        status: "requested",
+        status: "searching",
         paymentStatus: "unpaid",
       });
+
+      // Try to find an available driver (optional - don't fail if none found)
+      let assignedDriver = null;
+      try {
+        const onlineChauffeurs = await storage.getOnlineChauffeurs();
+        if (onlineChauffeurs.length > 0) {
+          // Assign the first available driver (you can add distance-based logic here)
+          assignedDriver = onlineChauffeurs[0];
+          await storage.updateRide(ride.id, {
+            chauffeurId: assignedDriver.id,
+            status: "chauffeur_assigned",
+          });
+          // Update ride object for response
+          ride.chauffeurId = assignedDriver.id;
+          ride.status = "chauffeur_assigned";
+        }
+      } catch (driverError) {
+        // Log but don't fail - ride is already created
+        console.log("No drivers available or error finding drivers:", driverError);
+      }
+
+      // Emit socket event for new ride
       io.emit("ride:new", ride);
-      return res.json(ride);
+
+      // Always return success
+      return res.json({
+        success: true,
+        status: ride.status,
+        message: ride.status === "chauffeur_assigned" 
+          ? "Driver assigned" 
+          : "Searching for drivers nearby...",
+        ride: ride,
+      });
     } catch (error: any) {
-      return res.status(500).json({ message: error.message });
+      console.error("Ride creation error:", error);
+      return res.status(500).json({ 
+        success: false,
+        message: error.message || "Failed to create ride request" 
+      });
     }
   });
 
@@ -741,7 +778,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { chauffeurId } = req.body;
       const ride = await storage.getRide(req.params.id);
       if (!ride) return res.status(404).json({ message: "Ride not found" });
-      if (ride.status !== "requested") {
+      // Allow accepting rides that are "requested" or "searching"
+      if (ride.status !== "requested" && ride.status !== "searching") {
         return res.status(400).json({ message: "Ride already assigned" });
       }
       const updated = await storage.updateRide(req.params.id, {
