@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "scripts": {
     "build": "esbuild server/index.ts --bundle --platform=node --outfile=server_dist/index.js",
-    "start": "node server_dist/index.js"
+    "start": "node server_dist/index.js",
+    "db:push": "drizzle-kit push",
+    "build:prod": "npm run build && npm run db:push"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
