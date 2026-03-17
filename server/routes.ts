@@ -231,21 +231,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!input || input.trim().length < 2) {
         return res.json({ predictions: [] });
       }
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input)}&limit=6&countrycodes=za&addressdetails=1`;
-      const response = await fetch(url, {
-        headers: { "User-Agent": "A2BLIFT/1.0 (contact@a2blift.co.za)" },
-      });
-      const results = (await response.json()) as any[];
+
+      const headers = { "User-Agent": "A2BLIFT/1.0 (contact@a2blift.co.za)" };
+
+      // Run a free-text search and a structured street search in parallel for better coverage
+      const baseParams = `format=json&limit=5&countrycodes=za&addressdetails=1&dedupe=1`;
+      const [freeRes, structuredRes] = await Promise.all([
+        fetch(`https://nominatim.openstreetmap.org/search?${baseParams}&q=${encodeURIComponent(input)}`, { headers }),
+        fetch(`https://nominatim.openstreetmap.org/search?${baseParams}&street=${encodeURIComponent(input)}`, { headers }),
+      ]);
+
+      const [freeResults, structuredResults] = await Promise.all([
+        freeRes.json() as Promise<any[]>,
+        structuredRes.json() as Promise<any[]>,
+      ]);
+
+      // Merge, deduplicate by place_id, cap at 6
+      const seen = new Set<string>();
+      const merged: any[] = [];
+      for (const r of [...freeResults, ...structuredResults]) {
+        if (!seen.has(String(r.place_id))) {
+          seen.add(String(r.place_id));
+          merged.push(r);
+        }
+        if (merged.length >= 6) break;
+      }
+
       return res.json({
-        predictions: results.map((r: any) => {
+        predictions: merged.map((r: any) => {
           const addr = r.address || {};
-          const mainText = addr.road || addr.suburb || addr.city || addr.town || r.display_name.split(",")[0];
-          const secondaryParts = [addr.suburb, addr.city || addr.town, addr.state].filter(Boolean);
+          const houseNumber = addr.house_number ? `${addr.house_number} ` : "";
+          const road = addr.road || addr.pedestrian || addr.footway || "";
+          const mainText = road ? `${houseNumber}${road}` : (addr.suburb || addr.city || addr.town || r.display_name.split(",")[0]);
+          const secondaryParts = [addr.suburb, addr.city || addr.town || addr.village, addr.state].filter(Boolean);
           const secondaryText = secondaryParts.join(", ");
           return {
             placeId: r.place_id,
             description: r.display_name,
-            mainText,
+            mainText: mainText || r.display_name.split(",")[0],
             secondaryText,
             lat: parseFloat(r.lat),
             lng: parseFloat(r.lon),

@@ -1,72 +1,94 @@
 import React, { useCallback } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator, Platform, RefreshControl } from "react-native";
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Platform, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
-import { getApiUrl } from "@/lib/query-client";
 import Colors from "@/constants/colors";
+
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  searching:          { label: "Searching",   color: Colors.warning },
+  requested:          { label: "Searching",   color: Colors.warning },
+  chauffeur_assigned: { label: "Assigned",    color: "#4A9EFF" },
+  chauffeur_arriving: { label: "Arriving",    color: "#4A9EFF" },
+  trip_started:       { label: "In Progress", color: "#A78BFA" },
+  trip_completed:     { label: "Completed",   color: Colors.success },
+  cancelled:          { label: "Cancelled",   color: Colors.error },
+};
+
+function getStatusConfig(status: string) {
+  return STATUS_CONFIG[status] ?? { label: status, color: Colors.textSecondary };
+}
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function formatTime(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" });
+}
 
 export default function TripsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
-  const { data: trips, isLoading, refetch } = useQuery({
-    queryKey: ["/api/rides/client", user?.id || ""],
-    enabled: !!user,
+  const { data: trips, isLoading, refetch, isRefetching } = useQuery({
+    queryKey: ["/api/rides/client", user?.id ?? ""],
+    enabled: !!user?.id,
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "trip_completed": return Colors.success;
-      case "cancelled": return Colors.error;
-      case "requested": return Colors.warning;
-      default: return Colors.textSecondary;
-    }
-  };
+  const renderTrip = useCallback(({ item }: { item: any }) => {
+    const { label, color } = getStatusConfig(item.status);
+    const isActive = ["searching", "requested", "chauffeur_assigned", "chauffeur_arriving", "trip_started"].includes(item.status);
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "trip_completed": return "Completed";
-      case "cancelled": return "Cancelled";
-      case "requested": return "Requested";
-      case "chauffeur_assigned": return "Assigned";
-      case "chauffeur_arriving": return "Arriving";
-      case "trip_started": return "In Progress";
-      default: return status;
-    }
-  };
+    return (
+      <View style={[styles.tripCard, isActive && styles.tripCardActive]}>
+        {/* Status + date row */}
+        <View style={styles.tripHeader}>
+          <View style={[styles.statusChip, { backgroundColor: `${color}22` }]}>
+            <View style={[styles.statusDot, { backgroundColor: color }]} />
+            <Text style={[styles.statusLabel, { color }]}>{label}</Text>
+          </View>
+          <View style={styles.dateTimeRow}>
+            <Text style={styles.tripDate}>{formatDate(item.createdAt)}</Text>
+            <Text style={styles.tripTime}>{formatTime(item.createdAt)}</Text>
+          </View>
+        </View>
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
-  };
-
-  const renderTrip = useCallback(({ item }: { item: any }) => (
-    <View style={styles.tripCard}>
-      <View style={styles.tripTop}>
-        <View style={styles.tripRoute}>
-          <View style={styles.routePoints}>
+        {/* Route */}
+        <View style={styles.routeRow}>
+          <View style={styles.routeDots}>
             <View style={styles.dotGreen} />
             <View style={styles.routeLine} />
             <View style={styles.dotRed} />
           </View>
-          <View style={styles.routeTexts}>
-            <Text style={styles.routeAddress} numberOfLines={1}>{item.pickupAddress || "Pickup location"}</Text>
-            <Text style={styles.routeAddress} numberOfLines={1}>{item.dropoffAddress || "Dropoff location"}</Text>
+          <View style={styles.routeAddresses}>
+            <Text style={styles.routeAddress} numberOfLines={1}>
+              {item.pickupAddress || "Pickup location"}
+            </Text>
+            <Text style={styles.routeAddress} numberOfLines={1}>
+              {item.dropoffAddress || "Dropoff location"}
+            </Text>
           </View>
         </View>
-        <View style={[styles.statusChip, { backgroundColor: `${getStatusColor(item.status)}20` }]}>
-          <View style={[styles.statusChipDot, { backgroundColor: getStatusColor(item.status) }]} />
-          <Text style={[styles.statusChipText, { color: getStatusColor(item.status) }]}>{getStatusLabel(item.status)}</Text>
+
+        {/* Footer */}
+        <View style={styles.tripFooter}>
+          <Text style={styles.vehicleType}>
+            {item.vehicleType ? item.vehicleType.replace("_", " ").replace(/\b\w/g, (c: string) => c.toUpperCase()) : "Standard"}
+          </Text>
+          {item.distanceKm ? (
+            <Text style={styles.tripDistance}>{Number(item.distanceKm).toFixed(1)} km</Text>
+          ) : null}
+          <Text style={styles.tripPrice}>
+            {item.price ? `R ${Number(item.price).toFixed(0)}` : "—"}
+          </Text>
         </View>
       </View>
-      <View style={styles.tripBottom}>
-        <Text style={styles.tripDate}>{formatDate(item.createdAt)}</Text>
-        <Text style={styles.tripPrice}>R {item.price || "—"}</Text>
-      </View>
-    </View>
-  ), []);
+    );
+  }, []);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16) }]}>
@@ -76,20 +98,26 @@ export default function TripsScreen() {
         <View style={styles.center}>
           <ActivityIndicator size="large" color={Colors.white} />
         </View>
-      ) : !trips || (Array.isArray(trips) && trips.length === 0) ? (
+      ) : !trips || (Array.isArray(trips) && (trips as any[]).length === 0) ? (
         <View style={styles.center}>
-          <Ionicons name="car-sport-outline" size={48} color={Colors.textMuted} />
+          <Ionicons name="car-sport-outline" size={52} color={Colors.textMuted} />
           <Text style={styles.emptyText}>No trips yet</Text>
           <Text style={styles.emptySubtext}>Your ride history will appear here</Text>
         </View>
       ) : (
         <FlatList
-          data={Array.isArray(trips) ? trips : []}
-          keyExtractor={(item) => item.id}
+          data={Array.isArray(trips) ? (trips as any[]) : []}
+          keyExtractor={(item) => String(item.id)}
           renderItem={renderTrip}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.white} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              tintColor={Colors.white}
+            />
+          }
         />
       )}
     </View>
@@ -112,12 +140,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 10,
   },
   emptyText: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
     color: Colors.textSecondary,
+    marginTop: 8,
   },
   emptySubtext: {
     fontSize: 13,
@@ -130,26 +159,60 @@ const styles = StyleSheet.create({
   },
   tripCard: {
     backgroundColor: Colors.card,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 16,
     gap: 14,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  tripTop: {
+  tripCardActive: {
+    borderColor: "#4A9EFF44",
+  },
+  tripHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
+    alignItems: "center",
   },
-  tripRoute: {
-    flex: 1,
+  statusChip: {
     flexDirection: "row",
-    gap: 10,
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  routePoints: {
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
+  dateTimeRow: {
+    alignItems: "flex-end",
+    gap: 1,
+  },
+  tripDate: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textSecondary,
+  },
+  tripTime: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+  },
+  routeRow: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "stretch",
+  },
+  routeDots: {
     alignItems: "center",
     paddingVertical: 2,
-    gap: 2,
+    gap: 3,
   },
   dotGreen: {
     width: 8,
@@ -160,7 +223,8 @@ const styles = StyleSheet.create({
   routeLine: {
     width: 1.5,
     flex: 1,
-    backgroundColor: Colors.accent,
+    minHeight: 16,
+    backgroundColor: Colors.border,
   },
   dotRed: {
     width: 8,
@@ -168,40 +232,31 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: Colors.error,
   },
-  routeTexts: {
+  routeAddresses: {
     flex: 1,
-    justifyContent: "space-between",
-    gap: 8,
+    gap: 10,
   },
   routeAddress: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
   },
-  statusChip: {
+  tripFooter: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    alignSelf: "flex-start",
+    gap: 8,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
-  statusChipDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  vehicleType: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textMuted,
+    textTransform: "capitalize",
   },
-  statusChipText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-  },
-  tripBottom: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  tripDate: {
+  tripDistance: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     color: Colors.textMuted,

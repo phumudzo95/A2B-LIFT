@@ -248,7 +248,7 @@ export default function ClientHomeScreen() {
           applyRideUpdate(ride);
         }
       } catch {}
-    }, 4000);
+    }, 2000);
 
     return () => clearInterval(pollId);
   }, [rideStatus, currentRide?.id]);
@@ -391,7 +391,9 @@ export default function ClientHomeScreen() {
         distanceKm,
         isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
       });
-      const ride = await res.json();
+      const payload = await res.json();
+      // Server wraps the ride: { success, status, message, ride: {...} }
+      const ride = payload.ride ?? payload;
       setCurrentRide(ride);
       setRideStatus("requested");
       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
