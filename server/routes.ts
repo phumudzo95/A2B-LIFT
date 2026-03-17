@@ -224,47 +224,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Autocomplete using Nominatim — returns coords inline so no separate details call needed
   app.get("/api/places/autocomplete", async (req: Request, res: Response) => {
     try {
       const input = req.query.input as string;
       if (!input || input.trim().length < 2) {
         return res.json({ predictions: [] });
       }
-      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-      if (!apiKey) return res.status(500).json({ message: "Maps API key not configured" });
-
-      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${apiKey}&language=en&components=country:za`;
-      const response = await fetch(url);
-      const data = (await response.json()) as any;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input)}&limit=6&countrycodes=za&addressdetails=1`;
+      const response = await fetch(url, {
+        headers: { "User-Agent": "A2BLIFT/1.0 (contact@a2blift.co.za)" },
+      });
+      const results = (await response.json()) as any[];
       return res.json({
-        predictions: (data.predictions || []).map((p: any) => ({
-          placeId: p.place_id,
-          description: p.description,
-          mainText: p.structured_formatting?.main_text || p.description,
-          secondaryText: p.structured_formatting?.secondary_text || "",
-        })),
+        predictions: results.map((r: any) => {
+          const addr = r.address || {};
+          const mainText = addr.road || addr.suburb || addr.city || addr.town || r.display_name.split(",")[0];
+          const secondaryParts = [addr.suburb, addr.city || addr.town, addr.state].filter(Boolean);
+          const secondaryText = secondaryParts.join(", ");
+          return {
+            placeId: r.place_id,
+            description: r.display_name,
+            mainText,
+            secondaryText,
+            lat: parseFloat(r.lat),
+            lng: parseFloat(r.lon),
+          };
+        }),
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
   });
 
+  // Details endpoint — Nominatim lookup by osm id (placeId)
   app.get("/api/places/details", async (req: Request, res: Response) => {
     try {
       const placeId = req.query.placeId as string;
       if (!placeId) return res.status(400).json({ message: "placeId is required" });
-      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-      if (!apiKey) return res.status(500).json({ message: "Maps API key not configured" });
-
-      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address&key=${apiKey}`;
-      const response = await fetch(url);
-      const data = (await response.json()) as any;
-      const loc = data.result?.geometry?.location;
-      if (!loc) return res.status(404).json({ message: "Place not found" });
+      const url = `https://nominatim.openstreetmap.org/lookup?osm_ids=N${placeId},W${placeId},R${placeId}&format=json&addressdetails=1`;
+      const response = await fetch(url, {
+        headers: { "User-Agent": "A2BLIFT/1.0 (contact@a2blift.co.za)" },
+      });
+      const results = (await response.json()) as any[];
+      if (!results || results.length === 0) {
+        return res.status(404).json({ message: "Place not found" });
+      }
+      const r = results[0];
       return res.json({
-        lat: loc.lat,
-        lng: loc.lng,
-        address: data.result.formatted_address,
+        lat: parseFloat(r.lat),
+        lng: parseFloat(r.lon),
+        address: r.display_name,
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });

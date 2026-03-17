@@ -63,7 +63,7 @@ export async function apiRequest(
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+    // credentials: "include" is not supported by expo/fetch on native — JWT via Authorization header is used instead
   });
 
   await throwIfResNotOk(res);
@@ -81,7 +81,6 @@ export const getQueryFn: <T>(options: {
 
     const authHeader = await getAuthHeader();
     const res = await fetch(url.toString(), {
-      credentials: "include",
       headers: authHeader,
     });
 
