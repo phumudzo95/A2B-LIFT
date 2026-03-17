@@ -160,9 +160,18 @@ export default function ClientHomeScreen() {
     autocompleteTimerRef.current = setTimeout(async () => {
       setSuggestionsLoading(true);
       try {
-        const res = await apiRequest("GET", `/api/places/autocomplete?input=${encodeURIComponent(text)}`);
+        const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(text)}&key=${apiKey}&language=en&components=country:za`;
+        const res = await fetch(url);
         const data = await res.json();
-        setLocationSuggestions(data.predictions || []);
+        setLocationSuggestions(
+          (data.predictions || []).map((p: any) => ({
+            placeId: p.place_id,
+            description: p.description,
+            mainText: p.structured_formatting?.main_text || p.description,
+            secondaryText: p.structured_formatting?.secondary_text || "",
+          }))
+        );
       } catch {
         setLocationSuggestions([]);
       } finally {
@@ -174,10 +183,14 @@ export default function ClientHomeScreen() {
   async function selectSuggestion(suggestion: { placeId: string; description: string; mainText: string; secondaryText: string }) {
     try {
       setSuggestionsLoading(true);
-      const res = await apiRequest("GET", `/api/places/details?placeId=${suggestion.placeId}`);
+      const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${suggestion.placeId}&fields=geometry,formatted_address&key=${apiKey}`;
+      const res = await fetch(url);
       const data = await res.json();
-      const coords = { lat: data.lat, lng: data.lng };
-      const address = data.address || suggestion.description;
+      const loc = data.result?.geometry?.location;
+      if (!loc) throw new Error("No location");
+      const coords = { lat: loc.lat, lng: loc.lng };
+      const address = data.result?.formatted_address || suggestion.description;
 
       if (locationPickerTarget === "pickup") {
         setLocation(coords);
