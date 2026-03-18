@@ -33,10 +33,12 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set");
 }
 
-// Create a connection pool for Supabase
+// Determine SSL requirements based on the connection string
+const dbUrl = process.env.DATABASE_URL;
+const requireSsl = dbUrl.includes("neon.tech") || dbUrl.includes("supabase");
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL.includes("supabase") ? { rejectUnauthorized: false } : false,
+  connectionString: dbUrl,
+  ssl: requireSsl ? { rejectUnauthorized: false } : false,
 });
 
 const db = drizzle(pool);

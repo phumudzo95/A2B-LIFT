@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    "server:dev": "tsx server/index.ts",
     "build": "esbuild server/index.ts --bundle --platform=node --outfile=server_dist/index.js",
     "start": "node server_dist/index.js",
     "db:push": "drizzle-kit push",
@@ -19,8 +20,10 @@
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.3.1",
+    "drizzle-kit": "^0.31.9",
     "drizzle-orm": "^0.39.3",
     "drizzle-zod": "^0.7.0",
+    "esbuild": "^0.25.12",
     "expo": "~54.0.27",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.11",
@@ -58,12 +61,10 @@
     "react-native-worklets": "0.5.1",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
-    "tsx": "^4.20.6",
+    "tsx": "^4.21.0",
     "ws": "^8.18.0",
     "zod": "^3.24.2",
-    "zod-validation-error": "^3.4.0",
-    "esbuild": "^0.25.12",
-    "drizzle-kit": "^0.31.9"
+    "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

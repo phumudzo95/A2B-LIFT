@@ -6,7 +6,7 @@ A luxury ride-hailing platform built with Expo (React Native) frontend and Expre
 ## Tech Stack
 - **Frontend**: Expo Router (file-based routing), TypeScript, React Native
 - **Backend**: Express.js + Socket.io (WebSocket), TypeScript
-- **Database**: PostgreSQL (Replit built-in) with Drizzle ORM
+- **Database**: Replit PostgreSQL with Drizzle ORM (migrated from Supabase)
 - **Styling**: React Native StyleSheet, Inter font family
 - **Real-time**: Socket.io for GPS updates and ride events
 

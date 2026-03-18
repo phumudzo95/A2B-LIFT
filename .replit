@@ -26,6 +26,8 @@ PORT = "5000"
 
 [agent]
 stack = "EXPO"
+expertMode = true
+integrations = ["javascript_database:1.0.0"]
 
 [workflows]
 runButton = "Project"
@@ -78,3 +80,8 @@ waitForPort = 8081
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[userenv]
+
+[userenv.shared]
+JWT_SECRET = "918af73337fa8332dc0e0769b6b9babab0e1d090a26ffcef2d7029ec9b5ec1ebdebd63ab337c1f3005cb45f0c00d58f4a6bc6f80087bd2066c69a48264c4ecf1"
