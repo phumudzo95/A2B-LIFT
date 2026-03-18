@@ -1,746 +1,412 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Grace Community — Admin</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F7F7F5;color:#1a1a2e;min-height:100vh}
-:root{--t:#1D9E75;--p:#534AB7;--card:#fff;--border:rgba(0,0,0,0.09);--text2:#6b6b7a;--text3:#9999aa;--danger:#A32D2D;--dangerbg:#FCEBEB}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A2B LIFT - Admin Panel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #000; color: #fff; min-height: 100vh; }
+    .header { background: #111; border-bottom: 1px solid #2a2a2a; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+    .header span { font-size: 11px; color: #6b6b6b; letter-spacing: 1px; }
+    .nav { display: flex; gap: 8px; background: #111; padding: 12px 24px; border-bottom: 1px solid #2a2a2a; overflow-x: auto; }
+    .nav button { background: #1a1a1a; border: 1px solid #2a2a2a; color: #bdbdbd; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+    .nav button.active { background: #fff; color: #000; border-color: #fff; }
+    .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .stat-card { background: #121212; border: 1px solid #2a2a2a; border-radius: 14px; padding: 24px; text-align: center; }
+    .stat-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+    .stat-label { font-size: 12px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-alert { color: #ff4d4d; }
+    .section { margin-bottom: 32px; }
+    .section-title { font-size: 14px; font-weight: 600; color: #bdbdbd; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 12px 16px; font-size: 11px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #2a2a2a; }
+    td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid #1a1a1a; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+    .badge-pending { background: rgba(255,183,77,0.15); color: #ffb74d; }
+    .badge-approved { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-paid { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-rejected { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+    .badge-online { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-offline { background: rgba(107,107,107,0.15); color: #6b6b6b; }
+    .badge-high { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+    .badge-medium { background: rgba(255,183,77,0.15); color: #ffb74d; }
+    .badge-low { background: rgba(107,107,107,0.15); color: #bdbdbd; }
+    .badge-open { background: rgba(255,183,77,0.15); color: #ffb74d; }
+    .badge-resolved { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .btn { padding: 6px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; }
+    .btn-approve { background: #4caf50; color: #fff; }
+    .btn-reject { background: #ff4d4d; color: #fff; }
+    .btn-small { padding: 4px 10px; font-size: 11px; }
+    .btn-resolve { background: #4caf50; color: #fff; }
+    .loading { text-align: center; padding: 40px; color: #6b6b6b; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .desc-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: #bdbdbd; }
+    .refresh-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #bdbdbd; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .refresh-btn:hover { background: #2a2a2a; }
 
-/* SETUP SCREEN */
-#setup{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
-.setup-card{background:var(--card);border-radius:16px;border:1px solid var(--border);padding:32px;width:100%;max-width:440px}
-.setup-card h1{font-size:20px;font-weight:500;margin-bottom:6px}
-.setup-card p{font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.6}
-.field{margin-bottom:14px}
-.field label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:5px}
-.field input{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;background:#F7F7F5}
-.field input:focus{border-color:var(--t)}
-.btn-primary{width:100%;padding:11px;background:var(--t);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;margin-top:6px}
-.btn-primary:hover{opacity:.9}
-.hint{font-size:11px;color:var(--text3);margin-top:8px;text-align:center}
-
-/* LAYOUT */
-#app{display:none;min-height:100vh}
-.sidebar{position:fixed;top:0;left:0;bottom:0;width:220px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100}
-.sidebar-logo{padding:20px 16px 14px;border-bottom:1px solid var(--border)}
-.sidebar-logo span{font-size:15px;font-weight:500;color:var(--t)}
-.sidebar-logo small{display:block;font-size:11px;color:var(--text3);margin-top:2px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;color:var(--text2);cursor:pointer;border:none;background:none;width:100%;text-align:left;border-radius:0}
-.nav-item:hover{background:#F7F7F5;color:#1a1a2e}
-.nav-item.active{background:#E1F5EE;color:#0F6E56;font-weight:500}
-.nav-item .ico{font-size:16px;width:20px;text-align:center}
-.sidebar-bottom{margin-top:auto;padding:14px 16px;border-top:1px solid var(--border)}
-.user-row{display:flex;align-items:center;gap:8px}
-.avatar{width:32px;height:32px;border-radius:50%;background:var(--p);color:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0}
-.user-info{flex:1;min-width:0}
-.user-info p{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.user-info small{font-size:10px;color:var(--text3)}
-.logout-btn{background:none;border:none;font-size:11px;color:var(--danger);cursor:pointer;padding:4px 0}
-
-/* MAIN */
-.main{margin-left:220px;padding:28px 32px;min-height:100vh}
-.page{display:none}
-.page.active{display:block}
-.page-header{margin-bottom:24px}
-.page-header h2{font-size:20px;font-weight:500}
-.page-header p{font-size:13px;color:var(--text2);margin-top:3px}
-
-/* STATS */
-.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
-.stat-card{background:var(--card);border-radius:12px;padding:16px;border:1px solid var(--border)}
-.stat-card .num{font-size:26px;font-weight:500;color:var(--t)}
-.stat-card .lbl{font-size:12px;color:var(--text3);margin-top:2px}
-
-/* CONTENT TABLE */
-.content-list{background:var(--card);border-radius:12px;border:1px solid var(--border);overflow:hidden}
-.list-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.list-header h3{font-size:14px;font-weight:500}
-.add-btn{padding:7px 14px;background:var(--t);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer}
-.list-item{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--border)}
-.list-item:last-child{border-bottom:none}
-.item-thumb{width:44px;height:44px;border-radius:8px;background:#E1F5EE;flex-shrink:0;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden}
-.item-thumb img{width:100%;height:100%;object-fit:cover;border-radius:8px}
-.item-info{flex:1;min-width:0}
-.item-info p{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.item-info small{font-size:11px;color:var(--text3)}
-.badge{font-size:10px;padding:2px 8px;border-radius:4px;font-weight:500}
-.badge.pub{background:#E1F5EE;color:#0F6E56}
-.badge.draft{background:#F1EFE8;color:var(--text2)}
-.item-actions{display:flex;gap:8px}
-.edit-btn{font-size:11px;color:var(--t);cursor:pointer;background:none;border:none;padding:4px 8px;border-radius:6px}
-.edit-btn:hover{background:#E1F5EE}
-.del-btn{font-size:11px;color:var(--danger);cursor:pointer;background:none;border:none;padding:4px 8px;border-radius:6px}
-.del-btn:hover{background:var(--dangerbg)}
-.empty{padding:40px;text-align:center;color:var(--text3);font-size:13px}
-
-/* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
-.modal-overlay.open{display:flex}
-.modal{background:var(--card);border-radius:16px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.12)}
-.modal-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--card);z-index:1}
-.modal-head h3{font-size:15px;font-weight:500}
-.close-btn{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);line-height:1}
-.modal-body{padding:20px}
-.form-row{margin-bottom:16px}
-.form-row label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:5px}
-.form-row input,.form-row textarea,.form-row select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;font-family:inherit;background:#F7F7F5;color:#1a1a2e}
-.form-row input:focus,.form-row textarea:focus,.form-row select:focus{border-color:var(--t)}
-.form-row textarea{resize:vertical;min-height:90px;line-height:1.6}
-.form-row .hint{font-size:11px;color:var(--text3);margin-top:4px}
-.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.upload-zone{border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:.2s}
-.upload-zone:hover{border-color:var(--t);background:#E1F5EE22}
-.upload-zone p{font-size:13px;color:var(--text2);margin-top:6px}
-.upload-zone small{font-size:11px;color:var(--text3)}
-.preview-img{width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-top:8px;display:none}
-.modal-foot{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--card)}
-.btn-cancel{padding:9px 18px;background:none;border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;color:var(--text2)}
-.btn-save{padding:9px 20px;background:var(--t);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer}
-.btn-save:disabled{opacity:.5;cursor:not-allowed}
-
-/* TOAST */
-.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transform:translateY(8px);transition:.3s;pointer-events:none}
-.toast.show{opacity:1;transform:translateY(0)}
-.toast.error{background:var(--danger)}
-
-/* LOGIN */
-#login{display:none;align-items:center;justify-content:center;min-height:100vh;padding:24px;background:#F7F7F5}
-.login-card{background:var(--card);border-radius:16px;border:1px solid var(--border);padding:32px;width:100%;max-width:400px}
-.login-card .logo{font-size:22px;font-weight:500;color:var(--t);margin-bottom:4px}
-.login-card .sub{font-size:13px;color:var(--text2);margin-bottom:24px}
-
-/* PROGRESS */
-.upload-progress{height:4px;background:#E1F5EE;border-radius:2px;margin-top:8px;display:none}
-.upload-progress-bar{height:100%;background:var(--t);border-radius:2px;transition:width .3s}
-
-@media(max-width:768px){
-  .sidebar{width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap}
-  .main{margin-left:0;padding:16px}
-  .stats-grid{grid-template-columns:1fr 1fr}
-  .two-col{grid-template-columns:1fr}
-}
-</style>
+    .login-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.75); }
+    .login-overlay.show { display: flex; }
+    .login-card { width: min(420px, 92vw); background: #121212; border: 1px solid #2a2a2a; border-radius: 16px; padding: 24px; }
+    .login-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .login-sub { font-size: 12px; color: #8a8a8a; margin-bottom: 18px; }
+    .field { display: grid; gap: 6px; margin-bottom: 12px; }
+    .label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #8a8a8a; }
+    .input { background: #0d0d0d; border: 1px solid #2a2a2a; color: #fff; padding: 12px 12px; border-radius: 12px; outline: none; }
+    .login-actions { display: flex; gap: 10px; margin-top: 12px; }
+    .btn-primary { background: #fff; color: #000; border: 1px solid #fff; padding: 10px 14px; border-radius: 12px; font-weight: 700; cursor: pointer; flex: 1; }
+    .btn-secondary { background: transparent; color: #bdbdbd; border: 1px solid #2a2a2a; padding: 10px 14px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+    .error { color: #ff4d4d; font-size: 12px; margin-top: 10px; display: none; }
+  </style>
 </head>
 <body>
-
-<!-- SETUP SCREEN -->
-<div id="setup">
-  <div class="setup-card">
-    <h1>Connect to Supabase</h1>
-    <p>Enter your Supabase project details below. You only need to do this once — they'll be saved in your browser.</p>
-    <div class="field">
-      <label>Supabase project URL</label>
-      <input id="sb-url" placeholder="https://xxxxxxxxxxxx.supabase.co" type="url"/>
+  <div class="header">
+    <div>
+      <h1>A2B LIFT</h1>
+      <span>ADMIN PANEL</span>
     </div>
-    <div class="field">
-      <label>Supabase anon key</label>
-      <input id="sb-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." type="text"/>
-    </div>
-    <button class="btn-primary" onclick="saveConfig()">Save & continue</button>
-    <p class="hint">Find these in your Supabase project ? Settings ? API</p>
-  </div>
-</div>
-
-<!-- LOGIN SCREEN -->
-<div id="login">
-  <div class="login-card">
-    <div class="logo">Grace Community</div>
-    <div class="sub">Admin Dashboard — sign in to continue</div>
-    <div class="field">
-      <label>Email address</label>
-      <input id="login-email" type="email" placeholder="admin@church.com"/>
-    </div>
-    <div class="field">
-      <label>Password</label>
-      <input id="login-pass" type="password" placeholder="••••••••"/>
-    </div>
-    <button class="btn-primary" onclick="doLogin()">Sign in</button>
-    <p class="hint" style="margin-top:12px"><span style="cursor:pointer;color:var(--text2)" onclick="resetConfig()">? Change Supabase settings</span></p>
-  </div>
-</div>
-
-<!-- MAIN APP -->
-<div id="app">
-  <div class="sidebar">
-    <div class="sidebar-logo">
-      <span>Grace Community</span>
-      <small>Admin Dashboard</small>
-    </div>
-    <nav style="padding:8px 0;flex:1">
-      <button class="nav-item active" onclick="showPage('dashboard')"><span class="ico">?</span> Dashboard</button>
-      <button class="nav-item" onclick="showPage('announcements')"><span class="ico">??</span> Announcements</button>
-      <button class="nav-item" onclick="showPage('events')"><span class="ico">??</span> Events</button>
-      <button class="nav-item" onclick="showPage('articles')"><span class="ico">??</span> Articles</button>
-      <button class="nav-item" onclick="showPage('sermons')"><span class="ico">??</span> Sermons</button>
-      <button class="nav-item" onclick="showPage('gallery')"><span class="ico">??</span> Gallery</button>
-      <button class="nav-item" onclick="showPage('community')"><span class="ico">??</span> Community</button>
-    </nav>
-    <div class="sidebar-bottom">
-      <div class="user-row">
-        <div class="avatar" id="user-avatar">A</div>
-        <div class="user-info">
-          <p id="user-name">Admin</p>
-          <small id="user-email">admin@church.com</small>
-        </div>
-      </div>
-      <button class="logout-btn" onclick="doLogout()" style="margin-top:8px;width:100%;text-align:left">Sign out</button>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="refresh-btn" onclick="refreshAll()">Refresh</button>
+      <button class="refresh-btn" onclick="logout()">Logout</button>
     </div>
   </div>
 
-  <div class="main">
-
-    <!-- DASHBOARD -->
-    <div class="page active" id="page-dashboard">
-      <div class="page-header">
-        <h2>Dashboard</h2>
-        <p>Welcome back. Here's a summary of your church content.</p>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="num" id="stat-ann">—</div><div class="lbl">Announcements</div></div>
-        <div class="stat-card"><div class="num" id="stat-ev">—</div><div class="lbl">Events</div></div>
-        <div class="stat-card"><div class="num" id="stat-art">—</div><div class="lbl">Articles</div></div>
-        <div class="stat-card"><div class="num" id="stat-ser">—</div><div class="lbl">Sermons</div></div>
-      </div>
-      <div class="content-list">
-        <div class="list-header"><h3>Quick actions</h3></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0">
-          <div style="padding:18px 20px;border-right:1px solid var(--border);cursor:pointer" onclick="openModal('announcements')">
-            <div style="font-size:24px;margin-bottom:6px">??</div>
-            <p style="font-size:13px;font-weight:500">New announcement</p>
-            <p style="font-size:11px;color:var(--text3);margin-top:2px">Post a notice to all members</p>
-          </div>
-          <div style="padding:18px 20px;border-right:1px solid var(--border);cursor:pointer" onclick="openModal('events')">
-            <div style="font-size:24px;margin-bottom:6px">??</div>
-            <p style="font-size:13px;font-weight:500">New event</p>
-            <p style="font-size:11px;color:var(--text3);margin-top:2px">Add an upcoming church event</p>
-          </div>
-          <div style="padding:18px 20px;cursor:pointer" onclick="openModal('articles')">
-            <div style="font-size:24px;margin-bottom:6px">??</div>
-            <p style="font-size:13px;font-weight:500">New article</p>
-            <p style="font-size:11px;color:var(--text3);margin-top:2px">Write and publish an article</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ANNOUNCEMENTS -->
-    <div class="page" id="page-announcements">
-      <div class="page-header">
-        <h2>Announcements</h2>
-        <p>Post notices and updates visible on the app home screen.</p>
-      </div>
-      <div class="content-list">
-        <div class="list-header">
-          <h3>All announcements</h3>
-          <button class="add-btn" onclick="openModal('announcements')">+ New announcement</button>
-        </div>
-        <div id="list-announcements"><div class="empty">Loading...</div></div>
-      </div>
-    </div>
-
-    <!-- EVENTS -->
-    <div class="page" id="page-events">
-      <div class="page-header">
-        <h2>Events</h2>
-        <p>Manage upcoming church events and gatherings.</p>
-      </div>
-      <div class="content-list">
-        <div class="list-header">
-          <h3>All events</h3>
-          <button class="add-btn" onclick="openModal('events')">+ New event</button>
-        </div>
-        <div id="list-events"><div class="empty">Loading...</div></div>
-      </div>
-    </div>
-
-    <!-- ARTICLES -->
-    <div class="page" id="page-articles">
-      <div class="page-header">
-        <h2>Articles</h2>
-        <p>Write devotionals, testimonies, and teaching articles.</p>
-      </div>
-      <div class="content-list">
-        <div class="list-header">
-          <h3>All articles</h3>
-          <button class="add-btn" onclick="openModal('articles')">+ New article</button>
-        </div>
-        <div id="list-articles"><div class="empty">Loading...</div></div>
-      </div>
-    </div>
-
-    <!-- SERMONS -->
-    <div class="page" id="page-sermons">
-      <div class="page-header">
-        <h2>Sermons</h2>
-        <p>Upload sermon audio and manage recordings.</p>
-      </div>
-      <div class="content-list">
-        <div class="list-header">
-          <h3>All sermons</h3>
-          <button class="add-btn" onclick="openModal('sermons')">+ New sermon</button>
-        </div>
-        <div id="list-sermons"><div class="empty">Loading...</div></div>
-      </div>
-    </div>
-
-    <!-- GALLERY -->
-    <div class="page" id="page-gallery">
-      <div class="page-header">
-        <h2>Media gallery</h2>
-        <p>Upload photos and videos for the church gallery.</p>
-      </div>
-      <div class="content-list">
-        <div class="list-header">
-          <h3>All media</h3>
-          <button class="add-btn" onclick="openModal('gallery')">+ Upload media</button>
-        </div>
-        <div id="list-gallery"><div class="empty">Loading...</div></div>
-      </div>
-    </div>
-
-    <!-- COMMUNITY -->
-    <div class="page" id="page-community">
-      <div class="page-header">
-        <h2>Community moderation</h2>
-        <p>Review and remove inappropriate posts and comments.</p>
-      </div>
-      <div class="content-list">
-        <div class="list-header"><h3>Recent posts</h3></div>
-        <div id="list-community"><div class="empty">Loading...</div></div>
-      </div>
-    </div>
-
+  <div class="nav">
+    <button class="active" onclick="switchTab('overview')">Overview</button>
+    <button onclick="switchTab('chauffeurs')">Chauffeurs</button>
+    <button onclick="switchTab('rides')">Rides</button>
+    <button onclick="switchTab('withdrawals')">Withdrawals</button>
+    <button onclick="switchTab('safety')">Safety Reports</button>
   </div>
-</div>
 
-<!-- MODAL -->
-<div class="modal-overlay" id="modal-overlay">
-  <div class="modal">
-    <div class="modal-head">
-      <h3 id="modal-title">New item</h3>
-      <button class="close-btn" onclick="closeModal()">×</button>
+  <div class="content">
+    <div id="tab-overview" class="tab-content active">
+      <div class="stats-grid" id="stats-grid">
+        <div class="loading">Loading stats...</div>
+      </div>
     </div>
-    <div class="modal-body" id="modal-body"></div>
-    <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save" id="btn-save" onclick="submitForm()">Save & publish</button>
+
+    <div id="tab-chauffeurs" class="tab-content">
+      <div class="section">
+        <div class="section-title">All Chauffeurs</div>
+        <div id="chauffeurs-table"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <div id="tab-rides" class="tab-content">
+      <div class="section">
+        <div class="section-title">All Rides</div>
+        <div id="rides-table"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <div id="tab-withdrawals" class="tab-content">
+      <div class="section">
+        <div class="section-title">Withdrawal Requests</div>
+        <div id="withdrawals-table"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <div id="tab-safety" class="tab-content">
+      <div class="section">
+        <div class="section-title">Safety Reports & Complaints</div>
+        <div id="safety-table"><div class="loading">Loading...</div></div>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="toast" id="toast"></div>
-
-<script>
-let supabase = null;
-let currentUser = null;
-let currentModal = null;
-let editId = null;
-
-const SUPABASE_URL_KEY = 'gc_sb_url';
-const SUPABASE_KEY_KEY = 'gc_sb_key';
-
-function saveConfig() {
-  const url = document.getElementById('sb-url').value.trim();
-  const key = document.getElementById('sb-key').value.trim();
-  if(!url || !key) return showToast('Please enter both URL and anon key', true);
-  localStorage.setItem(SUPABASE_URL_KEY, url);
-  localStorage.setItem(SUPABASE_KEY_KEY, key);
-  initSupabase(url, key);
-  showLoginScreen();
-}
-
-function resetConfig() {
-  localStorage.removeItem(SUPABASE_URL_KEY);
-  localStorage.removeItem(SUPABASE_KEY_KEY);
-  document.getElementById('setup').style.display = 'flex';
-  document.getElementById('login').style.display = 'none';
-}
-
-function initSupabase(url, key) {
-  supabase = window.supabase.createClient(url, key);
-}
-
-function showLoginScreen() {
-  document.getElementById('setup').style.display = 'none';
-  document.getElementById('login').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
-}
-
-function showApp(user) {
-  currentUser = user;
-  document.getElementById('setup').style.display = 'none';
-  document.getElementById('login').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('user-name').textContent = user.email.split('@')[0];
-  document.getElementById('user-email').textContent = user.email;
-  document.getElementById('user-avatar').textContent = user.email[0].toUpperCase();
-  loadStats();
-  loadList('announcements');
-}
-
-async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-pass').value;
-  if(!email || !pass) return showToast('Please enter email and password', true);
-  const {data, error} = await supabase.auth.signInWithPassword({email, password: pass});
-  if(error) return showToast(error.message, true);
-  showApp(data.user);
-}
-
-async function doLogout() {
-  await supabase.auth.signOut();
-  showLoginScreen();
-}
-
-async function loadStats() {
-  const tables = ['announcements','events','articles','sermons'];
-  const ids = ['stat-ann','stat-ev','stat-art','stat-ser'];
-  for(let i=0;i<tables.length;i++) {
-    const {count} = await supabase.from(tables[i]).select('*',{count:'exact',head:true});
-    document.getElementById(ids[i]).textContent = count||0;
-  }
-}
-
-// ---- LIST RENDERING ----
-async function loadList(type) {
-  const el = document.getElementById('list-'+type);
-  if(!el) return;
-  el.innerHTML = '<div class="empty">Loading...</div>';
-  let data, error;
-
-  if(type==='announcements') ({data,error} = await supabase.from('announcements').select('*').order('created_at',{ascending:false}));
-  else if(type==='events') ({data,error} = await supabase.from('events').select('*').order('event_date',{ascending:true}));
-  else if(type==='articles') ({data,error} = await supabase.from('articles').select('*').order('created_at',{ascending:false}));
-  else if(type==='sermons') ({data,error} = await supabase.from('sermons').select('*').order('created_at',{ascending:false}));
-  else if(type==='gallery') ({data,error} = await supabase.from('media').select('*').order('created_at',{ascending:false}));
-  else if(type==='community') ({data,error} = await supabase.from('posts').select('*, users(name,email)').order('created_at',{ascending:false}).limit(30));
-
-  if(error) { el.innerHTML = '<div class="empty">Error loading data: '+error.message+'</div>'; return; }
-  if(!data||data.length===0) { el.innerHTML = '<div class="empty">Nothing here yet. Add your first item above.</div>'; return; }
-
-  el.innerHTML = data.map(item => renderItem(type, item)).join('');
-}
-
-function renderItem(type, item) {
-  let thumb = '', title = '', sub = '', badge = '';
-  const pub = item.is_published !== false;
-  badge = pub ? '<span class="badge pub">Published</span>' : '<span class="badge draft">Draft</span>';
-
-  if(type==='announcements') {
-    thumb = item.image_url ? '<img src="'+item.image_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/>' : '??';
-    title = item.title;
-    sub = item.subtitle || (item.content||'').slice(0,60)+'...';
-  } else if(type==='events') {
-    thumb = item.image_url ? '<img src="'+item.image_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/>' : '??';
-    title = item.title;
-    sub = (item.event_date ? new Date(item.event_date).toLocaleDateString('en-ZA',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) : '') + (item.location ? ' · '+item.location : '');
-  } else if(type==='articles') {
-    thumb = item.cover_image_url ? '<img src="'+item.cover_image_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/>' : '??';
-    title = item.title;
-    sub = (item.author_name||'') + (item.category ? ' · '+item.category : '') + (item.read_time_minutes ? ' · '+item.read_time_minutes+' min read' : '');
-  } else if(type==='sermons') {
-    thumb = item.thumbnail_url ? '<img src="'+item.thumbnail_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/>' : '??';
-    title = item.title;
-    sub = (item.pastor_name||'') + (item.series_name ? ' · '+item.series_name : '') + (item.duration_seconds ? ' · '+Math.round(item.duration_seconds/60)+' min' : '');
-  } else if(type==='gallery') {
-    thumb = item.file_url ? '<img src="'+item.file_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/>' : '??';
-    title = item.title;
-    sub = (item.media_type||'photo') + (item.album_name ? ' · '+item.album_name : '');
-  } else if(type==='community') {
-    thumb = '??';
-    title = (item.users?.name||item.users?.email||'Member');
-    sub = (item.content||'').slice(0,70)+'...';
-    return '<div class="list-item"><div class="item-thumb">'+thumb+'</div><div class="item-info"><p>'+title+'</p><small>'+sub+'</small></div><div class="item-actions"><button class="del-btn" onclick="deleteItem(\'posts\',\''+item.id+'\',\'community\')">Remove</button></div></div>';
-  }
-
-  return '<div class="list-item"><div class="item-thumb">'+thumb+'</div><div class="item-info"><p>'+escHtml(title)+'</p><small>'+escHtml(sub)+'</small></div>'+badge+'<div class="item-actions"><button class="edit-btn" onclick="openModal(\''+type+'\','+JSON.stringify(item).replace(/"/g,'&quot;')+')">Edit</button><button class="del-btn" onclick="deleteItem(\''+dbTable(type)+'\',\''+item.id+'\',\''+type+'\')">Delete</button></div></div>';
-}
-
-function dbTable(type) {
-  if(type==='gallery') return 'media';
-  return type;
-}
-
-function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-// ---- MODAL FORMS ----
-const forms = {
-  announcements: (d={}) => `
-    <div class="form-row"><label>Title *</label><input id="f-title" value="${escHtml(d.title||'')}"/></div>
-    <div class="form-row"><label>Subtitle</label><input id="f-subtitle" value="${escHtml(d.subtitle||'')}"/></div>
-    <div class="form-row"><label>Body / message *</label><textarea id="f-content">${escHtml(d.content||'')}</textarea></div>
-    <div class="form-row"><label>Cover image</label>
-      <div class="upload-zone" onclick="document.getElementById('f-img-file').click()">
-        <div style="font-size:28px">??</div><p>Click to upload image</p><small>JPG, PNG, WEBP up to 5MB</small>
-        <input type="file" id="f-img-file" accept="image/*" style="display:none" onchange="previewImg(this,'f-img-preview','f-img-url')"/>
-        <div class="upload-progress" id="f-img-prog"><div class="upload-progress-bar" id="f-img-progbar"></div></div>
+  <div id="login" class="login-overlay">
+    <div class="login-card">
+      <div class="login-title">Admin Login</div>
+      <div class="login-sub">Sign in with an account whose role is <b>admin</b>.</div>
+      <div class="field">
+        <div class="label">Username</div>
+        <input id="username" class="input" placeholder="admin" autocomplete="username" />
       </div>
-      ${d.image_url ? '<img src="'+d.image_url+'" class="preview-img" id="f-img-preview" style="display:block"/>' : '<img class="preview-img" id="f-img-preview"/>'}
-      <input type="hidden" id="f-img-url" value="${d.image_url||''}"/>
-    </div>
-    <div class="form-row"><label>Status</label><select id="f-published"><option value="true" ${d.is_published!==false?'selected':''}>Published — visible in app</option><option value="false" ${d.is_published===false?'selected':''}>Draft — hidden from app</option></select></div>`,
-
-  events: (d={}) => `
-    <div class="form-row"><label>Event title *</label><input id="f-title" value="${escHtml(d.title||'')}"/></div>
-    <div class="form-row"><label>Subtitle</label><input id="f-subtitle" value="${escHtml(d.subtitle||'')}"/></div>
-    <div class="form-row"><label>Description</label><textarea id="f-description">${escHtml(d.description||'')}</textarea></div>
-    <div class="two-col">
-      <div class="form-row"><label>Date & time *</label><input type="datetime-local" id="f-event-date" value="${d.event_date ? d.event_date.slice(0,16) : ''}"/></div>
-      <div class="form-row"><label>End date & time</label><input type="datetime-local" id="f-end-date" value="${d.end_date ? d.end_date.slice(0,16) : ''}"/></div>
-    </div>
-    <div class="form-row"><label>Location</label><input id="f-location" value="${escHtml(d.location||'')}"/></div>
-    <div class="form-row"><label>Category</label><select id="f-category">
-      ${['service','youth','outreach','prayer','conference'].map(c=>`<option value="${c}" ${d.category===c?'selected':''}>${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join('')}
-    </select></div>
-    <div class="form-row"><label>Event poster / banner</label>
-      <div class="upload-zone" onclick="document.getElementById('f-img-file').click()">
-        <div style="font-size:28px">??</div><p>Click to upload poster</p><small>JPG, PNG up to 5MB</small>
-        <input type="file" id="f-img-file" accept="image/*" style="display:none" onchange="previewImg(this,'f-img-preview','f-img-url')"/>
-        <div class="upload-progress" id="f-img-prog"><div class="upload-progress-bar" id="f-img-progbar"></div></div>
+      <div class="field">
+        <div class="label">Password</div>
+        <input id="password" class="input" type="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" autocomplete="current-password" />
       </div>
-      ${d.image_url ? '<img src="'+d.image_url+'" class="preview-img" id="f-img-preview" style="display:block"/>' : '<img class="preview-img" id="f-img-preview"/>'}
-      <input type="hidden" id="f-img-url" value="${d.image_url||''}"/>
-    </div>
-    <div class="form-row"><label>Status</label><select id="f-published"><option value="true" ${d.is_published!==false?'selected':''}>Published</option><option value="false" ${d.is_published===false?'selected':''}>Draft</option></select></div>`,
-
-  articles: (d={}) => `
-    <div class="form-row"><label>Article title *</label><input id="f-title" value="${escHtml(d.title||'')}"/></div>
-    <div class="form-row"><label>Subtitle / tagline</label><input id="f-subtitle" value="${escHtml(d.subtitle||'')}"/></div>
-    <div class="two-col">
-      <div class="form-row"><label>Author name</label><input id="f-author" value="${escHtml(d.author_name||'')}"/></div>
-      <div class="form-row"><label>Category</label><select id="f-category">
-        ${['general','devotional','testimony','teaching'].map(c=>`<option value="${c}" ${d.category===c?'selected':''}>${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join('')}
-      </select></div>
-    </div>
-    <div class="form-row"><label>Article body *</label><textarea id="f-body" style="min-height:140px">${escHtml(d.body||'')}</textarea><div class="hint">You can use basic markdown: **bold**, *italic*, # Heading</div></div>
-    <div class="form-row"><label>Estimated read time (minutes)</label><input type="number" id="f-readtime" value="${d.read_time_minutes||3}" min="1" max="60"/></div>
-    <div class="form-row"><label>Cover image</label>
-      <div class="upload-zone" onclick="document.getElementById('f-img-file').click()">
-        <div style="font-size:28px">??</div><p>Click to upload cover image</p><small>JPG, PNG up to 5MB</small>
-        <input type="file" id="f-img-file" accept="image/*" style="display:none" onchange="previewImg(this,'f-img-preview','f-img-url')"/>
-        <div class="upload-progress" id="f-img-prog"><div class="upload-progress-bar" id="f-img-progbar"></div></div>
+      <div class="login-actions">
+        <button class="btn-primary" onclick="doLogin()">Login</button>
+        <button class="btn-secondary" onclick="clearToken()">Clear Token</button>
       </div>
-      ${d.cover_image_url ? '<img src="'+d.cover_image_url+'" class="preview-img" id="f-img-preview" style="display:block"/>' : '<img class="preview-img" id="f-img-preview"/>'}
-      <input type="hidden" id="f-img-url" value="${d.cover_image_url||''}"/>
+      <div id="login-error" class="error"></div>
     </div>
-    <div class="form-row"><label>Status</label><select id="f-published"><option value="true" ${d.is_published!==false?'selected':''}>Published</option><option value="false" ${d.is_published===false?'selected':''}>Draft</option></select></div>`,
+  </div>
 
-  sermons: (d={}) => `
-    <div class="form-row"><label>Sermon title *</label><input id="f-title" value="${escHtml(d.title||'')}"/></div>
-    <div class="form-row"><label>Subtitle / theme</label><input id="f-subtitle" value="${escHtml(d.subtitle||'')}"/></div>
-    <div class="two-col">
-      <div class="form-row"><label>Pastor / speaker *</label><input id="f-pastor" value="${escHtml(d.pastor_name||'')}"/></div>
-      <div class="form-row"><label>Sermon series</label><input id="f-series" value="${escHtml(d.series_name||'')}"/></div>
-    </div>
-    <div class="form-row"><label>Scripture reference</label><input id="f-scripture" placeholder="e.g. John 3:16-17" value="${escHtml(d.scripture_reference||'')}"/></div>
-    <div class="form-row"><label>Description</label><textarea id="f-description">${escHtml(d.description||'')}</textarea></div>
-    <div class="form-row"><label>Audio file (MP3)</label>
-      <div class="upload-zone" onclick="document.getElementById('f-audio-file').click()">
-        <div style="font-size:28px">??</div><p>Click to upload audio</p><small>MP3, M4A up to 100MB</small>
-        <input type="file" id="f-audio-file" accept="audio/*" style="display:none" onchange="uploadAudio(this)"/>
-        <div class="upload-progress" id="f-audio-prog"><div class="upload-progress-bar" id="f-audio-progbar"></div></div>
-      </div>
-      <input type="hidden" id="f-audio-url" value="${d.audio_url||''}"/>
-      ${d.audio_url ? '<p style="font-size:11px;color:var(--t);margin-top:6px">? Audio file uploaded</p>' : '<p style="font-size:11px;color:var(--text3);margin-top:6px" id="audio-status">No file uploaded yet</p>'}
-    </div>
-    <div class="form-row"><label>Thumbnail image</label>
-      <div class="upload-zone" onclick="document.getElementById('f-img-file').click()">
-        <div style="font-size:28px">??</div><p>Click to upload thumbnail</p><small>JPG, PNG up to 5MB</small>
-        <input type="file" id="f-img-file" accept="image/*" style="display:none" onchange="previewImg(this,'f-img-preview','f-img-url')"/>
-        <div class="upload-progress" id="f-img-prog"><div class="upload-progress-bar" id="f-img-progbar"></div></div>
-      </div>
-      ${d.thumbnail_url ? '<img src="'+d.thumbnail_url+'" class="preview-img" id="f-img-preview" style="display:block"/>' : '<img class="preview-img" id="f-img-preview"/>'}
-      <input type="hidden" id="f-img-url" value="${d.thumbnail_url||''}"/>
-    </div>
-    <div class="form-row"><label>Status</label><select id="f-published"><option value="true" ${d.is_published!==false?'selected':''}>Published</option><option value="false" ${d.is_published===false?'selected':''}>Draft</option></select></div>`,
+  <script>
+    const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? ''
+      : 'https://a2b-lift.onrender.com';
+    const TOKEN_KEY = 'a2b_admin_token';
 
-  gallery: (d={}) => `
-    <div class="form-row"><label>Title *</label><input id="f-title" value="${escHtml(d.title||'')}"/></div>
-    <div class="form-row"><label>Description</label><textarea id="f-description" style="min-height:60px">${escHtml(d.description||'')}</textarea></div>
-    <div class="two-col">
-      <div class="form-row"><label>Type</label><select id="f-mediatype"><option value="photo" ${d.media_type!=='video'?'selected':''}>Photo</option><option value="video" ${d.media_type==='video'?'selected':''}>Video</option></select></div>
-      <div class="form-row"><label>Album name</label><input id="f-album" value="${escHtml(d.album_name||'')}"/></div>
-    </div>
-    <div class="form-row"><label>Photo / image file *</label>
-      <div class="upload-zone" onclick="document.getElementById('f-img-file').click()">
-        <div style="font-size:28px">??</div><p>Click to upload photo</p><small>JPG, PNG, WEBP up to 10MB</small>
-        <input type="file" id="f-img-file" accept="image/*,video/*" style="display:none" onchange="previewImg(this,'f-img-preview','f-img-url')"/>
-        <div class="upload-progress" id="f-img-prog"><div class="upload-progress-bar" id="f-img-progbar"></div></div>
-      </div>
-      ${d.file_url ? '<img src="'+d.file_url+'" class="preview-img" id="f-img-preview" style="display:block"/>' : '<img class="preview-img" id="f-img-preview"/>'}
-      <input type="hidden" id="f-img-url" value="${d.file_url||''}"/>
-    </div>
-    <div class="form-row"><label>Status</label><select id="f-published"><option value="true" ${d.is_published!==false?'selected':''}>Published</option><option value="false" ${d.is_published===false?'selected':''}>Draft</option></select></div>`,
-};
+    function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+    function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+    function clearToken() { localStorage.removeItem(TOKEN_KEY); showLogin(true); }
 
-const modalTitles = {
-  announcements:'New announcement', events:'New event',
-  articles:'New article', sermons:'New sermon', gallery:'Upload media'
-};
-
-function openModal(type, data) {
-  currentModal = type;
-  editId = data ? data.id : null;
-  document.getElementById('modal-title').textContent = data ? 'Edit '+type.slice(0,-1) : (modalTitles[type]||'New item');
-  document.getElementById('modal-body').innerHTML = forms[type] ? forms[type](data||{}) : '<p style="color:var(--text3);padding:8px">Form not available.</p>';
-  document.getElementById('modal-overlay').classList.add('open');
-}
-
-function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
-  currentModal = null; editId = null;
-}
-
-// ---- IMAGE UPLOAD ----
-async function previewImg(input, previewId, urlId) {
-  const file = input.files[0];
-  if(!file) return;
-  const preview = document.getElementById(previewId);
-  const reader = new FileReader();
-  reader.onload = e => { preview.src = e.target.result; preview.style.display='block'; };
-  reader.readAsDataURL(file);
-  const bucket = getBucket(currentModal);
-  const url = await uploadFile(file, bucket, 'f-img-prog', 'f-img-progbar');
-  if(url) document.getElementById(urlId).value = url;
-}
-
-async function uploadAudio(input) {
-  const file = input.files[0];
-  if(!file) return;
-  document.getElementById('audio-status').textContent = 'Uploading...';
-  const url = await uploadFile(file, 'sermon-audio', 'f-audio-prog', 'f-audio-progbar');
-  if(url) {
-    document.getElementById('f-audio-url').value = url;
-    document.getElementById('audio-status').textContent = '? Uploaded: '+file.name;
-    document.getElementById('audio-status').style.color = 'var(--t)';
-  }
-}
-
-async function uploadFile(file, bucket, progId, barId) {
-  const prog = document.getElementById(progId);
-  const bar = document.getElementById(barId);
-  prog.style.display = 'block';
-  bar.style.width = '30%';
-  const ext = file.name.split('.').pop();
-  const path = Date.now()+'-'+Math.random().toString(36).slice(2)+'.'+ext;
-  bar.style.width = '60%';
-  const {data, error} = await supabase.storage.from(bucket).upload(path, file, {upsert:true});
-  bar.style.width = '100%';
-  setTimeout(()=>{ prog.style.display='none'; bar.style.width='0%'; }, 600);
-  if(error) { showToast('Upload failed: '+error.message, true); return null; }
-  const {data:{publicUrl}} = supabase.storage.from(bucket).getPublicUrl(path);
-  return publicUrl;
-}
-
-function getBucket(type) {
-  if(type==='announcements') return 'announcement-images';
-  if(type==='events') return 'event-posters';
-  if(type==='articles') return 'article-covers';
-  if(type==='sermons') return 'sermon-thumbnails';
-  if(type==='gallery') return 'media-gallery';
-  return 'media-gallery';
-}
-
-// ---- FORM SUBMIT ----
-async function submitForm() {
-  const btn = document.getElementById('btn-save');
-  btn.disabled = true; btn.textContent = 'Saving...';
-  let payload = {};
-  const pub = document.getElementById('f-published')?.value !== 'false';
-
-  try {
-    if(currentModal==='announcements') {
-      const title = document.getElementById('f-title').value.trim();
-      if(!title) throw new Error('Title is required');
-      payload = { title, subtitle: document.getElementById('f-subtitle').value.trim()||null, content: document.getElementById('f-content').value.trim(), image_url: document.getElementById('f-img-url').value||null, is_published: pub, created_by: currentUser.id };
-      if(!payload.content) throw new Error('Body / message is required');
-    } else if(currentModal==='events') {
-      const title = document.getElementById('f-title').value.trim();
-      const dt = document.getElementById('f-event-date').value;
-      if(!title) throw new Error('Title is required');
-      if(!dt) throw new Error('Date & time is required');
-      payload = { title, subtitle: document.getElementById('f-subtitle').value.trim()||null, description: document.getElementById('f-description').value.trim()||null, event_date: dt, end_date: document.getElementById('f-end-date').value||null, location: document.getElementById('f-location').value.trim()||null, category: document.getElementById('f-category').value, image_url: document.getElementById('f-img-url').value||null, is_published: pub, created_by: currentUser.id };
-    } else if(currentModal==='articles') {
-      const title = document.getElementById('f-title').value.trim();
-      const body = document.getElementById('f-body').value.trim();
-      if(!title) throw new Error('Title is required');
-      if(!body) throw new Error('Article body is required');
-      payload = { title, subtitle: document.getElementById('f-subtitle').value.trim()||null, body, author_name: document.getElementById('f-author').value.trim()||null, category: document.getElementById('f-category').value, read_time_minutes: parseInt(document.getElementById('f-readtime').value)||3, cover_image_url: document.getElementById('f-img-url').value||null, is_published: pub, created_by: currentUser.id };
-    } else if(currentModal==='sermons') {
-      const title = document.getElementById('f-title').value.trim();
-      const pastor = document.getElementById('f-pastor').value.trim();
-      if(!title) throw new Error('Title is required');
-      if(!pastor) throw new Error('Pastor name is required');
-      payload = { title, subtitle: document.getElementById('f-subtitle').value.trim()||null, pastor_name: pastor, series_name: document.getElementById('f-series').value.trim()||null, scripture_reference: document.getElementById('f-scripture').value.trim()||null, description: document.getElementById('f-description').value.trim()||null, audio_url: document.getElementById('f-audio-url').value||null, thumbnail_url: document.getElementById('f-img-url').value||null, is_published: pub, created_by: currentUser.id };
-    } else if(currentModal==='gallery') {
-      const title = document.getElementById('f-title').value.trim();
-      const fileUrl = document.getElementById('f-img-url').value;
-      if(!title) throw new Error('Title is required');
-      if(!fileUrl) throw new Error('Please upload a photo first');
-      payload = { title, description: document.getElementById('f-description').value.trim()||null, file_url: fileUrl, media_type: document.getElementById('f-mediatype').value, album_name: document.getElementById('f-album').value.trim()||null, is_published: pub, uploaded_by: currentUser.id };
+    function showLogin(show) {
+      document.getElementById('login').classList.toggle('show', !!show);
     }
 
-    const table = dbTable(currentModal);
-    let error;
-    if(editId) {
-      ({error} = await supabase.from(table).update(payload).eq('id', editId));
-    } else {
-      ({error} = await supabase.from(table).insert(payload));
+    function authHeaders() {
+      const t = getToken();
+      return t ? { 'Authorization': 'Bearer ' + t } : {};
     }
-    if(error) throw new Error(error.message);
-    showToast(editId ? 'Updated successfully!' : 'Published successfully!');
-    closeModal();
-    loadList(currentModal);
+
+    async function apiFetch(path, opts = {}) {
+      const headers = Object.assign({}, opts.headers || {}, authHeaders());
+      const res = await fetch(API + path, Object.assign({}, opts, { headers, credentials: 'include' }));
+      if (res.status === 401 || res.status === 403) {
+        showLogin(true);
+      }
+      return res;
+    }
+
+    async function doLogin() {
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value;
+      const errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+      try {
+        const res = await fetch(API + '/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p }),
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          errEl.textContent = 'Login failed: ' + text;
+          errEl.style.display = 'block';
+          return;
+        }
+        const data = await res.json();
+        if (!data?.user || data.user.role !== 'admin') {
+          errEl.textContent = 'This account is not an admin.';
+          errEl.style.display = 'block';
+          return;
+        }
+        if (data.accessToken) setToken(data.accessToken);
+        showLogin(false);
+        refreshAll();
+      } catch(e) {
+        errEl.textContent = 'Login failed.';
+        errEl.style.display = 'block';
+      }
+    }
+
+    async function logout() {
+      clearToken();
+      try { await fetch(API + '/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav button').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      event.target.classList.add('active');
+      if (tab === 'chauffeurs') loadChauffeurs();
+      if (tab === 'rides') loadRides();
+      if (tab === 'withdrawals') loadWithdrawals();
+      if (tab === 'safety') loadSafetyReports();
+    }
+
+    function refreshAll() {
+      loadStats();
+      const active = document.querySelector('.tab-content.active');
+      if (active) {
+        const id = active.id.replace('tab-', '');
+        if (id === 'chauffeurs') loadChauffeurs();
+        if (id === 'rides') loadRides();
+        if (id === 'withdrawals') loadWithdrawals();
+        if (id === 'safety') loadSafetyReports();
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const res = await apiFetch('/api/admin/stats');
+        if (!res.ok) throw new Error();
+        const stats = await res.json();
+        document.getElementById('stats-grid').innerHTML = `
+          <div class="stat-card"><div class="stat-value">${stats.totalRides}</div><div class="stat-label">Total Rides</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.completedRides}</div><div class="stat-label">Completed</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.activeRides}</div><div class="stat-label">Active Rides</div></div>
+          <div class="stat-card"><div class="stat-value">R ${stats.totalRevenue}</div><div class="stat-label">Total Revenue</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.totalChauffeurs}</div><div class="stat-label">Chauffeurs</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.onlineChauffeurs}</div><div class="stat-label">Online Now</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.pendingApprovals}</div><div class="stat-label">Pending Approvals</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.pendingWithdrawals}</div><div class="stat-label">Pending Withdrawals</div></div>
+          <div class="stat-card"><div class="stat-value ${stats.openReports > 0 ? 'stat-alert' : ''}">${stats.openReports}</div><div class="stat-label">Open Reports</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.totalReports}</div><div class="stat-label">Total Reports</div></div>
+        `;
+      } catch(e) {
+        document.getElementById('stats-grid').innerHTML = '<div class="loading">Failed to load stats</div>';
+      }
+    }
+
+    async function loadChauffeurs() {
+      try {
+        const res = await apiFetch('/api/chauffeurs');
+        const chauffeurs = await res.json();
+        if (!chauffeurs.length) {
+          document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">No chauffeurs registered</div>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Vehicle</th><th>Plate</th><th>Color</th><th>Phone</th><th>Category</th><th>Status</th><th>Online</th><th>Actions</th></tr></thead><tbody>';
+        for (const c of chauffeurs) {
+          html += `<tr>
+            <td>${c.carMake ? c.carMake + ' ' : ''}${c.vehicleModel}</td>
+            <td>${c.plateNumber}</td>
+            <td>${c.carColor}</td>
+            <td>${c.phone || 'â€”'}</td>
+            <td>${c.vehicleType}</td>
+            <td><span class="badge ${c.isApproved ? 'badge-approved' : 'badge-pending'}">${c.isApproved ? 'Approved' : 'Pending'}</span></td>
+            <td><span class="badge ${c.isOnline ? 'badge-online' : 'badge-offline'}">${c.isOnline ? 'Online' : 'Offline'}</span></td>
+            <td>
+              ${!c.isApproved ? `<button class="btn btn-approve btn-small" onclick="approveChauffeur('${c.id}')">Approve</button>` : ''}
+            </td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('chauffeurs-table').innerHTML = html;
+      } catch(e) {
+        document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">Failed to load</div>';
+      }
+    }
+
+    async function loadRides() {
+      try {
+        const res = await apiFetch('/api/rides');
+        const rides = await res.json();
+        if (!rides.length) {
+          document.getElementById('rides-table').innerHTML = '<div class="loading">No rides</div>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th></tr></thead><tbody>';
+        for (const r of rides) {
+          html += `<tr>
+            <td>${r.pickupAddress || 'N/A'}</td>
+            <td>${r.dropoffAddress || 'N/A'}</td>
+            <td><span class="badge badge-${r.status === 'trip_completed' ? 'approved' : r.status === 'cancelled' ? 'rejected' : 'pending'}">${r.status}</span></td>
+            <td>R ${r.price || 'â€”'}</td>
+            <td><span class="badge badge-${r.paymentStatus === 'paid' ? 'paid' : 'pending'}">${r.paymentStatus || 'â€”'}</span></td>
+            <td>${new Date(r.createdAt).toLocaleDateString()}</td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('rides-table').innerHTML = html;
+      } catch(e) {
+        document.getElementById('rides-table').innerHTML = '<div class="loading">Failed to load</div>';
+      }
+    }
+
+    async function loadWithdrawals() {
+      try {
+        const res = await apiFetch('/api/withdrawals');
+        const withdrawals = await res.json();
+        if (!withdrawals.length) {
+          document.getElementById('withdrawals-table').innerHTML = '<div class="loading">No withdrawals</div>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Chauffeur ID</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+        for (const w of withdrawals) {
+          html += `<tr>
+            <td style="font-size:11px">${(w.chauffeurId || '').substring(0,8)}...</td>
+            <td>R ${w.amount}</td>
+            <td><span class="badge badge-${w.status === 'paid' ? 'paid' : w.status === 'approved' ? 'approved' : w.status === 'rejected' ? 'rejected' : 'pending'}">${w.status}</span></td>
+            <td>${new Date(w.createdAt).toLocaleDateString()}</td>
+            <td>
+              ${w.status === 'pending' ? `
+                <button class="btn btn-approve btn-small" onclick="updateWithdrawal('${w.id}', 'approved')">Approve</button>
+                <button class="btn btn-reject btn-small" onclick="updateWithdrawal('${w.id}', 'rejected')" style="margin-left:4px">Reject</button>
+              ` : w.status === 'approved' ? `
+                <button class="btn btn-approve btn-small" onclick="updateWithdrawal('${w.id}', 'paid')">Mark Paid</button>
+              ` : ''}
+            </td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('withdrawals-table').innerHTML = html;
+      } catch(e) {
+        document.getElementById('withdrawals-table').innerHTML = '<div class="loading">Failed to load</div>';
+      }
+    }
+
+    async function loadSafetyReports() {
+      try {
+        const res = await apiFetch('/api/safety-reports');
+        const reports = await res.json();
+        if (!reports.length) {
+          document.getElementById('safety-table').innerHTML = '<div class="loading">No safety reports</div>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Type</th><th>Priority</th><th>Description</th><th>AI Response</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+        for (const r of reports) {
+          html += `<tr>
+            <td style="text-transform:capitalize">${r.type}</td>
+            <td><span class="badge badge-${r.priority}">${r.priority}</span></td>
+            <td class="desc-cell" title="${(r.description || '').replace(/"/g, '&quot;')}">${r.description || 'â€”'}</td>
+            <td class="desc-cell" title="${(r.aiResponse || '').replace(/"/g, '&quot;')}">${r.aiResponse || 'â€”'}</td>
+            <td><span class="badge badge-${r.status}">${r.status}</span></td>
+            <td>${new Date(r.createdAt).toLocaleDateString()}</td>
+            <td>
+              ${r.status === 'open' ? `<button class="btn btn-resolve btn-small" onclick="resolveReport('${r.id}')">Resolve</button>` : ''}
+            </td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('safety-table').innerHTML = html;
+      } catch(e) {
+        document.getElementById('safety-table').innerHTML = '<div class="loading">Failed to load</div>';
+      }
+    }
+
+    async function approveChauffeur(id) {
+      try {
+        await apiFetch('/api/chauffeurs/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isApproved: true })
+        });
+        loadChauffeurs();
+        loadStats();
+      } catch(e) { alert('Failed to approve'); }
+    }
+
+    async function updateWithdrawal(id, status) {
+      try {
+        await apiFetch('/api/withdrawals/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        loadWithdrawals();
+        loadStats();
+      } catch(e) { alert('Failed to update'); }
+    }
+
+    async function resolveReport(id) {
+      try {
+        await apiFetch('/api/safety-reports/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'resolved' })
+        });
+        loadSafetyReports();
+        loadStats();
+      } catch(e) { alert('Failed to resolve'); }
+    }
+
+    // Boot
+    if (!getToken()) showLogin(true);
     loadStats();
-  } catch(e) {
-    showToast(e.message, true);
-  }
-  btn.disabled = false; btn.textContent = 'Save & publish';
-}
-
-async function deleteItem(table, id, listType) {
-  if(!confirm('Are you sure you want to delete this item? This cannot be undone.')) return;
-  const {error} = await supabase.from(table).delete().eq('id', id);
-  if(error) return showToast('Delete failed: '+error.message, true);
-  showToast('Deleted successfully');
-  loadList(listType);
-  loadStats();
-}
-
-// ---- NAV ----
-function showPage(name) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  event.currentTarget.classList.add('active');
-  loadList(name);
-}
-
-// ---- TOAST ----
-function showToast(msg, err=false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (err?' error':'');
-  setTimeout(()=>t.className='toast', 3000);
-}
-
-// ---- INIT ----
-window.onload = async () => {
-  const url = localStorage.getItem(SUPABASE_URL_KEY);
-  const key = localStorage.getItem(SUPABASE_KEY_KEY);
-  if(!url || !key) {
-    document.getElementById('setup').style.display = 'flex';
-    return;
-  }
-  initSupabase(url, key);
-  const {data:{session}} = await supabase.auth.getSession();
-  if(session) showApp(session.user);
-  else showLoginScreen();
-};
-</script>
+    setInterval(loadStats, 15000);
+  </script>
 </body>
 </html>
+

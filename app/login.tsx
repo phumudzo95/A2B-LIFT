@@ -43,7 +43,10 @@ export default function LoginScreen() {
   async function handleGoogleSignIn() {
     setGoogleLoading(true); setError("");
     try {
-      const redirectUri = makeRedirectUri({ scheme: "a2blift", path: "auth/callback" });
+      const redirectUri = makeRedirectUri({
+        scheme: "a2blift",
+        path: "auth/callback",
+      });
       const clientId = Platform.OS === "web" ? GOOGLE_CLIENT_ID_WEB
         : Platform.OS === "android" ? GOOGLE_CLIENT_ID_ANDROID : GOOGLE_CLIENT_ID_IOS;
 

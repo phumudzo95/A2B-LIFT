@@ -139,7 +139,9 @@
   </div>
 
   <script>
-    const API = '';
+    const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? ''
+      : 'https://a2b-lift.onrender.com';
     const TOKEN_KEY = 'a2b_admin_token';
 
     function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }

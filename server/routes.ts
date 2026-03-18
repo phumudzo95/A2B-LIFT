@@ -201,22 +201,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -----------------------------
   // Maps helpers
   // -----------------------------
+
+  // Shared Nominatim headers — required to avoid 403s
+  const nominatimHeaders = { "User-Agent": "A2BLIFT/1.0 (contact@a2blift.co.za)", "Accept-Language": "en" };
+
+  // Builds a clean human-readable address from a Nominatim addressdetails object
+  function buildAddressParts(r: any): { mainText: string; secondaryText: string; description: string } {
+    const addr = r.address || {};
+    const houseNumber = addr.house_number ? `${addr.house_number} ` : "";
+    const road = addr.road || addr.pedestrian || addr.footway || addr.path || addr.cycleway || "";
+    const suburb = addr.suburb || addr.neighbourhood || addr.quarter || addr.city_district || "";
+    const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || "";
+    const province = addr.state || "";
+    const amenity = addr.amenity || addr.building || addr.shop || addr.tourism || addr.leisure || "";
+
+    let mainText = "";
+    if (road) {
+      mainText = `${houseNumber}${road}`;
+    } else if (amenity) {
+      mainText = amenity;
+    } else {
+      mainText = r.display_name.split(",")[0].trim();
+    }
+
+    const secondaryParts = [suburb, city, province].filter(Boolean);
+    const secondaryText = secondaryParts.join(", ");
+    const fullParts = [mainText, suburb, city, province].filter(Boolean);
+    const description = fullParts.join(", ") || r.display_name;
+    return { mainText, secondaryText, description };
+  }
+
   app.get("/api/geocode", async (req: Request, res: Response) => {
     try {
       const address = req.query.address as string;
-      if (!address) {
-        return res.status(400).json({ message: "Address is required" });
-      }
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
-        { headers: { "User-Agent": "A2BLIFT/1.0" } },
-      );
+      if (!address) return res.status(400).json({ message: "Address is required" });
+
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=za&addressdetails=1&limit=1`;
+      const response = await fetch(url, { headers: nominatimHeaders });
       const results = (await response.json()) as any[];
       if (results.length > 0) {
-        return res.json({
-          lat: parseFloat(results[0].lat),
-          lng: parseFloat(results[0].lon),
-        });
+        return res.json({ lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) });
       }
       return res.status(404).json({ message: "Location not found" });
     } catch (error: any) {
@@ -224,34 +248,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Autocomplete using Nominatim — returns coords inline so no separate details call needed
+  // Autocomplete — runs three parallel Nominatim queries for best SA coverage:
+  // 1. Free-text (catches POIs, suburbs, landmarks)
+  // 2. Structured street search (precise street+number results)
+  // 3. Viewbox-boosted search biased to Gauteng (most common area)
   app.get("/api/places/autocomplete", async (req: Request, res: Response) => {
     try {
       const input = req.query.input as string;
-      if (!input || input.trim().length < 2) {
-        return res.json({ predictions: [] });
-      }
+      if (!input || input.trim().length < 2) return res.json({ predictions: [] });
 
-      const headers = { "User-Agent": "A2BLIFT/1.0 (contact@a2blift.co.za)" };
+      // South Africa bounding box for viewbox boost
+      const SA_VIEWBOX = "16.3,-34.9,32.9,-22.1";
+      const baseParams = `format=json&countrycodes=za&addressdetails=1&dedupe=1&limit=8`;
 
-      // Search with full address details, biased to South Africa, prefer street-level results
-      const baseParams = `format=json&limit=8&countrycodes=za&addressdetails=1&dedupe=1&featuretype=street`;
-      const [freeRes, streetRes] = await Promise.all([
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=8&countrycodes=za&addressdetails=1&dedupe=1&q=${encodeURIComponent(input)}`, { headers }),
-        fetch(`https://nominatim.openstreetmap.org/search?${baseParams}&q=${encodeURIComponent(input)}`, { headers }),
+      const [freeRes, structuredRes, viewboxRes] = await Promise.all([
+        fetch(`https://nominatim.openstreetmap.org/search?${baseParams}&q=${encodeURIComponent(input)}`, { headers: nominatimHeaders }),
+        fetch(`https://nominatim.openstreetmap.org/search?${baseParams}&featuretype=street&q=${encodeURIComponent(input)}`, { headers: nominatimHeaders }),
+        fetch(`https://nominatim.openstreetmap.org/search?${baseParams}&viewbox=${SA_VIEWBOX}&bounded=1&q=${encodeURIComponent(input)}`, { headers: nominatimHeaders }),
       ]);
 
-      const [freeResults, streetResults] = await Promise.all([
+      const [freeResults, structuredResults, viewboxResults] = await Promise.all([
         freeRes.json() as Promise<any[]>,
-        streetRes.json() as Promise<any[]>,
+        structuredRes.json() as Promise<any[]>,
+        viewboxRes.json() as Promise<any[]>,
       ]);
 
-      // Merge: street results first (more precise), then free results
+      // Merge: viewbox (most relevant) → structured (precise streets) → free (broad)
       const seen = new Set<string>();
       const merged: any[] = [];
-      for (const r of [...streetResults, ...freeResults]) {
-        if (!seen.has(String(r.place_id))) {
-          seen.add(String(r.place_id));
+      for (const r of [...viewboxResults, ...structuredResults, ...freeResults]) {
+        const key = String(r.place_id);
+        if (!seen.has(key)) {
+          seen.add(key);
           merged.push(r);
         }
         if (merged.length >= 6) break;
@@ -259,36 +287,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       return res.json({
         predictions: merged.map((r: any) => {
-          const addr = r.address || {};
-
-          // Build a clean street address like "680 Pretorius Street"
-          const houseNumber = addr.house_number ? `${addr.house_number} ` : "";
-          const road = addr.road || addr.pedestrian || addr.footway || addr.path || "";
-          const suburb = addr.suburb || addr.neighbourhood || addr.quarter || "";
-          const city = addr.city || addr.town || addr.village || addr.municipality || "";
-          const province = addr.state || "";
-
-          // Main text: street number + street name (most specific part)
-          let mainText = "";
-          if (road) {
-            mainText = `${houseNumber}${road}`;
-          } else if (addr.amenity || addr.building) {
-            mainText = addr.amenity || addr.building;
-          } else {
-            mainText = r.display_name.split(",")[0].trim();
-          }
-
-          // Secondary text: suburb, city, province
-          const secondaryParts = [suburb, city, province].filter(Boolean);
-          const secondaryText = secondaryParts.join(", ");
-
-          // Full clean description for storing
-          const fullParts = [mainText, suburb, city, province].filter(Boolean);
-          const cleanDescription = fullParts.join(", ");
-
+          const { mainText, secondaryText, description } = buildAddressParts(r);
           return {
             placeId: String(r.place_id),
-            description: cleanDescription || r.display_name,
+            description,
             mainText,
             secondaryText,
             lat: parseFloat(r.lat),
@@ -301,24 +303,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Details endpoint — Nominatim lookup by osm id (placeId)
+  // Reverse geocode — converts coordinates to a human-readable address
+  app.get("/api/places/reverse", async (req: Request, res: Response) => {
+    try {
+      const { lat, lng } = req.query;
+      if (!lat || !lng) return res.status(400).json({ message: "lat and lng are required" });
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`;
+      const response = await fetch(url, { headers: nominatimHeaders });
+      const r = await response.json() as any;
+      if (r.error) return res.status(404).json({ message: r.error });
+      const { mainText, secondaryText, description } = buildAddressParts(r);
+      return res.json({
+        placeId: String(r.place_id),
+        description,
+        mainText,
+        secondaryText,
+        lat: parseFloat(r.lat),
+        lng: parseFloat(r.lon),
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Details endpoint — Nominatim lookup by osm id
   app.get("/api/places/details", async (req: Request, res: Response) => {
     try {
       const placeId = req.query.placeId as string;
       if (!placeId) return res.status(400).json({ message: "placeId is required" });
       const url = `https://nominatim.openstreetmap.org/lookup?osm_ids=N${placeId},W${placeId},R${placeId}&format=json&addressdetails=1`;
-      const response = await fetch(url, {
-        headers: { "User-Agent": "A2BLIFT/1.0 (contact@a2blift.co.za)" },
-      });
+      const response = await fetch(url, { headers: nominatimHeaders });
       const results = (await response.json()) as any[];
-      if (!results || results.length === 0) {
-        return res.status(404).json({ message: "Place not found" });
-      }
+      if (!results || results.length === 0) return res.status(404).json({ message: "Place not found" });
       const r = results[0];
+      const { description } = buildAddressParts(r);
       return res.json({
         lat: parseFloat(r.lat),
         lng: parseFloat(r.lon),
-        address: r.display_name,
+        address: description,
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });

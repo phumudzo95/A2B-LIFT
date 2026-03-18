@@ -294,7 +294,13 @@ export default function ClientHomeScreen() {
             navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
           });
           setLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-          setPickupAddress("Current Location");
+          try {
+            const res = await apiRequest("GET", `/api/places/reverse?lat=${position.coords.latitude}&lng=${position.coords.longitude}`);
+            const data = await res.json();
+            setPickupAddress(data.description || "Current Location");
+          } catch {
+            setPickupAddress("Current Location");
+          }
         } catch {
           setLocation({ lat: -26.2041, lng: 28.0473 });
           setPickupAddress("Johannesburg, South Africa");
@@ -307,13 +313,9 @@ export default function ClientHomeScreen() {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
         try {
-          const [addr] = await Location.reverseGeocodeAsync({
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-          });
-          if (addr) {
-            setPickupAddress(`${addr.street || addr.name || ""}, ${addr.city || addr.region || ""}`.replace(/^, /, ""));
-          }
+          const res = await apiRequest("GET", `/api/places/reverse?lat=${loc.coords.latitude}&lng=${loc.coords.longitude}`);
+          const data = await res.json();
+          if (data.description) setPickupAddress(data.description);
         } catch {}
       } else {
         setLocation({ lat: -26.2041, lng: 28.0473 });
