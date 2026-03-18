@@ -29,17 +29,28 @@ import {
   type Notification,
 } from "../shared/schema";
 
-if (!process.env.DATABASE_URL) {
+if (!process.env.DATABASE_URL && !process.env.SUPABASE_DB_HOST) {
   throw new Error("DATABASE_URL is not set");
 }
 
-// Determine SSL requirements based on the connection string
-const dbUrl = process.env.DATABASE_URL;
-const requireSsl = dbUrl.includes("neon.tech") || dbUrl.includes("supabase");
-const pool = new Pool({
-  connectionString: dbUrl,
-  ssl: requireSsl ? { rejectUnauthorized: false } : false,
-});
+// Use individual connection params when available to avoid URL password-encoding issues
+const poolConfig = process.env.SUPABASE_DB_HOST
+  ? {
+      host: process.env.SUPABASE_DB_HOST,
+      port: 5432,
+      database: "postgres",
+      user: "postgres",
+      password: process.env.SUPABASE_DB_PASSWORD,
+      ssl: { rejectUnauthorized: false },
+    }
+  : {
+      connectionString: process.env.DATABASE_URL!,
+      ssl: process.env.DATABASE_URL!.includes("supabase") || process.env.DATABASE_URL!.includes("neon.tech")
+        ? { rejectUnauthorized: false }
+        : false,
+    };
+
+const pool = new Pool(poolConfig as any);
 
 const db = drizzle(pool);
 

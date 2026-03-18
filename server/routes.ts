@@ -1333,6 +1333,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // -----------------------------
+  // Admin seed — creates initial admin user (only works if no admin exists)
+  // -----------------------------
+  app.post("/api/admin/seed", async (req: Request, res: Response) => {
+    try {
+      const { username, password, name, seedSecret } = req.body;
+      // Require a seed secret to prevent abuse
+      if (seedSecret !== process.env.JWT_SECRET) {
+        return res.status(403).json({ message: "Invalid seed secret" });
+      }
+      const existing = await storage.getUserByUsername(username || "admin");
+      if (existing && existing.role === "admin") {
+        return res.status(400).json({ message: "Admin user already exists" });
+      }
+      const hashedPassword = await bcrypt.hash(password || "Admin@2026!", 10);
+      const user = await storage.createUser({
+        username: username || "admin",
+        password: hashedPassword,
+        name: name || "A2B Admin",
+        phone: null,
+        role: "admin",
+      });
+      const { password: _pw, ...safeUser } = user;
+      return res.json({ message: "Admin user created", user: safeUser });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // -----------------------------
   // External API Proxy (103.154.2.122)
   // -----------------------------
   app.get("/api/external/health", async (_req: Request, res: Response) => {
