@@ -181,11 +181,16 @@ export default function ClientHomeScreen() {
     }, 350);
   }
 
-  async function selectSuggestion(suggestion: { placeId: string; description: string; mainText: string; secondaryText: string; lat: number; lng: number }) {
+  async function selectSuggestion(suggestion: { placeId: string; description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }) {
     try {
       setSuggestionsLoading(true);
-      // Coords are already included in the autocomplete response — no extra round-trip needed
-      const coords = { lat: suggestion.lat, lng: suggestion.lng };
+      // Google Places autocomplete returns null coords — resolve via details endpoint
+      let coords = (suggestion.lat && suggestion.lng) ? { lat: suggestion.lat, lng: suggestion.lng } : null;
+      if (!coords) {
+        const res = await apiRequest("GET", `/api/places/details?placeId=${encodeURIComponent(suggestion.placeId)}`);
+        const data = await res.json();
+        coords = { lat: data.lat, lng: data.lng };
+      }
       const address = suggestion.description;
 
       if (locationPickerTarget === "pickup") {
