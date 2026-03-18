@@ -54,6 +54,16 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function carColorToHex(color: string): string {
+  const map: Record<string, string> = {
+    Black: "#000000", White: "#FFFFFF", Silver: "#C0C0C0", Grey: "#808080",
+    Gray: "#808080", Navy: "#1B2A4A", Burgundy: "#6B1C2A",
+    "Midnight Blue": "#191970", Champagne: "#F7E7CE", Red: "#CC0000",
+    Blue: "#1A56A0", Green: "#1A6B3C", Gold: "#C5A028",
+  };
+  return map[color] || "#888888";
+}
+
 export default function ClientHomeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -484,6 +494,20 @@ export default function ClientHomeScreen() {
             undefined
           }
         />
+        {/* Searching for driver overlay — shows on map like Uber/Taxify */}
+        {rideStatus === "requested" && (
+          <View style={styles.searchingMapOverlay}>
+            <View style={styles.searchingPulseRing} />
+            <View style={styles.searchingPulseRing2} />
+            <View style={styles.searchingMapCard}>
+              <ActivityIndicator size="small" color={Colors.primary} />
+              <View>
+                <Text style={styles.searchingMapTitle}>Finding your chauffeur</Text>
+                <Text style={styles.searchingMapSub}>{selectedVehicle.name} · {selectedVehicle.desc?.split(",")[0]}</Text>
+              </View>
+            </View>
+          </View>
+        )}
       </View>
 
       {rideStatus === "idle" && (
@@ -615,12 +639,14 @@ export default function ClientHomeScreen() {
       )}
 
       {rideStatus === "requested" && (
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.bottomSheet}>
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.searchingBottomSheet}>
           <View style={styles.sheetHandle} />
           <View style={styles.searchingContainer}>
-            <ActivityIndicator size="large" color={Colors.white} />
-            <Text style={styles.searchingText}>Finding your driver...</Text>
-            <Text style={styles.searchingSubtext}>Searching for available {selectedVehicle.name} drivers nearby</Text>
+            <ActivityIndicator size="small" color={Colors.white} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.searchingText}>Searching for {selectedVehicle.name}...</Text>
+              <Text style={styles.searchingSubtext}>{selectedVehicle.desc?.split(",")[0]} nearby</Text>
+            </View>
           </View>
           <Pressable style={styles.cancelFullBtn} onPress={cancelRide}>
             <Text style={styles.cancelFullBtnText}>Cancel Request</Text>
@@ -660,8 +686,9 @@ export default function ClientHomeScreen() {
             </View>
             <View style={styles.chauffeurInfo}>
               <Text style={styles.chauffeurName}>{chauffeurDetails?.driverName || "Your Driver"}</Text>
+              {/* Show exact vehicle — make + model */}
               <Text style={styles.chauffeurVehicle}>
-                {chauffeurDetails?.carMake ? `${chauffeurDetails.carMake} ` : ""}{chauffeurDetails?.vehicleModel || selectedVehicle.name}
+                {[chauffeurDetails?.carMake, chauffeurDetails?.vehicleModel].filter(Boolean).join(" ") || selectedVehicle.name}
               </Text>
               {chauffeurDetails && (
                 <View style={styles.driverMeta}>
@@ -669,8 +696,17 @@ export default function ClientHomeScreen() {
                     <Ionicons name="star" size={11} color={Colors.warning} />
                     <Text style={styles.ratingChipText}>{(chauffeurDetails.driverRating || 5.0).toFixed(1)}</Text>
                   </View>
-                  <Text style={styles.plateText}>{chauffeurDetails.plateNumber}</Text>
-                  <Text style={styles.colorDot}>{chauffeurDetails.carColor}</Text>
+                  {/* Plate number chip */}
+                  <View style={styles.plateChip}>
+                    <Text style={styles.plateText}>{chauffeurDetails.plateNumber}</Text>
+                  </View>
+                  {/* Car color dot */}
+                  {chauffeurDetails.carColor ? (
+                    <View style={styles.colorBadge}>
+                      <View style={[styles.colorDotCircle, { backgroundColor: carColorToHex(chauffeurDetails.carColor) }]} />
+                      <Text style={styles.colorDot}>{chauffeurDetails.carColor}</Text>
+                    </View>
+                  ) : null}
                 </View>
               )}
             </View>
@@ -947,12 +983,19 @@ const styles = StyleSheet.create({
   },
   bottomSheet: {
     backgroundColor: Colors.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    // Extra bottom padding so content clears the absolute-positioned tab bar (~83px) + safe area
-    paddingBottom: 100,
-    gap: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    paddingBottom: 90,
+    gap: 12,
+  },
+  searchingBottomSheet: {
+    backgroundColor: Colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    paddingBottom: 90,
+    gap: 10,
   },
   confirmingSheet: {
     backgroundColor: Colors.card,
@@ -1176,12 +1219,12 @@ const styles = StyleSheet.create({
   },
   confirmBtn: {
     backgroundColor: Colors.white,
-    paddingVertical: 16,
-    borderRadius: 14,
+    paddingVertical: 13,
+    borderRadius: 12,
     alignItems: "center",
   },
   confirmBtnText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     color: Colors.primary,
   },
@@ -1270,30 +1313,104 @@ const styles = StyleSheet.create({
   },
   requestBtn: {
     backgroundColor: Colors.white,
-    paddingVertical: 16,
-    borderRadius: 14,
+    paddingVertical: 13,
+    borderRadius: 12,
     alignItems: "center",
   },
   requestBtnText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     color: Colors.primary,
   },
   searchingContainer: {
+    flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingVertical: 20,
+    paddingVertical: 4,
   },
   searchingText: {
-    fontSize: 18,
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     color: Colors.white,
   },
   searchingSubtext: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
     color: Colors.textMuted,
-    textAlign: "center",
+    marginTop: 1,
+  },
+  // Map overlay while searching — like Uber's pulsing animation
+  searchingMapOverlay: {
+    position: "absolute",
+    top: "30%",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchingPulseRing: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  searchingPulseRing2: {
+    position: "absolute",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  searchingMapCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: Colors.white,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  searchingMapTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.primary,
+  },
+  searchingMapSub: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    marginTop: 1,
+  },
+  // Vehicle color badge
+  plateChip: {
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  colorBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  colorDotCircle: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
   },
   cancelFullBtn: {
     paddingVertical: 16,

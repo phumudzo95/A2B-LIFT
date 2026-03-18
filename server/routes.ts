@@ -234,22 +234,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const headers = { "User-Agent": "A2BLIFT/1.0 (contact@a2blift.co.za)" };
 
-      // Run a free-text search and a structured street search in parallel for better coverage
-      const baseParams = `format=json&limit=5&countrycodes=za&addressdetails=1&dedupe=1`;
-      const [freeRes, structuredRes] = await Promise.all([
+      // Search with full address details, biased to South Africa, prefer street-level results
+      const baseParams = `format=json&limit=8&countrycodes=za&addressdetails=1&dedupe=1&featuretype=street`;
+      const [freeRes, streetRes] = await Promise.all([
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=8&countrycodes=za&addressdetails=1&dedupe=1&q=${encodeURIComponent(input)}`, { headers }),
         fetch(`https://nominatim.openstreetmap.org/search?${baseParams}&q=${encodeURIComponent(input)}`, { headers }),
-        fetch(`https://nominatim.openstreetmap.org/search?${baseParams}&street=${encodeURIComponent(input)}`, { headers }),
       ]);
 
-      const [freeResults, structuredResults] = await Promise.all([
+      const [freeResults, streetResults] = await Promise.all([
         freeRes.json() as Promise<any[]>,
-        structuredRes.json() as Promise<any[]>,
+        streetRes.json() as Promise<any[]>,
       ]);
 
-      // Merge, deduplicate by place_id, cap at 6
+      // Merge: street results first (more precise), then free results
       const seen = new Set<string>();
       const merged: any[] = [];
-      for (const r of [...freeResults, ...structuredResults]) {
+      for (const r of [...streetResults, ...freeResults]) {
         if (!seen.has(String(r.place_id))) {
           seen.add(String(r.place_id));
           merged.push(r);
@@ -260,15 +260,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({
         predictions: merged.map((r: any) => {
           const addr = r.address || {};
+
+          // Build a clean street address like "680 Pretorius Street"
           const houseNumber = addr.house_number ? `${addr.house_number} ` : "";
-          const road = addr.road || addr.pedestrian || addr.footway || "";
-          const mainText = road ? `${houseNumber}${road}` : (addr.suburb || addr.city || addr.town || r.display_name.split(",")[0]);
-          const secondaryParts = [addr.suburb, addr.city || addr.town || addr.village, addr.state].filter(Boolean);
+          const road = addr.road || addr.pedestrian || addr.footway || addr.path || "";
+          const suburb = addr.suburb || addr.neighbourhood || addr.quarter || "";
+          const city = addr.city || addr.town || addr.village || addr.municipality || "";
+          const province = addr.state || "";
+
+          // Main text: street number + street name (most specific part)
+          let mainText = "";
+          if (road) {
+            mainText = `${houseNumber}${road}`;
+          } else if (addr.amenity || addr.building) {
+            mainText = addr.amenity || addr.building;
+          } else {
+            mainText = r.display_name.split(",")[0].trim();
+          }
+
+          // Secondary text: suburb, city, province
+          const secondaryParts = [suburb, city, province].filter(Boolean);
           const secondaryText = secondaryParts.join(", ");
+
+          // Full clean description for storing
+          const fullParts = [mainText, suburb, city, province].filter(Boolean);
+          const cleanDescription = fullParts.join(", ");
+
           return {
-            placeId: r.place_id,
-            description: r.display_name,
-            mainText: mainText || r.display_name.split(",")[0],
+            placeId: String(r.place_id),
+            description: cleanDescription || r.display_name,
+            mainText,
             secondaryText,
             lat: parseFloat(r.lat),
             lng: parseFloat(r.lon),
@@ -312,7 +333,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(400)
           .json({ message: "Origin and destination coordinates are required" });
       }
-      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+      const apiKey = process.env.GOOGLE_API_KEY;
       if (!apiKey) {
         return res
           .status(500)
@@ -401,8 +422,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // -----------------------------
-  // Chauffeurs
+  // Google OAuth
   // -----------------------------
+  app.post("/api/auth/google", async (req: Request, res: Response) => {
+    try {
+      const { code, redirectUri } = req.body;
+      if (!code || !redirectUri) {
+        return res.status(400).json({ message: "code and redirectUri are required" });
+      }
+
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+      if (!clientId || !clientSecret) {
+        return res.status(500).json({ message: "Google OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in environment variables." });
+      }
+
+      // Exchange auth code for tokens
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: "authorization_code",
+        }).toString(),
+      });
+
+      const tokens = await tokenRes.json() as any;
+      if (tokens.error) {
+        return res.status(400).json({ message: `Google token error: ${tokens.error_description || tokens.error}` });
+      }
+
+      // Get user info from Google
+      const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      const googleUser = await userInfoRes.json() as any;
+
+      if (!googleUser.email) {
+        return res.status(400).json({ message: "Could not retrieve email from Google" });
+      }
+
+      // Check if user already exists (by username = google email prefix)
+      const googleUsername = googleUser.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "_");
+      let user = await storage.getUserByUsername(googleUsername);
+
+      if (!user) {
+        // Create new user from Google profile
+        const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
+        user = await storage.createUser({
+          username: googleUsername,
+          password: randomPassword,
+          name: googleUser.name || googleUser.email.split("@")[0],
+          phone: null,
+          role: "client",
+        });
+      }
+
+      const token = signAccessToken({ sub: user.id, role: user.role as UserRole });
+      setAuthCookie(res, token);
+      const { password: _pw, ...safeUser } = user;
+      return res.json({ user: safeUser, accessToken: token });
+    } catch (error: any) {
+      console.error("Google OAuth error:", error);
+      return res.status(500).json({ message: error.message || "Google authentication failed" });
+    }
+  });
+
+
   app.post("/api/chauffeurs", async (req: Request, res: Response) => {
     try {
       const chauffeur = await storage.createChauffeur(req.body);
