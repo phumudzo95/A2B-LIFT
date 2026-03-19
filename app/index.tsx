@@ -12,12 +12,7 @@ export default function SplashLanding() {
   const insets = useSafeAreaInsets();
   const { user, isLoading } = useAuth();
 
-  useEffect(() => {
-    if (!isLoading && user) {
-      const t = setTimeout(() => router.replace("/client"), 100);
-      return () => clearTimeout(t);
-    }
-  }, [isLoading, user]);
+  // Navigation handled by AuthGate in _layout.tsx
 
   if (isLoading) {
     return (

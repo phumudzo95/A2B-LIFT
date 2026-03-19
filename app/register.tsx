@@ -66,7 +66,7 @@ export default function RegisterScreen() {
     setLoading(true); setError("");
     try {
       await register({ username: email.trim().toLowerCase(), password, name: name.trim(), phone: phone.trim() });
-      router.replace("/client");
+      // AuthGate in _layout.tsx handles redirect once user state is set
     } catch (e: any) {
       const msg = e.message || "Registration failed.";
       if (msg.includes("already exists") || msg.includes("400")) setError("An account with this email already exists");

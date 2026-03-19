@@ -62,7 +62,7 @@ export default function LoginScreen() {
     setLoading(true); setError("");
     try {
       await login(username.trim(), password);
-      router.replace("/client");
+      // AuthGate in _layout.tsx handles redirect once user state is set
     } catch (e: any) {
       setError(e.message || "Login failed. Please try again.");
     } finally { setLoading(false); }
