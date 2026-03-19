@@ -89,10 +89,10 @@ export default function ChauffeurDashboard() {
     return () => stopLocationUpdates();
   }, [isOnline, chauffeur]);
 
-  // Poll approval status every 30s so driver sees approval without restarting app
+  // Poll approval status every 10s so driver sees approval without restarting app
   useEffect(() => {
     if (!chauffeur?.id) return;
-    const interval = setInterval(() => refreshChauffeur(chauffeur.id), 30000);
+    const interval = setInterval(() => refreshChauffeur(chauffeur.id), 10000);
     return () => clearInterval(interval);
   }, [chauffeur?.id]);
 
@@ -128,14 +128,17 @@ export default function ChauffeurDashboard() {
     try {
       const stored = await AsyncStorage.getItem("a2b_chauffeur");
       if (stored) {
-        const c = JSON.parse(stored);
-        setChauffeur(c);
-        setIsOnline(c.isOnline || false);
+        // Show cached data immediately for fast render, then always fetch
+        // fresh from server so isApproved reflects latest admin decision
+        const cached = JSON.parse(stored);
+        setChauffeur(cached);
+        setIsOnline(cached.isOnline || false);
         setLoading(false);
-        refreshChauffeur(c.id);
+        refreshChauffeur(cached.id);
         return;
       }
       const res = await apiRequest("GET", `/api/chauffeurs/user/${user.id}`);
+      if (!res.ok) throw new Error("not found");
       const c = await res.json();
       setChauffeur(c);
       setIsOnline(c.isOnline || false);

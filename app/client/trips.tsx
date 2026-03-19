@@ -112,7 +112,7 @@ export default function TripsScreen() {
         />
       )}
 
-      <Modal visible={!!selectedTrip} animationType="slide" presentationStyle="pageSheet" onRequestClose={closeTrip}>
+      <Modal visible={!!selectedTrip} animationType="slide" presentationStyle="overFullScreen" transparent={false} onRequestClose={closeTrip}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Trip Details</Text>

@@ -560,18 +560,21 @@ export default function ClientHomeScreen() {
           <Text style={styles.brandName}>A2B LIFT</Text>
           <Text style={styles.brandSlogan}>Premium Ride Experience</Text>
         </View>
-        <Pressable
-          style={styles.avatarCircle}
-          onPress={() => router.push("/client/profile")}
-          hitSlop={8}
-        >
-          <Ionicons name="person" size={18} color={Colors.white} />
-          {unreadCount > 0 && (
-            <View style={styles.notifBadge}>
-              <Text style={styles.notifBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
-            </View>
-          )}
-        </Pressable>
+        <View style={styles.headerRight}>
+          {/* Notification bell */}
+          <Pressable style={styles.bellBtn} onPress={() => router.push("/client/profile")} hitSlop={8}>
+            <Ionicons name="notifications-outline" size={22} color={Colors.white} />
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+              </View>
+            )}
+          </Pressable>
+          {/* Profile icon */}
+          <Pressable style={styles.avatarCircle} onPress={() => router.push("/client/profile")} hitSlop={8}>
+            <Ionicons name="person" size={18} color={Colors.white} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.mapArea}>
@@ -1077,6 +1080,19 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.textMuted,
     letterSpacing: 1,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  bellBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarCircle: {
     width: 36,
