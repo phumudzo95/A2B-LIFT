@@ -19,15 +19,18 @@ function AuthGate() {
   const navState = useRootNavigationState();
 
   useEffect(() => {
-    // Wait until auth is resolved and navigator is ready
     if (isLoading || !navState?.key) return;
 
-    const onApp = pathname.startsWith("/client") || pathname.startsWith("/chauffeur");
-    const onPublic = !onApp;
+    // Screens that require no user
+    const isGuestOnly = pathname === "/" || pathname === "/login" || pathname === "/register";
+    // Screens that require a user
+    const isProtected = pathname.startsWith("/client") || pathname.startsWith("/chauffeur");
 
-    if (user && onPublic) {
-      router.replace("/client");
-    } else if (!user && onApp) {
+    if (user && isGuestOnly) {
+      // Logged-in user landed on splash/login/register — send to role select
+      router.replace("/role-select");
+    } else if (!user && isProtected) {
+      // Not logged in but trying to access app — send to landing
       router.replace("/");
     }
   }, [user, isLoading, pathname, navState?.key]);
