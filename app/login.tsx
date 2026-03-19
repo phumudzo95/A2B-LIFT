@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View, Text, StyleSheet, Pressable, TextInput,
   ActivityIndicator, Platform, Alert, Image,
@@ -9,7 +9,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
 import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiRequest } from "@/lib/query-client";
 
@@ -27,35 +26,7 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  // Expo auth proxy — a stable https:// URL accepted by Google Cloud Console.
-  // Register https://auth.expo.io/@anonymous/a2b-lift as an authorized redirect URI.
-  const redirectUri = AuthSession.makeRedirectUri({ useProxy: true });
-
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: GOOGLE_CLIENT_ID,
-      scopes: ["openid", "email", "profile"],
-      redirectUri,
-      responseType: AuthSession.ResponseType.Code,
-      usePKCE: false,
-    },
-    { authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth" }
-  );
-
-  useEffect(() => {
-    if (response?.type === "success") {
-      const code = response.params?.code;
-      if (code) handleGoogleCode(code);
-      else { setError("Google sign in failed. No code received."); setGoogleLoading(false); }
-    } else if (response?.type === "error") {
-      setError("Google sign in failed. Please try again.");
-      setGoogleLoading(false);
-    } else if (response?.type === "dismiss" || response?.type === "cancel") {
-      setGoogleLoading(false);
-    }
-  }, [response]);
-
-  async function handleGoogleCode(code: string) {
+  async function handleGoogleCode(code: string, redirectUri: string) {
     try {
       const res = await apiRequest("POST", "/api/auth/google", { code, redirectUri });
       const payload = await res.json();
@@ -89,7 +60,37 @@ export default function LoginScreen() {
     }
     setGoogleLoading(true);
     setError("");
-    await promptAsync();
+    try {
+      // Use the Expo auth proxy — a stable https:// URL already registered
+      // in Google Cloud Console as an authorized redirect URI.
+      const redirectUri = "https://auth.expo.io/@anonymous/a2b-lift";
+      const authUrl =
+        `https://accounts.google.com/o/oauth2/v2/auth` +
+        `?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent("openid email profile")}` +
+        `&access_type=offline` +
+        `&prompt=select_account`;
+
+      // openAuthSessionAsync intercepts the redirect back to the proxy page
+      // and returns the URL containing the auth code
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      if (result.type === "success" && result.url) {
+        const url = new URL(result.url);
+        const code = url.searchParams.get("code");
+        if (code) await handleGoogleCode(code, redirectUri);
+        else throw new Error("No auth code in response");
+      } else if (result.type !== "cancel" && result.type !== "dismiss") {
+        throw new Error("Sign in was cancelled");
+      }
+    } catch (e: any) {
+      if (!e.message?.includes("cancel") && !e.message?.includes("dismiss")) {
+        setError("Google sign in failed. Please try again.");
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
   }
 
   return (
