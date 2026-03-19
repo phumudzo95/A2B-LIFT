@@ -14,12 +14,6 @@ WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB || "";
 
-const GOOGLE_DISCOVERY = {
-  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-  tokenEndpoint: "https://oauth2.googleapis.com/token",
-  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
-};
-
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const { register, setUser } = useAuth();
@@ -39,14 +33,17 @@ export default function RegisterScreen() {
       clientId: GOOGLE_CLIENT_ID,
       scopes: ["openid", "email", "profile"],
       redirectUri,
+      responseType: AuthSession.ResponseType.Token,
+      usePKCE: false,
     },
-    GOOGLE_DISCOVERY
+    { authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth" }
   );
 
   useEffect(() => {
     if (response?.type === "success") {
-      const { code } = response.params;
-      handleGoogleCode(code, redirectUri);
+      const accessToken = response.params?.access_token;
+      if (accessToken) handleGoogleToken(accessToken);
+      else { setError("Google sign up failed. No token received."); setGoogleLoading(false); }
     } else if (response?.type === "error") {
       setError("Google sign up failed. Please try again.");
       setGoogleLoading(false);
@@ -55,9 +52,9 @@ export default function RegisterScreen() {
     }
   }, [response]);
 
-  async function handleGoogleCode(code: string, redirectUri: string) {
+  async function handleGoogleToken(accessToken: string) {
     try {
-      const res = await apiRequest("POST", "/api/auth/google", { code, redirectUri });
+      const res = await apiRequest("POST", "/api/auth/google-token", { accessToken });
       const payload = await res.json();
       if (!payload.user) throw new Error(payload.message || "Google sign up failed");
       const token = payload.accessToken || null;

@@ -17,12 +17,6 @@ WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB || "";
 
-const GOOGLE_DISCOVERY = {
-  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-  tokenEndpoint: "https://oauth2.googleapis.com/token",
-  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
-};
-
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { login, setUser } = useAuth();
@@ -33,6 +27,8 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  // Use implicit flow (response_type=token) — returns access_token directly,
+  // no redirect URI registration needed in Google Cloud Console.
   const redirectUri = AuthSession.makeRedirectUri({ scheme: "a2blift" });
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
@@ -40,14 +36,19 @@ export default function LoginScreen() {
       clientId: GOOGLE_CLIENT_ID,
       scopes: ["openid", "email", "profile"],
       redirectUri,
+      responseType: AuthSession.ResponseType.Token,
+      usePKCE: false,
     },
-    GOOGLE_DISCOVERY
+    {
+      authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+    }
   );
 
   useEffect(() => {
     if (response?.type === "success") {
-      const { code } = response.params;
-      handleGoogleCode(code, redirectUri);
+      const accessToken = response.params?.access_token;
+      if (accessToken) handleGoogleToken(accessToken);
+      else { setError("Google sign in failed. No token received."); setGoogleLoading(false); }
     } else if (response?.type === "error") {
       setError("Google sign in failed. Please try again.");
       setGoogleLoading(false);
@@ -56,9 +57,10 @@ export default function LoginScreen() {
     }
   }, [response]);
 
-  async function handleGoogleCode(code: string, redirectUri: string) {
+  async function handleGoogleToken(accessToken: string) {
     try {
-      const res = await apiRequest("POST", "/api/auth/google", { code, redirectUri });
+      // Exchange Google access token for our app JWT
+      const res = await apiRequest("POST", "/api/auth/google-token", { accessToken });
       const payload = await res.json();
       if (!payload.user) throw new Error(payload.message || "Google sign in failed");
       const token = payload.accessToken || null;

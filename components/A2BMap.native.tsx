@@ -96,8 +96,16 @@ export default function A2BMap({
 }: A2BMapProps) {
   const mapRef = useRef<MapView>(null);
   const mapReadyRef = useRef(false);
-  // Queue a fitMap call if the map isn't ready yet
   const pendingFitRef = useRef(false);
+
+  // Lock the initial region once — never derive it from props again so the
+  // MapView never remounts with a different initialRegion (which resets camera).
+  const initialRegionRef = useRef({
+    latitude: DEFAULT_REGION.lat,
+    longitude: DEFAULT_REGION.lng,
+    latitudeDelta: 0.008,
+    longitudeDelta: 0.008,
+  });
 
   const routeCoords = useMemo(() => {
     if (!routePolyline) return [];
@@ -106,7 +114,6 @@ export default function A2BMap({
 
   const fitMap = useCallback(() => {
     if (!mapRef.current || !mapReadyRef.current) {
-      // Map not ready yet — mark pending so handleMapReady will call us
       pendingFitRef.current = true;
       return;
     }
@@ -120,8 +127,9 @@ export default function A2BMap({
         longitudeDelta: 0.01,
       }, 800);
     } else if (routeCoords.length > 0) {
+      // Route available — fit to it (covers searching + confirming + in-trip)
       mapRef.current.fitToCoordinates(routeCoords, {
-        edgePadding: { top: 80, right: 60, bottom: 200, left: 60 },
+        edgePadding: { top: 80, right: 60, bottom: 220, left: 60 },
         animated: true,
       });
     } else if (pickupLocation && dropoffLocation) {
@@ -130,10 +138,10 @@ export default function A2BMap({
           { latitude: pickupLocation.lat, longitude: pickupLocation.lng },
           { latitude: dropoffLocation.lat, longitude: dropoffLocation.lng },
         ],
-        { edgePadding: { top: 80, right: 60, bottom: 200, left: 60 }, animated: true }
+        { edgePadding: { top: 80, right: 60, bottom: 220, left: 60 }, animated: true }
       );
     } else {
-      // Always animate to user location (or Johannesburg fallback) — never world zoom
+      // Street-level view on user location — never world zoom
       const center = pickupLocation || DEFAULT_REGION;
       mapRef.current.animateToRegion({
         latitude: center.lat,
@@ -146,7 +154,6 @@ export default function A2BMap({
 
   function handleMapReady() {
     mapReadyRef.current = true;
-    // Run immediately, then again after a short delay to ensure tiles have loaded
     fitMap();
     setTimeout(fitMap, 400);
   }
@@ -164,9 +171,6 @@ export default function A2BMap({
     );
   }
 
-  // Use fallback so map always renders at street level, never world zoom
-  const mapCenter = pickupLocation || DEFAULT_REGION;
-
   return (
     <View style={styles.container}>
       {(loading || !pickupLocation) && (
@@ -180,12 +184,7 @@ export default function A2BMap({
         style={styles.map}
         provider={Platform.OS === "web" ? undefined : PROVIDER_GOOGLE}
         customMapStyle={DARK_MAP_STYLE}
-        initialRegion={{
-          latitude: mapCenter.lat,
-          longitude: mapCenter.lng,
-          latitudeDelta: 0.008,
-          longitudeDelta: 0.008,
-        }}
+        initialRegion={initialRegionRef.current}
         onMapReady={handleMapReady}
         showsUserLocation={true}
         showsMyLocationButton={false}

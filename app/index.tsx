@@ -14,7 +14,9 @@ export default function SplashLanding() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace("/role-select");
+      // Defer so navigation happens after the current render cycle
+      const t = setTimeout(() => router.replace("/role-select"), 0);
+      return () => clearTimeout(t);
     }
   }, [isLoading, user]);
 

@@ -572,6 +572,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+  // Google implicit-flow: accepts an access_token directly (no code exchange needed).
+  // Used by the mobile app which uses response_type=token to avoid redirect URI issues.
+  app.post("/api/auth/google-token", async (req: Request, res: Response) => {
+    try {
+      const { accessToken } = req.body;
+      if (!accessToken) {
+        return res.status(400).json({ message: "accessToken is required" });
+      }
+
+      // Fetch user info directly from Google using the access token
+      const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const googleUser = await userInfoRes.json() as any;
+
+      if (!googleUser.email) {
+        return res.status(400).json({ message: "Could not retrieve email from Google" });
+      }
+
+      const googleUsername = googleUser.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "_");
+      let user = await storage.getUserByUsername(googleUsername);
+
+      if (!user) {
+        const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
+        user = await storage.createUser({
+          username: googleUsername,
+          password: randomPassword,
+          name: googleUser.name || googleUser.email.split("@")[0],
+          phone: null,
+          role: "client",
+        });
+      }
+
+      const token = signAccessToken({ sub: user.id, role: user.role as UserRole });
+      setAuthCookie(res, token);
+      const { password: _pw, ...safeUser } = user;
+      return res.json({ user: safeUser, accessToken: token });
+    } catch (error: any) {
+      console.error("Google token auth error:", error);
+      return res.status(500).json({ message: error.message || "Google authentication failed" });
+    }
+  });
+
   app.post("/api/chauffeurs", async (req: Request, res: Response) => {
     try {
       const chauffeur = await storage.createChauffeur(req.body);
