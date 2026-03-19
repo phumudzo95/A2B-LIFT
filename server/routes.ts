@@ -490,6 +490,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -----------------------------
   // Google OAuth
   // -----------------------------
+  // Backend-driven Google OAuth — no proxy, no consent screen.
+  // App opens /api/auth/google/start in the browser, Google redirects to
+  // /api/auth/google/callback, backend creates user and deep-links back to app.
+  app.get("/api/auth/google/start", (req: Request, res: Response) => {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) return res.status(500).send("Google OAuth not configured");
+    const callbackUrl = `https://api-production-0783.up.railway.app/api/auth/google/callback`;
+    const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("redirect_uri", callbackUrl);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "openid email profile");
+    url.searchParams.set("access_type", "offline");
+    url.searchParams.set("prompt", "select_account");
+    return res.redirect(url.toString());
+  });
+
+  app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
+    try {
+      const { code, error } = req.query as any;
+      if (error || !code) {
+        return res.redirect(`a2blift://auth?error=${encodeURIComponent(error || "cancelled")}`);
+      }
+      const clientId = process.env.GOOGLE_CLIENT_ID!;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
+      const callbackUrl = `https://api-production-0783.up.railway.app/api/auth/google/callback`;
+
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: callbackUrl, grant_type: "authorization_code" }).toString(),
+      });
+      const tokens = await tokenRes.json() as any;
+      if (tokens.error) {
+        return res.redirect(`a2blift://auth?error=${encodeURIComponent(tokens.error_description || tokens.error)}`);
+      }
+
+      const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      const googleUser = await userInfoRes.json() as any;
+      if (!googleUser.email) {
+        return res.redirect(`a2blift://auth?error=no_email`);
+      }
+
+      const email = googleUser.email.trim().toLowerCase();
+      let user = await storage.getUserByUsername(email);
+      if (!user) {
+        const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
+        user = await storage.createUser({ username: email, password: randomPassword, name: googleUser.name || email.split("@")[0], phone: null, role: "client" });
+      }
+
+      const appToken = signAccessToken({ sub: user.id, role: user.role as UserRole });
+      const { password: _pw, ...safeUser } = user;
+      // Deep link back into the app with the JWT
+      const payload = encodeURIComponent(JSON.stringify({ user: safeUser, accessToken: appToken }));
+      return res.redirect(`a2blift://auth?payload=${payload}`);
+    } catch (err: any) {
+      return res.redirect(`a2blift://auth?error=${encodeURIComponent(err.message)}`);
+    }
+  });
+
   app.post("/api/auth/google", async (req: Request, res: Response) => {
     try {
       const { code, redirectUri } = req.body;
