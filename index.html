@@ -1,415 +1,1284 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>A2B LIFT - Admin Panel</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #000; color: #fff; min-height: 100vh; }
-    .header { background: #111; border-bottom: 1px solid #2a2a2a; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
-    .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
-    .header span { font-size: 11px; color: #6b6b6b; letter-spacing: 1px; }
-    .nav { display: flex; gap: 8px; background: #111; padding: 12px 24px; border-bottom: 1px solid #2a2a2a; overflow-x: auto; }
-    .nav button { background: #1a1a1a; border: 1px solid #2a2a2a; color: #bdbdbd; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; white-space: nowrap; }
-    .nav button.active { background: #fff; color: #000; border-color: #fff; }
-    .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
-    .stat-card { background: #121212; border: 1px solid #2a2a2a; border-radius: 14px; padding: 24px; text-align: center; }
-    .stat-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
-    .stat-label { font-size: 12px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 1px; }
-    .stat-alert { color: #ff4d4d; }
-    .section { margin-bottom: 32px; }
-    .section-title { font-size: 14px; font-weight: 600; color: #bdbdbd; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
-    table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; padding: 12px 16px; font-size: 11px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #2a2a2a; }
-    td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid #1a1a1a; }
-    .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-    .badge-pending { background: rgba(255,183,77,0.15); color: #ffb74d; }
-    .badge-approved { background: rgba(76,175,80,0.15); color: #4caf50; }
-    .badge-paid { background: rgba(76,175,80,0.15); color: #4caf50; }
-    .badge-rejected { background: rgba(255,77,77,0.15); color: #ff4d4d; }
-    .badge-online { background: rgba(76,175,80,0.15); color: #4caf50; }
-    .badge-offline { background: rgba(107,107,107,0.15); color: #6b6b6b; }
-    .badge-high { background: rgba(255,77,77,0.15); color: #ff4d4d; }
-    .badge-medium { background: rgba(255,183,77,0.15); color: #ffb74d; }
-    .badge-low { background: rgba(107,107,107,0.15); color: #bdbdbd; }
-    .badge-open { background: rgba(255,183,77,0.15); color: #ffb74d; }
-    .badge-resolved { background: rgba(76,175,80,0.15); color: #4caf50; }
-    .btn { padding: 6px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; }
-    .btn-approve { background: #4caf50; color: #fff; }
-    .btn-reject { background: #ff4d4d; color: #fff; }
-    .btn-small { padding: 4px 10px; font-size: 11px; }
-    .btn-resolve { background: #4caf50; color: #fff; }
-    .loading { text-align: center; padding: 40px; color: #6b6b6b; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    .desc-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: #bdbdbd; }
-    .refresh-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #bdbdbd; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
-    .refresh-btn:hover { background: #2a2a2a; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>A2B LIFT — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 
-    .login-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.75); }
-    .login-overlay.show { display: flex; }
-    .login-card { width: min(420px, 92vw); background: #121212; border: 1px solid #2a2a2a; border-radius: 16px; padding: 24px; }
-    .login-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
-    .login-sub { font-size: 12px; color: #8a8a8a; margin-bottom: 18px; }
-    .field { display: grid; gap: 6px; margin-bottom: 12px; }
-    .label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #8a8a8a; }
-    .input { background: #0d0d0d; border: 1px solid #2a2a2a; color: #fff; padding: 12px 12px; border-radius: 12px; outline: none; }
-    .login-actions { display: flex; gap: 10px; margin-top: 12px; }
-    .btn-primary { background: #fff; color: #000; border: 1px solid #fff; padding: 10px 14px; border-radius: 12px; font-weight: 700; cursor: pointer; flex: 1; }
-    .btn-secondary { background: transparent; color: #bdbdbd; border: 1px solid #2a2a2a; padding: 10px 14px; border-radius: 12px; font-weight: 700; cursor: pointer; }
-    .error { color: #ff4d4d; font-size: 12px; margin-top: 10px; display: none; }
-  </style>
+<style>
+:root {
+  --bg: #f5f5f0;
+  --white: #ffffff;
+  --black: #000000;
+  --surface: #fafaf8;
+  --border: #e8e8e4;
+  --border-dark: #d0d0c8;
+  --text: #0a0a0a;
+  --muted: #888880;
+  --muted-light: #b8b8b0;
+  --green: #1a8a4a;
+  --green-bg: #edf7f2;
+  --red: #c0392b;
+  --red-bg: #fdf2f0;
+  --yellow: #b8860b;
+  --yellow-bg: #fdf8e8;
+  --blue: #1a5fa8;
+  --blue-bg: #edf3fc;
+  --font: 'Plus Jakarta Sans', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --radius: 10px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+  display: flex;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 256px;
+  min-height: 100vh;
+  background: var(--black);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+}
+
+.logo {
+  padding: 28px 24px 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.logo-wordmark {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+
+.logo-wordmark em {
+  color: #fff;
+  font-style: normal;
+  opacity: 0.5;
+}
+
+.logo-sub {
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 5px;
+  font-family: var(--mono);
+}
+
+.nav {
+  flex: 1;
+  padding: 16px 12px;
+  overflow-y: auto;
+}
+
+.nav-section {
+  font-size: 9px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  padding: 16px 12px 8px;
+  font-family: var(--mono);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 2px;
+}
+
+.nav-item:hover {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.85);
+}
+
+.nav-item.active {
+  background: #fff;
+  color: #000;
+}
+
+.nav-item.active .nav-icon { opacity: 1; }
+
+.nav-icon { font-size: 15px; opacity: 0.7; width: 18px; text-align: center; }
+
+.nav-badge {
+  margin-left: auto;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 20px;
+  font-family: var(--mono);
+  min-width: 20px;
+  text-align: center;
+}
+
+.sidebar-foot {
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  font-family: var(--mono);
+}
+
+.live-dot {
+  width: 6px; height: 6px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: blink 2s infinite;
+}
+
+@keyframes blink {
+  0%,100%{opacity:1} 50%{opacity:0.3}
+}
+
+/* ── MAIN ── */
+.main {
+  margin-left: 256px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.page-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-wrap {
+  position: relative;
+}
+
+.search-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 12px 7px 34px;
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 13px;
+  width: 200px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.search-input:focus { border-color: var(--black); }
+.search-input::placeholder { color: var(--muted-light); }
+
+.search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted-light);
+  font-size: 13px;
+}
+
+.btn-refresh {
+  background: var(--black);
+  color: #fff;
+  border: none;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  letter-spacing: 0.3px;
+}
+
+.btn-refresh:hover { opacity: 0.8; }
+
+.admin-tag {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+
+.content {
+  padding: 28px 32px;
+  flex: 1;
+}
+
+/* ── VIEWS ── */
+.view { display: none; animation: fadeUp 0.25s ease; }
+.view.active { display: block; }
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(6px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ── STAT CARDS ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s;
+}
+
+.stat-card:hover { box-shadow: var(--shadow-md); }
+
+.stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-icon {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.si-black { background: #f0f0ee; }
+.si-green { background: var(--green-bg); }
+.si-red { background: var(--red-bg); }
+.si-blue { background: var(--blue-bg); }
+
+.stat-value {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.stat-foot {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* ── SECTION HEADER ── */
+.sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.sec-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.filter-group {
+  display: flex;
+  gap: 6px;
+}
+
+.ftab {
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: var(--white);
+  font-family: var(--font);
+}
+
+.ftab:hover { border-color: var(--black); color: var(--black); }
+.ftab.active { background: var(--black); color: #fff; border-color: var(--black); }
+
+/* ── TABLE ── */
+.table-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+thead {
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  padding: 11px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  background: var(--surface);
+  white-space: nowrap;
+}
+
+td {
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(232,232,228,0.6);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: #fafaf8; }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.badge::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+}
+
+.b-pending { background: var(--yellow-bg); color: var(--yellow); }
+.b-pending::before { background: var(--yellow); }
+.b-approved, .b-yes, .b-online, .b-completed, .b-paid { background: var(--green-bg); color: var(--green); }
+.b-approved::before, .b-yes::before, .b-online::before, .b-completed::before, .b-paid::before { background: var(--green); }
+.b-rejected, .b-no, .b-cancelled, .b-failed { background: var(--red-bg); color: var(--red); }
+.b-rejected::before, .b-no::before, .b-cancelled::before, .b-failed::before { background: var(--red); }
+.b-offline { background: #f5f5f0; color: var(--muted); }
+.b-offline::before { background: var(--muted-light); }
+
+/* ── BUTTONS ── */
+.btn-sm {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid;
+  font-family: var(--font);
+}
+
+.btn-approve { background: var(--green-bg); color: var(--green); border-color: #c0e8d0; }
+.btn-approve:hover { background: #d0f0e0; }
+.btn-reject { background: var(--red-bg); color: var(--red); border-color: #f0c0b8; }
+.btn-reject:hover { background: #fce0dc; }
+.btn-detail { background: var(--bg); color: var(--text); border-color: var(--border); }
+.btn-detail:hover { background: #ececea; }
+
+.action-cell { display: flex; gap: 6px; }
+
+/* ── EMPTY ── */
+.empty {
+  padding: 56px 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-icon { font-size: 36px; margin-bottom: 12px; }
+.empty-text { font-size: 13px; font-weight: 500; }
+.empty-sub { font-size: 12px; color: var(--muted-light); margin-top: 4px; }
+
+/* ── LOADING ── */
+.loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted-light);
+  font-size: 13px;
+  font-family: var(--mono);
+}
+
+/* ── MODAL ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay.open { display: flex; }
+
+.modal {
+  background: var(--white);
+  border-radius: 14px;
+  width: 540px;
+  max-width: 96vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  animation: modalIn 0.25s ease;
+}
+
+@keyframes modalIn {
+  from { opacity:0; transform:translateY(16px) scale(0.98); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+
+.modal-head {
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title { font-size: 17px; font-weight: 700; }
+.modal-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.modal-x {
+  width: 30px; height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--muted);
+  transition: all 0.15s;
+}
+
+.modal-x:hover { background: var(--bg); color: var(--text); }
+
+.modal-body { padding: 22px 24px; }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.info-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.info-val {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.modal-foot {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-lg {
+  padding: 9px 22px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.15s;
+  font-family: var(--font);
+}
+
+.btn-black { background: var(--black); color: #fff; border-color: var(--black); }
+.btn-black:hover { opacity: 0.8; }
+.btn-green { background: var(--green); color: #fff; border-color: var(--green); }
+.btn-green:hover { opacity: 0.85; }
+.btn-red { background: var(--red); color: #fff; border-color: var(--red); }
+.btn-red:hover { opacity: 0.85; }
+.btn-outline { background: transparent; color: var(--text); border-color: var(--border); }
+.btn-outline:hover { background: var(--bg); }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--black);
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 2000;
+  transform: translateY(70px);
+  opacity: 0;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--shadow-md);
+}
+
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.t-ok { background: var(--green); }
+.toast.t-err { background: var(--red); }
+
+/* ── NOTICE BANNER ── */
+.notice {
+  background: var(--yellow-bg);
+  border: 1px solid #e8d080;
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  font-size: 13px;
+  color: #7a6000;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 3px; }
+</style>
 </head>
 <body>
-  <div class="header">
-    <div>
-      <h1>A2B LIFT</h1>
-      <span>ADMIN PANEL</span>
+
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-wordmark">A2B <em>LIFT</em></div>
+    <div class="logo-sub">Admin Panel</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="go('overview',this)">
+      <span class="nav-icon">▦</span> Dashboard
     </div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <button class="refresh-btn" onclick="refreshAll()">Refresh</button>
-      <button class="refresh-btn" onclick="logout()">Logout</button>
+
+    <div class="nav-section">Drivers</div>
+    <div class="nav-item" onclick="go('applications',this)">
+      <span class="nav-icon">📋</span> Applications
+      <span class="nav-badge" id="nb-pending">0</span>
+    </div>
+    <div class="nav-item" onclick="go('chauffeurs',this)">
+      <span class="nav-icon">🚗</span> Chauffeurs
+    </div>
+
+    <div class="nav-section">Operations</div>
+    <div class="nav-item" onclick="go('rides',this)">
+      <span class="nav-icon">🗺</span> Rides
+    </div>
+    <div class="nav-item" onclick="go('payments',this)">
+      <span class="nav-icon">💳</span> Payments
+    </div>
+    <div class="nav-item" onclick="go('safety',this)">
+      <span class="nav-icon">⚠️</span> Safety Reports
+    </div>
+
+    <div class="nav-section">Accounts</div>
+    <div class="nav-item" onclick="go('users',this)">
+      <span class="nav-icon">👤</span> All Users
+    </div>
+  </nav>
+  <div class="sidebar-foot">
+    <div class="live-pill">
+      <span class="live-dot"></span> Supabase · eu-west-1
     </div>
   </div>
+</aside>
 
-  <div class="nav">
-    <button class="active" onclick="switchTab('overview')">Overview</button>
-    <button onclick="switchTab('chauffeurs')">Chauffeurs</button>
-    <button onclick="switchTab('rides')">Rides</button>
-    <button onclick="switchTab('withdrawals')">Withdrawals</button>
-    <button onclick="switchTab('safety')">Safety Reports</button>
+<main class="main">
+  <div class="topbar">
+    <div class="page-heading" id="page-title">Dashboard</div>
+    <div class="topbar-right">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" placeholder="Search chauffeurs..." id="srch" oninput="doSearch(this.value)"/>
+      </div>
+      <button class="btn-refresh" onclick="loadView()">↻ Refresh</button>
+      <button class="btn-refresh" onclick="doLogout()" style="background:#c0392b">Logout</button>
+      <div class="admin-tag">ADMIN</div>
+    </div>
   </div>
 
   <div class="content">
-    <div id="tab-overview" class="tab-content active">
-      <div class="stats-grid" id="stats-grid">
-        <div class="loading">Loading stats...</div>
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-overview">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-label">Total Drivers</div>
+            <div class="stat-icon si-black">🚗</div>
+          </div>
+          <div class="stat-value" id="s-drivers">—</div>
+          <div class="stat-foot">Registered chauffeurs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-label">Pending</div>
+            <div class="stat-icon si-red">⏳</div>
+          </div>
+          <div class="stat-value" id="s-pending">—</div>
+          <div class="stat-foot">Applications to review</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-label">Total Rides</div>
+            <div class="stat-icon si-green">🗺</div>
+          </div>
+          <div class="stat-value" id="s-rides">—</div>
+          <div class="stat-foot">All time</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top">
+            <div class="stat-label">Users</div>
+            <div class="stat-icon si-blue">👤</div>
+          </div>
+          <div class="stat-value" id="s-users">—</div>
+          <div class="stat-foot">Registered accounts</div>
+        </div>
       </div>
+
+      <div class="sec-head">
+        <div class="sec-title">Recent Driver Applications</div>
+      </div>
+      <div class="table-card" id="recent-table"><div class="loading">Loading...</div></div>
     </div>
 
-    <div id="tab-chauffeurs" class="tab-content">
-      <div class="section">
-        <div class="section-title">All Chauffeurs</div>
-        <div id="chauffeurs-table"><div class="loading">Loading...</div></div>
+    <!-- APPLICATIONS -->
+    <div class="view" id="view-applications">
+      <div class="sec-head">
+        <div class="sec-title">Driver Applications</div>
+        <div class="filter-group">
+          <button class="ftab active" onclick="fApps('all',this)">All</button>
+          <button class="ftab" onclick="fApps('pending',this)">Pending</button>
+          <button class="ftab" onclick="fApps('approved',this)">Approved</button>
+          <button class="ftab" onclick="fApps('rejected',this)">Rejected</button>
+        </div>
       </div>
+      <div class="table-card" id="apps-table"><div class="loading">Loading...</div></div>
     </div>
 
-    <div id="tab-rides" class="tab-content">
-      <div class="section">
-        <div class="section-title">All Rides</div>
-        <div id="rides-table"><div class="loading">Loading...</div></div>
+    <!-- CHAUFFEURS -->
+    <div class="view" id="view-chauffeurs">
+      <div class="sec-head">
+        <div class="sec-title">Registered Chauffeurs</div>
+        <div class="filter-group">
+          <button class="ftab active" onclick="fChauf('all',this)">All</button>
+          <button class="ftab" onclick="fChauf('online',this)">Online</button>
+          <button class="ftab" onclick="fChauf('approved',this)">Approved</button>
+          <button class="ftab" onclick="fChauf('pending',this)">Pending Approval</button>
+        </div>
       </div>
+      <div class="table-card" id="chauf-table"><div class="loading">Loading...</div></div>
     </div>
 
-    <div id="tab-withdrawals" class="tab-content">
-      <div class="section">
-        <div class="section-title">Withdrawal Requests</div>
-        <div id="withdrawals-table"><div class="loading">Loading...</div></div>
-      </div>
+    <!-- RIDES -->
+    <div class="view" id="view-rides">
+      <div class="sec-head"><div class="sec-title">All Rides</div></div>
+      <div class="table-card" id="rides-table"><div class="loading">Loading...</div></div>
     </div>
 
-    <div id="tab-safety" class="tab-content">
-      <div class="section">
-        <div class="section-title">Safety Reports & Complaints</div>
-        <div id="safety-table"><div class="loading">Loading...</div></div>
+    <!-- PAYMENTS -->
+    <div class="view" id="view-payments">
+      <div class="sec-head"><div class="sec-title">Payments</div></div>
+      <div class="table-card" id="pay-table"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- SAFETY -->
+    <div class="view" id="view-safety">
+      <div class="sec-head">
+        <div class="sec-title">Safety Reports</div>
+        <div class="filter-group">
+          <button class="ftab active" onclick="fSafe('all',this)">All</button>
+          <button class="ftab" onclick="fSafe('open',this)">Open</button>
+          <button class="ftab" onclick="fSafe('resolved',this)">Resolved</button>
+        </div>
       </div>
+      <div class="table-card" id="safe-table"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- USERS -->
+    <div class="view" id="view-users">
+      <div class="sec-head"><div class="sec-title">All Users</div></div>
+      <div class="table-card" id="users-table"><div class="loading">Loading...</div></div>
+    </div>
+
+  </div>
+</main>
+
+<!-- MODAL -->
+<div class="overlay" id="modal-wrap">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="m-title">Details</div>
+        <div class="modal-sub" id="m-sub"></div>
+      </div>
+      <button class="modal-x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="m-body"></div>
+    <div class="modal-foot" id="m-foot"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;width:min(420px,94vw);padding:32px;box-shadow:0 24px 64px rgba(0,0,0,0.2);">
+    <div style="font-size:20px;font-weight:800;margin-bottom:4px;">A2B LIFT</div>
+    <div style="font-size:12px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">Admin Panel</div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:6px;">Username</div>
+      <input id="l-user" type="text" placeholder="admin" autocomplete="username"
+        style="width:100%;padding:11px 14px;border:1px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none;font-family:inherit;"
+        onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:6px;">Password</div>
+      <input id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password"
+        style="width:100%;padding:11px 14px;border:1px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none;font-family:inherit;"
+        onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div id="l-err" style="display:none;color:#c0392b;font-size:13px;margin-bottom:12px;"></div>
+    <button onclick="doLogin()" style="width:100%;padding:12px;background:#000;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Sign In</button>
+  </div>
+</div>
+
+<!-- REJECT REASON MODAL -->
+<div id="reject-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:9998;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;width:min(480px,94vw);padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
+    <div style="font-size:17px;font-weight:700;margin-bottom:6px;">Reject Driver Application</div>
+    <div style="font-size:13px;color:#888;margin-bottom:20px;">The driver will receive an in-app notification with your reason.</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#888;margin-bottom:8px;">Reason for rejection</div>
+    <textarea id="reject-reason" rows="4" placeholder="e.g. Documents are unclear, vehicle does not meet requirements..."
+      style="width:100%;padding:12px;border:1px solid #e0e0e0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;resize:vertical;"></textarea>
+    <div id="reject-err" style="display:none;color:#c0392b;font-size:12px;margin-top:8px;"></div>
+    <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end;">
+      <button onclick="closeRejectModal()" style="padding:9px 20px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>
+      <button onclick="submitReject()" style="padding:9px 20px;border:none;border-radius:8px;background:#c0392b;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Send Rejection</button>
     </div>
   </div>
+</div>
 
-  <div id="login" class="login-overlay">
-    <div class="login-card">
-      <div class="login-title">Admin Login</div>
-      <div class="login-sub">Sign in with an account whose role is <b>admin</b>.</div>
-      <div class="field">
-        <div class="label">Username</div>
-        <input id="username" class="input" placeholder="admin" autocomplete="username" />
-      </div>
-      <div class="field">
-        <div class="label">Password</div>
-        <input id="password" class="input" type="password" placeholder="••••••••" autocomplete="current-password" />
-      </div>
-      <div class="login-actions">
-        <button class="btn-primary" onclick="doLogin()">Login</button>
-        <button class="btn-secondary" onclick="clearToken()">Clear Token</button>
-      </div>
-      <div id="login-error" class="error"></div>
+<!-- DOCUMENTS MODAL -->
+<div id="docs-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:9997;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;width:min(560px,94vw);max-height:80vh;overflow-y:auto;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-size:17px;font-weight:700;">Driver Documents</div>
+      <button onclick="closeDocsModal()" style="border:1px solid #e0e0e0;border-radius:7px;background:none;width:30px;height:30px;cursor:pointer;font-size:14px;">✕</button>
     </div>
+    <div id="docs-body"><div class="loading">Loading documents...</div></div>
   </div>
+</div>
 
-  <script>
-    const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? ''
-      : 'https://api-production-0783.up.railway.app';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6d2tpZWlrdGJocHR2Z3NxZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4ODA1NjEsImV4cCI6MjA4NjQ1NjU2MX0.BgTFknM60JsTl1iHAN1ri3pxFi2rTJfbyZ6rj6Etecc';
-    const TOKEN_KEY = 'a2b_admin_token';
+<script>
+const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? '' : 'https://api-production-0783.up.railway.app';
+const TOKEN_KEY = 'a2b_admin_token';
 
-    function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
-    function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
-    function clearToken() { localStorage.removeItem(TOKEN_KEY); showLogin(true); }
+function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+function clearToken() { localStorage.removeItem(TOKEN_KEY); showLogin(true); }
 
-    function showLogin(show) {
-      document.getElementById('login').classList.toggle('show', !!show);
+function authHeaders() {
+  const t = getToken();
+  return t ? { 'Authorization': 'Bearer ' + t } : {};
+}
+
+async function apiFetch(path, opts = {}) {
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {}, authHeaders());
+  const res = await fetch(API + path, Object.assign({}, opts, { headers }));
+  if (res.status === 401 || res.status === 403) { showLogin(true); throw new Error('Unauthorized'); }
+  return res;
+}
+
+function showLogin(show) {
+  document.getElementById('login-overlay').style.display = show ? 'flex' : 'none';
+}
+
+async function doLogin() {
+  const u = document.getElementById('l-user').value.trim();
+  const p = document.getElementById('l-pass').value;
+  const err = document.getElementById('l-err');
+  err.style.display = 'none';
+  try {
+    const res = await fetch(API + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    if (!res.ok) { err.textContent = 'Invalid credentials'; err.style.display = 'block'; return; }
+    const data = await res.json();
+    if (!data?.user || data.user.role !== 'admin') { err.textContent = 'Not an admin account'; err.style.display = 'block'; return; }
+    setToken(data.accessToken);
+    showLogin(false);
+    loadOverview();
+  } catch(e) { err.textContent = 'Login failed'; err.style.display = 'block'; }
+}
+
+async function doLogout() {
+  clearToken();
+  try { await fetch(API + '/api/auth/logout', { method: 'POST' }); } catch {}
+}
+
+let curView = 'overview';
+let allApps = [], allChauf = [], allSafe = [], appFilter = 'all', chaufFilter = 'all', safeFilter = 'all';
+
+// ── REJECT MODAL ──
+let rejectTargetId = null;
+let rejectTargetType = null; // 'chauffeur'
+
+function openRejectModal(id, type) {
+  rejectTargetId = id;
+  rejectTargetType = type;
+  document.getElementById('reject-reason').value = '';
+  document.getElementById('reject-err').style.display = 'none';
+  document.getElementById('reject-overlay').style.display = 'flex';
+}
+
+function closeRejectModal() {
+  document.getElementById('reject-overlay').style.display = 'none';
+  rejectTargetId = null;
+}
+
+async function submitReject() {
+  const reason = document.getElementById('reject-reason').value.trim();
+  const errEl = document.getElementById('reject-err');
+  if (!reason) { errEl.textContent = 'Please enter a reason.'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+  try {
+    const res = await apiFetch(`/api/chauffeurs/${rejectTargetId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    closeRejectModal();
+    closeModal();
+    toast('😔 Driver notified of rejection', 'err');
+    loadChauf();
+  } catch(e) { errEl.textContent = 'Failed: ' + e.message; errEl.style.display = 'block'; }
+}
+
+// ── DOCUMENTS MODAL ──
+function closeDocsModal() {
+  document.getElementById('docs-overlay').style.display = 'none';
+}
+
+async function openDocsModal(chauffeurId, driverName) {
+  document.getElementById('docs-overlay').style.display = 'flex';
+  document.getElementById('docs-body').innerHTML = '<div class="loading">Loading documents...</div>';
+  try {
+    const res = await apiFetch(`/api/chauffeurs/${chauffeurId}/documents`);
+    const docs = await res.json();
+    if (!Array.isArray(docs) || !docs.length) {
+      document.getElementById('docs-body').innerHTML = `<div style="text-align:center;padding:32px;color:#888;">
+        <div style="font-size:32px;margin-bottom:12px;">📂</div>
+        <div style="font-weight:600;">No documents uploaded</div>
+        <div style="font-size:12px;margin-top:4px;">${driverName} hasn't uploaded any documents yet.</div>
+      </div>`;
+      return;
     }
+    document.getElementById('docs-body').innerHTML = docs.map(d => `
+      <div style="border:1px solid #e8e8e4;border-radius:10px;padding:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-weight:700;font-size:14px;text-transform:capitalize;">${(d.type||'document').replace(/_/g,' ')}</div>
+          <div style="font-size:12px;color:#888;margin-top:2px;">Uploaded ${fmt(d.uploadedAt || d.created_at)}</div>
+          <div style="margin-top:6px;"><span class="badge ${d.status==='approved'?'b-approved':d.status==='rejected'?'b-rejected':'b-pending'}">${d.status||'pending'}</span></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
+          <a href="${d.url}" target="_blank" style="padding:7px 14px;background:#f5f5f0;border:1px solid #e0e0e0;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;color:#000;">👁 View</a>
+          <a href="${d.url}" download target="_blank" style="padding:7px 14px;background:#000;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;">⬇ Download</a>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('docs-body').innerHTML = `<div style="color:#c0392b;padding:20px;">Failed to load documents.</div>`;
+  }
+}
 
-    function authHeaders() {
-      const t = getToken();
-      return t ? { 'Authorization': 'Bearer ' + t } : {};
-    }
+// ── NAV
+function go(view, el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  const titles = { overview:'Dashboard', applications:'Driver Applications', chauffeurs:'Chauffeurs', rides:'Rides', payments:'Payments', safety:'Safety Reports', users:'All Users' };
+  document.getElementById('page-title').textContent = titles[view];
+  curView = view;
+  loadView();
+}
 
-    async function apiFetch(path, opts = {}) {
-      const headers = Object.assign({}, opts.headers || {}, authHeaders());
-      const res = await fetch(API + path, Object.assign({}, opts, { headers, credentials: 'include' }));
-      if (res.status === 401 || res.status === 403) {
-        showLogin(true);
-      }
-      return res;
-    }
+function loadView() {
+  ({ overview:loadOverview, applications:loadApps, chauffeurs:loadChauf, rides:loadRides, payments:loadPay, safety:loadSafe, users:loadUsers })[curView]?.();
+}
 
-    async function doLogin() {
-      const u = document.getElementById('username').value.trim();
-      const p = document.getElementById('password').value;
-      const errEl = document.getElementById('login-error');
-      errEl.style.display = 'none';
-      try {
-        const res = await fetch(API + '/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: u, password: p }),
-          credentials: 'include',
-        });
-        if (!res.ok) {
-          const text = await res.text();
-          errEl.textContent = 'Login failed: ' + text;
-          errEl.style.display = 'block';
-          return;
-        }
-        const data = await res.json();
-        if (!data?.user || data.user.role !== 'admin') {
-          errEl.textContent = 'This account is not an admin.';
-          errEl.style.display = 'block';
-          return;
-        }
-        if (data.accessToken) setToken(data.accessToken);
-        showLogin(false);
-        refreshAll();
-      } catch(e) {
-        errEl.textContent = 'Login failed.';
-        errEl.style.display = 'block';
-      }
-    }
+// ── OVERVIEW ──
+async function loadOverview() {
+  try {
+    const res = await apiFetch('/api/admin/stats');
+    const s = await res.json();
+    document.getElementById('s-drivers').textContent = s.totalChauffeurs ?? 0;
+    document.getElementById('s-pending').textContent = s.pendingApprovals ?? 0;
+    document.getElementById('s-rides').textContent = s.totalRides ?? 0;
+    document.getElementById('s-users').textContent = s.totalUsers ?? s.totalChauffeurs ?? 0;
+    document.getElementById('nb-pending').textContent = s.pendingApprovals ?? 0;
+  } catch {}
+  try {
+    const res = await apiFetch('/api/chauffeurs');
+    const data = await res.json();
+    const pending = (data || []).filter(c => !c.isApproved).slice(0, 6);
+    renderChauffeurTableInEl('recent-table', pending, false);
+  } catch {
+    document.getElementById('recent-table').innerHTML = emptyState('📭', 'No data', 'Could not load recent applications');
+  }
+}
 
-    async function logout() {
-      clearToken();
-      try { await fetch(API + '/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
-    }
+// ── APPLICATIONS (uses chauffeurs endpoint, pending = not approved) ──
+async function loadApps() {
+  spin('apps-table');
+  const res = await apiFetch('/api/chauffeurs');
+  allApps = await res.json();
+  renderFilteredApps();
+}
 
-    function switchTab(tab) {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('.nav button').forEach(el => el.classList.remove('active'));
-      document.getElementById('tab-' + tab).classList.add('active');
-      event.target.classList.add('active');
-      if (tab === 'chauffeurs') loadChauffeurs();
-      if (tab === 'rides') loadRides();
-      if (tab === 'withdrawals') loadWithdrawals();
-      if (tab === 'safety') loadSafetyReports();
-    }
+function fApps(f, el) {
+  document.querySelectorAll('#view-applications .ftab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); appFilter = f; renderFilteredApps();
+}
 
-    function refreshAll() {
-      loadStats();
-      const active = document.querySelector('.tab-content.active');
-      if (active) {
-        const id = active.id.replace('tab-', '');
-        if (id === 'chauffeurs') loadChauffeurs();
-        if (id === 'rides') loadRides();
-        if (id === 'withdrawals') loadWithdrawals();
-        if (id === 'safety') loadSafetyReports();
-      }
-    }
+function renderFilteredApps() {
+  let list = allApps;
+  if (appFilter === 'pending') list = allApps.filter(a => !a.isApproved);
+  if (appFilter === 'approved') list = allApps.filter(a => a.isApproved);
+  renderChauffeurTableInEl('apps-table', list, true);
+}
 
-    async function loadStats() {
-      try {
-        const res = await apiFetch('/api/admin/stats');
-        if (!res.ok) throw new Error();
-        const stats = await res.json();
-        document.getElementById('stats-grid').innerHTML = `
-          <div class="stat-card"><div class="stat-value">${stats.totalRides}</div><div class="stat-label">Total Rides</div></div>
-          <div class="stat-card"><div class="stat-value">${stats.completedRides}</div><div class="stat-label">Completed</div></div>
-          <div class="stat-card"><div class="stat-value">${stats.activeRides}</div><div class="stat-label">Active Rides</div></div>
-          <div class="stat-card"><div class="stat-value">R ${stats.totalRevenue}</div><div class="stat-label">Total Revenue</div></div>
-          <div class="stat-card"><div class="stat-value">${stats.totalChauffeurs}</div><div class="stat-label">Chauffeurs</div></div>
-          <div class="stat-card"><div class="stat-value">${stats.onlineChauffeurs}</div><div class="stat-label">Online Now</div></div>
-          <div class="stat-card"><div class="stat-value">${stats.pendingApprovals}</div><div class="stat-label">Pending Approvals</div></div>
-          <div class="stat-card"><div class="stat-value">${stats.pendingWithdrawals}</div><div class="stat-label">Pending Withdrawals</div></div>
-          <div class="stat-card"><div class="stat-value ${stats.openReports > 0 ? 'stat-alert' : ''}">${stats.openReports}</div><div class="stat-label">Open Reports</div></div>
-          <div class="stat-card"><div class="stat-value">${stats.totalReports}</div><div class="stat-label">Total Reports</div></div>
-        `;
-      } catch(e) {
-        document.getElementById('stats-grid').innerHTML = '<div class="loading">Failed to load stats</div>';
-      }
-    }
+// ── CHAUFFEURS ──
+async function loadChauf() {
+  spin('chauf-table');
+  const res = await apiFetch('/api/chauffeurs');
+  allChauf = await res.json();
+  renderFilteredChauf();
+}
 
-    async function loadChauffeurs() {
-      try {
-        const res = await apiFetch('/api/chauffeurs');
-        const chauffeurs = await res.json();
-        if (!Array.isArray(chauffeurs) || !chauffeurs.length) {
-          document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">No chauffeurs registered yet</div>';
-          return;
-        }
-        let html = '<table><thead><tr><th>Driver</th><th>Phone</th><th>Vehicle</th><th>Plate</th><th>Color</th><th>Category</th><th>Status</th><th>Online</th><th>Actions</th></tr></thead><tbody>';
-        for (const c of chauffeurs) {
-          const vehicle = [c.carMake, c.vehicleModel].filter(Boolean).join(' ') || '—';
-          html += `<tr>
-            <td><strong>${c.userName || '—'}</strong><br><small style="color:#888">${c.userEmail || ''}</small></td>
-            <td>${c.userPhone || c.phone || '—'}</td>
-            <td>${vehicle}</td>
-            <td>${c.plateNumber || '—'}</td>
-            <td>${c.carColor || '—'}</td>
-            <td>${c.vehicleType || '—'}</td>
-            <td><span class="badge ${c.isApproved ? 'badge-approved' : 'badge-pending'}">${c.isApproved ? 'Approved' : 'Pending'}</span></td>
-            <td><span class="badge ${c.isOnline ? 'badge-online' : 'badge-offline'}">${c.isOnline ? 'Online' : 'Offline'}</span></td>
-            <td>
-              ${!c.isApproved ? `<button class="btn btn-approve btn-small" onclick="approveChauffeur('${c.id}')">Approve</button>` : '<span style="color:#4caf50">✓</span>'}
-            </td>
-          </tr>`;
-        }
-        html += '</tbody></table>';
-        document.getElementById('chauffeurs-table').innerHTML = html;
-      } catch(e) {
-        document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">Failed to load</div>';
-      }
-    }
+function fChauf(f, el) {
+  document.querySelectorAll('#view-chauffeurs .ftab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); chaufFilter = f; renderFilteredChauf();
+}
 
-    async function loadRides() {
-      try {
-        const res = await apiFetch('/api/rides');
-        const rides = await res.json();
-        if (!rides.length) {
-          document.getElementById('rides-table').innerHTML = '<div class="loading">No rides</div>';
-          return;
-        }
-        let html = '<table><thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th></tr></thead><tbody>';
-        for (const r of rides) {
-          html += `<tr>
-            <td>${r.pickupAddress || 'N/A'}</td>
-            <td>${r.dropoffAddress || 'N/A'}</td>
-            <td><span class="badge badge-${r.status === 'trip_completed' ? 'approved' : r.status === 'cancelled' ? 'rejected' : 'pending'}">${r.status}</span></td>
-            <td>R ${r.price || '—'}</td>
-            <td><span class="badge badge-${r.paymentStatus === 'paid' ? 'paid' : 'pending'}">${r.paymentStatus || '—'}</span></td>
-            <td>${new Date(r.createdAt).toLocaleDateString()}</td>
-          </tr>`;
-        }
-        html += '</tbody></table>';
-        document.getElementById('rides-table').innerHTML = html;
-      } catch(e) {
-        document.getElementById('rides-table').innerHTML = '<div class="loading">Failed to load</div>';
-      }
-    }
+function renderFilteredChauf() {
+  let list = allChauf;
+  if (chaufFilter==='online') list = allChauf.filter(c=>c.isOnline);
+  if (chaufFilter==='approved') list = allChauf.filter(c=>c.isApproved);
+  if (chaufFilter==='pending') list = allChauf.filter(c=>!c.isApproved);
+  renderChauffeurTableInEl('chauf-table', list, true);
+}
 
-    async function loadWithdrawals() {
-      try {
-        const res = await apiFetch('/api/withdrawals');
-        const withdrawals = await res.json();
-        if (!withdrawals.length) {
-          document.getElementById('withdrawals-table').innerHTML = '<div class="loading">No withdrawals</div>';
-          return;
-        }
-        let html = '<table><thead><tr><th>Chauffeur ID</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
-        for (const w of withdrawals) {
-          html += `<tr>
-            <td style="font-size:11px">${(w.chauffeurId || '').substring(0,8)}...</td>
-            <td>R ${w.amount}</td>
-            <td><span class="badge badge-${w.status === 'paid' ? 'paid' : w.status === 'approved' ? 'approved' : w.status === 'rejected' ? 'rejected' : 'pending'}">${w.status}</span></td>
-            <td>${new Date(w.createdAt).toLocaleDateString()}</td>
-            <td>
-              ${w.status === 'pending' ? `
-                <button class="btn btn-approve btn-small" onclick="updateWithdrawal('${w.id}', 'approved')">Approve</button>
-                <button class="btn btn-reject btn-small" onclick="updateWithdrawal('${w.id}', 'rejected')" style="margin-left:4px">Reject</button>
-              ` : w.status === 'approved' ? `
-                <button class="btn btn-approve btn-small" onclick="updateWithdrawal('${w.id}', 'paid')">Mark Paid</button>
-              ` : ''}
-            </td>
-          </tr>`;
-        }
-        html += '</tbody></table>';
-        document.getElementById('withdrawals-table').innerHTML = html;
-      } catch(e) {
-        document.getElementById('withdrawals-table').innerHTML = '<div class="loading">Failed to load</div>';
-      }
-    }
+// Shared renderer used by both chauffeurs and applications views
+function renderChauffeurTableInEl(elId, data, actions) {
+  const w = document.getElementById(elId);
+  if (!data.length) { w.innerHTML=emptyState('🚗','No chauffeurs yet','Drivers who complete registration will appear here'); return; }
+  w.innerHTML = `<table>
+    <thead><tr>
+      <th>Driver</th><th>Phone</th><th>Vehicle</th><th>Plate</th><th>Type</th>
+      <th>Online</th><th>Status</th><th>Earnings</th>
+      ${actions?'<th>Actions</th>':''}
+    </tr></thead>
+    <tbody>
+    ${data.map(c=>`<tr>
+      <td>
+        <div style="font-weight:600">${c.userName||'—'}</div>
+        <div style="font-size:11px;color:var(--muted)">${c.userEmail||''}</div>
+      </td>
+      <td style="font-size:13px">${c.userPhone||c.phone||'—'}</td>
+      <td>
+        <div style="font-weight:600">${[c.carMake,c.vehicleModel].filter(Boolean).join(' ')||'—'}</div>
+        <div style="font-size:11px;color:var(--muted)">${c.carColor||''}</div>
+      </td>
+      <td><span style="font-family:var(--mono);font-size:12px;background:var(--bg);padding:3px 8px;border-radius:5px;border:1px solid var(--border)">${c.plateNumber||'—'}</span></td>
+      <td style="text-transform:capitalize">${c.vehicleType||'—'}</td>
+      <td><span class="badge ${c.isOnline?'b-online':'b-offline'}">${c.isOnline?'Online':'Offline'}</span></td>
+      <td><span class="badge ${c.isApproved?'b-approved':'b-pending'}">${c.isApproved?'Approved':'Pending'}</span></td>
+      <td style="font-weight:600;color:var(--green)">R ${(c.earningsTotal||0).toFixed(2)}</td>
+      ${actions?`<td><div class="action-cell">
+        ${!c.isApproved?`<button class="btn-sm btn-approve" onclick="approveChauf('${c.id}')">✓ Approve</button>
+        <button class="btn-sm btn-reject" onclick="openRejectModal('${c.id}','chauffeur')">✕ Reject</button>`:''}
+        <button class="btn-sm btn-detail" onclick="chaufDetail('${c.id}')">Details</button>
+        <button class="btn-sm btn-detail" onclick="openDocsModal('${c.id}','${(c.userName||'Driver').replace(/'/g,'')}')" title="View Documents">📄</button>
+      </div></td>`:''}
+    </tr>`).join('')}
+    </tbody></table>`;
+}
 
-    async function loadSafetyReports() {
-      try {
-        const res = await apiFetch('/api/safety-reports');
-        const reports = await res.json();
-        if (!reports.length) {
-          document.getElementById('safety-table').innerHTML = '<div class="loading">No safety reports</div>';
-          return;
-        }
-        let html = '<table><thead><tr><th>Type</th><th>Priority</th><th>Description</th><th>AI Response</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
-        for (const r of reports) {
-          html += `<tr>
-            <td style="text-transform:capitalize">${r.type}</td>
-            <td><span class="badge badge-${r.priority}">${r.priority}</span></td>
-            <td class="desc-cell" title="${(r.description || '').replace(/"/g, '&quot;')}">${r.description || '—'}</td>
-            <td class="desc-cell" title="${(r.aiResponse || '').replace(/"/g, '&quot;')}">${r.aiResponse || '—'}</td>
-            <td><span class="badge badge-${r.status}">${r.status}</span></td>
-            <td>${new Date(r.createdAt).toLocaleDateString()}</td>
-            <td>
-              ${r.status === 'open' ? `<button class="btn btn-resolve btn-small" onclick="resolveReport('${r.id}')">Resolve</button>` : ''}
-            </td>
-          </tr>`;
-        }
-        html += '</tbody></table>';
-        document.getElementById('safety-table').innerHTML = html;
-      } catch(e) {
-        document.getElementById('safety-table').innerHTML = '<div class="loading">Failed to load</div>';
-      }
-    }
+async function approveChauf(id) {
+  try {
+    const res = await apiFetch(`/api/chauffeurs/${id}/approve`, { method: 'POST' });
+    if (!res.ok) throw new Error(await res.text());
+    toast('🎉 Driver approved and notified!', 'ok');
+    loadChauf(); loadOverview();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
 
-    async function approveChauffeur(id) {
-      try {
-        await apiFetch('/api/chauffeurs/' + id, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ isApproved: true })
-        });
-        loadChauffeurs();
-        loadStats();
-      } catch(e) { alert('Failed to approve'); }
-    }
+function chaufDetail(id) {
+  const c = allChauf.find(x=>x.id===id); if(!c) return;
+  document.getElementById('m-title').textContent = c.userName || 'Driver Details';
+  document.getElementById('m-sub').textContent = [c.carMake, c.vehicleModel].filter(Boolean).join(' ') || 'No vehicle';
+  document.getElementById('m-body').innerHTML = `<div class="info-grid">
+    <div class="info-row"><div class="info-label">Driver Name</div><div class="info-val">${c.userName||'—'}</div></div>
+    <div class="info-row"><div class="info-label">Phone</div><div class="info-val">${c.userPhone||c.phone||'—'}</div></div>
+    <div class="info-row"><div class="info-label">Email / Username</div><div class="info-val">${c.userEmail||'—'}</div></div>
+    <div class="info-row"><div class="info-label">Vehicle</div><div class="info-val">${[c.carMake,c.vehicleModel].filter(Boolean).join(' ')||'—'}</div></div>
+    <div class="info-row"><div class="info-label">Color</div><div class="info-val">${c.carColor||'—'}</div></div>
+    <div class="info-row"><div class="info-label">Plate</div><div class="info-val"><span style="font-family:var(--mono)">${c.plateNumber||'—'}</span></div></div>
+    <div class="info-row"><div class="info-label">Vehicle Type</div><div class="info-val;text-transform:capitalize">${c.vehicleType||'—'}</div></div>
+    <div class="info-row"><div class="info-label">Passengers</div><div class="info-val">${c.passengerCapacity||4}</div></div>
+    <div class="info-row"><div class="info-label">Online</div><div class="info-val"><span class="badge ${c.isOnline?'b-online':'b-offline'}">${c.isOnline?'Yes':'No'}</span></div></div>
+    <div class="info-row"><div class="info-label">Status</div><div class="info-val"><span class="badge ${c.isApproved?'b-approved':'b-pending'}">${c.isApproved?'Approved':'Pending'}</span></div></div>
+    <div class="info-row"><div class="info-label">Total Earnings</div><div class="info-val" style="color:var(--green);font-weight:700">R ${(c.earningsTotal||0).toFixed(2)}</div></div>
+    <div class="info-row"><div class="info-label">Registered</div><div class="info-val">${fmt(c.createdAt)}</div></div>
+  </div>`;
+  document.getElementById('m-foot').innerHTML = `
+    <button class="btn-lg btn-outline" onclick="openDocsModal('${c.id}','${(c.userName||'Driver').replace(/'/g,'')}');closeModal()">📄 Documents</button>
+    <button class="btn-lg btn-outline" onclick="closeModal()">Close</button>
+    ${!c.isApproved?`
+      <button class="btn-lg btn-red" onclick="closeModal();openRejectModal('${c.id}','chauffeur')">✕ Reject</button>
+      <button class="btn-lg btn-green" onclick="approveChauf('${c.id}');closeModal()">✓ Approve</button>
+    `:''}
+  `;
+  openModal();
+}
 
-    async function updateWithdrawal(id, status) {
-      try {
-        await apiFetch('/api/withdrawals/' + id, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status })
-        });
-        loadWithdrawals();
-        loadStats();
-      } catch(e) { alert('Failed to update'); }
-    }
+// ── RIDES ──
+async function loadRides() {
+  spin('rides-table');
+  try {
+    const res = await apiFetch('/api/rides');
+    const data = await res.json();
+    const w = document.getElementById('rides-table');
+    if (!data?.length) { w.innerHTML=emptyState('🗺','No rides yet','Rides will appear here once users book them'); return; }
+    w.innerHTML = `<table>
+      <thead><tr><th>Pickup</th><th>Dropoff</th><th>Fare</th><th>Status</th><th>Payment</th><th>Date</th></tr></thead>
+      <tbody>${data.map(r=>`<tr>
+        <td style="font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.pickupAddress||'—'}</td>
+        <td style="font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.dropoffAddress||'—'}</td>
+        <td style="font-weight:600;color:var(--green)">R ${r.price?Number(r.price).toFixed(2):'—'}</td>
+        <td><span class="badge ${r.status==='trip_completed'?'b-completed':r.status==='cancelled'?'b-cancelled':'b-pending'}">${r.status||'—'}</span></td>
+        <td><span class="badge ${r.paymentStatus==='paid'?'b-paid':'b-pending'}">${r.paymentStatus||'—'}</span></td>
+        <td>${fmt(r.createdAt)}</td>
+      </tr>`).join('')}</tbody></table>`;
+  } catch { document.getElementById('rides-table').innerHTML = emptyState('❌','Failed to load','Could not fetch rides'); }
+}
 
-    async function resolveReport(id) {
-      try {
-        await apiFetch('/api/safety-reports/' + id, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'resolved' })
-        });
-        loadSafetyReports();
-        loadStats();
-      } catch(e) { alert('Failed to resolve'); }
-    }
+// ── PAYMENTS ──
+async function loadPay() {
+  spin('pay-table');
+  try {
+    const res = await apiFetch('/api/withdrawals');
+    const data = await res.json();
+    const w = document.getElementById('pay-table');
+    if (!data?.length) { w.innerHTML=emptyState('💳','No withdrawals yet','Withdrawal requests will appear here'); return; }
+    w.innerHTML = `<table>
+      <thead><tr><th>Chauffeur</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+      <tbody>${data.map(p=>`<tr>
+        <td style="font-size:12px;font-family:var(--mono);color:var(--muted)">${(p.chauffeurId||'').slice(0,12)}…</td>
+        <td style="font-weight:700;color:var(--green)">R ${Number(p.amount||0).toFixed(2)}</td>
+        <td><span class="badge ${p.status==='paid'?'b-paid':p.status==='approved'?'b-approved':p.status==='rejected'?'b-rejected':'b-pending'}">${p.status}</span></td>
+        <td>${fmt(p.createdAt)}</td>
+        <td><div class="action-cell">
+          ${p.status==='pending'?`<button class="btn-sm btn-approve" onclick="updateWithdrawal('${p.id}','approved')">Approve</button>
+          <button class="btn-sm btn-reject" onclick="updateWithdrawal('${p.id}','rejected')">Reject</button>`:''}
+          ${p.status==='approved'?`<button class="btn-sm btn-approve" onclick="updateWithdrawal('${p.id}','paid')">Mark Paid</button>`:''}
+        </div></td>
+      </tr>`).join('')}</tbody></table>`;
+  } catch { document.getElementById('pay-table').innerHTML = emptyState('❌','Failed to load',''); }
+}
 
-    // Boot
-    if (!getToken()) showLogin(true);
-    loadStats();
-    setInterval(loadStats, 15000);
-  </script>
+async function updateWithdrawal(id, status) {
+  try {
+    await apiFetch(`/api/withdrawals/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+    toast(status === 'paid' ? '✅ Marked as paid' : status === 'approved' ? '✅ Approved' : '🚫 Rejected', status === 'rejected' ? 'err' : 'ok');
+    loadPay();
+  } catch { toast('❌ Failed to update', 'err'); }
+}
+
+// ── SAFETY ──
+async function loadSafe() {
+  spin('safe-table');
+  try {
+    const res = await apiFetch('/api/safety-reports');
+    allSafe = await res.json();
+    renderFilteredSafe();
+  } catch { document.getElementById('safe-table').innerHTML = emptyState('❌','Failed to load',''); }
+}
+
+function fSafe(f, el) {
+  document.querySelectorAll('#view-safety .ftab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); safeFilter = f; renderFilteredSafe();
+}
+
+function renderFilteredSafe() {
+  const list = safeFilter==='all' ? allSafe : allSafe.filter(s=>s.status===safeFilter);
+  const w = document.getElementById('safe-table');
+  if (!list.length) { w.innerHTML=emptyState('✅','All clear','No safety reports to show'); return; }
+  w.innerHTML = `<table>
+    <thead><tr><th>Type</th><th>Description</th><th>Priority</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+    <tbody>${list.map(s=>`<tr>
+      <td><strong>${s.type||'—'}</strong></td>
+      <td style="font-size:12px;color:var(--muted);max-width:180px">${(s.description||'—').slice(0,55)}${(s.description?.length||0)>55?'…':''}</td>
+      <td><span style="font-weight:700;font-size:12px;color:${s.priority==='high'?'var(--red)':s.priority==='low'?'var(--green)':'var(--yellow)'}">${(s.priority||'medium').toUpperCase()}</span></td>
+      <td><span class="badge ${s.status==='open'?'b-pending':'b-approved'}">${s.status}</span></td>
+      <td>${fmt(s.createdAt)}</td>
+      <td>${s.status==='open'?`<button class="btn-sm btn-approve" onclick="resolveReport('${s.id}')">Mark Resolved</button>`:'<span style="font-size:12px;color:var(--muted-light)">Done</span>'}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+async function resolveReport(id) {
+  try {
+    await apiFetch(`/api/safety-reports/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'resolved' }) });
+    toast('✅ Report resolved', 'ok'); loadSafe();
+  } catch { toast('❌ Failed', 'err'); }
+}
+
+// ── USERS ──
+async function loadUsers() {
+  spin('users-table');
+  try {
+    const res = await apiFetch('/api/users');
+    const data = await res.json();
+    const w = document.getElementById('users-table');
+    if (!data?.length) { w.innerHTML=emptyState('👤','No users yet','User accounts will appear here'); return; }
+    w.innerHTML = `<table>
+      <thead><tr><th>Name</th><th>Username</th><th>Phone</th><th>Role</th><th>Rating</th><th>Joined</th></tr></thead>
+      <tbody>${data.map(u=>`<tr>
+        <td><strong>${u.name||'—'}</strong></td>
+        <td style="color:var(--muted);font-size:13px">@${u.username||'—'}</td>
+        <td>${u.phone||'—'}</td>
+        <td><span class="badge ${u.role==='admin'?'b-approved':u.role==='driver'?'b-pending':'b-offline'}">${u.role}</span></td>
+        <td>⭐ ${(u.rating||5).toFixed(1)}</td>
+        <td>${fmt(u.createdAt)}</td>
+      </tr>`).join('')}</tbody></table>`;
+  } catch { document.getElementById('users-table').innerHTML = emptyState('❌','Failed to load',''); }
+}
+
+// ── SEARCH ──
+function doSearch(q) {
+  if (curView==='chauffeurs') {
+    const f = allChauf.filter(c=>`${c.carMake} ${c.vehicleModel} ${c.plateNumber} ${c.carColor} ${c.userName}`.toLowerCase().includes(q.toLowerCase()));
+    renderChauffeurTableInEl('chauf-table', f, true);
+  }
+}
+
+// ── UTILS ──
+function fmt(d) { return d ? new Date(d).toLocaleDateString('en-ZA', {day:'2-digit',month:'short',year:'numeric'}) : '—'; }
+function fmtFull(d) { return d ? new Date(d).toLocaleString('en-ZA') : '—'; }
+function spin(id) { document.getElementById(id).innerHTML = '<div class="loading">Loading...</div>'; }
+function emptyState(icon, title, sub) {
+  return `<div class="empty"><div class="empty-icon">${icon}</div><div class="empty-text">${title}</div><div class="empty-sub">${sub}</div></div>`;
+}
+
+function openModal() { document.getElementById('modal-wrap').classList.add('open'); }
+function closeModal() { document.getElementById('modal-wrap').classList.remove('open'); }
+document.getElementById('modal-wrap').addEventListener('click', e => { if(e.target===document.getElementById('modal-wrap')) closeModal(); });
+
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast t-${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// INIT
+if (!getToken()) { showLogin(true); } else { loadOverview(); }
+document.getElementById('l-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+</script>
 </body>
 </html>
-

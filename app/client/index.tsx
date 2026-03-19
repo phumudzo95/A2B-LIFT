@@ -91,6 +91,9 @@ export default function ClientHomeScreen() {
   const [submittingRating, setSubmittingRating] = useState(false);
   const [onlineDrivers, setOnlineDrivers] = useState<{ id: string; lat: number; lng: number }[]>([]);
 
+  // Notification badge
+  const [unreadCount, setUnreadCount] = useState(0);
+
   // Location picker modal
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
   const [locationPickerTarget, setLocationPickerTarget] = useState<"pickup" | "dropoff">("dropoff");
@@ -108,6 +111,22 @@ export default function ClientHomeScreen() {
   useEffect(() => {
     requestLocation();
   }, []);
+
+  // Poll unread notification count for badge
+  useEffect(() => {
+    if (!user?.id) return;
+    async function fetchUnread() {
+      try {
+        const res = await apiRequest("GET", `/api/notifications/user/${user!.id}`);
+        const data = await res.json();
+        const count = Array.isArray(data) ? data.filter((n: any) => !n.isRead).length : 0;
+        setUnreadCount(count);
+      } catch {}
+    }
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 20000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   // Fetch online drivers periodically to show on map and check availability
   useEffect(() => {
@@ -184,15 +203,46 @@ export default function ClientHomeScreen() {
   async function selectSuggestion(suggestion: { placeId: string; description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }) {
     try {
       setSuggestionsLoading(true);
-      // Google Places autocomplete returns null coords — resolve via details endpoint
       let coords = (suggestion.lat && suggestion.lng) ? { lat: suggestion.lat, lng: suggestion.lng } : null;
-      if (!coords) {
-        const res = await apiRequest("GET", `/api/places/details?placeId=${encodeURIComponent(suggestion.placeId)}`);
-        const data = await res.json();
-        coords = { lat: data.lat, lng: data.lng };
-      }
-      const address = suggestion.description;
 
+      if (!coords) {
+        // Try API details endpoint first
+        try {
+          const res = await apiRequest("GET", `/api/places/details?placeId=${encodeURIComponent(suggestion.placeId)}`);
+          const data = await res.json();
+          if (data.lat && data.lng) {
+            coords = { lat: data.lat, lng: data.lng };
+          }
+        } catch {}
+      }
+
+      // Fallback: geocode the description text directly
+      if (!coords) {
+        try {
+          const res = await apiRequest("GET", `/api/geocode?address=${encodeURIComponent(suggestion.description)}`);
+          const data = await res.json();
+          if (data.lat && data.lng) {
+            coords = { lat: data.lat, lng: data.lng };
+          }
+        } catch {}
+      }
+
+      // Last resort: expo-location geocoder (native only)
+      if (!coords && Platform.OS !== "web") {
+        try {
+          const results = await Location.geocodeAsync(suggestion.description);
+          if (results.length > 0) {
+            coords = { lat: results[0].latitude, lng: results[0].longitude };
+          }
+        } catch {}
+      }
+
+      if (!coords) {
+        Alert.alert("Location not found", "Could not resolve this address. Please try a different search.");
+        return;
+      }
+
+      const address = suggestion.description;
       if (locationPickerTarget === "pickup") {
         setLocation(coords);
         setPickupAddress(address);
@@ -478,9 +528,18 @@ export default function ClientHomeScreen() {
           <Text style={styles.brandName}>A2B LIFT</Text>
           <Text style={styles.brandSlogan}>Premium Ride Experience</Text>
         </View>
-        <View style={styles.avatarCircle}>
+        <Pressable
+          style={styles.avatarCircle}
+          onPress={() => router.push("/client/profile")}
+          hitSlop={8}
+        >
           <Ionicons name="person" size={18} color={Colors.white} />
-        </View>
+          {unreadCount > 0 && (
+            <View style={styles.notifBadge}>
+              <Text style={styles.notifBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+            </View>
+          )}
+        </Pressable>
       </View>
 
       <View style={styles.mapArea}>
@@ -983,6 +1042,26 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     alignItems: "center",
     justifyContent: "center",
+  },
+  notifBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#FF3B30",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+  },
+  notifBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    lineHeight: 12,
   },
   mapArea: {
     flex: 1,

@@ -4,6 +4,9 @@ import { Server as SocketIOServer } from "socket.io";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { storage } from "./storage";
+import { db } from "./db";
+import { users } from "../shared/schema";
+import { desc } from "drizzle-orm";
 import {
   calculatePrice,
   calculateChauffeurEarnings,
@@ -407,6 +410,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -----------------------------
   // Users
   // -----------------------------
+  // List all users (admin)
+  app.get("/api/users", requireAuth, requireRole(["admin"]), async (_req: AuthedRequest, res: Response) => {
+    try {
+      const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
+      return res.json(allUsers);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/users/:id", async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.params.id);
@@ -601,6 +614,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const chauffeur = await storage.updateChauffeur(req.params.id, req.body);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
       return res.json(chauffeur);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Approve chauffeur — sends in-app congratulations notification
+  app.post("/api/chauffeurs/:id/approve", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const chauffeur = await storage.getChauffeur(req.params.id);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
+      await storage.updateChauffeur(req.params.id, { isApproved: true });
+      if (chauffeur.userId) {
+        await storage.createNotification({
+          userId: chauffeur.userId,
+          type: "general",
+          title: "🎉 Application Approved!",
+          body: "Congratulations! Your driver application has been approved. You can now go online and start accepting rides.",
+          isRead: false,
+        });
+      }
+      return res.json({ success: true });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Reject chauffeur — sends in-app rejection notification with reason
+  app.post("/api/chauffeurs/:id/reject", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const { reason } = req.body;
+      if (!reason?.trim()) return res.status(400).json({ message: "Rejection reason is required" });
+      const chauffeur = await storage.getChauffeur(req.params.id);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
+      await storage.updateChauffeur(req.params.id, { isApproved: false });
+      if (chauffeur.userId) {
+        await storage.createNotification({
+          userId: chauffeur.userId,
+          type: "general",
+          title: "😔 Application Not Approved",
+          body: `Your driver application was not approved. Reason: ${reason.trim()}. Please contact support if you have questions.`,
+          isRead: false,
+        });
+      }
+      return res.json({ success: true });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get documents for a specific chauffeur (admin)
+  app.get("/api/chauffeurs/:id/documents", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const chauffeur = await storage.getChauffeur(req.params.id);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
+      const docs = chauffeur.userId ? await storage.getDocumentsByUser(chauffeur.userId) : [];
+      return res.json(docs);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
