@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Alert, Image } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Image } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,12 +8,10 @@ import Colors from "@/constants/colors";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { apiRequest } from "@/lib/query-client";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB || "";
-const PROXY_BASE = "https://auth.expo.io/@anonymous/a2b-lift";
+const GOOGLE_OAUTH_START = "https://api-production-0783.up.railway.app/api/auth/google/start";
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
@@ -27,17 +25,29 @@ export default function RegisterScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleGoogleCode(code: string, redirectUri: string) {
+  // Handle the deep link callback from the backend OAuth flow
+  useEffect(() => {
+    const sub = Linking.addEventListener("url", ({ url }) => {
+      if (!url.startsWith("a2blift://auth")) return;
+      handleDeepLinkCallback(url);
+    });
+    return () => sub.remove();
+  }, []);
+
+  async function handleDeepLinkCallback(url: string) {
     try {
-      const res = await apiRequest("POST", "/api/auth/google", { code, redirectUri });
-      const payload = await res.json();
-      if (!payload.user) throw new Error(payload.message || "Google sign up failed");
+      const parsed = new URL(url);
+      const err = parsed.searchParams.get("error");
+      if (err) { setError("Google sign up failed. Please try again."); setGoogleLoading(false); return; }
+      const payloadStr = parsed.searchParams.get("payload");
+      if (!payloadStr) { setGoogleLoading(false); return; }
+      const payload = JSON.parse(decodeURIComponent(payloadStr));
       await AsyncStorage.setItem("a2b_user", JSON.stringify(payload.user));
       if (payload.accessToken) await AsyncStorage.setItem("a2b_token", payload.accessToken);
       setUser(payload.user);
       setTimeout(() => router.replace("/role-select"), 0);
-    } catch (e: any) {
-      setError(e.message || "Google sign up failed. Please try again.");
+    } catch {
+      setError("Google sign up failed. Please try again.");
     } finally {
       setGoogleLoading(false);
     }
@@ -67,44 +77,14 @@ export default function RegisterScreen() {
   }
 
   async function handleGoogleSignUp() {
-    if (!GOOGLE_CLIENT_ID) {
-      Alert.alert("Setup Required", "Google Client ID not configured.");
-      return;
-    }
     setGoogleLoading(true);
     setError("");
-    try {
-      const returnUrl = Linking.createURL("expo-auth-session");
-      const redirectUri = PROXY_BASE;
-
-      const googleAuthUrl =
-        `https://accounts.google.com/o/oauth2/v2/auth` +
-        `?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&response_type=code` +
-        `&scope=${encodeURIComponent("openid email profile")}` +
-        `&access_type=offline` +
-        `&prompt=select_account`;
-
-      const startUrl = `${PROXY_BASE}/start?${new URLSearchParams({ authUrl: googleAuthUrl, returnUrl }).toString()}`;
-
-      const result = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl, {
-        showInRecents: false,
-        preferEphemeralSession: true,
-      });
-      if (result.type === "success" && result.url) {
-        const parsed = new URL(result.url);
-        const code = parsed.searchParams.get("code");
-        if (code) await handleGoogleCode(code, redirectUri);
-        else throw new Error("No auth code received");
-      }
-    } catch (e: any) {
-      if (!e.message?.includes("cancel") && !e.message?.includes("dismiss")) {
-        setError("Google sign up failed. Please try again.");
-      }
-    } finally {
-      setGoogleLoading(false);
-    }
+    // Backend handles the full OAuth flow; result comes back via deep link
+    await WebBrowser.openAuthSessionAsync(GOOGLE_OAUTH_START, "a2blift://auth", {
+      preferEphemeralSession: true,
+    });
+    // If the browser was dismissed without a deep link, stop the spinner
+    setGoogleLoading(false);
   }
 
   return (
