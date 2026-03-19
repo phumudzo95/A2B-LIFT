@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users } from "../shared/schema";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import {
   calculatePrice,
   calculateChauffeurEarnings,
@@ -75,9 +75,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
 
+    // Driver registers their chauffeurId on connect so we can target them for nearby trips
+    socket.on("chauffeur:register", (data: { chauffeurId: string }) => {
+      if (data?.chauffeurId) {
+        (socket.data as any).chauffeurId = data.chauffeurId;
+      }
+    });
+
     socket.on("chauffeur:location", async (data) => {
       const { chauffeurId, lat, lng } = data;
       if (chauffeurId) {
+        // Store chauffeurId on socket for targeted ride dispatch
+        (socket.data as any).chauffeurId = chauffeurId;
         await storage.updateChauffeur(chauffeurId, {
           lat,
           lng,
@@ -112,6 +121,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
+
+  // Haversine distance in km between two lat/lng points
+  function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
 
   // -----------------------------
   // Auth (JWT)
@@ -840,14 +860,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentStatus: "unpaid",
       });
 
-      // Broadcast to all online drivers so they can accept the ride
-      io.emit("ride:new", ride);
+      // Send trip only to nearby approved online drivers (within 15 km, sorted by distance)
+      const allChauffeurs = await storage.getAllChauffeurs();
+      const pickupLat = parseFloat(rideData.pickupLat);
+      const pickupLng = parseFloat(rideData.pickupLng);
+
+      const nearbyChauffeurs = allChauffeurs
+        .filter(c => c.isOnline && c.isApproved && c.lat && c.lng)
+        .map(c => ({
+          ...c,
+          distKm: haversine(pickupLat, pickupLng, Number(c.lat), Number(c.lng)),
+        }))
+        .filter(c => c.distKm <= 15)
+        .sort((a, b) => a.distKm - b.distKm)
+        .slice(0, 5); // notify up to 5 nearest drivers
+
+      if (nearbyChauffeurs.length > 0) {
+        // Emit only to connected sockets belonging to nearby drivers
+        const sockets = await io.fetchSockets();
+        let notified = 0;
+        for (const socket of sockets) {
+          const socketData = socket.data as any;
+          if (socketData?.chauffeurId && nearbyChauffeurs.some(c => c.id === socketData.chauffeurId)) {
+            socket.emit("ride:new", { ...ride, distanceToPickup: nearbyChauffeurs.find(c => c.id === socketData.chauffeurId)?.distKm });
+            notified++;
+          }
+        }
+        // Fallback: if no sockets matched (drivers not connected via socket), broadcast to all
+        if (notified === 0) {
+          io.emit("ride:new", ride);
+        }
+      } else {
+        // No nearby drivers — broadcast to all online approved drivers as fallback
+        io.emit("ride:new", ride);
+      }
 
       // Always return success immediately — client shows "searching" UI
       return res.json({
         success: true,
         status: ride.status,
-        message: "Searching for drivers nearby...",
+        message: nearbyChauffeurs.length > 0
+          ? `Notifying ${nearbyChauffeurs.length} driver${nearbyChauffeurs.length > 1 ? "s" : ""} nearby...`
+          : "Searching for drivers...",
         ride: ride,
       });
     } catch (error: any) {
@@ -1372,6 +1426,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const notif = await storage.markNotificationRead(req.params.id);
       if (!notif) return res.status(404).json({ message: "Notification not found" });
       return res.json(notif);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // -----------------------------
+  // Trip Enquiries
+  // -----------------------------
+
+  // Client submits a help message about a trip
+  app.post("/api/trip-enquiries", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const { rideId, message } = req.body;
+      if (!rideId || !message?.trim()) return res.status(400).json({ message: "rideId and message are required" });
+      const enquiry = await storage.createTripEnquiry({ rideId, userId: req.auth!.sub, message: message.trim() });
+      // Notify all admins via notification (stored for admin dashboard badge)
+      const allUsers = await db.select().from(users).where(eq(users.role, "admin" as any));
+      for (const admin of allUsers) {
+        await storage.createNotification({
+          userId: admin.id,
+          type: "general",
+          title: "📩 New Trip Enquiry",
+          body: `A user submitted a help request about a trip: "${message.trim().slice(0, 80)}${message.length > 80 ? "…" : ""}"`,
+          isRead: false,
+        });
+      }
+      return res.json(enquiry);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin: list all enquiries
+  app.get("/api/trip-enquiries", requireAuth, requireRole(["admin"]), async (_req: AuthedRequest, res: Response) => {
+    try {
+      const enquiries = await storage.getAllTripEnquiries();
+      return res.json(enquiries);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin: reply to an enquiry — sends in-app notification to user
+  app.post("/api/trip-enquiries/:id/reply", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const { reply } = req.body;
+      if (!reply?.trim()) return res.status(400).json({ message: "reply is required" });
+      const enquiry = await storage.replyToTripEnquiry(req.params.id, reply.trim());
+      if (!enquiry) return res.status(404).json({ message: "Enquiry not found" });
+      // Notify the user who submitted the enquiry
+      await storage.createNotification({
+        userId: enquiry.userId,
+        type: "general",
+        title: "💬 Admin replied to your trip enquiry",
+        body: reply.trim(),
+        isRead: false,
+      });
+      return res.json(enquiry);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }

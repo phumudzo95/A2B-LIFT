@@ -94,6 +94,9 @@ export default function ClientHomeScreen() {
   // Notification badge
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // ETA to nearest available driver (shown on map in idle/selecting state)
+  const [nearestDriverEta, setNearestDriverEta] = useState<string | null>(null);
+
   // Location picker modal
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
   const [locationPickerTarget, setLocationPickerTarget] = useState<"pickup" | "dropoff">("dropoff");
@@ -128,22 +131,36 @@ export default function ClientHomeScreen() {
     return () => clearInterval(interval);
   }, [user?.id]);
 
-  // Fetch online drivers periodically to show on map and check availability
+  // Fetch online drivers periodically to show on map and compute nearest ETA
   useEffect(() => {
     async function fetchOnlineDrivers() {
       try {
         const res = await apiRequest("GET", "/api/chauffeurs");
         const all = await res.json();
         const online = (all as any[])
-          .filter((c: any) => c.isOnline && c.currentLat && c.currentLng)
-          .map((c: any) => ({ id: String(c.id), lat: Number(c.currentLat), lng: Number(c.currentLng) }));
+          .filter((c: any) => c.isOnline && c.isApproved && c.lat && c.lng)
+          .map((c: any) => ({ id: String(c.id), lat: Number(c.lat), lng: Number(c.lng) }));
         setOnlineDrivers(online);
+
+        // Compute ETA to nearest driver using haversine distance
+        if (online.length > 0 && location) {
+          let minDist = Infinity;
+          for (const d of online) {
+            const dist = haversineDistance(location.lat, location.lng, d.lat, d.lng);
+            if (dist < minDist) minDist = dist;
+          }
+          // Assume ~30 km/h average speed in city
+          const etaMin = Math.max(1, Math.round((minDist / 30) * 60));
+          setNearestDriverEta(etaMin <= 1 ? "< 1 min away" : `~${etaMin} min away`);
+        } else {
+          setNearestDriverEta(null);
+        }
       } catch {}
     }
     fetchOnlineDrivers();
-    const interval = setInterval(fetchOnlineDrivers, 30000);
+    const interval = setInterval(fetchOnlineDrivers, 20000);
     return () => clearInterval(interval);
-  }, []);
+  }, [location]);
 
   // Cancel ride and show "no drivers" if no driver accepts within 45 seconds
   useEffect(() => {
@@ -321,12 +338,25 @@ export default function ClientHomeScreen() {
   useEffect(() => {
     const handleDriverLocation = (data: any) => {
       if (currentRide && data.chauffeurId === currentRide.chauffeurId) {
-        setDriverLocation({ lat: data.lat, lng: data.lng });
+        const driverLoc = { lat: data.lat, lng: data.lng };
+        setDriverLocation(driverLoc);
+
+        // Recompute live ETA from driver to client (assigned/arriving) or to dropoff (in_trip)
+        const destLat = rideStatus === "in_trip"
+          ? parseFloat(currentRide.dropoffLat)
+          : location?.lat ?? parseFloat(currentRide.pickupLat);
+        const destLng = rideStatus === "in_trip"
+          ? parseFloat(currentRide.dropoffLng)
+          : location?.lng ?? parseFloat(currentRide.pickupLng);
+
+        const distKm = haversineDistance(driverLoc.lat, driverLoc.lng, destLat, destLng);
+        const etaMin = Math.max(1, Math.round((distKm / 30) * 60));
+        setEtaText(etaMin <= 1 ? "Arriving now" : `${etaMin} min away`);
       }
     };
     on("location:update", handleDriverLocation);
     return () => { off("location:update", handleDriverLocation); };
-  }, [currentRide]);
+  }, [currentRide, rideStatus, location]);
 
   async function fetchRoute(origin: { lat: number; lng: number }, dest: { lat: number; lng: number }) {
     try {
@@ -560,6 +590,17 @@ export default function ClientHomeScreen() {
             undefined
           }
         />
+
+        {/* Nearest driver ETA pill — shown when idle and drivers are nearby */}
+        {(rideStatus === "idle" || rideStatus === "selecting") && nearestDriverEta && onlineDrivers.length > 0 && (
+          <View style={styles.nearbyEtaPill}>
+            <View style={styles.nearbyEtaDot} />
+            <Text style={styles.nearbyEtaText}>
+              {onlineDrivers.length} driver{onlineDrivers.length > 1 ? "s" : ""} nearby · {nearestDriverEta}
+            </Text>
+          </View>
+        )}
+
         {/* Searching for driver overlay — shows on map like Uber/Taxify */}
         {rideStatus === "requested" && (
           <View style={styles.searchingMapOverlay}>
@@ -1424,6 +1465,31 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.textMuted,
     marginTop: 1,
+  },
+  nearbyEtaPill: {
+    position: "absolute",
+    bottom: 16,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(0,0,0,0.82)",
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  nearbyEtaDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#22c55e",
+  },
+  nearbyEtaText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
   },
   // Map overlay while searching — like Uber's pulsing animation
   searchingMapOverlay: {

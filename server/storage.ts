@@ -14,6 +14,8 @@ import {
   messages,
   safetyReports,
   notifications,
+  tripEnquiries,
+  type TripEnquiry,
   type User,
   type InsertUser,
   type Chauffeur,
@@ -471,6 +473,24 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.id, id))
       .returning();
     return notification;
+  }
+
+  async createTripEnquiry(data: { rideId: string; userId: string; message: string }): Promise<TripEnquiry> {
+    const [enquiry] = await db.insert(tripEnquiries).values(data).returning();
+    return enquiry;
+  }
+
+  async getAllTripEnquiries(): Promise<TripEnquiry[]> {
+    return db.select().from(tripEnquiries).orderBy(desc(tripEnquiries.createdAt));
+  }
+
+  async replyToTripEnquiry(id: string, adminReply: string): Promise<TripEnquiry | undefined> {
+    const [enquiry] = await db
+      .update(tripEnquiries)
+      .set({ adminReply, status: "replied", repliedAt: new Date() })
+      .where(eq(tripEnquiries.id, id))
+      .returning();
+    return enquiry;
   }
 }
 

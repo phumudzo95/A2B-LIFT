@@ -44,6 +44,7 @@ export const chauffeurs = pgTable("chauffeurs", {
   isOnline: boolean("is_online").default(false),
   isApproved: boolean("is_approved").default(false),
   earningsTotal: real("earnings_total").default(0),
+  profilePhoto: text("profile_photo"),
   lat: real("lat"),
   lng: real("lng"),
   locationUpdatedAt: timestamp("location_updated_at"),
@@ -214,6 +215,23 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const tripEnquiries = pgTable("trip_enquiries", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  rideId: varchar("ride_id")
+    .notNull()
+    .references(() => rides.id),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id),
+  message: text("message").notNull(),
+  adminReply: text("admin_reply"),
+  status: text("status").notNull().default("open"), // open | replied | closed
+  createdAt: timestamp("created_at").defaultNow(),
+  repliedAt: timestamp("replied_at"),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -259,4 +277,5 @@ export type Withdrawal = typeof withdrawals.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type SafetyReport = typeof safetyReports.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type TripEnquiry = typeof tripEnquiries.$inferSelect;
 

@@ -9,6 +9,10 @@ const GOOGLE_MAPS_API_KEY =
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ||
   "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0";
 
+// Fallback region — Johannesburg CBD. Used when GPS not yet acquired so map
+// never renders at world zoom level.
+const DEFAULT_REGION = { lat: -26.2041, lng: 28.0473 };
+
 const DARK_MAP_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#1d1d1d" }] },
   { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
@@ -120,10 +124,12 @@ export default function A2BMap({
         ],
         { edgePadding: { top: 80, right: 60, bottom: 200, left: 60 }, animated: true }
       );
-    } else if (pickupLocation) {
+    } else {
+      // Always animate to user location (or fallback) — never show world zoom
+      const center = pickupLocation || DEFAULT_REGION;
       mapRef.current.animateToRegion({
-        latitude: pickupLocation.lat,
-        longitude: pickupLocation.lng,
+        latitude: center.lat,
+        longitude: center.lng,
         latitudeDelta: 0.008,
         longitudeDelta: 0.008,
       }, 600);
@@ -149,25 +155,25 @@ export default function A2BMap({
     );
   }
 
-  if (loading || !pickupLocation) {
-    return (
-      <View style={styles.fallback}>
-        <ActivityIndicator size="large" color={Colors.white} />
-        <Text style={styles.fallbackText}>Locating you...</Text>
-      </View>
-    );
-  }
+  // Use fallback so map always renders at street level, never world zoom
+  const mapCenter = pickupLocation || DEFAULT_REGION;
 
   return (
     <View style={styles.container}>
+      {(loading || !pickupLocation) && (
+        <View style={styles.locatingOverlay}>
+          <ActivityIndicator size="small" color={Colors.white} />
+          <Text style={styles.locatingText}>Locating you...</Text>
+        </View>
+      )}
       <MapView
         ref={mapRef}
         style={styles.map}
         provider={Platform.OS === "web" ? undefined : PROVIDER_GOOGLE}
         customMapStyle={DARK_MAP_STYLE}
         initialRegion={{
-          latitude: pickupLocation.lat,
-          longitude: pickupLocation.lng,
+          latitude: mapCenter.lat,
+          longitude: mapCenter.lng,
           latitudeDelta: 0.008,
           longitudeDelta: 0.008,
         }}
@@ -182,14 +188,16 @@ export default function A2BMap({
         mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
         googleMapsApiKey={GOOGLE_MAPS_API_KEY}
       >
-        <Marker
-          coordinate={{ latitude: pickupLocation.lat, longitude: pickupLocation.lng }}
-          anchor={{ x: 0.5, y: 0.5 }}
-        >
-          <View style={styles.pickupMarker}>
-            <View style={styles.pickupDot} />
-          </View>
-        </Marker>
+        {pickupLocation && (
+          <Marker
+            coordinate={{ latitude: pickupLocation.lat, longitude: pickupLocation.lng }}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View style={styles.pickupMarker}>
+              <View style={styles.pickupDot} />
+            </View>
+          </Marker>
+        )}
 
         {dropoffLocation && (
           <Marker
@@ -268,6 +276,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_500Medium",
     color: Colors.textSecondary,
+  },
+  locatingOverlay: {
+    position: "absolute",
+    top: 12,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    zIndex: 10,
+  },
+  locatingText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.white,
   },
   pickupMarker: {
     width: 24,

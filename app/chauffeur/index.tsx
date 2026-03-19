@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { router } from "expo-router";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Audio } from "expo-av";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/query-client";
 import { useSocket } from "@/lib/socket-context";
@@ -28,6 +29,30 @@ export default function ChauffeurDashboard() {
   const { on, off, emit } = useSocket();
 
   const [chauffeur, setChauffeur] = useState<any>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  async function playTripAlert() {
+    try {
+      if (Platform.OS === "web") return;
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      if (soundRef.current) {
+        await soundRef.current.replayAsync();
+      } else {
+        const { sound } = await Audio.Sound.createAsync(
+          require("../../assets/trip-alert.mp3"),
+          { shouldPlay: true, volume: 1.0 }
+        );
+        soundRef.current = sound;
+      }
+      // Strong haptic alongside sound
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {}
+  }
+
+  // Cleanup sound on unmount
+  useEffect(() => {
+    return () => { soundRef.current?.unloadAsync(); };
+  }, []);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
   const [incomingRide, setIncomingRide] = useState<any>(null);
@@ -44,7 +69,8 @@ export default function ChauffeurDashboard() {
     const handleNewRide = (ride: any) => {
       if (isOnline && chauffeur?.isApproved && !currentRide) {
         setIncomingRide(ride);
-        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        // Play alert sound + haptic for incoming trip
+        playTripAlert();
       }
     };
 
@@ -60,6 +86,19 @@ export default function ChauffeurDashboard() {
     }
     return () => stopLocationUpdates();
   }, [isOnline, chauffeur]);
+
+  // Poll approval status every 30s so driver sees approval without restarting app
+  useEffect(() => {
+    if (!chauffeur?.id) return;
+    const interval = setInterval(() => refreshChauffeur(chauffeur.id), 30000);
+    return () => clearInterval(interval);
+  }, [chauffeur?.id]);
+
+  // Register chauffeurId on socket so server can target this driver for nearby trips
+  useEffect(() => {
+    if (!chauffeur?.id) return;
+    emit("chauffeur:register", { chauffeurId: chauffeur.id });
+  }, [chauffeur?.id]);
 
   async function loadChauffeur() {
     if (!user) return;

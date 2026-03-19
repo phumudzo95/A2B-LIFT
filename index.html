@@ -542,6 +542,19 @@ tbody tr:hover { background: #fafaf8; }
   gap: 3px;
 }
 
+.edit-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+.edit-input:focus { border-color: var(--accent); }
+
 .info-label {
   font-size: 11px;
   font-weight: 700;
@@ -660,6 +673,12 @@ tbody tr:hover { background: #fafaf8; }
     </div>
     <div class="nav-item" onclick="go('safety',this)">
       <span class="nav-icon">⚠️</span> Safety Reports
+    </div>
+
+    <div class="nav-section">Support</div>
+    <div class="nav-item" onclick="go('enquiries',this)">
+      <span class="nav-icon">💬</span> Trip Enquiries
+      <span class="nav-badge" id="nb-enquiries" style="display:none">0</span>
     </div>
 
     <div class="nav-section">Accounts</div>
@@ -790,6 +809,15 @@ tbody tr:hover { background: #fafaf8; }
     <div class="view" id="view-users">
       <div class="sec-head"><div class="sec-title">All Users</div></div>
       <div class="table-card" id="users-table"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- TRIP ENQUIRIES -->
+    <div class="view" id="view-enquiries">
+      <div class="sec-head">
+        <div class="sec-title">Trip Enquiries</div>
+        <button class="btn-refresh" onclick="loadEnquiries()">↻ Refresh</button>
+      </div>
+      <div class="table-card" id="enquiries-table"><div class="loading">Loading...</div></div>
     </div>
 
   </div>
@@ -985,20 +1013,198 @@ async function openDocsModal(chauffeurId, driverName) {
   }
 }
 
+// ── EDIT CHAUFFEUR ──
+function openEditChauf(id) {
+  const c = allChauf.find(x => x.id === id); if (!c) return;
+  closeModal();
+  document.getElementById('m-title').textContent = 'Edit Driver — ' + (c.userName || 'Driver');
+  document.getElementById('m-sub').textContent = 'Email and name cannot be changed here';
+  document.getElementById('m-body').innerHTML = `
+    <div class="info-grid">
+      <div class="info-row">
+        <div class="info-label">Phone</div>
+        <div class="info-val"><input id="ef-phone" class="edit-input" value="${c.userPhone||c.phone||''}" placeholder="Phone number"/></div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Vehicle Make</div>
+        <div class="info-val"><input id="ef-make" class="edit-input" value="${c.carMake||''}" placeholder="e.g. Toyota"/></div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Vehicle Model</div>
+        <div class="info-val"><input id="ef-model" class="edit-input" value="${c.vehicleModel||''}" placeholder="e.g. Corolla"/></div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Plate Number</div>
+        <div class="info-val"><input id="ef-plate" class="edit-input" value="${c.plateNumber||''}" placeholder="e.g. CA 123-456"/></div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Car Color</div>
+        <div class="info-val"><input id="ef-color" class="edit-input" value="${c.carColor||''}" placeholder="e.g. White"/></div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Vehicle Type</div>
+        <div class="info-val">
+          <select id="ef-type" class="edit-input">
+            <option value="budget" ${c.vehicleType==='budget'?'selected':''}>Budget</option>
+            <option value="standard" ${c.vehicleType==='standard'?'selected':''}>Standard</option>
+            <option value="premium" ${c.vehicleType==='premium'?'selected':''}>Premium</option>
+            <option value="luxury" ${c.vehicleType==='luxury'?'selected':''}>Luxury</option>
+            <option value="xl" ${c.vehicleType==='xl'?'selected':''}>XL / Van</option>
+          </select>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Passenger Capacity</div>
+        <div class="info-val"><input id="ef-pax" class="edit-input" type="number" min="1" max="20" value="${c.passengerCapacity||4}"/></div>
+      </div>
+      <div class="info-row" style="grid-column:1/-1">
+        <div class="info-label">Profile Photo URL</div>
+        <div class="info-val">
+          <input id="ef-photo" class="edit-input" value="${c.profilePhoto||''}" placeholder="https://... (paste image URL or upload below)"/>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:10px;">
+            <input type="file" id="ef-photo-file" accept="image/*" style="font-size:12px;" onchange="previewPhoto(this)"/>
+            <img id="ef-photo-preview" src="${c.profilePhoto||''}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border);display:${c.profilePhoto?'block':'none'}"/>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="edit-chauf-err" style="display:none;color:#c0392b;font-size:13px;margin-top:12px;"></div>
+  `;
+  document.getElementById('m-foot').innerHTML = `
+    <button class="btn-lg btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn-lg btn-black" onclick="saveEditChauf('${id}')">Save Changes</button>
+  `;
+  openModal();
+}
+
+function previewPhoto(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById('ef-photo-preview');
+    img.src = e.target.result;
+    img.style.display = 'block';
+    document.getElementById('ef-photo').value = e.target.result; // base64 for now
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveEditChauf(id) {
+  const errEl = document.getElementById('edit-chauf-err');
+  errEl.style.display = 'none';
+  const payload = {
+    phone:             document.getElementById('ef-phone').value.trim() || undefined,
+    carMake:           document.getElementById('ef-make').value.trim() || undefined,
+    vehicleModel:      document.getElementById('ef-model').value.trim() || undefined,
+    plateNumber:       document.getElementById('ef-plate').value.trim() || undefined,
+    carColor:          document.getElementById('ef-color').value.trim() || undefined,
+    vehicleType:       document.getElementById('ef-type').value || undefined,
+    passengerCapacity: parseInt(document.getElementById('ef-pax').value) || undefined,
+    profilePhoto:      document.getElementById('ef-photo').value.trim() || undefined,
+  };
+  // Remove undefined keys
+  Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+  try {
+    const res = await apiFetch(`/api/chauffeurs/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error(await res.text());
+    closeModal();
+    toast('✅ Driver info updated', 'ok');
+    loadChauf();
+  } catch(e) { errEl.textContent = 'Save failed: ' + e.message; errEl.style.display = 'block'; }
+}
+
+// ── TRIP ENQUIRIES ──
+let allEnquiries = [];
+
+async function loadEnquiries() {
+  spin('enquiries-table');
+  try {
+    const res = await apiFetch('/api/trip-enquiries');
+    allEnquiries = await res.json();
+    renderEnquiries();
+    // Update badge
+    const open = allEnquiries.filter(e => e.status === 'open').length;
+    const badge = document.getElementById('nb-enquiries');
+    if (open > 0) { badge.textContent = open; badge.style.display = ''; }
+    else badge.style.display = 'none';
+  } catch { document.getElementById('enquiries-table').innerHTML = emptyState('❌','Failed to load',''); }
+}
+
+function renderEnquiries() {
+  const w = document.getElementById('enquiries-table');
+  if (!allEnquiries.length) { w.innerHTML = emptyState('💬','No enquiries yet','Trip help messages from users will appear here'); return; }
+  w.innerHTML = `<table>
+    <thead><tr><th>Trip ID</th><th>User</th><th>Message</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+    <tbody>${allEnquiries.map(e => `<tr>
+      <td><code style="font-size:11px;font-family:var(--mono);color:var(--muted)">${(e.rideId||'').slice(0,12)}…</code></td>
+      <td><code style="font-size:11px;font-family:var(--mono);color:var(--muted)">${(e.userId||'').slice(0,12)}…</code></td>
+      <td style="max-width:220px;font-size:12px;color:var(--text)">${(e.message||'').slice(0,80)}${(e.message||'').length>80?'…':''}</td>
+      <td><span class="badge ${e.status==='replied'?'b-approved':e.status==='closed'?'b-offline':'b-pending'}">${e.status}</span></td>
+      <td>${fmt(e.createdAt)}</td>
+      <td><button class="btn-sm btn-detail" onclick="openEnquiryDetail('${e.id}')">View & Reply</button></td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function openEnquiryDetail(id) {
+  const e = allEnquiries.find(x => x.id === id); if (!e) return;
+  document.getElementById('m-title').textContent = 'Trip Enquiry';
+  document.getElementById('m-sub').textContent = 'Status: ' + e.status;
+  document.getElementById('m-body').innerHTML = `
+    <div class="info-grid">
+      <div class="info-row"><div class="info-label">Trip ID</div><div class="info-val" style="font-size:12px;font-family:var(--mono)">${e.rideId}</div></div>
+      <div class="info-row"><div class="info-label">User ID</div><div class="info-val" style="font-size:12px;font-family:var(--mono)">${e.userId}</div></div>
+      <div class="info-row"><div class="info-label">Submitted</div><div class="info-val">${fmtFull(e.createdAt)}</div></div>
+      <div class="info-row" style="grid-column:1/-1"><div class="info-label">User Message</div>
+        <div class="info-val" style="background:var(--bg);padding:12px;border-radius:8px;border:1px solid var(--border);line-height:1.6">${e.message}</div>
+      </div>
+      ${e.adminReply ? `<div class="info-row" style="grid-column:1/-1"><div class="info-label">Your Reply</div>
+        <div class="info-val" style="background:#f0fdf4;padding:12px;border-radius:8px;border:1px solid #bbf7d0;line-height:1.6;color:#166534">${e.adminReply}</div>
+      </div>` : ''}
+    </div>
+    ${e.status !== 'replied' ? `
+    <div style="margin-top:20px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px">Your Reply</div>
+      <textarea id="enquiry-reply-text" rows="4" placeholder="Type your response to the user..."
+        style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;background:var(--bg);color:var(--text);resize:vertical;outline:none;"></textarea>
+      <div id="enquiry-reply-err" style="display:none;color:#c0392b;font-size:12px;margin-top:6px;"></div>
+    </div>` : ''}
+  `;
+  document.getElementById('m-foot').innerHTML = `
+    <button class="btn-lg btn-outline" onclick="closeModal()">Close</button>
+    ${e.status !== 'replied' ? `<button class="btn-lg btn-green" onclick="submitEnquiryReply('${e.id}')">Send Reply</button>` : ''}
+  `;
+  openModal();
+}
+
+async function submitEnquiryReply(id) {
+  const reply = document.getElementById('enquiry-reply-text')?.value?.trim();
+  const errEl = document.getElementById('enquiry-reply-err');
+  if (!reply) { errEl.textContent = 'Please type a reply.'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+  try {
+    const res = await apiFetch(`/api/trip-enquiries/${id}/reply`, { method: 'POST', body: JSON.stringify({ reply }) });
+    if (!res.ok) throw new Error(await res.text());
+    closeModal();
+    toast('💬 Reply sent — user notified!', 'ok');
+    loadEnquiries();
+  } catch(e) { errEl.textContent = 'Failed: ' + e.message; errEl.style.display = 'block'; }
+}
+
 // ── NAV
 function go(view, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   el.classList.add('active');
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
-  const titles = { overview:'Dashboard', applications:'Driver Applications', chauffeurs:'Chauffeurs', rides:'Rides', payments:'Payments', safety:'Safety Reports', users:'All Users' };
+  const titles = { overview:'Dashboard', applications:'Driver Applications', chauffeurs:'Chauffeurs', rides:'Rides', payments:'Payments', safety:'Safety Reports', users:'All Users', enquiries:'Trip Enquiries' };
   document.getElementById('page-title').textContent = titles[view];
   curView = view;
   loadView();
 }
 
 function loadView() {
-  ({ overview:loadOverview, applications:loadApps, chauffeurs:loadChauf, rides:loadRides, payments:loadPay, safety:loadSafe, users:loadUsers })[curView]?.();
+  ({ overview:loadOverview, applications:loadApps, chauffeurs:loadChauf, rides:loadRides, payments:loadPay, safety:loadSafe, users:loadUsers, enquiries:loadEnquiries })[curView]?.();
 }
 
 // ── OVERVIEW ──
@@ -1010,7 +1216,10 @@ async function loadOverview() {
     document.getElementById('s-pending').textContent = s.pendingApprovals ?? 0;
     document.getElementById('s-rides').textContent = s.totalRides ?? 0;
     document.getElementById('s-users').textContent = s.totalUsers ?? s.totalChauffeurs ?? 0;
-    document.getElementById('nb-pending').textContent = s.pendingApprovals ?? 0;
+    const pending = s.pendingApprovals ?? 0;
+    const nbEl = document.getElementById('nb-pending');
+    nbEl.textContent = pending;
+    nbEl.style.display = pending > 0 ? '' : 'none';
   } catch {}
   try {
     const res = await apiFetch('/api/chauffeurs');
@@ -1037,8 +1246,9 @@ function fApps(f, el) {
 
 function renderFilteredApps() {
   let list = allApps;
-  if (appFilter === 'pending') list = allApps.filter(a => !a.isApproved);
+  if (appFilter === 'pending')  list = allApps.filter(a => !a.isApproved);
   if (appFilter === 'approved') list = allApps.filter(a => a.isApproved);
+  if (appFilter === 'rejected') list = []; // rejected drivers removed from system for now
   renderChauffeurTableInEl('apps-table', list, true);
 }
 
@@ -1127,7 +1337,8 @@ function chaufDetail(id) {
     <div class="info-row"><div class="info-label">Registered</div><div class="info-val">${fmt(c.createdAt)}</div></div>
   </div>`;
   document.getElementById('m-foot').innerHTML = `
-    <button class="btn-lg btn-outline" onclick="openDocsModal('${c.id}','${(c.userName||'Driver').replace(/'/g,'')}');closeModal()">📄 Documents</button>
+    <button class="btn-lg btn-outline" onclick="openDocsModal('${c.id}','${(c.userName||'Driver').replace(/'/g,'')}');closeModal()">📄 Docs</button>
+    <button class="btn-lg btn-outline" onclick="openEditChauf('${c.id}')">✏️ Edit</button>
     <button class="btn-lg btn-outline" onclick="closeModal()">Close</button>
     ${!c.isApproved?`
       <button class="btn-lg btn-red" onclick="closeModal();openRejectModal('${c.id}','chauffeur')">✕ Reject</button>
