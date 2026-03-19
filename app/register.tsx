@@ -164,9 +164,7 @@ export default function RegisterScreen() {
             onPress={handleGoogleSignUp} disabled={googleLoading}>
             {googleLoading ? <ActivityIndicator color="#1a1a1a" size="small" /> : (
               <>
-                <View style={styles.googleIconWrap}>
-                  <Text style={styles.googleG}>G</Text>
-                </View>
+                <Image source={require("../assets/images/google_icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />
                 <Text style={styles.googleBtnText}>Continue with Google</Text>
               </>
             )}
