@@ -9,12 +9,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
 import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiRequest } from "@/lib/query-client";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB || "";
+const PROXY_BASE = "https://auth.expo.io/@anonymous/a2b-lift";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -61,10 +63,11 @@ export default function LoginScreen() {
     setGoogleLoading(true);
     setError("");
     try {
-      // Use the Expo auth proxy — a stable https:// URL already registered
-      // in Google Cloud Console as an authorized redirect URI.
-      const redirectUri = "https://auth.expo.io/@anonymous/a2b-lift";
-      const authUrl =
+      // returnUrl = deep link back into this Expo Go session
+      const returnUrl = Linking.createURL("expo-auth-session");
+      const redirectUri = PROXY_BASE;
+
+      const googleAuthUrl =
         `https://accounts.google.com/o/oauth2/v2/auth` +
         `?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}` +
@@ -73,16 +76,15 @@ export default function LoginScreen() {
         `&access_type=offline` +
         `&prompt=select_account`;
 
-      // openAuthSessionAsync intercepts the redirect back to the proxy page
-      // and returns the URL containing the auth code
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      // Route through the Expo proxy: /start?authUrl=...&returnUrl=...
+      const startUrl = `${PROXY_BASE}/start?${new URLSearchParams({ authUrl: googleAuthUrl, returnUrl }).toString()}`;
+
+      const result = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl);
       if (result.type === "success" && result.url) {
-        const url = new URL(result.url);
-        const code = url.searchParams.get("code");
+        const parsed = new URL(result.url);
+        const code = parsed.searchParams.get("code");
         if (code) await handleGoogleCode(code, redirectUri);
-        else throw new Error("No auth code in response");
-      } else if (result.type !== "cancel" && result.type !== "dismiss") {
-        throw new Error("Sign in was cancelled");
+        else throw new Error("No auth code received");
       }
     } catch (e: any) {
       if (!e.message?.includes("cancel") && !e.message?.includes("dismiss")) {

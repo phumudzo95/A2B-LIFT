@@ -6,12 +6,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
 import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiRequest } from "@/lib/query-client";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB || "";
+const PROXY_BASE = "https://auth.expo.io/@anonymous/a2b-lift";
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
@@ -72,8 +74,10 @@ export default function RegisterScreen() {
     setGoogleLoading(true);
     setError("");
     try {
-      const redirectUri = "https://auth.expo.io/@anonymous/a2b-lift";
-      const authUrl =
+      const returnUrl = Linking.createURL("expo-auth-session");
+      const redirectUri = PROXY_BASE;
+
+      const googleAuthUrl =
         `https://accounts.google.com/o/oauth2/v2/auth` +
         `?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}` +
@@ -82,14 +86,14 @@ export default function RegisterScreen() {
         `&access_type=offline` +
         `&prompt=select_account`;
 
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      const startUrl = `${PROXY_BASE}/start?${new URLSearchParams({ authUrl: googleAuthUrl, returnUrl }).toString()}`;
+
+      const result = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl);
       if (result.type === "success" && result.url) {
-        const url = new URL(result.url);
-        const code = url.searchParams.get("code");
+        const parsed = new URL(result.url);
+        const code = parsed.searchParams.get("code");
         if (code) await handleGoogleCode(code, redirectUri);
-        else throw new Error("No auth code in response");
-      } else if (result.type !== "cancel" && result.type !== "dismiss") {
-        throw new Error("Sign up was cancelled");
+        else throw new Error("No auth code received");
       }
     } catch (e: any) {
       if (!e.message?.includes("cancel") && !e.message?.includes("dismiss")) {
