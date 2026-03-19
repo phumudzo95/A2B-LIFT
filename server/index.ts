@@ -20,8 +20,9 @@ function setupCors(app: express.Application) {
   app.use((req, res, next) => {
     const origins = new Set<string>();
 
-    // Add production domain
+    // Add production domains
     origins.add("https://a2b-lift.onrender.com");
+    origins.add("https://peaceful-mousse-459c85.netlify.app");
 
     if (process.env.REPLIT_DEV_DOMAIN) {
       origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
@@ -35,12 +36,16 @@ function setupCors(app: express.Application) {
 
     const origin = req.header("origin");
 
-    // Allow localhost and local IP addresses for Expo web development (any port)
+    // Allow localhost, local IPs, and tunnel domains for Expo development
     const isLocalhost =
       origin?.startsWith("http://localhost:") ||
       origin?.startsWith("http://127.0.0.1:") ||
       origin?.startsWith("http://192.168.") ||
       origin?.startsWith("http://10.") ||
+      origin?.includes(".exp.direct") ||
+      origin?.includes(".trycloudflare.com") ||
+      origin?.includes(".serveousercontent.com") ||
+      origin?.includes(".gitpod.dev") ||
       (origin?.match(/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./) !== null);
 
     if (origin && (origins.has(origin) || isLocalhost)) {
