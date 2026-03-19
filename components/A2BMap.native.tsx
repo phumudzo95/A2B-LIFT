@@ -91,21 +91,22 @@ export default function A2BMap({
   statusText,
 }: A2BMapProps) {
   const mapRef = useRef<MapView>(null);
+  const mapReadyRef = useRef(false);
 
   const routeCoords = useMemo(() => {
     if (!routePolyline) return [];
     return decodePolyline(routePolyline);
   }, [routePolyline]);
 
-  useEffect(() => {
-    if (!mapRef.current) return;
+  function fitMap() {
+    if (!mapRef.current || !mapReadyRef.current) return;
     if (followDriver && driverLocation) {
       mapRef.current.animateToRegion({
         latitude: driverLocation.lat,
         longitude: driverLocation.lng,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
-      }, 1000);
+      }, 800);
     } else if (routeCoords.length > 0) {
       mapRef.current.fitToCoordinates(routeCoords, {
         edgePadding: { top: 80, right: 60, bottom: 200, left: 60 },
@@ -123,10 +124,20 @@ export default function A2BMap({
       mapRef.current.animateToRegion({
         latitude: pickupLocation.lat,
         longitude: pickupLocation.lng,
-        latitudeDelta: 0.015,
-        longitudeDelta: 0.015,
-      }, 800);
+        latitudeDelta: 0.008,
+        longitudeDelta: 0.008,
+      }, 600);
     }
+  }
+
+  function handleMapReady() {
+    mapReadyRef.current = true;
+    // Small delay to ensure the map has fully initialised before animating
+    setTimeout(fitMap, 300);
+  }
+
+  useEffect(() => {
+    fitMap();
   }, [pickupLocation, dropoffLocation, driverLocation, routeCoords, followDriver]);
 
   if (!GOOGLE_MAPS_API_KEY) {
@@ -157,10 +168,11 @@ export default function A2BMap({
         initialRegion={{
           latitude: pickupLocation.lat,
           longitude: pickupLocation.lng,
-          latitudeDelta: 0.015,
-          longitudeDelta: 0.015,
+          latitudeDelta: 0.008,
+          longitudeDelta: 0.008,
         }}
-        showsUserLocation={false}
+        onMapReady={handleMapReady}
+        showsUserLocation={true}
         showsMyLocationButton={false}
         showsCompass={false}
         showsTraffic={false}
