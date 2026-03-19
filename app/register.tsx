@@ -88,7 +88,10 @@ export default function RegisterScreen() {
 
       const startUrl = `${PROXY_BASE}/start?${new URLSearchParams({ authUrl: googleAuthUrl, returnUrl }).toString()}`;
 
-      const result = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl);
+      const result = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl, {
+        showInRecents: false,
+        preferEphemeralSession: true,
+      });
       if (result.type === "success" && result.url) {
         const parsed = new URL(result.url);
         const code = parsed.searchParams.get("code");

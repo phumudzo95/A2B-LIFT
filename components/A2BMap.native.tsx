@@ -97,12 +97,13 @@ export default function A2BMap({
   const mapRef = useRef<MapView>(null);
   const mapReadyRef = useRef(false);
   const pendingFitRef = useRef(false);
+  const hasMovedRef = useRef(false); // true once we've done the first real fitMap
 
-  // Lock the initial region once — never derive it from props again so the
-  // MapView never remounts with a different initialRegion (which resets camera).
+  // Use user's location for initialRegion if available, else Johannesburg
+  const center = pickupLocation || DEFAULT_REGION;
   const initialRegionRef = useRef({
-    latitude: DEFAULT_REGION.lat,
-    longitude: DEFAULT_REGION.lng,
+    latitude: center.lat,
+    longitude: center.lng,
     latitudeDelta: 0.008,
     longitudeDelta: 0.008,
   });
@@ -118,6 +119,7 @@ export default function A2BMap({
       return;
     }
     pendingFitRef.current = false;
+    hasMovedRef.current = true;
 
     if (followDriver && driverLocation) {
       mapRef.current.animateToRegion({
@@ -127,7 +129,6 @@ export default function A2BMap({
         longitudeDelta: 0.01,
       }, 800);
     } else if (routeCoords.length > 0) {
-      // Route available — fit to it (covers searching + confirming + in-trip)
       mapRef.current.fitToCoordinates(routeCoords, {
         edgePadding: { top: 80, right: 60, bottom: 220, left: 60 },
         animated: true,
@@ -141,7 +142,7 @@ export default function A2BMap({
         { edgePadding: { top: 80, right: 60, bottom: 220, left: 60 }, animated: true }
       );
     } else {
-      // Street-level view on user location — never world zoom
+      // Always street-level — never world zoom
       const center = pickupLocation || DEFAULT_REGION;
       mapRef.current.animateToRegion({
         latitude: center.lat,
@@ -155,12 +156,26 @@ export default function A2BMap({
   function handleMapReady() {
     mapReadyRef.current = true;
     fitMap();
-    setTimeout(fitMap, 400);
+    setTimeout(fitMap, 300);
+    setTimeout(fitMap, 800);
   }
 
   useEffect(() => {
     fitMap();
   }, [fitMap]);
+
+  // Extra safety: whenever pickupLocation first becomes available,
+  // force the camera to street level immediately
+  useEffect(() => {
+    if (!pickupLocation || !mapRef.current || !mapReadyRef.current) return;
+    if (routeCoords.length > 0 || dropoffLocation) return; // fitMap handles these
+    mapRef.current.animateToRegion({
+      latitude: pickupLocation.lat,
+      longitude: pickupLocation.lng,
+      latitudeDelta: 0.008,
+      longitudeDelta: 0.008,
+    }, 400);
+  }, [pickupLocation?.lat, pickupLocation?.lng]);
 
   if (!GOOGLE_MAPS_API_KEY) {
     return (
