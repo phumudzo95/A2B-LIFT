@@ -20,7 +20,7 @@ export default function RoleSelectScreen() {
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 40) }]}>
       <View style={styles.topRow}>
         <View />
-        <Pressable onPress={logout} style={styles.logoutBtn}>
+        <Pressable onPress={async () => { await logout(); setTimeout(() => router.replace("/"), 0); }} style={styles.logoutBtn}>
           <Ionicons name="log-out-outline" size={20} color={Colors.textSecondary} />
         </Pressable>
       </View>

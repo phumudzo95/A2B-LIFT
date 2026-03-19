@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Alert, Image } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,15 +6,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
 import * as WebBrowser from "expo-web-browser";
-import { makeRedirectUri } from "expo-auth-session";
+import * as AuthSession from "expo-auth-session";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiRequest } from "@/lib/query-client";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_CLIENT_ID_WEB = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB || "";
-const GOOGLE_CLIENT_ID_ANDROID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID || "";
-const GOOGLE_CLIENT_ID_IOS = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS || "";
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB || "";
+
+const GOOGLE_DISCOVERY = {
+  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+  tokenEndpoint: "https://oauth2.googleapis.com/token",
+  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
+};
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
@@ -28,13 +32,53 @@ export default function RegisterScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const redirectUri = AuthSession.makeRedirectUri({ scheme: "a2blift" });
+
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: GOOGLE_CLIENT_ID,
+      scopes: ["openid", "email", "profile"],
+      redirectUri,
+    },
+    GOOGLE_DISCOVERY
+  );
+
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { code } = response.params;
+      handleGoogleCode(code, redirectUri);
+    } else if (response?.type === "error") {
+      setError("Google sign up failed. Please try again.");
+      setGoogleLoading(false);
+    } else if (response?.type === "dismiss" || response?.type === "cancel") {
+      setGoogleLoading(false);
+    }
+  }, [response]);
+
+  async function handleGoogleCode(code: string, redirectUri: string) {
+    try {
+      const res = await apiRequest("POST", "/api/auth/google", { code, redirectUri });
+      const payload = await res.json();
+      if (!payload.user) throw new Error(payload.message || "Google sign up failed");
+      const token = payload.accessToken || null;
+      await AsyncStorage.setItem("a2b_user", JSON.stringify(payload.user));
+      if (token) await AsyncStorage.setItem("a2b_token", token);
+      setUser(payload.user);
+      setTimeout(() => router.replace("/role-select"), 0);
+    } catch (e: any) {
+      setError(e.message || "Google sign up failed. Please try again.");
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
+
   async function handleRegister() {
     if (!name.trim() || !username.trim() || !password.trim()) { setError("Please fill in all required fields"); return; }
     if (password.length < 4) { setError("Password must be at least 4 characters"); return; }
     setLoading(true); setError("");
     try {
       await register({ username: username.trim(), password, name: name.trim(), phone: phone.trim() });
-      router.replace("/role-select");
+      setTimeout(() => router.replace("/role-select"), 0);
     } catch (e: any) {
       const msg = e.message || "Registration failed.";
       if (msg.includes("400") || msg.includes("already exists")) setError("Username already exists");
@@ -45,35 +89,13 @@ export default function RegisterScreen() {
   }
 
   async function handleGoogleSignUp() {
-    setGoogleLoading(true); setError("");
-    try {
-      const redirectUri = makeRedirectUri({ scheme: "a2blift", path: "auth/callback" });
-      const clientId = GOOGLE_CLIENT_ID_WEB;
-
-      if (!clientId) {
-        Alert.alert("Setup Required", "Google Client ID not configured.");
-        setGoogleLoading(false); return;
-      }
-
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent("openid email profile")}&access_type=offline&prompt=select_account`;
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-
-      if (result.type === "success" && result.url) {
-        const url = new URL(result.url);
-        const code = url.searchParams.get("code");
-        if (!code) throw new Error("No auth code received");
-        const res = await apiRequest("POST", "/api/auth/google", { code, redirectUri });
-        const payload = await res.json();
-        const user = payload.user ?? payload;
-        const token = payload.accessToken || null;
-        await AsyncStorage.setItem("a2b_user", JSON.stringify(user));
-        if (token) await AsyncStorage.setItem("a2b_token", token);
-        setUser(user);
-        router.replace("/role-select");
-      }
-    } catch (e: any) {
-      if (!e.message?.includes("cancel")) setError("Google sign up failed. Please try again.");
-    } finally { setGoogleLoading(false); }
+    if (!GOOGLE_CLIENT_ID) {
+      Alert.alert("Setup Required", "Google Client ID not configured.");
+      return;
+    }
+    setGoogleLoading(true);
+    setError("");
+    await promptAsync();
   }
 
   return (
