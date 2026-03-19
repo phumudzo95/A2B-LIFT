@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack, router, useSegments } from "expo-router";
+import { Stack, router, usePathname, useRootNavigationState } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -13,26 +13,24 @@ import { SocketProvider } from "@/lib/socket-context";
 
 SplashScreen.preventAutoHideAsync();
 
-// Single source of truth for auth-based navigation
 function AuthGate() {
   const { user, isLoading } = useAuth();
-  const segments = useSegments();
+  const pathname = usePathname();
+  const navState = useRootNavigationState();
 
   useEffect(() => {
-    if (isLoading) return;
+    // Wait until auth is resolved and navigator is ready
+    if (isLoading || !navState?.key) return;
 
-    const currentRoute = segments[0] as string | undefined;
-    const onAuthScreen = !currentRoute || currentRoute === "login" || currentRoute === "register" || currentRoute === "index";
-    const onApp = currentRoute === "client" || currentRoute === "chauffeur";
+    const onApp = pathname.startsWith("/client") || pathname.startsWith("/chauffeur");
+    const onPublic = !onApp;
 
-    if (user && onAuthScreen) {
-      // Logged in but on a public screen — send to app
+    if (user && onPublic) {
       router.replace("/client");
     } else if (!user && onApp) {
-      // Not logged in but on a protected screen — send to landing
       router.replace("/");
     }
-  }, [user, isLoading, segments]);
+  }, [user, isLoading, pathname, navState?.key]);
 
   return null;
 }
