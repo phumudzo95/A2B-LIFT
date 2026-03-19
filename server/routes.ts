@@ -1273,6 +1273,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Polling fallback: returns the nearest unassigned searching ride for a driver.
+  // Used by the driver app when the socket event was missed.
+  app.get("/api/rides/chauffeur-pending/:chauffeurId", async (req: Request, res: Response) => {
+    try {
+      const chauffeur = await storage.getChauffeur(req.params.chauffeurId);
+      if (!chauffeur || !chauffeur.isOnline || !chauffeur.isApproved) {
+        return res.status(204).end();
+      }
+      const allRides = await storage.getAllRides();
+      const searching = allRides.filter((r) => r.status === "searching");
+      if (!searching.length) return res.status(204).end();
+
+      // If driver has a location, return the nearest searching ride within 15km
+      if (chauffeur.lat && chauffeur.lng) {
+        const withDist = searching
+          .map((r) => ({
+            ...r,
+            distKm: haversine(
+              Number(chauffeur.lat), Number(chauffeur.lng),
+              parseFloat(r.pickupLat as any), parseFloat(r.pickupLng as any)
+            ),
+          }))
+          .filter((r) => r.distKm <= 15)
+          .sort((a, b) => a.distKm - b.distKm);
+        if (!withDist.length) return res.status(204).end();
+        return res.json(withDist[0]);
+      }
+
+      // No location on file — return the most recent searching ride
+      return res.json(searching[searching.length - 1]);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/rides", async (_req: Request, res: Response) => {
     try {
       const allRides = await storage.getAllRides();

@@ -750,6 +750,50 @@ tbody tr:hover { background: #fafaf8; }
         <div class="sec-title">Recent Drivers</div>
       </div>
       <div class="table-card" id="recent-table"><div class="loading">Loading...</div></div>
+
+      <!-- TEST RIDE -->
+      <div class="sec-head" style="margin-top:24px">
+        <div class="sec-title">Test Ride</div>
+      </div>
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;gap:14px;">
+        <div style="font-size:13px;color:var(--muted);line-height:1.6;">
+          Dispatch a test ride to all online approved drivers. Open the <strong>Driver app</strong> first, go online, then click the button below.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px;">Pickup Address</div>
+            <input id="tr-pickup" class="edit-input" value="Sandton City, Johannesburg" placeholder="Pickup address"/>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px;">Dropoff Address</div>
+            <input id="tr-dropoff" class="edit-input" value="OR Tambo International Airport" placeholder="Dropoff address"/>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px;">Pickup Lat</div>
+            <input id="tr-lat" class="edit-input" value="-26.1076" placeholder="-26.1076"/>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px;">Pickup Lng</div>
+            <input id="tr-lng" class="edit-input" value="28.0567" placeholder="28.0567"/>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px;">Vehicle Type</div>
+            <select id="tr-type" class="edit-input">
+              <option value="budget">Budget</option>
+              <option value="standard" selected>Standard</option>
+              <option value="premium">Premium</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px;">Distance (km)</div>
+            <input id="tr-dist" class="edit-input" value="25" placeholder="25"/>
+          </div>
+        </div>
+        <div id="tr-result" style="display:none;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;"></div>
+        <button onclick="dispatchTestRide()" style="align-self:flex-start;padding:10px 24px;background:#000;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+          🚗 Dispatch Test Ride
+        </button>
+      </div>
     </div>
 
     <!-- APPLICATIONS -->
@@ -1207,6 +1251,53 @@ async function submitEnquiryReply(id) {
     toast('💬 Reply sent — user notified!', 'ok');
     loadEnquiries();
   } catch(e) { errEl.textContent = 'Failed: ' + e.message; errEl.style.display = 'block'; }
+}
+
+// ── TEST RIDE ──
+async function dispatchTestRide() {
+  const pickup = document.getElementById('tr-pickup').value.trim() || 'Test Pickup';
+  const dropoff = document.getElementById('tr-dropoff').value.trim() || 'Test Dropoff';
+  const lat = parseFloat(document.getElementById('tr-lat').value) || -26.1076;
+  const lng = parseFloat(document.getElementById('tr-lng').value) || 28.0567;
+  const type = document.getElementById('tr-type').value;
+  const dist = parseFloat(document.getElementById('tr-dist').value) || 10;
+  const res_el = document.getElementById('tr-result');
+
+  res_el.style.display = 'none';
+  try {
+    // Use admin user as the client for the test ride
+    const meRes = await apiFetch('/api/auth/me');
+    const me = await meRes.json();
+    const res = await apiFetch('/api/rides', {
+      method: 'POST',
+      body: JSON.stringify({
+        clientId: me.id,
+        pickupLat: lat,
+        pickupLng: lng,
+        pickupAddress: pickup,
+        dropoffLat: lat - 0.05,
+        dropoffLng: lng + 0.05,
+        dropoffAddress: dropoff,
+        vehicleType: type,
+        distanceKm: dist,
+        isLateNight: false,
+      })
+    });
+    const data = await res.json();
+    const ride = data.ride || data;
+    res_el.style.display = 'block';
+    res_el.style.background = '#f0fdf4';
+    res_el.style.border = '1px solid #bbf7d0';
+    res_el.style.color = '#166534';
+    res_el.textContent = `✓ Ride dispatched! ID: ${ride.id?.slice(0,8)}… · Status: ${ride.status} · Price: R${Number(ride.price||0).toFixed(2)} · Check driver app for incoming trip alert.`;
+    loadRides();
+  } catch(e) {
+    res_el.style.display = 'block';
+    res_el.style.background = '#fdf2f0';
+    res_el.style.border = '1px solid #fca5a5';
+    res_el.style.color = '#991b1b';
+    res_el.textContent = '✕ Failed: ' + e.message;
+  }
 }
 
 // ── NAV

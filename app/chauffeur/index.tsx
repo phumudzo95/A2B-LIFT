@@ -30,6 +30,8 @@ export default function ChauffeurDashboard() {
 
   const [chauffeur, setChauffeur] = useState<any>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
+  // Track the last seen searching ride ID so polling doesn't re-alert the same ride
+  const seenRideIdRef = useRef<string | null>(null);
 
   async function playTripAlert() {
     try {
@@ -99,6 +101,27 @@ export default function ChauffeurDashboard() {
     if (!chauffeur?.id) return;
     emit("chauffeur:register", { chauffeurId: chauffeur.id });
   }, [chauffeur?.id]);
+
+  // Polling fallback: every 6s check for a searching ride near this driver.
+  // Catches rides that were dispatched before the socket connected or were missed.
+  useEffect(() => {
+    if (!isOnline || !chauffeur?.isApproved || !chauffeur?.id) return;
+    const poll = setInterval(async () => {
+      // Skip if already handling a ride
+      if (currentRide || incomingRide) return;
+      try {
+        const res = await apiRequest("GET", `/api/rides/chauffeur-pending/${chauffeur.id}`);
+        if (!res.ok) return;
+        const ride = await res.json();
+        if (ride?.id && ride.id !== seenRideIdRef.current) {
+          seenRideIdRef.current = ride.id;
+          setIncomingRide(ride);
+          playTripAlert();
+        }
+      } catch {}
+    }, 6000);
+    return () => clearInterval(poll);
+  }, [isOnline, chauffeur?.isApproved, chauffeur?.id, currentRide, incomingRide]);
 
   async function loadChauffeur() {
     if (!user) return;
