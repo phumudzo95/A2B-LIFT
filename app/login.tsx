@@ -116,11 +116,12 @@ export default function LoginScreen() {
         )}
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Username</Text>
+          <Text style={styles.label}>Email</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="person-outline" size={18} color={Colors.textMuted} />
-            <TextInput style={styles.input} placeholder="Enter username" placeholderTextColor={Colors.textMuted}
-              value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} />
+            <Ionicons name="mail-outline" size={18} color={Colors.textMuted} />
+            <TextInput style={styles.input} placeholder="Enter your email address" placeholderTextColor={Colors.textMuted}
+              value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false}
+              keyboardType="email-address" textContentType="emailAddress" />
           </View>
         </View>
 

@@ -139,58 +139,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       const { username, password, name, phone, role } = req.body;
-      
-      // Validate required fields
+
       if (!username || !password || !name) {
-        return res.status(400).json({ message: "Username, password, and name are required" });
+        return res.status(400).json({ message: "Email, password, and name are required" });
       }
-      
-      // Check if username already exists
-      const existing = await storage.getUserByUsername(username);
+
+      // Normalise email — username field now stores email address
+      const email = username.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Please enter a valid email address" });
+      }
+
+      // Email must be unique
+      const existing = await storage.getUserByUsername(email);
       if (existing) {
-        return res.status(400).json({ message: "Username already exists" });
+        return res.status(400).json({ message: "An account with this email already exists" });
       }
-      
-      // Hash password
+
       const hashedPassword = await bcrypt.hash(password, 10);
-      
-      // Create user
       const user = await storage.createUser({
-        username: username.trim(),
+        username: email,
         password: hashedPassword,
         name: name.trim(),
         phone: phone ? phone.trim() : null,
         role: (role || "client") as UserRole,
       });
-      
-      // Generate JWT token
+
       const token = signAccessToken({ sub: user.id, role: user.role as UserRole });
       setAuthCookie(res, token);
-      
-      // Return user without password
       const { password: _pw, ...safeUser } = user;
       return res.json({ user: safeUser, accessToken: token });
     } catch (error: any) {
-      console.error("Registration error:", error);
-      console.error("Error stack:", error.stack);
-      
-      // Handle specific database errors
       if (error.code === "23505") {
-        // PostgreSQL unique constraint violation
-        return res.status(400).json({ message: "Username already exists" });
+        return res.status(400).json({ message: "An account with this email already exists" });
       }
       if (error.code === "42P01") {
-        // Table doesn't exist
         return res.status(500).json({ message: "Database table not found. Please run: npm run db:push" });
       }
-      if (error.message?.includes("relation") && error.message?.includes("does not exist")) {
-        return res.status(500).json({ message: "Database tables not initialized. Please run: npm run db:push" });
-      }
-      
-      return res.status(500).json({ 
-        message: error.message || "Registration failed. Please try again.",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined
-      });
+      return res.status(500).json({ message: error.message || "Registration failed. Please try again." });
     }
   });
 
@@ -545,17 +532,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Could not retrieve email from Google" });
       }
 
-      // Check if user already exists (by username = google email prefix)
-      const googleUsername = googleUser.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "_");
-      let user = await storage.getUserByUsername(googleUsername);
+      // Use full email as username — consistent with manual registration
+      const email = googleUser.email.trim().toLowerCase();
+      let user = await storage.getUserByUsername(email);
 
       if (!user) {
-        // Create new user from Google profile
         const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
         user = await storage.createUser({
-          username: googleUsername,
+          username: email,
           password: randomPassword,
-          name: googleUser.name || googleUser.email.split("@")[0],
+          name: googleUser.name || email.split("@")[0],
           phone: null,
           role: "client",
         });
@@ -591,15 +577,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Could not retrieve email from Google" });
       }
 
-      const googleUsername = googleUser.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "_");
-      let user = await storage.getUserByUsername(googleUsername);
+      // Use full email as username so Google and manual accounts share the same record
+      const email = googleUser.email.trim().toLowerCase();
+      let user = await storage.getUserByUsername(email);
 
       if (!user) {
         const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
         user = await storage.createUser({
-          username: googleUsername,
+          username: email,
           password: randomPassword,
-          name: googleUser.name || googleUser.email.split("@")[0],
+          name: googleUser.name || email.split("@")[0],
           phone: null,
           role: "client",
         });

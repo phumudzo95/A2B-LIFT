@@ -19,7 +19,7 @@ export default function RegisterScreen() {
   const { register, setUser } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -69,16 +69,23 @@ export default function RegisterScreen() {
     }
   }
 
+  function isValidEmail(val: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+  }
+
   async function handleRegister() {
-    if (!name.trim() || !username.trim() || !password.trim()) { setError("Please fill in all required fields"); return; }
+    if (!name.trim()) { setError("Full name is required"); return; }
+    if (!email.trim()) { setError("Email is required"); return; }
+    if (!isValidEmail(email)) { setError("Please enter a valid email address"); return; }
+    if (!password.trim()) { setError("Password is required"); return; }
     if (password.length < 4) { setError("Password must be at least 4 characters"); return; }
     setLoading(true); setError("");
     try {
-      await register({ username: username.trim(), password, name: name.trim(), phone: phone.trim() });
+      await register({ username: email.trim().toLowerCase(), password, name: name.trim(), phone: phone.trim() });
       setTimeout(() => router.replace("/role-select"), 0);
     } catch (e: any) {
       const msg = e.message || "Registration failed.";
-      if (msg.includes("400") || msg.includes("already exists")) setError("Username already exists");
+      if (msg.includes("already exists") || msg.includes("400")) setError("An account with this email already exists");
       else if (msg.includes("500") || msg.includes("Database")) setError("Server error. Please try again.");
       else if (msg.includes("fetch") || msg.includes("network")) setError("Cannot connect to server.");
       else setError(msg);
@@ -116,11 +123,21 @@ export default function RegisterScreen() {
           )}
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Full Name</Text>
+            <Text style={styles.label}>Full Name <Text style={styles.required}>*</Text></Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="person-outline" size={18} color={Colors.textMuted} />
               <TextInput style={styles.input} placeholder="Enter your full name" placeholderTextColor={Colors.textMuted}
-                value={name} onChangeText={setName} />
+                value={name} onChangeText={setName} autoCorrect={false} />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email <Text style={styles.required}>*</Text></Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="mail-outline" size={18} color={Colors.textMuted} />
+              <TextInput style={styles.input} placeholder="Enter your email address" placeholderTextColor={Colors.textMuted}
+                value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false}
+                keyboardType="email-address" textContentType="emailAddress" />
             </View>
           </View>
 
@@ -130,15 +147,6 @@ export default function RegisterScreen() {
               <Ionicons name="call-outline" size={18} color={Colors.textMuted} />
               <TextInput style={styles.input} placeholder="Optional" placeholderTextColor={Colors.textMuted}
                 value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Username</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="at" size={18} color={Colors.textMuted} />
-              <TextInput style={styles.input} placeholder="Choose a username" placeholderTextColor={Colors.textMuted}
-                value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} />
             </View>
           </View>
 
@@ -212,6 +220,7 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.error },
   inputGroup: { gap: 8 },
   label: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 1 },
+  required: { color: Colors.error, fontSize: 12 },
   inputWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.card, borderRadius: 12, paddingHorizontal: 16, gap: 12, borderWidth: 1, borderColor: Colors.border },
   input: { flex: 1, paddingVertical: 15, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.white },
   registerBtn: { backgroundColor: Colors.white, paddingVertical: 15, borderRadius: 14, alignItems: "center", marginTop: 4 },
