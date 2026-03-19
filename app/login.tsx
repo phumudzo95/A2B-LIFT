@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, Pressable, TextInput,
   ActivityIndicator, Platform, Image,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
@@ -25,6 +25,9 @@ export default function LoginScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // Clear error whenever screen comes into focus (e.g. after logout)
+  useFocusEffect(useCallback(() => { setError(""); }, []));
 
   // Handle the deep link callback from the backend OAuth flow
   useEffect(() => {
