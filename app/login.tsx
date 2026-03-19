@@ -64,7 +64,7 @@ export default function LoginScreen() {
       await login(username.trim(), password);
       setTimeout(() => router.replace("/role-select"), 0);
     } catch (e: any) {
-      setError(e.message?.includes("401") ? "Invalid credentials" : "Login failed. Please try again.");
+      setError(e.message || "Login failed. Please try again.");
     } finally { setLoading(false); }
   }
 
@@ -135,11 +135,9 @@ export default function LoginScreen() {
           onPress={handleGoogleSignIn} disabled={googleLoading}>
           {googleLoading ? <ActivityIndicator color="#1a1a1a" size="small" /> : (
             <>
-              <Image
-                source={require("../assets/images/google_icon.png")}
-                style={{ width: 22, height: 22 }}
-                resizeMode="contain"
-              />
+              <View style={styles.googleIconWrap}>
+                <Text style={styles.googleG}>G</Text>
+              </View>
               <Text style={styles.googleBtnText}>Continue with Google</Text>
             </>
           )}
@@ -178,6 +176,8 @@ const styles = StyleSheet.create({
   googleIconWrap: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#4285F4", alignItems: "center", justifyContent: "center" },
   googleG: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
   googleBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#1a1a1a" },
+  googleIconWrap: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e0e0e0", alignItems: "center", justifyContent: "center" },
+  googleG: { fontSize: 13, fontWeight: "700", color: "#4285F4" },
   footer: { flex: 1, justifyContent: "flex-end", flexDirection: "row", alignItems: "flex-end", gap: 4, paddingTop: 24 },
   footerText: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   footerLink: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
