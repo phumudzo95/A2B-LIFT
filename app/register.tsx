@@ -45,7 +45,7 @@ export default function RegisterScreen() {
       await AsyncStorage.setItem("a2b_user", JSON.stringify(payload.user));
       if (payload.accessToken) await AsyncStorage.setItem("a2b_token", payload.accessToken);
       setUser(payload.user);
-      setTimeout(() => router.replace("/role-select"), 0);
+      router.replace("/client");
     } catch {
       setError("Google sign up failed. Please try again.");
     } finally {
@@ -66,7 +66,7 @@ export default function RegisterScreen() {
     setLoading(true); setError("");
     try {
       await register({ username: email.trim().toLowerCase(), password, name: name.trim(), phone: phone.trim() });
-      router.replace("/role-select");
+      router.replace("/client");
     } catch (e: any) {
       const msg = e.message || "Registration failed.";
       if (msg.includes("already exists") || msg.includes("400")) setError("An account with this email already exists");

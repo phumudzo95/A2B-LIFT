@@ -14,7 +14,7 @@ export default function SplashLanding() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      const t = setTimeout(() => router.replace("/role-select"), 100);
+      const t = setTimeout(() => router.replace("/client"), 100);
       return () => clearTimeout(t);
     }
   }, [isLoading, user]);
