@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/query-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
+import { uploadDocument } from "@/lib/supabase-storage";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 
@@ -77,21 +78,19 @@ export default function ChauffeurSettingsScreen() {
 
       setUploadingDoc(type);
       const asset = result.assets[0];
-      
-      // Convert image to base64 data URL (in production, upload to Supabase Storage first)
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
-      const reader = new FileReader();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
 
-      // Upload document to backend
+      // Upload to Supabase Storage and get a public URL
+      let publicUrl = asset.uri;
+      try {
+        publicUrl = await uploadDocument(asset.uri, user!.id, type);
+      } catch (uploadErr) {
+        console.warn("Supabase upload failed, using local URI:", uploadErr);
+      }
+
+      // Save the public URL to the database
       const docRes = await apiRequest("POST", "/api/driver/documents", {
         type,
-        url: dataUrl, // In production, use Supabase Storage URL
+        url: publicUrl,
         chauffeurId: chauffeur?.id || null,
         applicationId: application?.id || null,
       });

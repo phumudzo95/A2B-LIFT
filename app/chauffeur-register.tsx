@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/query-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import * as ImagePicker from "expo-image-picker";
+import { uploadDocument } from "@/lib/supabase-storage";
 
 const VEHICLE_CATEGORIES = [
   { id: "budget", name: "Budget", examples: "Toyota Corolla, Toyota Quest" },
@@ -140,16 +141,23 @@ export default function ChauffeurRegisterScreen() {
         const file = documents[doc.id];
         if (!file) continue;
         try {
-          // Upload the document metadata — in production this would upload to Supabase Storage
+          // Upload file to Supabase Storage and get a public URL
+          let publicUrl = file.uri;
+          try {
+            publicUrl = await uploadDocument(file.uri, user.id, doc.id);
+          } catch (uploadErr) {
+            console.warn(`Supabase upload failed for ${doc.id}, using local URI:`, uploadErr);
+          }
+          // Save the public URL to the database
           await apiRequest("POST", "/api/driver/documents", {
             userId: user.id,
             applicationId,
             chauffeurId: chauffeur.id,
             type: doc.id,
-            url: file.uri, // In production: upload to Supabase Storage and use the public URL
+            url: publicUrl,
           });
         } catch (docErr) {
-          console.warn(`Failed to upload ${doc.id}:`, docErr);
+          console.warn(`Failed to save ${doc.id}:`, docErr);
         }
       }
 
