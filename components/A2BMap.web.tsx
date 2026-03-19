@@ -2,7 +2,10 @@ import React, { useRef, useEffect, useMemo } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import Colors from "@/constants/colors";
 
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const GOOGLE_MAPS_API_KEY =
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ||
+  "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0";
 
 const DARK_MAP_STYLES = `&style=element:geometry%7Ccolor:0x1d1d1d&style=element:labels.icon%7Cvisibility:off&style=element:labels.text.fill%7Ccolor:0x757575&style=element:labels.text.stroke%7Ccolor:0x212121&style=feature:road%7Celement:geometry.fill%7Ccolor:0x2c2c2c&style=feature:road.highway%7Celement:geometry%7Ccolor:0x3c3c3c&style=feature:water%7Celement:geometry%7Ccolor:0x0e0e0e`;
 

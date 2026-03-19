@@ -4,7 +4,10 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const GOOGLE_MAPS_API_KEY =
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ||
+  "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0";
 
 const DARK_MAP_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#1d1d1d" }] },
