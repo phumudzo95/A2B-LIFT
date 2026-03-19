@@ -254,22 +254,24 @@
       try {
         const res = await apiFetch('/api/chauffeurs');
         const chauffeurs = await res.json();
-        if (!chauffeurs.length) {
-          document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">No chauffeurs registered</div>';
+        if (!Array.isArray(chauffeurs) || !chauffeurs.length) {
+          document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">No chauffeurs registered yet</div>';
           return;
         }
-        let html = '<table><thead><tr><th>Vehicle</th><th>Plate</th><th>Color</th><th>Phone</th><th>Category</th><th>Status</th><th>Online</th><th>Actions</th></tr></thead><tbody>';
+        let html = '<table><thead><tr><th>Driver</th><th>Phone</th><th>Vehicle</th><th>Plate</th><th>Color</th><th>Category</th><th>Status</th><th>Online</th><th>Actions</th></tr></thead><tbody>';
         for (const c of chauffeurs) {
+          const vehicle = [c.carMake, c.vehicleModel].filter(Boolean).join(' ') || '—';
           html += `<tr>
-            <td>${c.carMake ? c.carMake + ' ' : ''}${c.vehicleModel}</td>
-            <td>${c.plateNumber}</td>
-            <td>${c.carColor}</td>
-            <td>${c.phone || '—'}</td>
-            <td>${c.vehicleType}</td>
+            <td><strong>${c.userName || '—'}</strong><br><small style="color:#888">${c.userEmail || ''}</small></td>
+            <td>${c.userPhone || c.phone || '—'}</td>
+            <td>${vehicle}</td>
+            <td>${c.plateNumber || '—'}</td>
+            <td>${c.carColor || '—'}</td>
+            <td>${c.vehicleType || '—'}</td>
             <td><span class="badge ${c.isApproved ? 'badge-approved' : 'badge-pending'}">${c.isApproved ? 'Approved' : 'Pending'}</span></td>
             <td><span class="badge ${c.isOnline ? 'badge-online' : 'badge-offline'}">${c.isOnline ? 'Online' : 'Offline'}</span></td>
             <td>
-              ${!c.isApproved ? `<button class="btn btn-approve btn-small" onclick="approveChauffeur('${c.id}')">Approve</button>` : ''}
+              ${!c.isApproved ? `<button class="btn btn-approve btn-small" onclick="approveChauffeur('${c.id}')">Approve</button>` : '<span style="color:#4caf50">✓</span>'}
             </td>
           </tr>`;
         }
