@@ -8,7 +8,7 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
  * e.g. EXPO_PUBLIC_DOMAIN=a2b-lift.up.railway.app
  */
 export function getApiUrl(): string {
-  const host = process.env.EXPO_PUBLIC_DOMAIN || "a2b-lift.onrender.com";
+  const host = process.env.EXPO_PUBLIC_DOMAIN || "api-production-0783.up.railway.app";
 
   // Use http:// for localhost, IP addresses, or development; https:// for production
   const isLocal = host.includes("localhost") || 
