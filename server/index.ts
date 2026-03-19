@@ -24,6 +24,11 @@ function setupCors(app: express.Application) {
     origins.add("https://a2b-lift.onrender.com");
     origins.add("https://peaceful-mousse-459c85.netlify.app");
 
+    // Railway domains — wildcard handled below via includes check
+    if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+      origins.add(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+    }
+
     if (process.env.REPLIT_DEV_DOMAIN) {
       origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
     }
@@ -46,6 +51,7 @@ function setupCors(app: express.Application) {
       origin?.includes(".trycloudflare.com") ||
       origin?.includes(".serveousercontent.com") ||
       origin?.includes(".gitpod.dev") ||
+      origin?.includes(".up.railway.app") ||
       (origin?.match(/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./) !== null);
 
     if (origin && (origins.has(origin) || isLocalhost)) {

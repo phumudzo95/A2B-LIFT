@@ -105,6 +105,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Health check for Railway / Render uptime monitoring
+  app.get("/api/health", (_req: Request, res: Response) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   // -----------------------------
   // Auth (JWT)
   // -----------------------------
