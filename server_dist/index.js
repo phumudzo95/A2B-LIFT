@@ -81042,6 +81042,9 @@ async function registerRoutes(app2) {
       return res.status(500).json({ message: error.message });
     }
   });
+  app2.get("/api/version", (_req, res) => {
+    res.json({ version: "google-oauth-v2", built: (/* @__PURE__ */ new Date()).toISOString() });
+  });
   app2.get("/api/auth/google/start", (req, res) => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) return res.status(500).send("Google OAuth not configured");

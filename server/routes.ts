@@ -487,6 +487,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Version probe — confirms this build is live
+  app.get("/api/version", (_req: Request, res: Response) => {
+    res.json({ version: "google-oauth-v2", built: new Date().toISOString() });
+  });
+
   // -----------------------------
   // Google OAuth
   // -----------------------------
