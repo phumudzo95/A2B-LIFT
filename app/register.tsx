@@ -48,22 +48,20 @@ export default function RegisterScreen() {
     setGoogleLoading(true); setError("");
     try {
       const redirectUri = makeRedirectUri({ scheme: "a2blift", path: "auth/callback" });
-      const clientId = Platform.OS === "web" ? GOOGLE_CLIENT_ID_WEB
-        : Platform.OS === "android" ? GOOGLE_CLIENT_ID_ANDROID : GOOGLE_CLIENT_ID_IOS;
+      const clientId = GOOGLE_CLIENT_ID_WEB;
 
       if (!clientId) {
-        Alert.alert("Setup Required",
-          "Add your Google Client ID to .env:\nEXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB=your-id\n\nGet it from console.cloud.google.com");
+        Alert.alert("Setup Required", "Google Client ID not configured.");
         setGoogleLoading(false); return;
       }
 
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent("openid email profile")}&access_type=offline`;
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent("openid email profile")}&access_type=offline&prompt=select_account`;
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
       if (result.type === "success" && result.url) {
         const url = new URL(result.url);
         const code = url.searchParams.get("code");
-        if (!code) throw new Error("No auth code");
+        if (!code) throw new Error("No auth code received");
         const res = await apiRequest("POST", "/api/auth/google", { code, redirectUri });
         const payload = await res.json();
         const user = payload.user ?? payload;

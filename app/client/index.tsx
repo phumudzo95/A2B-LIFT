@@ -172,6 +172,8 @@ export default function ClientHomeScreen() {
         } catch {}
       }
       setCurrentRide(null);
+      setRoutePolyline(null);
+      setDriverLocation(null);
       setRideStatus("no_drivers");
     }, 45000);
     return () => clearTimeout(timeout);
@@ -771,7 +773,7 @@ export default function ClientHomeScreen() {
               There are no {selectedVehicle.name} drivers available in your area right now. Please try again shortly.
             </Text>
           </View>
-          <Pressable style={styles.retryBtn} onPress={() => setRideStatus("idle")}>
+          <Pressable style={styles.retryBtn} onPress={() => { setRideStatus("idle"); setDropoffCoords(null); setDropoffAddress(""); setRoutePolyline(null); }}>
             <Text style={styles.retryBtnText}>Back to Home</Text>
           </Pressable>
         </Animated.View>

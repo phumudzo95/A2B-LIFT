@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from "react";
+import React, { useRef, useEffect, useMemo, useCallback } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, Platform } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
@@ -96,14 +96,22 @@ export default function A2BMap({
 }: A2BMapProps) {
   const mapRef = useRef<MapView>(null);
   const mapReadyRef = useRef(false);
+  // Queue a fitMap call if the map isn't ready yet
+  const pendingFitRef = useRef(false);
 
   const routeCoords = useMemo(() => {
     if (!routePolyline) return [];
     return decodePolyline(routePolyline);
   }, [routePolyline]);
 
-  function fitMap() {
-    if (!mapRef.current || !mapReadyRef.current) return;
+  const fitMap = useCallback(() => {
+    if (!mapRef.current || !mapReadyRef.current) {
+      // Map not ready yet — mark pending so handleMapReady will call us
+      pendingFitRef.current = true;
+      return;
+    }
+    pendingFitRef.current = false;
+
     if (followDriver && driverLocation) {
       mapRef.current.animateToRegion({
         latitude: driverLocation.lat,
@@ -125,7 +133,7 @@ export default function A2BMap({
         { edgePadding: { top: 80, right: 60, bottom: 200, left: 60 }, animated: true }
       );
     } else {
-      // Always animate to user location (or fallback) — never show world zoom
+      // Always animate to user location (or Johannesburg fallback) — never world zoom
       const center = pickupLocation || DEFAULT_REGION;
       mapRef.current.animateToRegion({
         latitude: center.lat,
@@ -134,17 +142,18 @@ export default function A2BMap({
         longitudeDelta: 0.008,
       }, 600);
     }
-  }
+  }, [pickupLocation, dropoffLocation, driverLocation, routeCoords, followDriver]);
 
   function handleMapReady() {
     mapReadyRef.current = true;
-    // Small delay to ensure the map has fully initialised before animating
-    setTimeout(fitMap, 300);
+    // Run immediately, then again after a short delay to ensure tiles have loaded
+    fitMap();
+    setTimeout(fitMap, 400);
   }
 
   useEffect(() => {
     fitMap();
-  }, [pickupLocation, dropoffLocation, driverLocation, routeCoords, followDriver]);
+  }, [fitMap]);
 
   if (!GOOGLE_MAPS_API_KEY) {
     return (

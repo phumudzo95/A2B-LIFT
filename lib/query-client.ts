@@ -1,4 +1,3 @@
-import { fetch } from "expo/fetch";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
