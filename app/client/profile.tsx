@@ -29,7 +29,7 @@ export default function ProfileScreen() {
           <Ionicons name="person" size={32} color={Colors.white} />
         </View>
         <Text style={styles.profileName}>{user?.name || "User"}</Text>
-        <Text style={styles.profileUsername}>@{user?.username || ""}</Text>
+        <Text style={styles.profileUsername}>{user?.username || user?.email || ""}</Text>
         {user?.phone && <Text style={styles.profilePhone}>{user.phone}</Text>}
         <View style={styles.ratingRow}>
           <Ionicons name="star" size={14} color={Colors.warning} />
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   profileCard: { alignItems: "center", backgroundColor: Colors.card, borderRadius: 20, padding: 28, gap: 6, borderWidth: 1, borderColor: Colors.border, marginBottom: 24 },
   avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center", marginBottom: 8 },
   profileName: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white },
-  profileUsername: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  profileUsername: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
   profilePhone: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
   ratingText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },

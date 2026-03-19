@@ -562,7 +562,7 @@ export default function ClientHomeScreen() {
         </View>
         <View style={styles.headerRight}>
           {/* Notification bell */}
-          <Pressable style={styles.bellBtn} onPress={() => router.push("/client/profile")} hitSlop={8}>
+          <Pressable style={styles.bellBtn} onPress={() => router.push("/client/notifications")} hitSlop={8}>
             <Ionicons name="notifications-outline" size={22} color={Colors.white} />
             {unreadCount > 0 && (
               <View style={styles.notifBadge}>

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, FlatList, Alert, Modal } from "react-native";
+import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, FlatList, Alert, Modal, KeyboardAvoidingView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -120,8 +120,12 @@ export default function SafetyScreen() {
       )}
 
       <Modal visible={showReport} transparent animationType="slide" onRequestClose={() => setShowReport(false)}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <Pressable style={styles.modalOverlay} onPress={() => setShowReport(false)}>
-          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 16) }]} onStartShouldSetResponder={() => true}>
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 24) }]} onStartShouldSetResponder={() => true}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Report an Issue</Text>
 
@@ -153,7 +157,7 @@ export default function SafetyScreen() {
               <View style={styles.aiResponseBox}>
                 <View style={styles.aiResponseHeader}>
                   <Ionicons name="sparkles" size={16} color={Colors.white} />
-                  <Text style={styles.aiResponseTitle}>AI Safety Response</Text>
+                  <Text style={styles.aiResponseTitle}>Safety Response</Text>
                 </View>
                 <Text style={styles.aiResponseText}>{aiResponse}</Text>
                 <Pressable style={styles.doneBtn} onPress={() => setShowReport(false)}>
@@ -181,6 +185,7 @@ export default function SafetyScreen() {
             )}
           </View>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -215,7 +220,7 @@ const styles = StyleSheet.create({
   typeRow: { flexDirection: "row", gap: 8 },
   typeChip: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   typeText: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textMuted },
-  descInput: { backgroundColor: Colors.surface, borderRadius: 12, padding: 16, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.white, minHeight: 120, borderWidth: 1, borderColor: Colors.border },
+  descInput: { backgroundColor: Colors.surface, borderRadius: 12, padding: 16, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.white, height: 110, borderWidth: 1, borderColor: Colors.border },
   aiResponseBox: { backgroundColor: Colors.surface, borderRadius: 14, padding: 16, gap: 12 },
   aiResponseHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   aiResponseTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
