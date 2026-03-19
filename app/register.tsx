@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Alert, Image } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -154,7 +154,11 @@ export default function RegisterScreen() {
             onPress={handleGoogleSignUp} disabled={googleLoading}>
             {googleLoading ? <ActivityIndicator color="#1a1a1a" size="small" /> : (
               <>
-                <View style={styles.googleIconWrap}><Text style={styles.googleG}>G</Text></View>
+                <Image
+                  source={require("../assets/images/google_icon.png")}
+                  style={styles.googleIconImg}
+                  resizeMode="contain"
+                />
                 <Text style={styles.googleBtnText}>Continue with Google</Text>
               </>
             )}
@@ -201,6 +205,7 @@ const styles = StyleSheet.create({
   googleBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: "#ffffff", paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: "#e0e0e0" },
   googleIconWrap: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#4285F4", alignItems: "center", justifyContent: "center" },
   googleG: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
+  googleIconImg: { width: 22, height: 22 },
   googleBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#1a1a1a" },
   termsText: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", lineHeight: 18 },
   termsLink: { color: Colors.textSecondary, fontFamily: "Inter_500Medium" },

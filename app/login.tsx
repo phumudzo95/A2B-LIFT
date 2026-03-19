@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   View, Text, StyleSheet, Pressable, TextInput,
-  ActivityIndicator, Platform, Alert,
+  ActivityIndicator, Platform, Alert, Image,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -132,7 +132,11 @@ export default function LoginScreen() {
           onPress={handleGoogleSignIn} disabled={googleLoading}>
           {googleLoading ? <ActivityIndicator color="#1a1a1a" size="small" /> : (
             <>
-              <View style={styles.googleIconWrap}><Text style={styles.googleG}>G</Text></View>
+              <Image
+                source={require("../assets/images/google_icon.png")}
+                style={{ width: 22, height: 22 }}
+                resizeMode="contain"
+              />
               <Text style={styles.googleBtnText}>Continue with Google</Text>
             </>
           )}
