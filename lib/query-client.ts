@@ -9,11 +9,7 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
  * @returns {string} The API base URL
  */
 export function getApiUrl(): string {
-  const host = process.env.EXPO_PUBLIC_DOMAIN;
-
-  if (!host) {
-    throw new Error("EXPO_PUBLIC_DOMAIN is not set");
-  }
+  const host = process.env.EXPO_PUBLIC_DOMAIN || "a2b-lift.onrender.com";
 
   // Use http:// for localhost, IP addresses, or development; https:// for production
   const isLocal = host.includes("localhost") || 
