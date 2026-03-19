@@ -26,14 +26,14 @@ export default function RegisterScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: "a2blift" });
+  const redirectUri = AuthSession.makeRedirectUri({ useProxy: true });
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: GOOGLE_CLIENT_ID,
       scopes: ["openid", "email", "profile"],
       redirectUri,
-      responseType: AuthSession.ResponseType.Token,
+      responseType: AuthSession.ResponseType.Code,
       usePKCE: false,
     },
     { authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth" }
@@ -41,9 +41,9 @@ export default function RegisterScreen() {
 
   useEffect(() => {
     if (response?.type === "success") {
-      const accessToken = response.params?.access_token;
-      if (accessToken) handleGoogleToken(accessToken);
-      else { setError("Google sign up failed. No token received."); setGoogleLoading(false); }
+      const code = response.params?.code;
+      if (code) handleGoogleCode(code);
+      else { setError("Google sign up failed. No code received."); setGoogleLoading(false); }
     } else if (response?.type === "error") {
       setError("Google sign up failed. Please try again.");
       setGoogleLoading(false);
@@ -52,14 +52,13 @@ export default function RegisterScreen() {
     }
   }, [response]);
 
-  async function handleGoogleToken(accessToken: string) {
+  async function handleGoogleCode(code: string) {
     try {
-      const res = await apiRequest("POST", "/api/auth/google-token", { accessToken });
+      const res = await apiRequest("POST", "/api/auth/google", { code, redirectUri });
       const payload = await res.json();
       if (!payload.user) throw new Error(payload.message || "Google sign up failed");
-      const token = payload.accessToken || null;
       await AsyncStorage.setItem("a2b_user", JSON.stringify(payload.user));
-      if (token) await AsyncStorage.setItem("a2b_token", token);
+      if (payload.accessToken) await AsyncStorage.setItem("a2b_token", payload.accessToken);
       setUser(payload.user);
       setTimeout(() => router.replace("/role-select"), 0);
     } catch (e: any) {
