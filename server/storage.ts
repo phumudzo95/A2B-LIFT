@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { eq, and, desc, avg } from "drizzle-orm";
+import { eq, and, desc, avg, sql } from "drizzle-orm";
 import {
   users,
   chauffeurs,
@@ -131,7 +131,7 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.username, username));
+      .where(sql`lower(${users.username}) = lower(${username})`);
     return user;
   }
 

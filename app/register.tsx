@@ -66,7 +66,7 @@ export default function RegisterScreen() {
     setLoading(true); setError("");
     try {
       await register({ username: email.trim().toLowerCase(), password, name: name.trim(), phone: phone.trim() });
-      setTimeout(() => router.replace("/role-select"), 0);
+      router.replace("/role-select");
     } catch (e: any) {
       const msg = e.message || "Registration failed.";
       if (msg.includes("already exists") || msg.includes("400")) setError("An account with this email already exists");

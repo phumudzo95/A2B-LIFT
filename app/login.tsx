@@ -62,7 +62,7 @@ export default function LoginScreen() {
     setLoading(true); setError("");
     try {
       await login(username.trim(), password);
-      setTimeout(() => router.replace("/role-select"), 0);
+      router.replace("/role-select");
     } catch (e: any) {
       setError(e.message || "Login failed. Please try again.");
     } finally { setLoading(false); }

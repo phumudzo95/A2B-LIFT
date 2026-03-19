@@ -13,12 +13,11 @@ export default function SplashLanding() {
   const { user, isLoading } = useAuth();
 
   useEffect(() => {
-    // Only auto-redirect on initial load (not after login/register which handle their own navigation)
     if (!isLoading && user) {
       const t = setTimeout(() => router.replace("/role-select"), 100);
       return () => clearTimeout(t);
     }
-  }, [isLoading]); // intentionally only on isLoading change, not user
+  }, [isLoading, user]);
 
   if (isLoading) {
     return (

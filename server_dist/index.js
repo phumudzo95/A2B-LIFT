@@ -80241,7 +80241,7 @@ var DatabaseStorage = class {
     return user;
   }
   async getUserByUsername(username) {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const [user] = await db.select().from(users).where(sql`lower(${users.username}) = lower(${username})`);
     return user;
   }
   async createUser(insertUser) {
