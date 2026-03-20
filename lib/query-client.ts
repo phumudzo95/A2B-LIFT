@@ -3,21 +3,31 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 /**
  * Gets the base URL for the Express API server.
- * Set EXPO_PUBLIC_DOMAIN in .env to your Railway (or Render) host, no protocol.
- * e.g. EXPO_PUBLIC_DOMAIN=a2b-lift.up.railway.app
+ * EXPO_PUBLIC_DOMAIN can be a full URL (https://host:port) or just a host/host:port.
+ * e.g. EXPO_PUBLIC_DOMAIN=https://a2b-lift.up.railway.app
+ *   or EXPO_PUBLIC_DOMAIN=a2b-lift.up.railway.app
  */
 export function getApiUrl(): string {
-  const host = process.env.EXPO_PUBLIC_DOMAIN || "api-production-0783.up.railway.app";
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
 
-  // Use http:// for localhost, IP addresses, or development; https:// for production
-  const isLocal = host.includes("localhost") || 
-                  host.includes("127.0.0.1") || 
-                  host.match(/^192\.168\.\d+\.\d+/) || 
-                  host.match(/^10\.\d+\.\d+\.\d+/) ||
-                  host.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+/);
+  if (!domain) {
+    return "https://api-production-0783.up.railway.app/";
+  }
+
+  // If already a full URL with protocol, use it directly
+  if (domain.startsWith("http://") || domain.startsWith("https://")) {
+    return domain.endsWith("/") ? domain : domain + "/";
+  }
+
+  // Otherwise treat as host (optionally with port) and determine protocol
+  const isLocal =
+    domain.includes("localhost") ||
+    domain.includes("127.0.0.1") ||
+    /^192\.168\.\d+\.\d+/.test(domain) ||
+    /^10\.\d+\.\d+\.\d+/.test(domain) ||
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+/.test(domain);
   const protocol = isLocal ? "http" : "https";
-  const url = new URL(`${protocol}://${host}`);
-  return url.href;
+  return `${protocol}://${domain}/`;
 }
 
 async function throwIfResNotOk(res: Response) {
