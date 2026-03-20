@@ -301,12 +301,29 @@ export default function ClientHomeScreen() {
     setCurrentRide(ride);
     if (ride.status === "chauffeur_assigned") {
       setRideStatus("assigned");
-      if (ride.chauffeurId) fetchChauffeurDetails(ride.chauffeurId);
+      if (ride.chauffeurId) {
+        fetchChauffeurDetails(ride.chauffeurId);
+        // Fetch driver's current location to show route from driver → pickup
+        apiRequest("GET", `/api/chauffeurs/${ride.chauffeurId}`).then(r => r.json()).then((c: any) => {
+          if (c.lat && c.lng && ride.pickupLat && ride.pickupLng) {
+            const driverLoc = { lat: c.lat, lng: c.lng };
+            setDriverLocation(driverLoc);
+            fetchRoute(driverLoc, { lat: ride.pickupLat, lng: ride.pickupLng });
+          }
+        }).catch(() => {});
+      }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else if (ride.status === "chauffeur_arriving") {
       setRideStatus("arriving");
     } else if (ride.status === "trip_started") {
       setRideStatus("in_trip");
+      // Switch route to driver → dropoff
+      if (ride.dropoffLat && ride.dropoffLng) {
+        setDriverLocation((prev) => {
+          if (prev) fetchRoute(prev, { lat: ride.dropoffLat, lng: ride.dropoffLng });
+          return prev;
+        });
+      }
     } else if (ride.status === "trip_completed") {
       setRideStatus("completed");
       setTimeout(() => setShowRating(true), 1000);

@@ -174,25 +174,44 @@ export default function ChauffeurDashboard() {
     }
   }
 
+  // Johannesburg CBD fallback — used on simulators that have no GPS
+  const JHB_FALLBACK = { lat: -26.2041, lng: 28.0473 };
+
   async function startLocationUpdates() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setMyLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      if (status !== "granted") {
+        setMyLocation(JHB_FALLBACK);
+        return;
+      }
+
+      // Try real GPS first; fall back to last-known, then to JHB CBD
+      let initialLoc: { lat: number; lng: number } | null = null;
+      try {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        initialLoc = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+      } catch {
+        try {
+          const last = await Location.getLastKnownPositionAsync();
+          if (last) initialLoc = { lat: last.coords.latitude, lng: last.coords.longitude };
+        } catch {}
+      }
+      setMyLocation(initialLoc ?? JHB_FALLBACK);
+
       const interval = setInterval(async () => {
         try {
           const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-          setMyLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-          emit("chauffeur:location", {
-            chauffeurId: chauffeur?.id,
-            lat: loc.coords.latitude,
-            lng: loc.coords.longitude,
-          });
+          const next = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+          setMyLocation(next);
+          emit("chauffeur:location", { chauffeurId: chauffeur?.id, lat: next.lat, lng: next.lng });
         } catch {}
       }, 5000);
       setLocationIntervalId(interval);
-    } catch {}
+    } catch {
+      setMyLocation(JHB_FALLBACK);
+    }
   }
 
   async function fetchDriverRoute(destLat: number, destLng: number) {

@@ -1236,67 +1236,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ride) return res.status(404).json({ message: "Ride not found" });
 
       if (status === "trip_completed" && ride.chauffeurId && ride.price) {
-        const earningsCalc = calculateChauffeurEarnings(ride.price);
-        await storage.createEarning({
-          chauffeurId: ride.chauffeurId,
-          rideId: ride.id,
-          amount: earningsCalc.chauffeurEarnings,
-          commission: earningsCalc.commission,
-        });
-        const chauffeur = await storage.getChauffeur(ride.chauffeurId);
-        if (chauffeur) {
-          await storage.updateChauffeur(ride.chauffeurId, {
-            earningsTotal:
-              (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings,
+        // Wrap each ancillary operation independently so a DB hiccup
+        // on earnings / notifications does NOT kill the status update.
+        try {
+          const earningsCalc = calculateChauffeurEarnings(ride.price);
+          await storage.createEarning({
+            chauffeurId: ride.chauffeurId,
+            rideId: ride.id,
+            amount: earningsCalc.chauffeurEarnings,
+            commission: earningsCalc.commission,
           });
+          const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+          if (chauffeur) {
+            await storage.updateChauffeur(ride.chauffeurId, {
+              earningsTotal:
+                (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings,
+            });
+          }
+        } catch (earningsErr: any) {
+          console.error("earnings record failed (non-fatal):", earningsErr.message);
         }
-        await storage.createNotification({
-          userId: ride.clientId,
-          title: "Trip Completed",
-          body: `Your trip has been completed. Fare: R ${ride.price}. Thank you for choosing A2B LIFT.`,
-          type: "ride",
-        });
 
-        // Auto-handle cash payments: if payment method is cash and no payment record exists, create one and mark as paid
-        const paymentMethod = ride.paymentMethod || "cash";
-        if (paymentMethod === "cash" && ride.price) {
-          // Check if payment already exists
-          const existingPayments = await storage.getPaymentsByRide(ride.id);
-          if (existingPayments.length === 0) {
-            // Create cash payment record and mark as paid
-            await storage.createPayment({
-              rideId: ride.id,
-              payerUserId: ride.clientId,
-              amount: ride.price,
-              method: "cash",
-              status: "paid",
-              provider: "cash",
-              providerRef: `cash_${ride.id}_${Date.now()}`,
-            });
+        try {
+          await storage.createNotification({
+            userId: ride.clientId,
+            title: "Trip Completed",
+            body: `Your trip has been completed. Fare: R ${ride.price}. Thank you for choosing A2B LIFT.`,
+            type: "ride",
+          });
+        } catch (notifErr: any) {
+          console.error("notification failed (non-fatal):", notifErr.message);
+        }
 
-            // Update ride payment status
-            await storage.updateRide(ride.id, {
-              paymentStatus: "paid",
-              paymentMethod: "cash",
-            });
-          } else {
-            // If payment exists but status is pending, mark as paid
-            const pendingPayment = existingPayments.find((p) => p.status === "pending" && p.method === "cash");
-            if (pendingPayment) {
-              await storage.updatePayment(pendingPayment.id, {
+        try {
+          const paymentMethod = ride.paymentMethod || "cash";
+          if (paymentMethod === "cash") {
+            const existingPayments = await storage.getPaymentsByRide(ride.id);
+            if (existingPayments.length === 0) {
+              await storage.createPayment({
+                rideId: ride.id,
+                payerUserId: ride.clientId,
+                amount: ride.price,
+                method: "cash",
                 status: "paid",
+                provider: "cash",
+                providerRef: `cash_${ride.id}_${Date.now()}`,
               });
-              await storage.updateRide(ride.id, {
-                paymentStatus: "paid",
-              });
+              await storage.updateRide(ride.id, { paymentStatus: "paid", paymentMethod: "cash" });
+            } else {
+              const pendingPayment = existingPayments.find((p) => p.status === "pending" && p.method === "cash");
+              if (pendingPayment) {
+                await storage.updatePayment(pendingPayment.id, { status: "paid" });
+                await storage.updateRide(ride.id, { paymentStatus: "paid" });
+              }
             }
           }
+        } catch (payErr: any) {
+          console.error("payment record failed (non-fatal):", payErr.message);
         }
       }
 
       io.emit("ride:statusUpdate", ride);
       return res.json(ride);
     } catch (error: any) {
+      console.error("ride status update error:", error.message, error.stack);
       return res.status(500).json({ message: error.message });
     }
   });
