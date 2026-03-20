@@ -608,29 +608,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/chauffeurs", requireAuth, async (req: AuthedRequest, res: Response) => {
+  app.post("/api/chauffeurs", async (req: Request, res: Response) => {
     try {
-      // Always use the JWT subject as the canonical userId (ignore untrusted body value)
-      const userId = req.auth!.sub;
-      req.body.userId = userId;
+      const userId = req.body.userId;
 
-      // Auto-upsert user in this DB — handles cross-environment JWTs (e.g. Railway token vs dev DB)
-      let existingUser = await storage.getUser(userId);
-      if (!existingUser) {
-        const { email, name } = req.auth!;
-        const placeholderEmail = email || `oauth_${userId.slice(0, 12)}@a2blift.placeholder`;
-        const existingByEmail = email ? await storage.getUserByUsername(email) : null;
-        if (existingByEmail) {
-          existingUser = existingByEmail;
-          req.body.userId = existingByEmail.id;
-        } else {
+      // Auto-upsert user in this DB — handles cross-environment tokens (e.g. Railway user vs dev DB)
+      if (userId) {
+        const existingUser = await storage.getUser(userId);
+        if (!existingUser) {
           const randomPw = Math.random().toString(36).slice(2);
           await storage.createUser({
             id: userId,
-            username: placeholderEmail,
+            username: `driver_${userId.slice(0, 12)}@a2blift.placeholder`,
             password: randomPw,
-            name: name || "A2B Driver",
-            phone: null,
+            name: req.body.name || "A2B Driver",
+            phone: req.body.phone || null,
             role: "chauffeur",
           });
         }
@@ -794,8 +786,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -----------------------------
   // Driver Applications + Documents (Admin + Driver)
   // -----------------------------
-  app.get("/api/driver/applications/me", requireAuth, async (req: AuthedRequest, res: Response) => {
-    const appRow = await storage.getDriverApplicationByUserId(req.auth!.sub);
+  app.get("/api/driver/applications/me", authOptional, async (req: AuthedRequest, res: Response) => {
+    const userId = req.auth?.sub || (req.query.userId as string);
+    if (!userId) return res.status(400).json({ message: "userId required" });
+    const appRow = await storage.getDriverApplicationByUserId(userId);
     return res.json(appRow || null);
   });
 
@@ -836,11 +830,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  app.post("/api/driver/documents", requireAuth, async (req: AuthedRequest, res: Response) => {
-    const { applicationId, chauffeurId, type, url } = req.body;
+  app.post("/api/driver/documents", authOptional, async (req: AuthedRequest, res: Response) => {
+    const { applicationId, chauffeurId, type, url, userId: bodyUserId } = req.body;
+    const userId = req.auth?.sub || bodyUserId;
     if (!type || !url) return res.status(400).json({ message: "type and url are required" });
+    if (!userId) return res.status(400).json({ message: "userId required" });
     const doc = await storage.createDocument({
-      userId: req.auth!.sub,
+      userId,
       applicationId: applicationId || null,
       chauffeurId: chauffeurId || null,
       type,
@@ -850,8 +846,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json(doc);
   });
 
-  app.get("/api/driver/documents", requireAuth, async (req: AuthedRequest, res: Response) => {
-    const docs = await storage.getDocumentsByUser(req.auth!.sub);
+  app.get("/api/driver/documents", authOptional, async (req: AuthedRequest, res: Response) => {
+    const userId = req.auth?.sub || (req.query.userId as string);
+    if (!userId) return res.status(400).json({ message: "userId required" });
+    const docs = await storage.getDocumentsByUser(userId);
     return res.json(docs);
   });
 

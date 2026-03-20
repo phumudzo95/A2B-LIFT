@@ -133,7 +133,7 @@ export default function ChauffeurRegisterScreen() {
       await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(chauffeur));
 
       // Step 2: Upload documents one by one
-      const appRes = await apiRequest("GET", "/api/driver/applications/me");
+      const appRes = await apiRequest("GET", `/api/driver/applications/me?userId=${user.id}`);
       const application = await appRes.json().catch(() => null);
       const applicationId = application?.id || null;
 
