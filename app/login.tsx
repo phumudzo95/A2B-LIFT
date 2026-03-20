@@ -49,7 +49,7 @@ export default function LoginScreen() {
       await AsyncStorage.setItem("a2b_user", JSON.stringify(payload.user));
       if (payload.accessToken) await AsyncStorage.setItem("a2b_token", payload.accessToken);
       setUser(payload.user);
-      router.replace("/client");
+      // AuthGate handles navigation when user state changes
     } catch {
       setError("Google sign in failed. Please try again.");
     } finally {
@@ -62,7 +62,7 @@ export default function LoginScreen() {
     setLoading(true); setError("");
     try {
       await login(username.trim(), password);
-      router.replace("/role-select");
+      // AuthGate handles navigation when user state changes
     } catch (e: any) {
       setError(e.message || "Login failed. Please try again.");
     } finally { setLoading(false); }
