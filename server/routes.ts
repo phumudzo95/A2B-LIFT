@@ -231,13 +231,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Parse a Photon GeoJSON feature into our prediction format
-  function photonToPrediction(f: any): { placeId: string; description: string; mainText: string; secondaryText: string; lat: number; lng: number } {
+  function photonToPrediction(f: any, prefixHouseNumber?: string): { placeId: string; description: string; mainText: string; secondaryText: string; lat: number; lng: number } {
     const p = f.properties || {};
     const [lng, lat] = f.geometry?.coordinates || [0, 0];
-    const mainText = p.name || p.street || p.city || p.county || "";
-    const parts = [p.street, p.city || p.town || p.village, p.state].filter(Boolean);
-    const secondaryText = parts.filter(v => v !== mainText).join(", ");
-    const description = [mainText, ...parts.filter(v => v !== mainText)].filter(Boolean).join(", ");
+
+    // Build the street address part (house number + street name)
+    const houseNum = p.housenumber || prefixHouseNumber || "";
+    const streetName = p.street || (p.type === "street" ? p.name : "") || "";
+    const streetAddr = streetName ? (houseNum ? `${houseNum} ${streetName}` : streetName) : "";
+
+    // Fallback to name (POI, suburb, city name)
+    const placeName = streetAddr || p.name || p.city || p.county || "";
+
+    const suburb = p.suburb || p.district || "";
+    const city = p.city || p.town || p.village || "";
+    const state = p.state || "";
+
+    const mainText = placeName;
+    const secondaryParts = [suburb, city, state].filter(Boolean).filter(v => v !== mainText);
+    const secondaryText = secondaryParts.join(", ");
+    const description = [mainText, ...secondaryParts].filter(Boolean).join(", ");
     const placeId = `photon_${p.osm_id || `${lat}_${lng}`}`;
     return { placeId, description, mainText, secondaryText, lat, lng };
   }
@@ -307,13 +320,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Photon fallback (OpenStreetMap-based, no API key, more lenient rate limits)
-      // bbox: west,south,east,north — bounding South Africa
+      // Detect if the query starts with a house number (e.g. "680 Pretorius Street")
+      const houseNumberMatch = input.trim().match(/^(\d+)\s+(.+)/);
+      const queryHouseNumber = houseNumberMatch ? houseNumberMatch[1] : null;
+
+      // Photon fallback — location-biased to South Africa (center: -28.9, 25.6)
+      // Use bbox to restrict to SA borders: lon_min,lat_min,lon_max,lat_max
       const SA_BBOX = "16.3,-34.9,32.9,-22.1";
-      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(input)}&lang=en&limit=6&bbox=${SA_BBOX}`;
+      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(input)}&lang=en&limit=8&bbox=${SA_BBOX}`;
       const photonData = await safeJsonFetch(photonUrl);
+
       if (photonData?.features?.length > 0) {
-        return res.json({ predictions: photonData.features.map(photonToPrediction) });
+        const predictions = photonData.features
+          .filter((f: any) => {
+            // Filter to SA results only
+            const cc = f.properties?.countrycode || f.properties?.country_code || "";
+            return !cc || cc.toLowerCase() === "za";
+          })
+          .map((f: any) => {
+            // If the query has a house number but this result is a street (not a house),
+            // synthesize the full address by prepending the number
+            const p = f.properties || {};
+            const isStreetResult = p.type === "street" || (p.osm_key === "highway" && !p.housenumber);
+            const syntheticHouseNum = (isStreetResult && queryHouseNumber) ? queryHouseNumber : undefined;
+            return photonToPrediction(f, syntheticHouseNum);
+          })
+          // Deduplicate by description
+          .filter((pred: any, idx: number, arr: any[]) =>
+            arr.findIndex((p: any) => p.description === pred.description) === idx
+          )
+          .slice(0, 6);
+
+        if (predictions.length > 0) {
+          return res.json({ predictions });
+        }
       }
 
       // Last resort: Nominatim single request
