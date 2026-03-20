@@ -62,7 +62,7 @@ export default function LoginScreen() {
     setLoading(true); setError("");
     try {
       await login(username.trim(), password);
-      // AuthGate in _layout.tsx handles redirect once user state is set
+      router.replace("/role-select");
     } catch (e: any) {
       setError(e.message || "Login failed. Please try again.");
     } finally { setLoading(false); }
@@ -71,12 +71,19 @@ export default function LoginScreen() {
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
     setError("");
-    // Backend handles the full OAuth flow; result comes back via deep link
-    await WebBrowser.openAuthSessionAsync(GOOGLE_OAUTH_START, "a2blift://auth", {
-      preferEphemeralSession: true,
-    });
-    // If the browser was dismissed without a deep link, stop the spinner
-    setGoogleLoading(false);
+    try {
+      const result = await WebBrowser.openAuthSessionAsync(GOOGLE_OAUTH_START, "a2blift://auth", {
+        preferEphemeralSession: true,
+      });
+      // On web, the redirect URL comes back in result.url instead of a deep link event
+      if (result.type === "success" && result.url) {
+        await handleDeepLinkCallback(result.url);
+      }
+    } catch {
+      setError("Google sign in failed. Please try again.");
+    } finally {
+      setGoogleLoading(false);
+    }
   }
 
   return (

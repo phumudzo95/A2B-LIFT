@@ -66,7 +66,7 @@ export default function RegisterScreen() {
     setLoading(true); setError("");
     try {
       await register({ username: email.trim().toLowerCase(), password, name: name.trim(), phone: phone.trim() });
-      // AuthGate in _layout.tsx handles redirect once user state is set
+      router.replace("/role-select");
     } catch (e: any) {
       const msg = e.message || "Registration failed.";
       if (msg.includes("already exists") || msg.includes("400")) setError("An account with this email already exists");
@@ -79,12 +79,19 @@ export default function RegisterScreen() {
   async function handleGoogleSignUp() {
     setGoogleLoading(true);
     setError("");
-    // Backend handles the full OAuth flow; result comes back via deep link
-    await WebBrowser.openAuthSessionAsync(GOOGLE_OAUTH_START, "a2blift://auth", {
-      preferEphemeralSession: true,
-    });
-    // If the browser was dismissed without a deep link, stop the spinner
-    setGoogleLoading(false);
+    try {
+      const result = await WebBrowser.openAuthSessionAsync(GOOGLE_OAUTH_START, "a2blift://auth", {
+        preferEphemeralSession: true,
+      });
+      // On web, the redirect URL comes back in result.url instead of a deep link event
+      if (result.type === "success" && result.url) {
+        await handleDeepLinkCallback(result.url);
+      }
+    } catch {
+      setError("Google sign up failed. Please try again.");
+    } finally {
+      setGoogleLoading(false);
+    }
   }
 
   return (
