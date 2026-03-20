@@ -64,7 +64,7 @@ export default function ChauffeurRegisterScreen() {
         // Web: use file input via ImagePicker
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          quality: 0.8,
+          quality: 0.5,
           allowsEditing: false,
         });
         if (!result.canceled && result.assets?.[0]) {
@@ -79,7 +79,7 @@ export default function ChauffeurRegisterScreen() {
         }
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          quality: 0.8,
+          quality: 0.5,
           allowsEditing: false,
         });
         if (!result.canceled && result.assets?.[0]) {
@@ -132,34 +132,34 @@ export default function ChauffeurRegisterScreen() {
       const chauffeur = await res.json();
       await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(chauffeur));
 
-      // Step 2: Upload documents one by one
+      // Step 2: Upload all documents in parallel for speed
       const appRes = await apiRequest("GET", `/api/driver/applications/me?userId=${user.id}`);
       const application = await appRes.json().catch(() => null);
       const applicationId = application?.id || null;
 
-      for (const doc of REQUIRED_DOCS) {
-        const file = documents[doc.id];
-        if (!file) continue;
-        try {
-          // Upload file to Supabase Storage and get a public URL
-          let publicUrl = file.uri;
+      await Promise.all(
+        REQUIRED_DOCS.map(async (doc) => {
+          const file = documents[doc.id];
+          if (!file) return;
           try {
-            publicUrl = await uploadDocument(file.uri, user.id, doc.id);
-          } catch (uploadErr) {
-            console.warn(`Supabase upload failed for ${doc.id}, using local URI:`, uploadErr);
+            let publicUrl = file.uri;
+            try {
+              publicUrl = await uploadDocument(file.uri, user.id, doc.id);
+            } catch (uploadErr) {
+              console.warn(`Supabase upload failed for ${doc.id}, using local URI:`, uploadErr);
+            }
+            await apiRequest("POST", "/api/driver/documents", {
+              userId: user.id,
+              applicationId,
+              chauffeurId: chauffeur.id,
+              type: doc.id,
+              url: publicUrl,
+            });
+          } catch (docErr) {
+            console.warn(`Failed to save ${doc.id}:`, docErr);
           }
-          // Save the public URL to the database
-          await apiRequest("POST", "/api/driver/documents", {
-            userId: user.id,
-            applicationId,
-            chauffeurId: chauffeur.id,
-            type: doc.id,
-            url: publicUrl,
-          });
-        } catch (docErr) {
-          console.warn(`Failed to save ${doc.id}:`, docErr);
-        }
-      }
+        })
+      );
 
       router.replace("/chauffeur");
     } catch (e: any) {
