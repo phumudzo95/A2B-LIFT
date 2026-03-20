@@ -73,7 +73,20 @@ function setupCors(app: express.Application) {
 }
 
 function setupSecurity(app: express.Application) {
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+          scriptSrcElem: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'", "https:", "wss:"],
+        },
+      },
+    })
+  );
   app.use(cookieParser());
 }
 

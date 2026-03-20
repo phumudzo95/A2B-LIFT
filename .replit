@@ -72,12 +72,12 @@ waitForPort = 5000
 name = "Start Frontend"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN:5000 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=$GOOGLE_API_KEY npx expo start --localhost"
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=https://$REPLIT_DEV_DOMAIN EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=$GOOGLE_API_KEY ./node_modules/.bin/expo start --web --port 8081"
 
 [userenv]
 
