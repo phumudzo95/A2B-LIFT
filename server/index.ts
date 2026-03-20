@@ -238,6 +238,10 @@ function configureExpoAndLanding(app: express.Application) {
     }
 
     if (req.path === "/") {
+      const staticIndex = path.resolve(process.cwd(), "static-build", "index.html");
+      if (fs.existsSync(staticIndex)) {
+        return res.sendFile(staticIndex);
+      }
       return serveLandingPage({
         req,
         res,
