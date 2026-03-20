@@ -56,7 +56,6 @@ export default function ChauffeurSettingsScreen() {
 
   async function handleLogout() {
     await logout();
-    setTimeout(() => router.replace("/"), 0);
   }
 
   async function pickAndUploadDocument(type: string) {

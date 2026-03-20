@@ -12,8 +12,6 @@ export default function ProfileScreen() {
 
   async function handleLogout() {
     await logout();
-    // Defer navigation until after the current render cycle completes
-    setTimeout(() => router.replace("/"), 0);
   }
 
   return (

@@ -24,7 +24,10 @@ function AuthGate() {
     // Screens that require no user
     const isGuestOnly = pathname === "/" || pathname === "/login" || pathname === "/register";
     // Screens that require a user
-    const isProtected = pathname.startsWith("/client") || pathname.startsWith("/chauffeur");
+    const isProtected =
+      pathname.startsWith("/client") ||
+      pathname.startsWith("/chauffeur") ||
+      pathname === "/role-select";
 
     if (user && isGuestOnly) {
       // Logged-in user landed on splash/login/register — send to role select

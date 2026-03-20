@@ -11,16 +11,13 @@ export default function RoleSelectScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
 
-  if (!user) {
-    router.replace("/");
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 40) }]}>
       <View style={styles.topRow}>
         <View />
-        <Pressable onPress={async () => { await logout(); setTimeout(() => router.replace("/"), 0); }} style={styles.logoutBtn}>
+        <Pressable onPress={async () => { await logout(); }} style={styles.logoutBtn}>
           <Ionicons name="log-out-outline" size={20} color={Colors.textSecondary} />
         </Pressable>
       </View>
