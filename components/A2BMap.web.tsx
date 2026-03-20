@@ -70,6 +70,7 @@ export default function A2BMap({
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const driverMarkerRef = useRef<any>(null);
   const polylineRef = useRef<any>(null);
   const scriptLoadedRef = useRef(false);
 
@@ -155,6 +156,8 @@ export default function A2BMap({
   function updateMarkers() {
     const google = (window as any).google;
     if (!google?.maps || !mapInstanceRef.current) return;
+
+    // Remove all non-driver markers and recreate them (pickup, dropoff, nearby)
     markersRef.current.forEach(m => m.setMap(null));
     markersRef.current = [];
 
@@ -208,21 +211,29 @@ export default function A2BMap({
       });
     }
 
+    // Driver marker: create once, then just move it — never destroy/recreate to avoid blinking
     if (showDriver && driverLocation) {
-      const driverMarker = new google.maps.Marker({
-        position: { lat: driverLocation.lat, lng: driverLocation.lng },
-        map: mapInstanceRef.current,
-        icon: {
-          path: "M12 2C7.03 2 3 6.03 3 11s9 13 9 13 9-8.03 9-13-4.03-9-9-9z",
-          scale: 1.5,
-          fillColor: "#FFFFFF",
-          fillOpacity: 1,
-          strokeColor: "#000000",
-          strokeWeight: 1,
-          anchor: new google.maps.Point(12, 24),
-        },
-      });
-      markersRef.current.push(driverMarker);
+      if (!driverMarkerRef.current) {
+        driverMarkerRef.current = new google.maps.Marker({
+          position: { lat: driverLocation.lat, lng: driverLocation.lng },
+          map: mapInstanceRef.current,
+          icon: {
+            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            scale: 5,
+            fillColor: "#FFFFFF",
+            fillOpacity: 1,
+            strokeColor: "#000000",
+            strokeWeight: 1.5,
+            anchor: new google.maps.Point(0, 2.5),
+          },
+          optimized: true,
+        });
+      } else {
+        driverMarkerRef.current.setPosition({ lat: driverLocation.lat, lng: driverLocation.lng });
+        driverMarkerRef.current.setMap(mapInstanceRef.current);
+      }
+    } else if (!showDriver && driverMarkerRef.current) {
+      driverMarkerRef.current.setMap(null);
     }
 
     const bounds = new google.maps.LatLngBounds();

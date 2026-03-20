@@ -289,6 +289,7 @@ export default function A2BMap({
           <Marker
             coordinate={{ latitude: driverLocation.lat, longitude: driverLocation.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={false}
           >
             <View style={styles.driverMarker}>
               <Ionicons name="car-sport" size={20} color="#000" />
