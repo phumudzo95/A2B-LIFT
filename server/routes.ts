@@ -222,6 +222,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Nominatim fallback headers
   const nominatimHeaders = { "User-Agent": "A2BLIFT/1.0 (contact@a2blift.co.za)", "Accept-Language": "en" };
 
+  // Safe JSON fetch — returns null if the response is HTML (rate-limit or error page)
+  async function safeJsonFetch(url: string, options?: RequestInit): Promise<any> {
+    const res = await fetch(url, options);
+    const text = await res.text();
+    if (text.trimStart().startsWith("<")) return null; // HTML error page
+    try { return JSON.parse(text); } catch { return null; }
+  }
+
+  // Parse a Photon GeoJSON feature into our prediction format
+  function photonToPrediction(f: any): { placeId: string; description: string; mainText: string; secondaryText: string; lat: number; lng: number } {
+    const p = f.properties || {};
+    const [lng, lat] = f.geometry?.coordinates || [0, 0];
+    const mainText = p.name || p.street || p.city || p.county || "";
+    const parts = [p.street, p.city || p.town || p.village, p.state].filter(Boolean);
+    const secondaryText = parts.filter(v => v !== mainText).join(", ");
+    const description = [mainText, ...parts.filter(v => v !== mainText)].filter(Boolean).join(", ");
+    const placeId = `photon_${p.osm_id || `${lat}_${lng}`}`;
+    return { placeId, description, mainText, secondaryText, lat, lng };
+  }
+
   // Build clean address parts from a Nominatim result
   function buildAddressParts(r: any): { mainText: string; secondaryText: string; description: string } {
     const addr = r.address || {};
@@ -255,8 +275,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Nominatim fallback
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=za&addressdetails=1&limit=1`;
-      const results = (await (await fetch(url, { headers: nominatimHeaders })).json()) as any[];
-      if (results.length > 0) return res.json({ lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) });
+      const results = await safeJsonFetch(url, { headers: nominatimHeaders });
+      if (Array.isArray(results) && results.length > 0) return res.json({ lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) });
       return res.status(404).json({ message: "Location not found" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -287,22 +307,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Nominatim fallback — three parallel queries for best SA coverage
-      const SA_VIEWBOX = "16.3,-34.9,32.9,-22.1";
-      const base = `format=json&countrycodes=za&addressdetails=1&dedupe=1&limit=8`;
-      const [r1, r2, r3] = await Promise.all([
-        fetch(`https://nominatim.openstreetmap.org/search?${base}&q=${encodeURIComponent(input)}`, { headers: nominatimHeaders }).then(r => r.json()) as Promise<any[]>,
-        fetch(`https://nominatim.openstreetmap.org/search?${base}&featuretype=street&q=${encodeURIComponent(input)}`, { headers: nominatimHeaders }).then(r => r.json()) as Promise<any[]>,
-        fetch(`https://nominatim.openstreetmap.org/search?${base}&viewbox=${SA_VIEWBOX}&bounded=1&q=${encodeURIComponent(input)}`, { headers: nominatimHeaders }).then(r => r.json()) as Promise<any[]>,
-      ]);
-      const seen = new Set<string>();
-      const merged: any[] = [];
-      for (const r of [...r3, ...r2, ...r1]) {
-        if (!seen.has(String(r.place_id))) { seen.add(String(r.place_id)); merged.push(r); }
-        if (merged.length >= 6) break;
+      // Photon fallback (OpenStreetMap-based, no API key, more lenient rate limits)
+      // bbox: west,south,east,north — bounding South Africa
+      const SA_BBOX = "16.3,-34.9,32.9,-22.1";
+      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(input)}&lang=en&limit=6&bbox=${SA_BBOX}`;
+      const photonData = await safeJsonFetch(photonUrl);
+      if (photonData?.features?.length > 0) {
+        return res.json({ predictions: photonData.features.map(photonToPrediction) });
       }
+
+      // Last resort: Nominatim single request
+      const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=za&addressdetails=1&limit=6&q=${encodeURIComponent(input)}`;
+      const nomResults = await safeJsonFetch(nomUrl, { headers: nominatimHeaders });
+      if (!Array.isArray(nomResults) || nomResults.length === 0) return res.json({ predictions: [] });
       return res.json({
-        predictions: merged.map((r: any) => {
+        predictions: nomResults.map((r: any) => {
           const { mainText, secondaryText, description } = buildAddressParts(r);
           return { placeId: String(r.place_id), description, mainText, secondaryText, lat: parseFloat(r.lat), lng: parseFloat(r.lon) };
         }),
@@ -330,8 +349,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Nominatim fallback
       const url = `https://nominatim.openstreetmap.org/lookup?osm_ids=N${placeId},W${placeId},R${placeId}&format=json&addressdetails=1`;
-      const results = (await (await fetch(url, { headers: nominatimHeaders })).json()) as any[];
-      if (!results || results.length === 0) return res.status(404).json({ message: "Place not found" });
+      const results = await safeJsonFetch(url, { headers: nominatimHeaders });
+      if (!Array.isArray(results) || results.length === 0) return res.status(404).json({ message: "Place not found" });
       const { description } = buildAddressParts(results[0]);
       return res.json({ lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon), address: description });
     } catch (error: any) {
@@ -370,10 +389,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Nominatim fallback
-      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`;
-      const r = await (await fetch(url, { headers: nominatimHeaders })).json() as any;
-      if (r.error) return res.status(404).json({ message: r.error });
+      // Photon reverse geocode fallback
+      const photonRevUrl = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}&lang=en&limit=1`;
+      const photonRev = await safeJsonFetch(photonRevUrl);
+      if (photonRev?.features?.length > 0) {
+        const pred = photonToPrediction(photonRev.features[0]);
+        return res.json({ placeId: pred.placeId, description: pred.description, mainText: pred.mainText, secondaryText: pred.secondaryText, lat: pred.lat, lng: pred.lng });
+      }
+
+      // Nominatim last resort
+      const nomRevUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`;
+      const r = await safeJsonFetch(nomRevUrl, { headers: nominatimHeaders });
+      if (!r || r.error) return res.status(404).json({ message: r?.error || "Location not found" });
       const { mainText, secondaryText, description } = buildAddressParts(r);
       return res.json({ placeId: String(r.place_id), description, mainText, secondaryText, lat: parseFloat(r.lat), lng: parseFloat(r.lon) });
     } catch (error: any) {
