@@ -20,7 +20,7 @@ import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useAuth } from "@/lib/auth-context";
-import { apiRequest } from "@/lib/query-client";
+import { apiRequest, queryClient } from "@/lib/query-client";
 import { useSocket } from "@/lib/socket-context";
 import Colors from "@/constants/colors";
 import A2BMap from "@/components/A2BMap";
@@ -186,6 +186,7 @@ export default function ClientHomeScreen() {
       setRoutePolyline(null);
       setDriverLocation(null);
       setRideStatus("no_drivers");
+      queryClient.invalidateQueries({ queryKey: ["/api/rides/client"] });
     }, 45000);
     return () => clearTimeout(timeout);
   }, [rideStatus]);
@@ -310,6 +311,7 @@ export default function ClientHomeScreen() {
       setRideStatus("completed");
       setTimeout(() => setShowRating(true), 1000);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ["/api/rides/client"] });
     }
   }, []);
 
@@ -509,6 +511,7 @@ export default function ClientHomeScreen() {
       const ride = payload.ride ?? payload;
       setCurrentRide(ride);
       setRideStatus("requested");
+      queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user.id] });
       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (e) {
       Alert.alert("Error", "Failed to request ride");
@@ -519,6 +522,7 @@ export default function ClientHomeScreen() {
     if (currentRide) {
       apiRequest("PUT", `/api/rides/${currentRide.id}/status`, { status: "cancelled" }).catch(() => {});
     }
+    if (user?.id) queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user.id] });
     setRideStatus("idle");
     setCurrentRide(null);
     setEstimatedPrice(null);

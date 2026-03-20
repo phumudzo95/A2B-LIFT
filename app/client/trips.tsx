@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/query-client";
@@ -40,7 +41,14 @@ export default function TripsScreen() {
   const { data: trips, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["/api/rides/client", user?.id ?? ""],
     enabled: !!user?.id,
+    staleTime: 0,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) refetch();
+    }, [user?.id])
+  );
 
   const sendEnquiry = useMutation({
     mutationFn: async ({ rideId, message }: { rideId: string; message: string }) => {
