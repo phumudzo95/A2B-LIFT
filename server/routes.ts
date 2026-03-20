@@ -608,8 +608,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/chauffeurs", async (req: Request, res: Response) => {
+  app.post("/api/chauffeurs", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
+      // Always use the JWT subject as the canonical userId (ignore untrusted body value)
+      const userId = req.auth!.sub;
+      req.body.userId = userId;
+
+      // Auto-upsert user in this DB — handles cross-environment JWTs (e.g. Railway token vs dev DB)
+      let existingUser = await storage.getUser(userId);
+      if (!existingUser) {
+        const { email, name } = req.auth!;
+        const placeholderEmail = email || `oauth_${userId.slice(0, 12)}@a2blift.placeholder`;
+        const existingByEmail = email ? await storage.getUserByUsername(email) : null;
+        if (existingByEmail) {
+          existingUser = existingByEmail;
+          req.body.userId = existingByEmail.id;
+        } else {
+          const randomPw = Math.random().toString(36).slice(2);
+          await storage.createUser({
+            id: userId,
+            username: placeholderEmail,
+            password: randomPw,
+            name: name || "A2B Driver",
+            phone: null,
+            role: "chauffeur",
+          });
+        }
+      }
+
       const chauffeur = await storage.createChauffeur(req.body);
       await storage.updateUser(req.body.userId, { role: "chauffeur" });
 
