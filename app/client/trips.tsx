@@ -114,11 +114,12 @@ export default function TripsScreen() {
 
       <Modal visible={!!selectedTrip} animationType="slide" presentationStyle="overFullScreen" transparent={false} onRequestClose={closeTrip}>
         <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Trip Details</Text>
-            <Pressable onPress={closeTrip} style={styles.closeBtn} hitSlop={8}>
-              <Ionicons name="close" size={22} color={Colors.white} />
+          <View style={[styles.modalHeader, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20) }]}>
+            <Pressable onPress={closeTrip} style={styles.backBtn} hitSlop={8}>
+              <Ionicons name="chevron-back" size={24} color={Colors.white} />
             </Pressable>
+            <Text style={styles.modalTitle}>Trip Details</Text>
+            <View style={styles.backBtn} />
           </View>
           {selectedTrip && (
             <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
@@ -247,9 +248,9 @@ const styles = StyleSheet.create({
   tripDistance: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   tripPrice: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.white },
   modalContainer: { flex: 1, backgroundColor: Colors.primary },
-  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white },
-  closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.card, alignItems: "center", justifyContent: "center" },
+  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.white },
+  backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   modalContent: { padding: 20, gap: 20, paddingBottom: 60 },
   detailStatusChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, alignSelf: "flex-start" },
   detailSection: { gap: 8 },
