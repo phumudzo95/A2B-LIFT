@@ -242,9 +242,9 @@ export default function A2BMap({
     if (routeCoords.length > 0) {
       polylineRef.current = new google.maps.Polyline({
         path: routeCoords,
-        strokeColor: "#276EF1",
-        strokeOpacity: 1,
-        strokeWeight: 5,
+        strokeColor: "#FFFFFF",
+        strokeOpacity: 0.95,
+        strokeWeight: 4,
         map: mapInstanceRef.current,
       });
       const bounds = new google.maps.LatLngBounds();

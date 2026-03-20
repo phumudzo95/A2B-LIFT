@@ -295,8 +295,8 @@ export default function A2BMap({
         {routeCoords.length > 0 && (
           <Polyline
             coordinates={routeCoords}
-            strokeColor="#276EF1"
-            strokeWidth={5}
+            strokeColor="#FFFFFF"
+            strokeWidth={4}
             lineDashPattern={undefined}
           />
         )}

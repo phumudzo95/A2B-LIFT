@@ -84,6 +84,7 @@ export default function ClientHomeScreen() {
   const [chauffeurDetails, setChauffeurDetails] = useState<ChauffeurDetails | null>(null);
   const [routePolyline, setRoutePolyline] = useState<string | null>(null);
   const [tripDurationText, setTripDurationText] = useState<string | null>(null);
+  const [tripDurationMin, setTripDurationMin] = useState<number | null>(null);
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [etaText, setEtaText] = useState<string | null>(null);
   const [showRating, setShowRating] = useState(false);
@@ -379,6 +380,7 @@ export default function ClientHomeScreen() {
       if (data.polyline) {
         setRoutePolyline(data.polyline);
         if (data.durationText) setTripDurationText(data.durationText);
+        if (data.durationMin) setTripDurationMin(data.durationMin);
         if (data.distanceKm) setEstimatedDistance(Math.round(data.distanceKm * 10) / 10);
         setEtaText(`ETA: ${data.durationText}`);
       }
@@ -525,6 +527,7 @@ export default function ClientHomeScreen() {
     setDropoffCoords(null);
     setRoutePolyline(null);
     setTripDurationText(null);
+    setTripDurationMin(null);
     setDriverLocation(null);
     setEtaText(null);
   }
@@ -618,6 +621,33 @@ export default function ClientHomeScreen() {
             </Text>
           </View>
         )}
+
+        {/* Route info overlay — shows arrival time and distance on map when route is drawn */}
+        {routePolyline && (rideStatus === "selecting" || rideStatus === "confirming") && (estimatedDistance || tripDurationText) && (() => {
+          const arrivalTime = tripDurationMin
+            ? new Date(Date.now() + tripDurationMin * 60 * 1000)
+            : null;
+          const arrivalStr = arrivalTime
+            ? arrivalTime.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", hour12: false })
+            : null;
+          return (
+            <View style={styles.routeInfoOverlay}>
+              {arrivalStr && (
+                <View style={styles.arrivalPill}>
+                  <Ionicons name="time-outline" size={13} color="#fff" />
+                  <Text style={styles.arrivalPillText}>Arrive by {arrivalStr}</Text>
+                </View>
+              )}
+              {(estimatedDistance || tripDurationText) && (
+                <View style={styles.routeMetaPill}>
+                  {estimatedDistance && <Text style={styles.routeMetaText}>{estimatedDistance} km</Text>}
+                  {estimatedDistance && tripDurationText && <Text style={styles.routeMetaSep}> · </Text>}
+                  {tripDurationText && <Text style={styles.routeMetaText}>{tripDurationText}</Text>}
+                </View>
+              )}
+            </View>
+          );
+        })()}
 
         {/* Searching for driver overlay — shows on map like Uber/Taxify */}
         {rideStatus === "requested" && (
@@ -1552,6 +1582,50 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     color: Colors.white,
+  },
+  routeInfoOverlay: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    alignItems: "flex-end",
+    gap: 6,
+    pointerEvents: "none",
+  },
+  arrivalPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#1a1a1a",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  arrivalPillText: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
+  },
+  routeMetaPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.75)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  routeMetaText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.85)",
+  },
+  routeMetaSep: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.5)",
   },
   // Map overlay while searching — like Uber's pulsing animation
   searchingMapOverlay: {
