@@ -104,8 +104,8 @@ export default function A2BMap({
   const initialRegionRef = useRef({
     latitude: center.lat,
     longitude: center.lng,
-    latitudeDelta: 0.008,
-    longitudeDelta: 0.008,
+    latitudeDelta: 0.004,
+    longitudeDelta: 0.004,
   });
 
   const routeCoords = useMemo(() => {
@@ -147,8 +147,8 @@ export default function A2BMap({
       mapRef.current.animateToRegion({
         latitude: center.lat,
         longitude: center.lng,
-        latitudeDelta: 0.008,
-        longitudeDelta: 0.008,
+        latitudeDelta: 0.004,
+        longitudeDelta: 0.004,
       }, 600);
     }
   }, [pickupLocation, dropoffLocation, driverLocation, routeCoords, followDriver]);
@@ -172,8 +172,8 @@ export default function A2BMap({
     mapRef.current.animateToRegion({
       latitude: pickupLocation.lat,
       longitude: pickupLocation.lng,
-      latitudeDelta: 0.008,
-      longitudeDelta: 0.008,
+      latitudeDelta: 0.004,
+      longitudeDelta: 0.004,
     }, 400);
   }, [pickupLocation?.lat, pickupLocation?.lng]);
 

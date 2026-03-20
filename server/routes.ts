@@ -245,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!input || input.trim().length < 2) return res.json({ predictions: [] });
       if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
 
-      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en&types=geocode&key=${GOOGLE_KEY}`;
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en&key=${GOOGLE_KEY}`;
       const r = await (await fetch(url)).json() as any;
       if (r.status === "OK" && r.predictions.length > 0) {
         return res.json({

@@ -138,7 +138,7 @@ export default function A2BMap({
 
     const map = new google.maps.Map(mapContainerRef.current, {
       center: { lat: pickupLocation.lat, lng: pickupLocation.lng },
-      zoom: 15,
+      zoom: 17,
       styles: darkStyle,
       disableDefaultUI: true,
       gestureHandling: "greedy",
