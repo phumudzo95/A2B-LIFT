@@ -182,7 +182,7 @@ export default function A2BMap({
     if (!pickupLocation || !dropoffLocation) return;
     if (routeCoords.length > 0) return; // route polyline effect handles this
     const tryFit = () => {
-      if (!mapRef.current || !mapReadyRef.current) return;
+      if (!mapRef.current) return;
       mapRef.current.fitToCoordinates(
         [
           { latitude: pickupLocation.lat, longitude: pickupLocation.lng },
@@ -191,24 +191,27 @@ export default function A2BMap({
         { edgePadding: { top: 80, right: 60, bottom: 260, left: 60 }, animated: true }
       );
     };
-    const t1 = setTimeout(tryFit, 500);
-    const t2 = setTimeout(tryFit, 1200);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const t1 = setTimeout(tryFit, 400);
+    const t2 = setTimeout(tryFit, 900);
+    const t3 = setTimeout(tryFit, 1800);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [pickupLocation?.lat, pickupLocation?.lng, dropoffLocation?.lat, dropoffLocation?.lng]);
 
-  // Fit to route polyline whenever it becomes available (with retries)
+  // Fit to route polyline whenever it becomes available (with retries — no mapReady guard
+  // so it works on iOS where onMapReady may not fire with PROVIDER_GOOGLE in Expo Go)
   useEffect(() => {
     if (routeCoords.length === 0) return;
     const tryFit = () => {
-      if (!mapRef.current || !mapReadyRef.current) return;
+      if (!mapRef.current) return;
       mapRef.current.fitToCoordinates(routeCoords, {
         edgePadding: { top: 80, right: 60, bottom: 260, left: 60 },
         animated: true,
       });
     };
-    const t1 = setTimeout(tryFit, 400);
-    const t2 = setTimeout(tryFit, 1000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const t1 = setTimeout(tryFit, 300);
+    const t2 = setTimeout(tryFit, 800);
+    const t3 = setTimeout(tryFit, 1800);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [routeCoords]);
 
   if (!GOOGLE_MAPS_API_KEY) {
@@ -231,9 +234,8 @@ export default function A2BMap({
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-        customMapStyle={Platform.OS === "android" ? DARK_MAP_STYLE : undefined}
-        userInterfaceStyle={Platform.OS === "ios" ? "dark" : undefined}
+        provider={Platform.OS === "web" ? undefined : PROVIDER_GOOGLE}
+        customMapStyle={DARK_MAP_STYLE}
         initialRegion={initialRegionRef.current}
         onMapReady={handleMapReady}
         showsUserLocation={true}
