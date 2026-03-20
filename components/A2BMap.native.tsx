@@ -63,6 +63,28 @@ function decodePolyline(encoded: string): { latitude: number; longitude: number 
   return points;
 }
 
+// Compute a MapView region from an array of coordinates with padding.
+// Using animateToRegion is more reliable than fitToCoordinates on iOS PROVIDER_GOOGLE in Expo Go.
+function computeRegion(
+  coords: { latitude: number; longitude: number }[],
+  extraPadFactor = 0.35
+) {
+  const lats = coords.map(c => c.latitude);
+  const lngs = coords.map(c => c.longitude);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const latDelta = Math.max((maxLat - minLat) * (1 + extraPadFactor), 0.01);
+  const lngDelta = Math.max((maxLng - minLng) * (1 + extraPadFactor), 0.01);
+  return {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLng + maxLng) / 2,
+    latitudeDelta: latDelta,
+    longitudeDelta: lngDelta,
+  };
+}
+
 interface NearbyDriver {
   id: string | number;
   lat: number;
@@ -96,8 +118,6 @@ export default function A2BMap({
 }: A2BMapProps) {
   const mapRef = useRef<MapView>(null);
   const mapReadyRef = useRef(false);
-  const pendingFitRef = useRef(false);
-  const hasMovedRef = useRef(false); // true once we've done the first real fitMap
 
   // Use user's location for initialRegion if available, else Johannesburg
   const center = pickupLocation || DEFAULT_REGION;
@@ -113,13 +133,18 @@ export default function A2BMap({
     return decodePolyline(routePolyline);
   }, [routePolyline]);
 
+  // Fly the camera to a computed region — more reliable than fitToCoordinates on iOS
+  const zoomToCoords = useCallback((
+    coords: { latitude: number; longitude: number }[],
+    duration = 700
+  ) => {
+    if (!mapRef.current || coords.length === 0) return;
+    const region = computeRegion(coords);
+    mapRef.current.animateToRegion(region, duration);
+  }, []);
+
   const fitMap = useCallback(() => {
-    if (!mapRef.current || !mapReadyRef.current) {
-      pendingFitRef.current = true;
-      return;
-    }
-    pendingFitRef.current = false;
-    hasMovedRef.current = true;
+    if (!mapRef.current) return;
 
     if (followDriver && driverLocation) {
       mapRef.current.animateToRegion({
@@ -129,20 +154,13 @@ export default function A2BMap({
         longitudeDelta: 0.01,
       }, 800);
     } else if (routeCoords.length > 0) {
-      mapRef.current.fitToCoordinates(routeCoords, {
-        edgePadding: { top: 80, right: 60, bottom: 220, left: 60 },
-        animated: true,
-      });
+      zoomToCoords(routeCoords);
     } else if (pickupLocation && dropoffLocation) {
-      mapRef.current.fitToCoordinates(
-        [
-          { latitude: pickupLocation.lat, longitude: pickupLocation.lng },
-          { latitude: dropoffLocation.lat, longitude: dropoffLocation.lng },
-        ],
-        { edgePadding: { top: 80, right: 60, bottom: 220, left: 60 }, animated: true }
-      );
+      zoomToCoords([
+        { latitude: pickupLocation.lat, longitude: pickupLocation.lng },
+        { latitude: dropoffLocation.lat, longitude: dropoffLocation.lng },
+      ]);
     } else {
-      // Always street-level — never world zoom
       const center = pickupLocation || DEFAULT_REGION;
       mapRef.current.animateToRegion({
         latitude: center.lat,
@@ -151,24 +169,22 @@ export default function A2BMap({
         longitudeDelta: 0.004,
       }, 600);
     }
-  }, [pickupLocation, dropoffLocation, driverLocation, routeCoords, followDriver]);
+  }, [pickupLocation, dropoffLocation, driverLocation, routeCoords, followDriver, zoomToCoords]);
 
   function handleMapReady() {
     mapReadyRef.current = true;
     fitMap();
-    setTimeout(fitMap, 300);
-    setTimeout(fitMap, 800);
+    setTimeout(fitMap, 400);
   }
 
   useEffect(() => {
     fitMap();
   }, [fitMap]);
 
-  // Extra safety: whenever pickupLocation first becomes available,
-  // force the camera to street level immediately
+  // Zoom to user location when GPS first arrives (no route/dropoff set yet)
   useEffect(() => {
-    if (!pickupLocation || !mapRef.current || !mapReadyRef.current) return;
-    if (routeCoords.length > 0 || dropoffLocation) return; // handled below
+    if (!pickupLocation || !mapRef.current) return;
+    if (routeCoords.length > 0 || dropoffLocation) return;
     mapRef.current.animateToRegion({
       latitude: pickupLocation.lat,
       longitude: pickupLocation.lng,
@@ -177,42 +193,27 @@ export default function A2BMap({
     }, 400);
   }, [pickupLocation?.lat, pickupLocation?.lng]);
 
-  // Fit to both markers whenever pickup + dropoff are set (no route yet)
+  // Zoom to show pickup + dropoff when dropoff is set (before route loads)
   useEffect(() => {
     if (!pickupLocation || !dropoffLocation) return;
-    if (routeCoords.length > 0) return; // route polyline effect handles this
-    const tryFit = () => {
-      if (!mapRef.current) return;
-      mapRef.current.fitToCoordinates(
-        [
-          { latitude: pickupLocation.lat, longitude: pickupLocation.lng },
-          { latitude: dropoffLocation.lat, longitude: dropoffLocation.lng },
-        ],
-        { edgePadding: { top: 80, right: 60, bottom: 260, left: 60 }, animated: true }
-      );
-    };
-    const t1 = setTimeout(tryFit, 400);
-    const t2 = setTimeout(tryFit, 900);
-    const t3 = setTimeout(tryFit, 1800);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [pickupLocation?.lat, pickupLocation?.lng, dropoffLocation?.lat, dropoffLocation?.lng]);
+    if (routeCoords.length > 0) return;
+    const coords = [
+      { latitude: pickupLocation.lat, longitude: pickupLocation.lng },
+      { latitude: dropoffLocation.lat, longitude: dropoffLocation.lng },
+    ];
+    const t1 = setTimeout(() => zoomToCoords(coords, 700), 200);
+    const t2 = setTimeout(() => zoomToCoords(coords, 700), 800);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [pickupLocation?.lat, pickupLocation?.lng, dropoffLocation?.lat, dropoffLocation?.lng, zoomToCoords]);
 
-  // Fit to route polyline whenever it becomes available (with retries — no mapReady guard
-  // so it works on iOS where onMapReady may not fire with PROVIDER_GOOGLE in Expo Go)
+  // Zoom to route when polyline arrives — fires with retries, no mapReady gate needed
   useEffect(() => {
     if (routeCoords.length === 0) return;
-    const tryFit = () => {
-      if (!mapRef.current) return;
-      mapRef.current.fitToCoordinates(routeCoords, {
-        edgePadding: { top: 80, right: 60, bottom: 260, left: 60 },
-        animated: true,
-      });
-    };
-    const t1 = setTimeout(tryFit, 300);
-    const t2 = setTimeout(tryFit, 800);
-    const t3 = setTimeout(tryFit, 1800);
+    const t1 = setTimeout(() => zoomToCoords(routeCoords, 700), 200);
+    const t2 = setTimeout(() => zoomToCoords(routeCoords, 700), 900);
+    const t3 = setTimeout(() => zoomToCoords(routeCoords, 700), 2000);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [routeCoords]);
+  }, [routeCoords, zoomToCoords]);
 
   if (!GOOGLE_MAPS_API_KEY) {
     return (
