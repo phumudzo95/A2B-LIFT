@@ -162,6 +162,15 @@ export default function ClientHomeScreen() {
     return () => clearInterval(interval);
   }, [location]);
 
+  // Draw route line as soon as pickup + dropoff are both known
+  useEffect(() => {
+    if (location && dropoffCoords) {
+      fetchRoute(location, dropoffCoords);
+    } else {
+      setRoutePolyline(null);
+    }
+  }, [dropoffCoords?.lat, dropoffCoords?.lng]);
+
   // Cancel ride and show "no drivers" if no driver accepts within 45 seconds
   useEffect(() => {
     if (rideStatus !== "requested") return;
