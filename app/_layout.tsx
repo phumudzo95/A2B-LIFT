@@ -30,8 +30,12 @@ function AuthGate() {
       pathname === "/role-select";
 
     if (user && isGuestOnly) {
-      // Logged-in user landed on splash/login/register — send to role select
-      router.replace("/role-select");
+      // Chauffeurs go straight to their dashboard; everyone else picks a role
+      if (user.role === "chauffeur") {
+        router.replace("/chauffeur");
+      } else {
+        router.replace("/role-select");
+      }
     } else if (!user && isProtected) {
       // Not logged in but trying to access app — send to landing
       router.replace("/");

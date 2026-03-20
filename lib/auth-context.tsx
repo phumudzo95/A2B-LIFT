@@ -56,16 +56,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function loadUser() {
     try {
       const stored = await AsyncStorage.getItem("a2b_user");
+      const token = await AsyncStorage.getItem("a2b_token");
+      if (token) setAccessToken(token);
       if (stored) {
         setUser(JSON.parse(stored));
       }
-      const token = await AsyncStorage.getItem("a2b_token");
-      if (token) setAccessToken(token);
     } catch (e) {
       console.error("Failed to load user:", e);
     } finally {
       setIsLoading(false);
     }
+    // After the app is unblocked, silently refresh from server to pick up role/profile changes
+    try {
+      const token = await AsyncStorage.getItem("a2b_token");
+      if (!token) return;
+      const meRes = await apiRequest("GET", "/api/auth/me");
+      if (meRes.ok) {
+        const freshUser = await meRes.json();
+        setUser(freshUser);
+        await AsyncStorage.setItem("a2b_user", JSON.stringify(freshUser));
+      }
+    } catch {}
   }
 
   function normalizeAuthPayload(payload: LoginResponse): {

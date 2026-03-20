@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
+import { apiRequest } from "@/lib/query-client";
 import Colors from "@/constants/colors";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
@@ -44,6 +45,16 @@ export default function RegisterScreen() {
       const payload = JSON.parse(decodeURIComponent(payloadStr));
       await AsyncStorage.setItem("a2b_user", JSON.stringify(payload.user));
       if (payload.accessToken) await AsyncStorage.setItem("a2b_token", payload.accessToken);
+      // Fetch the latest user profile from the server so the role is always current
+      try {
+        const meRes = await apiRequest("GET", "/api/auth/me");
+        if (meRes.ok) {
+          const freshUser = await meRes.json();
+          await AsyncStorage.setItem("a2b_user", JSON.stringify(freshUser));
+          setUser(freshUser);
+          return;
+        }
+      } catch {}
       setUser(payload.user);
       // AuthGate handles navigation when user state changes
     } catch {
