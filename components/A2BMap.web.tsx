@@ -110,7 +110,9 @@ export default function A2BMap({
 
   useEffect(() => {
     if (!mapInstanceRef.current || !pickupLocation) return;
-    updateMarkers();
+    // Small delay so Google Maps finishes rendering before we fit bounds
+    const t = setTimeout(() => updateMarkers(), 200);
+    return () => clearTimeout(t);
   }, [pickupLocation, dropoffLocation, driverLocation, showDriver, nearbyDrivers]);
 
   useEffect(() => {

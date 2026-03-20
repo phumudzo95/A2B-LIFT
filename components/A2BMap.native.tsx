@@ -168,7 +168,7 @@ export default function A2BMap({
   // force the camera to street level immediately
   useEffect(() => {
     if (!pickupLocation || !mapRef.current || !mapReadyRef.current) return;
-    if (routeCoords.length > 0 || dropoffLocation) return; // fitMap handles these
+    if (routeCoords.length > 0 || dropoffLocation) return; // handled below
     mapRef.current.animateToRegion({
       latitude: pickupLocation.lat,
       longitude: pickupLocation.lng,
@@ -176,6 +176,35 @@ export default function A2BMap({
       longitudeDelta: 0.004,
     }, 400);
   }, [pickupLocation?.lat, pickupLocation?.lng]);
+
+  // Fit to both markers whenever pickup + dropoff are set (no route yet)
+  useEffect(() => {
+    if (!pickupLocation || !dropoffLocation) return;
+    if (routeCoords.length > 0) return; // route polyline effect handles this
+    const timer = setTimeout(() => {
+      if (!mapRef.current || !mapReadyRef.current) return;
+      mapRef.current.fitToCoordinates(
+        [
+          { latitude: pickupLocation.lat, longitude: pickupLocation.lng },
+          { latitude: dropoffLocation.lat, longitude: dropoffLocation.lng },
+        ],
+        { edgePadding: { top: 80, right: 60, bottom: 260, left: 60 }, animated: true }
+      );
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [pickupLocation?.lat, pickupLocation?.lng, dropoffLocation?.lat, dropoffLocation?.lng]);
+
+  // Fit to route polyline whenever it becomes available
+  useEffect(() => {
+    if (routeCoords.length === 0 || !mapRef.current || !mapReadyRef.current) return;
+    const timer = setTimeout(() => {
+      mapRef.current?.fitToCoordinates(routeCoords, {
+        edgePadding: { top: 80, right: 60, bottom: 260, left: 60 },
+        animated: true,
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [routeCoords]);
 
   if (!GOOGLE_MAPS_API_KEY) {
     return (
