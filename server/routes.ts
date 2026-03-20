@@ -166,7 +166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: (role || "client") as UserRole,
       });
 
-      const token = signAccessToken({ sub: user.id, role: user.role as UserRole });
+      const token = signAccessToken({ sub: user.id, role: user.role as UserRole, email: user.username, name: user.name });
       setAuthCookie(res, token);
       const { password: _pw, ...safeUser } = user;
       return res.json({ user: safeUser, accessToken: token });
@@ -192,7 +192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!valid) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
-      const token = signAccessToken({ sub: user.id, role: user.role as UserRole });
+      const token = signAccessToken({ sub: user.id, role: user.role as UserRole, email: user.username, name: user.name });
       setAuthCookie(res, token);
       const { password: _pw, ...safeUser } = user;
       return res.json({ user: safeUser, accessToken: token });
@@ -486,7 +486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user = await storage.createUser({ username: email, password: randomPassword, name: googleUser.name || email.split("@")[0], phone: null, role: "client" });
       }
 
-      const appToken = signAccessToken({ sub: user.id, role: user.role as UserRole });
+      const appToken = signAccessToken({ sub: user.id, role: user.role as UserRole, email: user.username, name: user.name });
       const { password: _pw, ...safeUser } = user;
       // Deep link back into the app with the JWT
       const payload = encodeURIComponent(JSON.stringify({ user: safeUser, accessToken: appToken }));
@@ -553,7 +553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const token = signAccessToken({ sub: user.id, role: user.role as UserRole });
+      const token = signAccessToken({ sub: user.id, role: user.role as UserRole, email: user.username, name: user.name });
       setAuthCookie(res, token);
       const { password: _pw, ...safeUser } = user;
       return res.json({ user: safeUser, accessToken: token });
@@ -598,7 +598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const token = signAccessToken({ sub: user.id, role: user.role as UserRole });
+      const token = signAccessToken({ sub: user.id, role: user.role as UserRole, email: user.username, name: user.name });
       setAuthCookie(res, token);
       const { password: _pw, ...safeUser } = user;
       return res.json({ user: safeUser, accessToken: token });
@@ -879,15 +879,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -----------------------------
   // Rides
   // -----------------------------
-  app.post("/api/rides", async (req: Request, res: Response) => {
+  app.post("/api/rides", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
       const { distanceKm, isLateNight, ...rideData } = req.body;
 
-      // Verify client exists before attempting ride creation
-      if (rideData.clientId) {
-        const clientUser = await storage.getUser(rideData.clientId);
-        if (!clientUser) {
-          return res.status(401).json({ success: false, message: "Session expired. Please log out and log in again." });
+      // Always use the verified JWT subject as the clientId (ignore untrusted body value)
+      const clientId = req.auth!.sub;
+      rideData.clientId = clientId;
+
+      // Ensure the user exists in this database — auto-create from JWT claims if not.
+      // This handles cross-environment JWTs (e.g. Railway token used against dev backend).
+      let clientUser = await storage.getUser(clientId);
+      if (!clientUser) {
+        const { email, name, role } = req.auth!;
+        const placeholderEmail = email || `oauth_${clientId.slice(0, 12)}@a2blift.placeholder`;
+        const existingByEmail = email ? await storage.getUserByUsername(email) : null;
+        if (existingByEmail) {
+          clientUser = existingByEmail;
+          // Ensure id matches token sub
+        } else {
+          try {
+            const randomPw = await bcrypt.hash(Math.random().toString(36), 10);
+            clientUser = await storage.createUser({
+              id: clientId,
+              username: placeholderEmail,
+              password: randomPw,
+              name: name || "A2B Client",
+              phone: null,
+              role: (role || "client") as UserRole,
+            } as any);
+          } catch (_createErr: any) {
+            // Race condition — another request created it first
+            clientUser = await storage.getUser(clientId);
+            if (!clientUser) {
+              return res.status(401).json({ success: false, message: "Session expired. Please log out and log in again." });
+            }
+          }
         }
       }
 

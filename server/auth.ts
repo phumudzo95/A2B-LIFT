@@ -3,8 +3,10 @@ import jwt from "jsonwebtoken";
 export type UserRole = "client" | "chauffeur" | "admin";
 
 export interface JwtClaims {
-  sub: string; // userId
+  sub: string;
   role: UserRole;
+  email?: string;
+  name?: string;
 }
 
 const JWT_ISSUER = "a2b-lift";
@@ -32,4 +34,3 @@ export function verifyAccessToken(token: string): JwtClaims {
   });
   return decoded as JwtClaims;
 }
-
