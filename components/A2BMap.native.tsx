@@ -181,7 +181,7 @@ export default function A2BMap({
   useEffect(() => {
     if (!pickupLocation || !dropoffLocation) return;
     if (routeCoords.length > 0) return; // route polyline effect handles this
-    const timer = setTimeout(() => {
+    const tryFit = () => {
       if (!mapRef.current || !mapReadyRef.current) return;
       mapRef.current.fitToCoordinates(
         [
@@ -190,20 +190,25 @@ export default function A2BMap({
         ],
         { edgePadding: { top: 80, right: 60, bottom: 260, left: 60 }, animated: true }
       );
-    }, 500);
-    return () => clearTimeout(timer);
+    };
+    const t1 = setTimeout(tryFit, 500);
+    const t2 = setTimeout(tryFit, 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [pickupLocation?.lat, pickupLocation?.lng, dropoffLocation?.lat, dropoffLocation?.lng]);
 
-  // Fit to route polyline whenever it becomes available
+  // Fit to route polyline whenever it becomes available (with retries)
   useEffect(() => {
-    if (routeCoords.length === 0 || !mapRef.current || !mapReadyRef.current) return;
-    const timer = setTimeout(() => {
-      mapRef.current?.fitToCoordinates(routeCoords, {
+    if (routeCoords.length === 0) return;
+    const tryFit = () => {
+      if (!mapRef.current || !mapReadyRef.current) return;
+      mapRef.current.fitToCoordinates(routeCoords, {
         edgePadding: { top: 80, right: 60, bottom: 260, left: 60 },
         animated: true,
       });
-    }, 300);
-    return () => clearTimeout(timer);
+    };
+    const t1 = setTimeout(tryFit, 400);
+    const t2 = setTimeout(tryFit, 1000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [routeCoords]);
 
   if (!GOOGLE_MAPS_API_KEY) {
@@ -290,8 +295,9 @@ export default function A2BMap({
         {routeCoords.length > 0 && (
           <Polyline
             coordinates={routeCoords}
-            strokeColor="#FFFFFF"
-            strokeWidth={3}
+            strokeColor="#276EF1"
+            strokeWidth={5}
+            lineDashPattern={undefined}
           />
         )}
       </MapView>

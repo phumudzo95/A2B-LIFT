@@ -881,6 +881,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/rides", async (req: Request, res: Response) => {
     try {
       const { distanceKm, isLateNight, ...rideData } = req.body;
+
+      // Verify client exists before attempting ride creation
+      if (rideData.clientId) {
+        const clientUser = await storage.getUser(rideData.clientId);
+        if (!clientUser) {
+          return res.status(401).json({ success: false, message: "Session expired. Please log out and log in again." });
+        }
+      }
+
       const categoryId = rideData.vehicleType || "budget";
       const priceEstimate = calculatePrice(distanceKm || 10, categoryId, { isLateNight });
       
