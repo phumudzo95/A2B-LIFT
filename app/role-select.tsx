@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,13 +10,6 @@ import Colors from "@/constants/colors";
 export default function RoleSelectScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-
-  // If user's role is already chauffeur (e.g. background refresh updated it), skip role-select
-  useEffect(() => {
-    if (user?.role === "chauffeur") {
-      router.replace("/chauffeur");
-    }
-  }, [user?.role]);
 
   if (!user) return null;
 

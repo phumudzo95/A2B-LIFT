@@ -304,9 +304,9 @@ export default function ChauffeurDashboard() {
           <Text style={styles.brandName}>A2B LIFT</Text>
           <Text style={styles.brandSlogan}>Premium Ride Experience</Text>
         </View>
-        <View style={styles.avatarCircle}>
+        <Pressable style={styles.avatarCircle} onPress={() => router.push("/chauffeur/settings")}>
           <Ionicons name="person" size={18} color={Colors.white} />
-        </View>
+        </Pressable>
       </View>
 
       {!chauffeur.isApproved && (
