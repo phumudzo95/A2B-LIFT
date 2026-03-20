@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.a2blift"
+      "bundleIdentifier": "com.a2blift",
+      "config": {
+        "googleMapsApiKey": "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0"
+      }
     },
     "android": {
       "package": "com.a2blift",

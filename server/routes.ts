@@ -342,6 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({
           polyline: route.overview_polyline.points,
           distanceKm: leg.distance.value / 1000,
+          distanceText: leg.distance.text,
           durationMin: Math.ceil(leg.duration.value / 60),
           durationText: leg.duration.text,
         });

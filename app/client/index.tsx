@@ -83,6 +83,7 @@ export default function ClientHomeScreen() {
   const [showVehicleSheet, setShowVehicleSheet] = useState(false);
   const [chauffeurDetails, setChauffeurDetails] = useState<ChauffeurDetails | null>(null);
   const [routePolyline, setRoutePolyline] = useState<string | null>(null);
+  const [tripDurationText, setTripDurationText] = useState<string | null>(null);
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [etaText, setEtaText] = useState<string | null>(null);
   const [showRating, setShowRating] = useState(false);
@@ -377,6 +378,8 @@ export default function ClientHomeScreen() {
       const data = await res.json();
       if (data.polyline) {
         setRoutePolyline(data.polyline);
+        if (data.durationText) setTripDurationText(data.durationText);
+        if (data.distanceKm) setEstimatedDistance(Math.round(data.distanceKm * 10) / 10);
         setEtaText(`ETA: ${data.durationText}`);
       }
     } catch {}
@@ -521,6 +524,7 @@ export default function ClientHomeScreen() {
     setDropoffAddress("");
     setDropoffCoords(null);
     setRoutePolyline(null);
+    setTripDurationText(null);
     setDriverLocation(null);
     setEtaText(null);
   }
@@ -711,8 +715,18 @@ export default function ClientHomeScreen() {
               <Text style={styles.priceLabel}>{selectedVehicle.name}</Text>
               <Text style={styles.priceValue}>R {estimatedPrice}</Text>
               <Text style={styles.priceCurrency}>ZAR</Text>
-              {estimatedDistance && (
-                <Text style={styles.distanceInfo}>{estimatedDistance} km estimated distance</Text>
+              {(estimatedDistance || tripDurationText) && (
+                <View style={styles.tripInfoPill}>
+                  {estimatedDistance && (
+                    <Text style={styles.tripInfoText}>{estimatedDistance} km</Text>
+                  )}
+                  {estimatedDistance && tripDurationText && (
+                    <Text style={styles.tripInfoSep}>·</Text>
+                  )}
+                  {tripDurationText && (
+                    <Text style={styles.tripInfoText}>{tripDurationText}</Text>
+                  )}
+                </View>
               )}
             </View>
 
@@ -1409,6 +1423,27 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
     marginTop: 4,
+  },
+  tripInfoPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(39,110,241,0.15)",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginTop: 8,
+    gap: 6,
+  },
+  tripInfoText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#276EF1",
+  },
+  tripInfoSep: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#276EF1",
+    opacity: 0.6,
   },
   fareBreakdown: {
     backgroundColor: Colors.surface,
