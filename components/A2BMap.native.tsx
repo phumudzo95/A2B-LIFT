@@ -231,8 +231,9 @@ export default function A2BMap({
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={Platform.OS === "web" ? undefined : PROVIDER_GOOGLE}
-        customMapStyle={DARK_MAP_STYLE}
+        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+        customMapStyle={Platform.OS === "android" ? DARK_MAP_STYLE : undefined}
+        userInterfaceStyle={Platform.OS === "ios" ? "dark" : undefined}
         initialRegion={initialRegionRef.current}
         onMapReady={handleMapReady}
         showsUserLocation={true}
@@ -296,8 +297,11 @@ export default function A2BMap({
           <Polyline
             coordinates={routeCoords}
             strokeColor="#FFFFFF"
-            strokeWidth={4}
-            lineDashPattern={undefined}
+            strokeWidth={5}
+            zIndex={10}
+            geodesic={true}
+            lineCap="round"
+            lineJoin="round"
           />
         )}
       </MapView>
