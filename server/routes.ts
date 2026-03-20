@@ -214,235 +214,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // -----------------------------
-  // Maps helpers — Google Places API with Nominatim fallback
+  // Maps helpers — Google Places API only
   // -----------------------------
 
   const GOOGLE_KEY = process.env.GOOGLE_API_KEY || "";
 
-  // Nominatim fallback headers
-  const nominatimHeaders = { "User-Agent": "A2BLIFT/1.0 (contact@a2blift.co.za)", "Accept-Language": "en" };
-
-  // Safe JSON fetch — returns null if the response is HTML (rate-limit or error page)
-  async function safeJsonFetch(url: string, options?: RequestInit): Promise<any> {
-    const res = await fetch(url, options);
-    const text = await res.text();
-    if (text.trimStart().startsWith("<")) return null; // HTML error page
-    try { return JSON.parse(text); } catch { return null; }
-  }
-
-  // Parse a Photon GeoJSON feature into our prediction format
-  function photonToPrediction(f: any, prefixHouseNumber?: string): { placeId: string; description: string; mainText: string; secondaryText: string; lat: number; lng: number } {
-    const p = f.properties || {};
-    const [lng, lat] = f.geometry?.coordinates || [0, 0];
-
-    // Build the street address part (house number + street name)
-    const houseNum = p.housenumber || prefixHouseNumber || "";
-    const streetName = p.street || (p.type === "street" ? p.name : "") || "";
-    const streetAddr = streetName ? (houseNum ? `${houseNum} ${streetName}` : streetName) : "";
-
-    // Fallback to name (POI, suburb, city name)
-    const placeName = streetAddr || p.name || p.city || p.county || "";
-
-    const suburb = p.suburb || p.district || "";
-    const city = p.city || p.town || p.village || "";
-    const state = p.state || "";
-
-    const mainText = placeName;
-    const secondaryParts = [suburb, city, state].filter(Boolean).filter(v => v !== mainText);
-    const secondaryText = secondaryParts.join(", ");
-    const description = [mainText, ...secondaryParts].filter(Boolean).join(", ");
-    const placeId = `photon_${p.osm_id || `${lat}_${lng}`}`;
-    return { placeId, description, mainText, secondaryText, lat, lng };
-  }
-
-  // Build clean address parts from a Nominatim result
-  function buildAddressParts(r: any): { mainText: string; secondaryText: string; description: string } {
-    const addr = r.address || {};
-    const houseNumber = addr.house_number ? `${addr.house_number} ` : "";
-    const road = addr.road || addr.pedestrian || addr.footway || addr.path || addr.cycleway || "";
-    const suburb = addr.suburb || addr.neighbourhood || addr.quarter || addr.city_district || "";
-    const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || "";
-    const province = addr.state || "";
-    const amenity = addr.amenity || addr.building || addr.shop || addr.tourism || addr.leisure || "";
-    let mainText = road ? `${houseNumber}${road}` : amenity || r.display_name.split(",")[0].trim();
-    const secondaryParts = [suburb, city, province].filter(Boolean);
-    const secondaryText = secondaryParts.join(", ");
-    const description = [mainText, suburb, city, province].filter(Boolean).join(", ") || r.display_name;
-    return { mainText, secondaryText, description };
-  }
-
-  // Geocode: Google first, Nominatim fallback
+  // Geocode: Google only
   app.get("/api/geocode", async (req: Request, res: Response) => {
     try {
       const address = req.query.address as string;
       if (!address) return res.status(400).json({ message: "Address is required" });
+      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
 
-      if (GOOGLE_KEY) {
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&components=country:ZA&key=${GOOGLE_KEY}`;
-        const r = await (await fetch(url)).json() as any;
-        if (r.status === "OK" && r.results.length > 0) {
-          const loc = r.results[0].geometry.location;
-          return res.json({ lat: loc.lat, lng: loc.lng });
-        }
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&components=country:ZA&key=${GOOGLE_KEY}`;
+      const r = await (await fetch(url)).json() as any;
+      if (r.status === "OK" && r.results.length > 0) {
+        const loc = r.results[0].geometry.location;
+        return res.json({ lat: loc.lat, lng: loc.lng });
       }
-
-      // Nominatim fallback
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=za&addressdetails=1&limit=1`;
-      const results = await safeJsonFetch(url, { headers: nominatimHeaders });
-      if (Array.isArray(results) && results.length > 0) return res.json({ lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) });
       return res.status(404).json({ message: "Location not found" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
   });
 
-  // Autocomplete: Google Places first, Nominatim fallback
+  // Autocomplete: Google Places API only
   app.get("/api/places/autocomplete", async (req: Request, res: Response) => {
     try {
       const input = req.query.input as string;
       if (!input || input.trim().length < 2) return res.json({ predictions: [] });
+      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
 
-      if (GOOGLE_KEY) {
-        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en&types=geocode&key=${GOOGLE_KEY}`;
-        const r = await (await fetch(url)).json() as any;
-        if (r.status === "OK" && r.predictions.length > 0) {
-          return res.json({
-            predictions: r.predictions.slice(0, 6).map((p: any) => ({
-              placeId: p.place_id,
-              description: p.description,
-              mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
-              secondaryText: p.structured_formatting?.secondary_text || "",
-              // coords resolved on selection via /api/places/details
-              lat: null,
-              lng: null,
-            })),
-          });
-        }
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en&types=geocode&key=${GOOGLE_KEY}`;
+      const r = await (await fetch(url)).json() as any;
+      if (r.status === "OK" && r.predictions.length > 0) {
+        return res.json({
+          predictions: r.predictions.slice(0, 6).map((p: any) => ({
+            placeId: p.place_id,
+            description: p.description,
+            mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
+            secondaryText: p.structured_formatting?.secondary_text || "",
+            lat: null,
+            lng: null,
+          })),
+        });
       }
-
-      // Detect if the query starts with a house number (e.g. "680 Pretorius Street")
-      const houseNumberMatch = input.trim().match(/^(\d+)\s+(.+)/);
-      const queryHouseNumber = houseNumberMatch ? houseNumberMatch[1] : null;
-
-      // Photon fallback — location-biased to South Africa (center: -28.9, 25.6)
-      // Use bbox to restrict to SA borders: lon_min,lat_min,lon_max,lat_max
-      const SA_BBOX = "16.3,-34.9,32.9,-22.1";
-      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(input)}&lang=en&limit=8&bbox=${SA_BBOX}`;
-      const photonData = await safeJsonFetch(photonUrl);
-
-      if (photonData?.features?.length > 0) {
-        const predictions = photonData.features
-          .filter((f: any) => {
-            // Filter to SA results only
-            const cc = f.properties?.countrycode || f.properties?.country_code || "";
-            return !cc || cc.toLowerCase() === "za";
-          })
-          .map((f: any) => {
-            // If the query has a house number but this result is a street (not a house),
-            // synthesize the full address by prepending the number
-            const p = f.properties || {};
-            const isStreetResult = p.type === "street" || (p.osm_key === "highway" && !p.housenumber);
-            const syntheticHouseNum = (isStreetResult && queryHouseNumber) ? queryHouseNumber : undefined;
-            return photonToPrediction(f, syntheticHouseNum);
-          })
-          // Deduplicate by description
-          .filter((pred: any, idx: number, arr: any[]) =>
-            arr.findIndex((p: any) => p.description === pred.description) === idx
-          )
-          .slice(0, 6);
-
-        if (predictions.length > 0) {
-          return res.json({ predictions });
-        }
-      }
-
-      // Last resort: Nominatim single request
-      const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=za&addressdetails=1&limit=6&q=${encodeURIComponent(input)}`;
-      const nomResults = await safeJsonFetch(nomUrl, { headers: nominatimHeaders });
-      if (!Array.isArray(nomResults) || nomResults.length === 0) return res.json({ predictions: [] });
-      return res.json({
-        predictions: nomResults.map((r: any) => {
-          const { mainText, secondaryText, description } = buildAddressParts(r);
-          return { placeId: String(r.place_id), description, mainText, secondaryText, lat: parseFloat(r.lat), lng: parseFloat(r.lon) };
-        }),
-      });
+      return res.json({ predictions: [] });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
   });
 
-  // Place details: resolves a Google placeId to coords, or Nominatim osm id
+  // Place details: Google Places API only
   app.get("/api/places/details", async (req: Request, res: Response) => {
     try {
       const placeId = req.query.placeId as string;
       if (!placeId) return res.status(400).json({ message: "placeId is required" });
+      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
 
-      // Google place IDs start with "ChIJ"
-      if (GOOGLE_KEY && placeId.startsWith("ChIJ")) {
-        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address,name&key=${GOOGLE_KEY}`;
-        const r = await (await fetch(url)).json() as any;
-        if (r.status === "OK") {
-          const loc = r.result.geometry.location;
-          return res.json({ lat: loc.lat, lng: loc.lng, address: r.result.formatted_address });
-        }
+      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address,name&key=${GOOGLE_KEY}`;
+      const r = await (await fetch(url)).json() as any;
+      if (r.status === "OK") {
+        const loc = r.result.geometry.location;
+        return res.json({ lat: loc.lat, lng: loc.lng, address: r.result.formatted_address });
       }
-
-      // Nominatim fallback
-      const url = `https://nominatim.openstreetmap.org/lookup?osm_ids=N${placeId},W${placeId},R${placeId}&format=json&addressdetails=1`;
-      const results = await safeJsonFetch(url, { headers: nominatimHeaders });
-      if (!Array.isArray(results) || results.length === 0) return res.status(404).json({ message: "Place not found" });
-      const { description } = buildAddressParts(results[0]);
-      return res.json({ lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon), address: description });
+      return res.status(404).json({ message: "Place not found" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
   });
 
-  // Reverse geocode: Google first, Nominatim fallback
+  // Reverse geocode: Google only
   app.get("/api/places/reverse", async (req: Request, res: Response) => {
     try {
       const { lat, lng } = req.query;
       if (!lat || !lng) return res.status(400).json({ message: "lat and lng are required" });
+      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
 
-      if (GOOGLE_KEY) {
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY}`;
-        const r = await (await fetch(url)).json() as any;
-        if (r.status === "OK" && r.results.length > 0) {
-          const best = r.results[0];
-          const components = best.address_components;
-          const get = (type: string) => components.find((c: any) => c.types.includes(type))?.long_name || "";
-          const streetNumber = get("street_number");
-          const route = get("route");
-          const suburb = get("sublocality_level_1") || get("sublocality") || get("neighborhood");
-          const city = get("locality") || get("administrative_area_level_2");
-          const province = get("administrative_area_level_1");
-          const mainText = route ? `${streetNumber ? streetNumber + " " : ""}${route}` : best.formatted_address.split(",")[0];
-          const secondaryParts = [suburb, city, province].filter(Boolean);
-          return res.json({
-            placeId: best.place_id,
-            description: best.formatted_address,
-            mainText,
-            secondaryText: secondaryParts.join(", "),
-            lat: parseFloat(lat as string),
-            lng: parseFloat(lng as string),
-          });
-        }
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY}`;
+      const r = await (await fetch(url)).json() as any;
+      if (r.status === "OK" && r.results.length > 0) {
+        const best = r.results[0];
+        const components = best.address_components;
+        const get = (type: string) => components.find((c: any) => c.types.includes(type))?.long_name || "";
+        const streetNumber = get("street_number");
+        const route = get("route");
+        const suburb = get("sublocality_level_1") || get("sublocality") || get("neighborhood");
+        const city = get("locality") || get("administrative_area_level_2");
+        const province = get("administrative_area_level_1");
+        const mainText = route ? `${streetNumber ? streetNumber + " " : ""}${route}` : best.formatted_address.split(",")[0];
+        const secondaryParts = [suburb, city, province].filter(Boolean);
+        return res.json({
+          placeId: best.place_id,
+          description: best.formatted_address,
+          mainText,
+          secondaryText: secondaryParts.join(", "),
+          lat: parseFloat(lat as string),
+          lng: parseFloat(lng as string),
+        });
       }
-
-      // Photon reverse geocode fallback
-      const photonRevUrl = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}&lang=en&limit=1`;
-      const photonRev = await safeJsonFetch(photonRevUrl);
-      if (photonRev?.features?.length > 0) {
-        const pred = photonToPrediction(photonRev.features[0]);
-        return res.json({ placeId: pred.placeId, description: pred.description, mainText: pred.mainText, secondaryText: pred.secondaryText, lat: pred.lat, lng: pred.lng });
-      }
-
-      // Nominatim last resort
-      const nomRevUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`;
-      const r = await safeJsonFetch(nomRevUrl, { headers: nominatimHeaders });
-      if (!r || r.error) return res.status(404).json({ message: r?.error || "Location not found" });
-      const { mainText, secondaryText, description } = buildAddressParts(r);
-      return res.json({ placeId: String(r.place_id), description, mainText, secondaryText, lat: parseFloat(r.lat), lng: parseFloat(r.lon) });
+      return res.status(404).json({ message: "Location not found" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
