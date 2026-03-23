@@ -106,16 +106,18 @@ export default function ClientWalletScreen() {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  async function verifyPaystackPayment(reference: string, successMsg?: string) {
+  async function verifyPaystackPayment(reference: string, successMsg?: string, silentOnFail = false) {
     setPaystackVerifying(true);
     try {
       await apiRequest("POST", "/api/payments/verify", { reference });
       await refreshUser();
       await loadData();
-      Alert.alert("✅ Success", successMsg || "Payment verified and card saved!");
+      Alert.alert("Success", successMsg || "Payment verified and card saved!");
     } catch (e: any) {
-      const msg = e?.message || "";
-      Alert.alert("Verification Failed", msg || "Could not verify payment. Contact support if you were charged.");
+      if (!silentOnFail) {
+        const msg = e?.message || "";
+        Alert.alert("Verification Failed", msg || "Could not verify payment. Contact support if you were charged.");
+      }
     } finally {
       setPaystackVerifying(false);
       paystackRef.current = null;
@@ -133,11 +135,7 @@ export default function ClientWalletScreen() {
       if (!popup) {
         Alert.alert(
           "Popup Blocked",
-          "Please allow popups for this site to pay with Paystack, then tap \"I've Paid\" below.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "I've Paid", onPress: () => verifyPaystackPayment(reference, successMsg) },
-          ]
+          "Please allow popups for this site, complete the payment, then we will verify automatically."
         );
       } else {
         const poll = setInterval(() => {
@@ -145,38 +143,18 @@ export default function ClientWalletScreen() {
             if (popup.closed) {
               clearInterval(poll);
               if (paystackRef.current) {
-                Alert.alert(
-                  "Confirm Payment",
-                  "Did you complete the payment?",
-                  [
-                    { text: "No", style: "cancel", onPress: () => { paystackRef.current = null; } },
-                    { text: "Yes, verify", onPress: () => verifyPaystackPayment(reference, successMsg) },
-                  ]
-                );
+                verifyPaystackPayment(reference, successMsg, true);
               }
             }
           } catch {}
         }, 800);
       }
     } else {
-      const callbackBase = process.env.EXPO_PUBLIC_DOMAIN || "";
-      const result = await WebBrowser.openAuthSessionAsync(
-        authorizationUrl,
-        callbackBase ? `${callbackBase}/api/payments/webview-callback` : authorizationUrl
-      );
-      if ((result as any).url) {
-        const urlRef = new URL((result as any).url).searchParams.get("reference") || reference;
-        await verifyPaystackPayment(urlRef, successMsg);
-      } else if (result.type === "cancel" || result.type === "dismiss") {
-        Alert.alert(
-          "Payment Window Closed",
-          "Did you complete the payment?",
-          [
-            { text: "No", style: "cancel" },
-            { text: "Yes, verify", onPress: () => verifyPaystackPayment(reference, successMsg) },
-          ]
-        );
-      }
+      await WebBrowser.openBrowserAsync(authorizationUrl, {
+        showTitle: false,
+        enableBarCollapsing: true,
+      } as any);
+      await verifyPaystackPayment(reference, successMsg, true);
     }
   }
 

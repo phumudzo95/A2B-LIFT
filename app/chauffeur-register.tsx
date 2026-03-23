@@ -117,7 +117,7 @@ export default function ChauffeurRegisterScreen() {
     if (Platform.OS === "web") { pickImage(docId); return; }
     Alert.alert("Upload Photo", "Choose a source", [
       { text: "Take Photo", onPress: () => pickImage(docId, true) },
-      { text: "Choose from Library", onPress: () => pickImage(docId, false) },
+      { text: "Gallery", onPress: () => pickImage(docId, false) },
       { text: "Cancel", style: "cancel" },
     ]);
   }
@@ -423,7 +423,7 @@ export default function ChauffeurRegisterScreen() {
           )}
           <Pressable style={[styles.photoActionBtn, { backgroundColor: Colors.surface }]} onPress={() => pickImage("driver_photo", false)}>
             <Ionicons name="images-outline" size={20} color={Colors.white} />
-            <Text style={styles.photoActionBtnText}>Choose from Library</Text>
+            <Text style={styles.photoActionBtnText}>Gallery</Text>
           </Pressable>
         </View>
 

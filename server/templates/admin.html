@@ -686,10 +686,28 @@ async function loadRides() {
 async function loadPay() {
   spin('pay-table');
   try {
-    const res = await apiFetch('/api/admin/payments');
-    if (!res.ok) throw new Error('API returned ' + res.status);
-    const payments = await res.json();
-    if (!Array.isArray(payments)) throw new Error('Invalid response');
+    // Try dedicated admin payments endpoint first; fall back to rides data
+    let payments = [];
+    const adminRes = await apiFetch('/api/admin/payments');
+    if (adminRes.ok) {
+      const data = await adminRes.json();
+      if (Array.isArray(data)) payments = data;
+    } else {
+      // Fallback: build payment records from rides
+      const ridesRes = await apiFetch('/api/rides');
+      if (!ridesRes.ok) throw new Error('Could not load payment data (' + ridesRes.status + ')');
+      const rides = await ridesRes.json();
+      payments = (Array.isArray(rides) ? rides : rides.rides || []).map(r => ({
+        amount: r.price || 0,
+        method: r.paymentMethod || 'cash',
+        status: r.paymentStatus === 'paid' || r.status === 'trip_completed' ? 'paid' : 'pending',
+        riderName: r.riderName || r.riderId?.slice(0, 8) || '—',
+        riderEmail: r.riderEmail || '',
+        rideRoute: `${r.pickupAddress || '?'} → ${r.dropoffAddress || '?'}`,
+        paystackReference: r.paystackReference || null,
+        createdAt: r.createdAt,
+      }));
+    }
 
     const paid = payments.filter(p => p.status === 'paid');
     const total = paid.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
@@ -698,8 +716,8 @@ async function loadPay() {
 
     document.getElementById('pay-summary').innerHTML = `
       <div class="stat-card"><div class="stat-top"><div class="stat-label">Total Collected</div><div class="stat-icon si-green">💰</div></div><div class="stat-value" style="color:var(--green)">R ${total.toFixed(2)}</div><div class="stat-foot">${paid.length} successful payments</div></div>
-      <div class="stat-card"><div class="stat-top"><div class="stat-label">Via Card</div><div class="stat-icon si-blue">💳</div></div><div class="stat-value" style="font-size:22px">R ${cardTotal.toFixed(2)}</div><div class="stat-foot">Paystack card payments</div></div>
-      <div class="stat-card"><div class="stat-top"><div class="stat-label">Via Wallet</div><div class="stat-icon si-black">👛</div></div><div class="stat-value" style="font-size:22px">R ${walletTotal.toFixed(2)}</div><div class="stat-foot">Wallet balance payments</div></div>
+      <div class="stat-card"><div class="stat-top"><div class="stat-label">Via Card</div><div class="stat-icon si-blue">💳</div></div><div class="stat-value" style="font-size:22px">R ${cardTotal.toFixed(2)}</div><div class="stat-foot">Card payments</div></div>
+      <div class="stat-card"><div class="stat-top"><div class="stat-label">Via Wallet</div><div class="stat-icon si-black">👛</div></div><div class="stat-value" style="font-size:22px">R ${walletTotal.toFixed(2)}</div><div class="stat-foot">Wallet payments</div></div>
     `;
 
     if (!payments.length) {

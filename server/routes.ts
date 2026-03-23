@@ -1923,25 +1923,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   <title>Payment Complete</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{background:#0a0a0a;color:#fff;font-family:system-ui,sans-serif;
+    body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
          display:flex;flex-direction:column;align-items:center;justify-content:center;
-         min-height:100vh;gap:20px;text-align:center;padding:24px}
-    .icon{font-size:64px;animation:pop .4s ease}
-    @keyframes pop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
-    h2{font-size:22px;font-weight:700;margin-bottom:4px}
-    p{font-size:14px;color:rgba(255,255,255,0.55)}
-    .btn{display:inline-block;margin-top:12px;padding:14px 32px;background:#fff;
-         color:#000;font-weight:700;font-size:15px;border-radius:14px;
-         text-decoration:none;border:none;cursor:pointer}
-    #status{font-size:13px;color:rgba(255,255,255,0.4)}
+         min-height:100vh;gap:16px;text-align:center;padding:32px}
+    .ring{width:72px;height:72px;animation:pop .45s cubic-bezier(.34,1.56,.64,1)}
+    @keyframes pop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}
+    h2{font-size:20px;font-weight:700;letter-spacing:-.3px}
+    .sub{font-size:14px;color:rgba(255,255,255,0.45);line-height:1.5;max-width:260px}
+    .btn{margin-top:8px;padding:13px 28px;background:#fff;color:#000;font-weight:700;
+         font-size:14px;border-radius:12px;border:none;cursor:pointer;letter-spacing:-.2px}
   </style>
 </head>
 <body>
-  <div class="icon">✅</div>
+  <svg class="ring" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="36" cy="36" r="34" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
+    <circle cx="36" cy="36" r="34" stroke="#ffffff" stroke-width="2"
+      stroke-dasharray="213" stroke-dashoffset="213"
+      style="animation:draw .55s .3s ease forwards;transform-origin:center;transform:rotate(-90deg)"/>
+    <polyline points="22,36 32,46 50,28" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+      style="opacity:0;animation:fadein .2s .75s forwards"/>
+    <style>
+      @keyframes draw{to{stroke-dashoffset:0}}
+      @keyframes fadein{to{opacity:1}}
+    </style>
+  </svg>
   <h2>Payment Complete</h2>
-  <p>Returning to app…</p>
-  <div id="status">Closing automatically…</div>
-  <button class="btn" id="back-btn" style="display:none" onclick="goBack()">← Return to App</button>
+  <p class="sub">Your payment was processed. You can close this window — the app will update automatically.</p>
+  <button class="btn" id="back-btn" style="display:none" onclick="goBack()">Return to App</button>
   <script>
     var ref = ${JSON.stringify(reference)};
     var appUrl = ${JSON.stringify(appReturnUrl)};
