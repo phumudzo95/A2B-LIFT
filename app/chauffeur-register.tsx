@@ -163,12 +163,16 @@ export default function ChauffeurRegisterScreen() {
       const application = await appRes.json().catch(() => null);
       const applicationId = application?.id || null;
 
-      const uploadOne = async (docId: string, uri: string, name: string) => {
-        let publicUrl = uri;
+      const failedUploads: string[] = [];
+
+      const uploadOne = async (docId: string, uri: string) => {
+        let publicUrl = "";
         try {
           publicUrl = await uploadDocument(uri, user.id, docId);
-        } catch (e) {
-          console.warn(`Supabase upload failed for ${docId}:`, e);
+        } catch (e: any) {
+          console.error(`[upload] ${docId} failed:`, e?.message);
+          failedUploads.push(docId);
+          publicUrl = uri;
         }
         await apiRequest("POST", "/api/driver/documents", {
           userId: user.id, applicationId, chauffeurId: chauffeur.id,
@@ -176,14 +180,21 @@ export default function ChauffeurRegisterScreen() {
         });
       };
 
-      await Promise.all([
+      await Promise.allSettled([
         ...ALL_DOCS.map(doc => {
           const file = documents[doc.id];
           if (!file) return Promise.resolve();
-          return uploadOne(doc.id, file.uri, file.name).catch(e => console.warn(`Failed ${doc.id}:`, e));
+          return uploadOne(doc.id, file.uri);
         }),
-        uploadOne("driver_photo", driverPhoto.uri, driverPhoto.name).catch(e => console.warn("Failed driver_photo:", e)),
+        uploadOne("driver_photo", driverPhoto.uri),
       ]);
+
+      if (failedUploads.length > 0) {
+        Alert.alert(
+          "Some documents failed to upload",
+          `The following could not be uploaded to storage and may need to be re-submitted: ${failedUploads.join(", ")}. Your application has been saved — please contact support if this keeps happening.`
+        );
+      }
 
       router.replace("/chauffeur");
     } catch (e: any) {
