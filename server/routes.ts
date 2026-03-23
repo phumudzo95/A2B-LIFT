@@ -868,8 +868,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "base64Data, userId, and docType are required" });
       }
 
-      const SUPABASE_URL = "https://zzwkieiktbhptvgsqerd.supabase.co";
+      const SUPABASE_URL = process.env.SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
       const SUPABASE_ANON_KEY =
+        process.env.SUPABASE_SERVICE_ROLE_KEY ||
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6d2tpZWlrdGJocHR2Z3NxZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4ODA1NjEsImV4cCI6MjA4NjQ1NjU2MX0.BgTFknM60JsTl1iHAN1ri3pxFi2rTJfbyZ6rj6Etecc";
       const BUCKET = "driver-documents";
 
