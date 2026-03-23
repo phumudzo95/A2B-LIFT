@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, StyleSheet, Pressable, ScrollView,
-  ActivityIndicator, Alert, Linking, Platform, Modal, TextInput,
+  ActivityIndicator, Alert, Platform, Modal, TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/query-client";
 import Colors from "@/constants/colors";
+import * as WebBrowser from "expo-web-browser";
 
 interface SavedCard {
   id: string;
@@ -59,6 +60,11 @@ export default function ClientWalletScreen() {
   const [showAddCard, setShowAddCard] = useState(false);
   const [addCardLoading, setAddCardLoading] = useState(false);
 
+  // In-app Paystack popup state
+  const [paystackVerifying, setPaystackVerifying] = useState(false);
+  const paystackRef = useRef<string | null>(null);
+  const paystackPopup = useRef<Window | null>(null);
+
   const loadData = useCallback(async () => {
     try {
       const [cardsRes, txRes] = await Promise.all([
@@ -76,6 +82,97 @@ export default function ClientWalletScreen() {
 
   useEffect(() => { loadData(); }, []);
 
+  // Listen for postMessage from the Paystack popup callback (web only)
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    async function onMessage(e: MessageEvent) {
+      if (e.data?.type !== "paystack-done") return;
+      const ref = e.data.reference || paystackRef.current;
+      if (!ref) return;
+      try {
+        paystackPopup.current?.close();
+      } catch {}
+      paystackPopup.current = null;
+      await verifyPaystackPayment(ref);
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  async function verifyPaystackPayment(reference: string, successMsg?: string) {
+    setPaystackVerifying(true);
+    try {
+      await apiRequest("POST", "/api/payments/verify", { reference });
+      await refreshUser();
+      await loadData();
+      Alert.alert("✅ Success", successMsg || "Payment verified and card saved!");
+    } catch (e: any) {
+      const msg = e?.message || "";
+      Alert.alert("Verification Failed", msg || "Could not verify payment. Contact support if you were charged.");
+    } finally {
+      setPaystackVerifying(false);
+      paystackRef.current = null;
+    }
+  }
+
+  async function openPaystackInApp(authorizationUrl: string, reference: string, successMsg: string) {
+    paystackRef.current = reference;
+    if (Platform.OS === "web") {
+      const popup = (window as any).open(
+        authorizationUrl, "paystack-checkout",
+        "width=500,height=700,scrollbars=yes,resizable=yes,left=200,top=80"
+      );
+      paystackPopup.current = popup;
+      if (!popup) {
+        Alert.alert(
+          "Popup Blocked",
+          "Please allow popups for this site to pay with Paystack, then tap \"I've Paid\" below.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "I've Paid", onPress: () => verifyPaystackPayment(reference, successMsg) },
+          ]
+        );
+      } else {
+        const poll = setInterval(() => {
+          try {
+            if (popup.closed) {
+              clearInterval(poll);
+              if (paystackRef.current) {
+                Alert.alert(
+                  "Confirm Payment",
+                  "Did you complete the payment?",
+                  [
+                    { text: "No", style: "cancel", onPress: () => { paystackRef.current = null; } },
+                    { text: "Yes, verify", onPress: () => verifyPaystackPayment(reference, successMsg) },
+                  ]
+                );
+              }
+            }
+          } catch {}
+        }, 800);
+      }
+    } else {
+      const callbackBase = process.env.EXPO_PUBLIC_DOMAIN || "";
+      const result = await WebBrowser.openAuthSessionAsync(
+        authorizationUrl,
+        callbackBase ? `${callbackBase}/api/payments/webview-callback` : authorizationUrl
+      );
+      if ((result as any).url) {
+        const urlRef = new URL((result as any).url).searchParams.get("reference") || reference;
+        await verifyPaystackPayment(urlRef, successMsg);
+      } else if (result.type === "cancel" || result.type === "dismiss") {
+        Alert.alert(
+          "Payment Window Closed",
+          "Did you complete the payment?",
+          [
+            { text: "No", style: "cancel" },
+            { text: "Yes, verify", onPress: () => verifyPaystackPayment(reference, successMsg) },
+          ]
+        );
+      }
+    }
+  }
+
   // Top up wallet (also saves card)
   async function handleTopup() {
     if (!user) return;
@@ -86,34 +183,12 @@ export default function ClientWalletScreen() {
         Alert.alert("Invalid amount", "Minimum top-up is R10"); return;
       }
       const res = await apiRequest("POST", "/api/payments/initialize", {
-        amount,
-        email: user.username,
-        saveCard: true,
-        rideId: null,
+        amount, email: user.username, saveCard: true, rideId: null,
       });
-      const { authorizationUrl, reference } = await res.json();
+      const data = await res.json();
+      if (!data.authorizationUrl) throw new Error(data.message || "Could not initialize payment");
       setShowTopup(false);
-      await Linking.openURL(authorizationUrl);
-      Alert.alert(
-        "Verify Payment",
-        "Have you completed the payment?",
-        [
-          { text: "Not yet", style: "cancel" },
-          {
-            text: "Yes, verify",
-            onPress: async () => {
-              try {
-                await apiRequest("POST", "/api/payments/verify", { reference });
-                await refreshUser();
-                loadData();
-                Alert.alert("✅ Success", "Wallet topped up and card saved!");
-              } catch {
-                Alert.alert("Error", "Could not verify payment. Please contact support.");
-              }
-            },
-          },
-        ]
-      );
+      await openPaystackInApp(data.authorizationUrl, data.reference, `R${amount.toFixed(2)} added to wallet and card saved!`);
     } catch (e: any) {
       Alert.alert("Error", e.message || "Failed to initialize payment");
     } finally {
@@ -127,34 +202,12 @@ export default function ClientWalletScreen() {
     setAddCardLoading(true);
     try {
       const res = await apiRequest("POST", "/api/payments/initialize", {
-        amount: 5,
-        email: user.username,
-        saveCard: true,
-        rideId: null,
+        amount: 5, email: user.username, saveCard: true, rideId: null,
       });
-      const { authorizationUrl, reference } = await res.json();
+      const data = await res.json();
+      if (!data.authorizationUrl) throw new Error(data.message || "Could not initialize payment");
       setShowAddCard(false);
-      await Linking.openURL(authorizationUrl);
-      Alert.alert(
-        "Verify Card",
-        "Have you completed the R5 card verification?",
-        [
-          { text: "Not yet", style: "cancel" },
-          {
-            text: "Yes, verify",
-            onPress: async () => {
-              try {
-                await apiRequest("POST", "/api/payments/verify", { reference });
-                await refreshUser();
-                loadData();
-                Alert.alert("✅ Card Saved", "Your card has been saved and R5 has been credited to your wallet!");
-              } catch {
-                Alert.alert("Error", "Could not verify card. Please contact support.");
-              }
-            },
-          },
-        ]
-      );
+      await openPaystackInApp(data.authorizationUrl, data.reference, "Card saved! R5 credited to your wallet.");
     } catch (e: any) {
       Alert.alert("Error", e.message || "Failed to save card");
     } finally {
@@ -374,6 +427,16 @@ export default function ClientWalletScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      {/* ── Paystack verifying overlay ── */}
+      {paystackVerifying && (
+        <Modal visible transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", alignItems: "center", justifyContent: "center", gap: 16 }}>
+            <ActivityIndicator size="large" color={Colors.accent} />
+            <Text style={{ color: Colors.white, fontFamily: "Inter_500Medium", fontSize: 16 }}>Verifying payment…</Text>
+          </View>
+        </Modal>
+      )}
 
       {/* ── Add Card Modal ── */}
       <Modal visible={showAddCard} transparent animationType="slide" onRequestClose={() => setShowAddCard(false)}>

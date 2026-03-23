@@ -1785,6 +1785,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return balanceAfter;
   }
 
+  // GET /api/payments/webview-callback  — Paystack redirects here after payment; sends postMessage back to opener/parent
+  app.get("/api/payments/webview-callback", (req: Request, res: Response) => {
+    const reference = (req.query.reference || req.query.trxref || "") as string;
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Payment Complete</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#0a0a0a;color:#fff;font-family:system-ui,sans-serif;
+         display:flex;flex-direction:column;align-items:center;justify-content:center;
+         min-height:100vh;gap:16px;text-align:center;padding:24px}
+    .icon{font-size:56px}
+    h2{font-size:22px;font-weight:700}
+    p{font-size:14px;opacity:0.6}
+  </style>
+</head>
+<body>
+  <div class="icon">✅</div>
+  <h2>Payment Complete</h2>
+  <p>Returning to app…</p>
+  <script>
+    var ref = ${JSON.stringify(reference)};
+    var msg = { type: 'paystack-done', reference: ref };
+    try { window.opener && window.opener.postMessage(msg, '*'); } catch(e){}
+    try { window.parent && window.parent !== window && window.parent.postMessage(msg, '*'); } catch(e){}
+    setTimeout(function(){ try{ window.close(); }catch(e){} }, 1200);
+  </script>
+</body>
+</html>`;
+    res.setHeader("Content-Type", "text/html");
+    res.send(html);
+  });
+
   // POST /api/payments/initialize
   app.post("/api/payments/initialize", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
@@ -1792,11 +1828,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.auth!.sub;
       const reference = `A2B-${Date.now()}-${userId.slice(0, 6)}`;
 
+      const domain = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : (process.env.PAYSTACK_CALLBACK_URL || "");
+      const callbackUrl = domain ? `${domain}/api/payments/webview-callback?reference=${reference}` : undefined;
+
       const response = await paystackAPI.post("/transaction/initialize", {
         email,
         amount: Math.round(amount * 100),
         currency: "ZAR",
         reference,
+        ...(callbackUrl ? { callback_url: callbackUrl } : {}),
         metadata: {
           userId,
           rideId: rideId || null,
