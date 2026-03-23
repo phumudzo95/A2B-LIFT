@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "OYJOq-MBdh6Gmw9A__C0V"
+uri = "file://expo-qr.png"
+type = "image"
+title = "Expo Go QR Code — A2B LIFT"

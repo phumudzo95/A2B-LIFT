@@ -81,6 +81,7 @@
     "eslint-config-expo": "~10.0.0",
     "http-proxy": "^1.18.1",
     "patch-package": "^8.0.0",
+    "qrcode": "^1.5.4",
     "typescript": "~5.9.2"
   },
   "private": true,

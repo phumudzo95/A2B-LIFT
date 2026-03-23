@@ -1855,6 +1855,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({ success: true, amount, status: "paid" });
     } catch (error: any) {
       console.error("[Paystack Verify]", error.response?.data || error.message);
+      const psMsg = error.response?.data?.message;
+      if (psMsg) return res.status(400).json({ message: psMsg });
       return res.status(500).json({ message: "Payment verification failed" });
     }
   });
