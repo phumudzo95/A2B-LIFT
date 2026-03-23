@@ -91,8 +91,12 @@ export const payments = pgTable("payments", {
   amount: real("amount").notNull(),
   method: text("method").notNull().default("cash"),
   status: text("status").notNull().default("pending"), // pending|paid|failed|refunded
+  currency: text("currency").default("ZAR"),
   provider: text("provider"),
   providerRef: text("provider_ref"),
+  paystackReference: varchar("paystack_reference"),
+  paystackAuthCode: text("paystack_auth_code"),
+  paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -168,6 +172,12 @@ export const withdrawals = pgTable("withdrawals", {
     .references(() => chauffeurs.id),
   amount: real("amount").notNull(),
   status: text("status").notNull().default("pending"),
+  bankName: text("bank_name"),
+  accountNumber: text("account_number"),
+  accountHolder: text("account_holder"),
+  paystackTransferCode: varchar("paystack_transfer_code"),
+  paystackRecipientCode: varchar("paystack_recipient_code"),
+  processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -231,6 +241,36 @@ export const tripEnquiries = pgTable("trip_enquiries", {
   createdAt: timestamp("created_at").defaultNow(),
   repliedAt: timestamp("replied_at"),
 });
+
+export const savedCards = pgTable("saved_cards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  paystackAuthCode: text("paystack_auth_code").notNull(),
+  cardType: text("card_type"),
+  last4: varchar("last4", { length: 4 }),
+  expMonth: varchar("exp_month", { length: 2 }),
+  expYear: varchar("exp_year", { length: 4 }),
+  bank: text("bank"),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const walletTransactions = pgTable("wallet_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(),
+  amount: real("amount").notNull(),
+  balanceBefore: real("balance_before").notNull(),
+  balanceAfter: real("balance_after").notNull(),
+  reference: varchar("reference"),
+  description: text("description"),
+  rideId: varchar("ride_id"),
+  status: text("status").default("completed"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type SavedCard = typeof savedCards.$inferSelect;
+export type WalletTransaction = typeof walletTransactions.$inferSelect;
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,

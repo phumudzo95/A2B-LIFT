@@ -83,9 +83,11 @@ export default function ClientWalletScreen() {
       });
       const { authorizationUrl, reference } = await res.json();
 
+      // Open Paystack payment page
       setShowTopup(false);
       await Linking.openURL(authorizationUrl);
 
+      // After user returns, verify payment
       Alert.alert(
         "Verify Payment",
         "Have you completed the payment?",
@@ -159,6 +161,7 @@ export default function ClientWalletScreen() {
             </Pressable>
           </View>
 
+          {/* Cash option always shown */}
           <View style={styles.paymentRow}>
             <View style={styles.paymentIcon}>
               <Text style={{ fontSize: 20 }}>💵</Text>
@@ -172,6 +175,7 @@ export default function ClientWalletScreen() {
             </View>
           </View>
 
+          {/* Wallet balance if > 0 */}
           {balance > 0 && (
             <View style={styles.paymentRow}>
               <View style={styles.paymentIcon}>
@@ -187,6 +191,7 @@ export default function ClientWalletScreen() {
             </View>
           )}
 
+          {/* Saved cards */}
           {loading ? (
             <ActivityIndicator color={Colors.white} style={{ marginVertical: 20 }} />
           ) : cards.length === 0 ? (

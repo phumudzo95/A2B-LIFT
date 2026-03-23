@@ -15,6 +15,8 @@ import {
   safetyReports,
   notifications,
   tripEnquiries,
+  savedCards,
+  walletTransactions,
   type TripEnquiry,
   type User,
   type InsertUser,
@@ -29,6 +31,8 @@ import {
   type Message,
   type SafetyReport,
   type Notification,
+  type SavedCard,
+  type WalletTransaction,
 } from "../shared/schema";
 
 if (!process.env.DATABASE_URL) {
@@ -119,6 +123,19 @@ export interface IStorage {
   createNotification(data: any): Promise<Notification>;
   getNotificationsByUser(userId: string): Promise<Notification[]>;
   markNotificationRead(id: string): Promise<Notification | undefined>;
+
+  // Saved Cards (Paystack)
+  getSavedCard(id: string): Promise<SavedCard | undefined>;
+  getSavedCardsByUser(userId: string): Promise<SavedCard[]>;
+  createSavedCard(data: any): Promise<SavedCard>;
+  deleteSavedCard(id: string): Promise<void>;
+
+  // Wallet Transactions
+  createWalletTransaction(data: any): Promise<WalletTransaction>;
+  getWalletTransactions(userId: string): Promise<WalletTransaction[]>;
+
+  // Withdrawal (extended)
+  updateWithdrawalByTransferCode(transferCode: string, data: any): Promise<Withdrawal | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -473,6 +490,46 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.id, id))
       .returning();
     return notification;
+  }
+
+  async getSavedCard(id: string): Promise<SavedCard | undefined> {
+    const [card] = await db.select().from(savedCards).where(eq(savedCards.id, id));
+    return card;
+  }
+
+  async getSavedCardsByUser(userId: string): Promise<SavedCard[]> {
+    return db.select().from(savedCards)
+      .where(eq(savedCards.userId, userId))
+      .orderBy(desc(savedCards.createdAt));
+  }
+
+  async createSavedCard(data: any): Promise<SavedCard> {
+    const [card] = await db.insert(savedCards).values(data).returning();
+    return card;
+  }
+
+  async deleteSavedCard(id: string): Promise<void> {
+    await db.delete(savedCards).where(eq(savedCards.id, id));
+  }
+
+  async createWalletTransaction(data: any): Promise<WalletTransaction> {
+    const [tx] = await db.insert(walletTransactions).values(data).returning();
+    return tx;
+  }
+
+  async getWalletTransactions(userId: string): Promise<WalletTransaction[]> {
+    return db.select().from(walletTransactions)
+      .where(eq(walletTransactions.userId, userId))
+      .orderBy(desc(walletTransactions.createdAt))
+      .limit(50);
+  }
+
+  async updateWithdrawalByTransferCode(transferCode: string, data: any): Promise<Withdrawal | undefined> {
+    const [w] = await db.update(withdrawals)
+      .set(data)
+      .where(eq(withdrawals.paystackTransferCode, transferCode))
+      .returning();
+    return w;
   }
 
   async createTripEnquiry(data: { rideId: string; userId: string; message: string }): Promise<TripEnquiry> {

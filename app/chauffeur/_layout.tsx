@@ -23,6 +23,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
         <Label>Earnings</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="wallet">
+        <Icon sf={{ default: "wallet.pass", selected: "wallet.pass.fill" }} />
+        <Label>Wallet</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
         <Label>Settings</Label>
@@ -76,6 +80,13 @@ function ClassicTabLayout() {
         options={{
           title: "Earnings",
           tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="wallet"
+        options={{
+          title: "Wallet",
+          tabBarIcon: ({ color, size }) => <Ionicons name="wallet" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
