@@ -35,11 +35,13 @@ import {
   type WalletTransaction,
 } from "../shared/schema";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is not set");
+const dbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+if (!dbUrl) {
+  throw new Error("SUPABASE_DB_URL or DATABASE_URL is not set");
 }
 
-const dbUrl = process.env.DATABASE_URL;
+console.log(`[Storage] Using DB: ${dbUrl.includes("supabase") ? "SUPABASE ✅" : "LOCAL ❌"} | ${dbUrl.replace(/:([^:@]+)@/, ":***@")}`);
+
 const requireSsl = dbUrl.includes("supabase") || dbUrl.includes("neon.tech");
 const pool = new Pool({
   connectionString: dbUrl,

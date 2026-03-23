@@ -8,6 +8,11 @@ if (!dbUrl) {
   throw new Error("SUPABASE_DB_URL or DATABASE_URL must be set.");
 }
 
+const isSupabase = dbUrl.includes("supabase");
+const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ":***@");
+console.log(`[DB] Connecting to: ${isSupabase ? "SUPABASE ✅" : "LOCAL/OTHER ❌"}`);
+console.log(`[DB] Full URL: ${maskedUrl}`);
+
 const requireSsl = dbUrl.includes("supabase") || dbUrl.includes("neon.tech");
 export const pool = new Pool({
   connectionString: dbUrl,
