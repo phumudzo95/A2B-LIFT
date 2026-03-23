@@ -1628,6 +1628,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin
   // -----------------------------
   app.get(
+    "/api/admin/payments",
+    requireAuth,
+    requireRole(["admin"]),
+    async (_req: AuthedRequest, res: Response) => {
+      try {
+        const [allPayments, allUsers, allRides] = await Promise.all([
+          storage.getAllPayments(),
+          storage.getAllUsers ? storage.getAllUsers() : [] as any[],
+          storage.getAllRides(),
+        ]);
+        const usersById = Object.fromEntries((allUsers as any[]).map((u: any) => [u.id, u]));
+        const ridesById = Object.fromEntries(allRides.map((r: any) => [r.id, r]));
+        const enriched = allPayments.map((p: any) => ({
+          ...p,
+          riderName: usersById[p.payerUserId]?.name || "Unknown",
+          riderEmail: usersById[p.payerUserId]?.username || "—",
+          rideRoute: ridesById[p.rideId]
+            ? `${ridesById[p.rideId].pickupAddress || "?"} → ${ridesById[p.rideId].dropoffAddress || "?"}`
+            : p.rideId ? `Ride ${p.rideId.slice(0, 8)}` : "Wallet top-up",
+        }));
+        return res.json(enriched);
+      } catch (error: any) {
+        return res.status(500).json({ message: error.message });
+      }
+    },
+  );
+
+  app.get(
     "/api/admin/stats",
     requireAuth,
     requireRole(["admin"]),

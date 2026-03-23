@@ -90,6 +90,8 @@ export interface IStorage {
 
   // Payments
   createPayment(data: any): Promise<Payment>;
+  getAllUsers(): Promise<User[]>;
+  getAllPayments(): Promise<Payment[]>;
   getPaymentsByRide(rideId: string): Promise<Payment[]>;
   updatePayment(id: string, data: Partial<Payment>): Promise<Payment | undefined>;
 
@@ -339,6 +341,14 @@ export class DatabaseStorage implements IStorage {
   async createPayment(data: any): Promise<Payment> {
     const [payment] = await db.insert(payments).values(data).returning();
     return payment;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async getAllPayments(): Promise<Payment[]> {
+    return db.select().from(payments).orderBy(desc(payments.createdAt));
   }
 
   async getPaymentsByRide(rideId: string): Promise<Payment[]> {

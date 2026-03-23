@@ -36,6 +36,18 @@
     .badge-low { background: rgba(107,107,107,0.15); color: #bdbdbd; }
     .badge-open { background: rgba(255,183,77,0.15); color: #ffb74d; }
     .badge-resolved { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-card { background: rgba(99,102,241,0.15); color: #818cf8; }
+    .badge-wallet { background: rgba(16,185,129,0.15); color: #34d399; }
+    .badge-cash { background: rgba(107,107,107,0.15); color: #bdbdbd; }
+    .badge-completed { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-failed { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+    .payments-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .pay-stat { background: #121212; border: 1px solid #2a2a2a; border-radius: 12px; padding: 18px; text-align: center; }
+    .pay-stat-value { font-size: 24px; font-weight: 700; margin-bottom: 3px; }
+    .pay-stat-label { font-size: 11px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 1px; }
+    .sub-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+    .sub-tab { background: #1a1a1a; border: 1px solid #2a2a2a; color: #bdbdbd; padding: 7px 16px; border-radius: 8px; cursor: pointer; font-size: 12px; }
+    .sub-tab.active { background: #ffffff18; border-color: #555; color: #fff; }
     .btn { padding: 6px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; }
     .btn-approve { background: #4caf50; color: #fff; }
     .btn-reject { background: #ff4d4d; color: #fff; }
@@ -78,6 +90,7 @@
     <button class="active" onclick="switchTab('overview')">Overview</button>
     <button onclick="switchTab('chauffeurs')">Chauffeurs</button>
     <button onclick="switchTab('rides')">Rides</button>
+    <button onclick="switchTab('payments')">Payments</button>
     <button onclick="switchTab('withdrawals')">Withdrawals</button>
     <button onclick="switchTab('safety')">Safety Reports</button>
   </div>
@@ -100,6 +113,24 @@
       <div class="section">
         <div class="section-title">All Rides</div>
         <div id="rides-table"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <div id="tab-payments" class="tab-content">
+      <div class="section">
+        <div id="payments-summary" class="payments-summary"></div>
+        <div class="sub-tabs">
+          <button class="sub-tab active" id="ptab-rider" onclick="switchPayTab('rider')">Rider Payments</button>
+          <button class="sub-tab" id="ptab-withdrawals" onclick="switchPayTab('withdrawals')">Driver Withdrawals</button>
+        </div>
+        <div id="payments-rider-panel">
+          <div class="section-title">All Rider Payments</div>
+          <div id="payments-table"><div class="loading">Loading...</div></div>
+        </div>
+        <div id="payments-withdrawals-panel" style="display:none">
+          <div class="section-title">Driver Withdrawal Requests</div>
+          <div id="payments-withdrawals-table"><div class="loading">Loading...</div></div>
+        </div>
       </div>
     </div>
 
@@ -212,8 +243,16 @@
       event.target.classList.add('active');
       if (tab === 'chauffeurs') loadChauffeurs();
       if (tab === 'rides') loadRides();
+      if (tab === 'payments') loadPayments();
       if (tab === 'withdrawals') loadWithdrawals();
       if (tab === 'safety') loadSafetyReports();
+    }
+
+    function switchPayTab(which) {
+      document.getElementById('payments-rider-panel').style.display = which === 'rider' ? '' : 'none';
+      document.getElementById('payments-withdrawals-panel').style.display = which === 'withdrawals' ? '' : 'none';
+      document.getElementById('ptab-rider').classList.toggle('active', which === 'rider');
+      document.getElementById('ptab-withdrawals').classList.toggle('active', which === 'withdrawals');
     }
 
     function refreshAll() {
@@ -223,6 +262,7 @@
         const id = active.id.replace('tab-', '');
         if (id === 'chauffeurs') loadChauffeurs();
         if (id === 'rides') loadRides();
+        if (id === 'payments') loadPayments();
         if (id === 'withdrawals') loadWithdrawals();
         if (id === 'safety') loadSafetyReports();
       }
@@ -306,6 +346,118 @@
       } catch(e) {
         document.getElementById('rides-table').innerHTML = '<div class="loading">Failed to load</div>';
       }
+    }
+
+    function fmt(amount) { return 'R ' + parseFloat(amount || 0).toFixed(2); }
+    function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; }
+    function methodBadge(m) {
+      const cls = m === 'card' ? 'badge-card' : m === 'wallet' ? 'badge-wallet' : 'badge-cash';
+      return `<span class="badge ${cls}">${(m||'—').toUpperCase()}</span>`;
+    }
+    function statusBadge(s) {
+      const cls = s === 'paid' || s === 'completed' ? 'badge-paid' : s === 'pending' ? 'badge-pending' : s === 'failed' ? 'badge-failed' : 'badge-pending';
+      return `<span class="badge ${cls}">${s || '—'}</span>`;
+    }
+
+    async function loadPayments() {
+      document.getElementById('payments-table').innerHTML = '<div class="loading">Loading...</div>';
+      document.getElementById('payments-withdrawals-table').innerHTML = '<div class="loading">Loading...</div>';
+      try {
+        const [pmtRes, wdRes] = await Promise.all([
+          apiFetch('/api/admin/payments'),
+          apiFetch('/api/withdrawals'),
+        ]);
+        const payments = await pmtRes.json();
+        const withdrawals = wdRes.ok ? await wdRes.json() : [];
+
+        // Summary stats
+        const paid = payments.filter(p => p.status === 'paid');
+        const totalPaid = paid.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+        const cardPaid = paid.filter(p => p.method === 'card').reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+        const walletPaid = paid.filter(p => p.method === 'wallet').reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+        const cashPaid = paid.filter(p => p.method === 'cash').reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+        const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending').reduce((s, w) => s + parseFloat(w.amount || 0), 0);
+
+        document.getElementById('payments-summary').innerHTML = `
+          <div class="pay-stat"><div class="pay-stat-value">${fmt(totalPaid)}</div><div class="pay-stat-label">Total Collected</div></div>
+          <div class="pay-stat"><div class="pay-stat-value" style="color:#818cf8">${fmt(cardPaid)}</div><div class="pay-stat-label">Via Card</div></div>
+          <div class="pay-stat"><div class="pay-stat-value" style="color:#34d399">${fmt(walletPaid)}</div><div class="pay-stat-label">Via Wallet</div></div>
+          <div class="pay-stat"><div class="pay-stat-value" style="color:#bdbdbd">${fmt(cashPaid)}</div><div class="pay-stat-label">Via Cash</div></div>
+          <div class="pay-stat"><div class="pay-stat-value">${payments.length}</div><div class="pay-stat-label">Transactions</div></div>
+          <div class="pay-stat"><div class="pay-stat-value" style="color:#ffb74d">${fmt(pendingWithdrawals)}</div><div class="pay-stat-label">Pending Withdrawals</div></div>
+        `;
+
+        // Rider payments table
+        if (!payments.length) {
+          document.getElementById('payments-table').innerHTML = '<div class="loading">No payments recorded yet</div>';
+        } else {
+          let html = `<table><thead><tr>
+            <th>Rider</th><th>Route / Description</th><th>Method</th><th>Amount</th>
+            <th>Status</th><th>Reference</th><th>Date</th>
+          </tr></thead><tbody>`;
+          for (const p of payments) {
+            html += `<tr>
+              <td>
+                <strong>${p.riderName || '—'}</strong>
+                <br><small style="color:#888">${p.riderEmail || ''}</small>
+              </td>
+              <td class="desc-cell" title="${(p.rideRoute||'').replace(/"/g,'&quot;')}">${p.rideRoute || '—'}</td>
+              <td>${methodBadge(p.method)}</td>
+              <td><strong>${fmt(p.amount)}</strong></td>
+              <td>${statusBadge(p.status)}</td>
+              <td style="font-size:11px;color:#888">${p.paystackReference ? p.paystackReference.slice(0,20)+'…' : '—'}</td>
+              <td style="font-size:12px">${fmtDate(p.paidAt || p.createdAt)}</td>
+            </tr>`;
+          }
+          html += '</tbody></table>';
+          document.getElementById('payments-table').innerHTML = html;
+        }
+
+        // Withdrawals table inside payments tab
+        if (!withdrawals.length) {
+          document.getElementById('payments-withdrawals-table').innerHTML = '<div class="loading">No withdrawal requests yet</div>';
+        } else {
+          let html = `<table><thead><tr>
+            <th>Chauffeur</th><th>Bank</th><th>Account</th><th>Amount</th>
+            <th>Status</th><th>Transfer Ref</th><th>Date</th><th>Actions</th>
+          </tr></thead><tbody>`;
+          for (const w of withdrawals) {
+            html += `<tr>
+              <td style="font-size:12px">${w.accountHolder || ('ID: ' + (w.chauffeurId||'').slice(0,8)+'…')}</td>
+              <td>${w.bankName || '—'}</td>
+              <td style="font-size:12px">${w.accountNumber ? ('•••• ' + String(w.accountNumber).slice(-4)) : '—'}</td>
+              <td><strong>${fmt(w.amount)}</strong></td>
+              <td>${statusBadge(w.status)}</td>
+              <td style="font-size:11px;color:#888">${w.paystackTransferCode || '—'}</td>
+              <td style="font-size:12px">${fmtDate(w.processedAt || w.createdAt)}</td>
+              <td>
+                ${w.status === 'pending' ? `
+                  <button class="btn btn-approve btn-small" onclick="updateWithdrawalFromPayTab('${w.id}','approved')">Approve</button>
+                  <button class="btn btn-reject btn-small" onclick="updateWithdrawalFromPayTab('${w.id}','rejected')" style="margin-left:4px">Reject</button>
+                ` : w.status === 'approved' ? `
+                  <button class="btn btn-approve btn-small" onclick="updateWithdrawalFromPayTab('${w.id}','paid')">Mark Paid</button>
+                ` : ''}
+              </td>
+            </tr>`;
+          }
+          html += '</tbody></table>';
+          document.getElementById('payments-withdrawals-table').innerHTML = html;
+        }
+      } catch(e) {
+        document.getElementById('payments-table').innerHTML = '<div class="loading">Failed to load payments</div>';
+      }
+    }
+
+    async function updateWithdrawalFromPayTab(id, status) {
+      try {
+        await apiFetch('/api/withdrawals/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        loadPayments();
+        loadStats();
+      } catch(e) { alert('Failed to update'); }
     }
 
     async function loadWithdrawals() {
