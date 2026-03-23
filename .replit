@@ -49,6 +49,10 @@ args = "Start Frontend"
 task = "workflow.run"
 args = "Start Backend"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Git Push"
+
 [[workflows.workflow]]
 name = "Start App"
 author = "agent"
@@ -86,6 +90,17 @@ outputType = "console"
 task = "shell.exec"
 args = "fuser -k 8080/tcp 2>/dev/null; sleep 1; EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=https://$REPLIT_DEV_DOMAIN EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=$GOOGLE_API_KEY EXPO_PUBLIC_SUPABASE_URL=$SUPABASE_URL EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY=$PAYSTACK_PUBLIC_KEY ./node_modules/.bin/expo start --port 8080"
 waitForPort = 8080
+
+[[workflows.workflow]]
+name = "Git Push"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "rm -f .git/index.lock && git config user.email 'a2blift@deploy.com' && git config user.name 'A2B Lift' && git add -A && git commit -m 'fix: auto-commit for Railway deploy' --allow-empty && git push https://$(grep -oP '(?<=https://).*' ~/.git-credentials | head -1)@github.com/phumudzo95/A2B-LIFT.git main 2>&1"
 
 [userenv]
 
