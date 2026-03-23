@@ -105,3 +105,4 @@ args = "rm -f .git/index.lock && git config user.email 'a2blift@deploy.com' && g
 
 [userenv.shared]
 JWT_SECRET = "918af73337fa8332dc0e0769b6b9babab0e1d090a26ffcef2d7029ec9b5ec1ebdebd63ab337c1f3005cb45f0c00d58f4a6bc6f80087bd2066c69a48264c4ecf1"
+SUPABASE_DB_URL = "postgresql://postgres.zzwkieiktbhptvgsqerd:A2brt89%400kk@aws-1-eu-west-1.pooler.supabase.com:5432/postgres"
