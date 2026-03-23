@@ -175,7 +175,6 @@ function makeMetroProxy(port: number) {
   return createProxyMiddleware({
     target: `http://localhost:${port}`,
     changeOrigin: true,
-    ws: true,
     on: {
       proxyReq: (proxyReq: any) => {
         // Override Origin/Host so Metro's CORS check sees a localhost origin
@@ -269,6 +268,7 @@ async function configureExpoAndLanding(app: express.Application) {
     app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.path.startsWith("/api")) return next();
       if (req.path === "/admin") return next(); // handled above
+      if (req.path.startsWith("/socket.io")) return next(); // let Socket.IO handle this
       const platform = req.header("expo-platform") || "web";
       log(`[Metro proxy] ${platform} ${req.path} → Metro:${metroPort}`);
       return (metroProxy as any)(req, res, next);
