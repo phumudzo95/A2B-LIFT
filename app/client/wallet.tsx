@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth-context";
-import { apiRequest } from "@/lib/query-client";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
 import Colors from "@/constants/colors";
 import * as WebBrowser from "expo-web-browser";
 
@@ -126,7 +126,9 @@ export default function ClientWalletScreen() {
 
   async function openPaystackInApp(authorizationUrl: string, reference: string, successMsg: string) {
     paystackRef.current = reference;
+
     if (Platform.OS === "web") {
+      // ── Web: open a popup window, poll for close, auto-verify when closed ──
       const popup = (window as any).open(
         authorizationUrl, "paystack-checkout",
         "width=500,height=700,scrollbars=yes,resizable=yes,left=200,top=80"
@@ -135,26 +137,44 @@ export default function ClientWalletScreen() {
       if (!popup) {
         Alert.alert(
           "Popup Blocked",
-          "Please allow popups for this site, complete the payment, then we will verify automatically."
+          "Please allow popups for this site, then tap 'Add Card' again to continue."
         );
-      } else {
-        const poll = setInterval(() => {
-          try {
-            if (popup.closed) {
-              clearInterval(poll);
-              if (paystackRef.current) {
-                verifyPaystackPayment(reference, successMsg, true);
-              }
-            }
-          } catch {}
-        }, 800);
+        paystackRef.current = null;
+        return;
       }
+      const poll = setInterval(() => {
+        try {
+          if (popup.closed) {
+            clearInterval(poll);
+            if (paystackRef.current) {
+              verifyPaystackPayment(reference, successMsg, true);
+            }
+          }
+        } catch {}
+      }, 800);
     } else {
-      await WebBrowser.openBrowserAsync(authorizationUrl, {
-        showTitle: false,
-        enableBarCollapsing: true,
-      } as any);
-      await verifyPaystackPayment(reference, successMsg, true);
+      // ── Mobile: open auth session that intercepts Paystack's redirect ──
+      // The redirect URL must match what the server set as the Paystack callback.
+      const apiUrl = getApiUrl().replace(/\/$/, "");
+      const redirectUrl = `${apiUrl}/api/payments/webview-callback`;
+      try {
+        const result = await WebBrowser.openAuthSessionAsync(
+          authorizationUrl,
+          redirectUrl
+        );
+        // Extract reference from the redirect URL if Paystack returned it
+        let resolvedRef = reference;
+        if ((result as any).url) {
+          try {
+            const urlRef = new URL((result as any).url).searchParams.get("reference");
+            if (urlRef) resolvedRef = urlRef;
+          } catch {}
+        }
+        // Auto-verify silently — works whether user paid or dismissed
+        await verifyPaystackPayment(resolvedRef, successMsg, true);
+      } catch {
+        await verifyPaystackPayment(reference, successMsg, true);
+      }
     }
   }
 
