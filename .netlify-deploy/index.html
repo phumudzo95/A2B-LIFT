@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>A2B LIFT — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #f5f5f0; --white: #ffffff; --black: #000000;
+  --surface: #fafaf8; --border: #e8e8e4; --border-dark: #d0d0c8;
+  --text: #0a0a0a; --muted: #888880; --muted-light: #b8b8b0;
+  --green: #1a8a4a; --green-bg: #edf7f2;
+  --red: #c0392b; --red-bg: #fdf2f0;
+  --yellow: #b8860b; --yellow-bg: #fdf8e8;
+  --blue: #1a5fa8; --blue-bg: #edf3fc;
+  --font: 'Plus Jakarta Sans', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --radius: 10px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:var(--font); min-height:100vh; display:flex; }
+
+/* SIDEBAR */
+.sidebar { width:256px; min-height:100vh; background:var(--black); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:100; }
+.logo { padding:28px 24px 24px; border-bottom:1px solid rgba(255,255,255,0.08); }
+.logo-wordmark { font-size:20px; font-weight:800; color:#fff; letter-spacing:-0.5px; }
+.logo-wordmark em { color:#fff; font-style:normal; opacity:0.5; }
+.logo-sub { font-size:10px; color:rgba(255,255,255,0.3); letter-spacing:2px; text-transform:uppercase; margin-top:5px; font-family:var(--mono); }
+.nav { flex:1; padding:16px 12px; overflow-y:auto; }
+.nav-section { font-size:9px; letter-spacing:2.5px; text-transform:uppercase; color:rgba(255,255,255,0.25); padding:16px 12px 8px; font-family:var(--mono); }
+.nav-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; cursor:pointer; transition:all 0.15s; font-size:13.5px; font-weight:500; color:rgba(255,255,255,0.5); margin-bottom:2px; }
+.nav-item:hover { background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.85); }
+.nav-item.active { background:#fff; color:#000; }
+.nav-icon { font-size:15px; opacity:0.7; width:18px; text-align:center; }
+.nav-item.active .nav-icon { opacity:1; }
+.nav-badge { margin-left:auto; background:#ef4444; color:#fff; font-size:10px; font-weight:700; padding:1px 7px; border-radius:20px; font-family:var(--mono); min-width:20px; text-align:center; }
+.sidebar-foot { padding:16px 24px; border-top:1px solid rgba(255,255,255,0.08); }
+.live-pill { display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); padding:5px 10px; border-radius:20px; font-size:11px; color:rgba(255,255,255,0.4); font-family:var(--mono); }
+.live-dot { width:6px; height:6px; background:#22c55e; border-radius:50%; animation:blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* MAIN */
+.main { margin-left:256px; flex:1; display:flex; flex-direction:column; }
+.topbar { background:var(--white); border-bottom:1px solid var(--border); padding:0 32px; height:60px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; }
+.page-heading { font-size:16px; font-weight:700; }
+.topbar-right { display:flex; align-items:center; gap:12px; }
+.search-wrap { position:relative; }
+.search-input { background:var(--bg); border:1px solid var(--border); color:var(--text); padding:7px 12px 7px 34px; border-radius:8px; font-family:var(--font); font-size:13px; width:200px; outline:none; transition:border-color 0.15s; }
+.search-input:focus { border-color:var(--black); }
+.search-input::placeholder { color:var(--muted-light); }
+.search-icon { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--muted-light); font-size:13px; }
+.btn-refresh { background:var(--black); color:#fff; border:none; padding:7px 16px; border-radius:8px; font-family:var(--font); font-size:12px; font-weight:600; cursor:pointer; transition:opacity 0.15s; letter-spacing:0.3px; }
+.btn-refresh:hover { opacity:0.8; }
+.timestamp { font-size:11px; color:var(--muted-light); font-family:var(--mono); }
+.btn-logout { background:transparent; color:var(--muted); border:1px solid var(--border); padding:6px 14px; border-radius:8px; font-family:var(--font); font-size:12px; font-weight:600; cursor:pointer; }
+.btn-logout:hover { background:var(--bg); }
+.content { padding:28px 32px; flex:1; }
+
+/* VIEWS */
+.view { display:none; animation:fadeUp 0.2s ease; }
+.view.active { display:block; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+/* STAT CARDS */
+.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+.stat-card { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px; box-shadow:var(--shadow); transition:box-shadow 0.2s; }
+.stat-card:hover { box-shadow:var(--shadow-md); }
+.stat-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.stat-label { font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
+.stat-icon { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+.si-black{background:#f0f0ee} .si-green{background:var(--green-bg)} .si-red{background:var(--red-bg)} .si-blue{background:var(--blue-bg)} .si-yellow{background:var(--yellow-bg)}
+.stat-value { font-size:30px; font-weight:800; line-height:1; letter-spacing:-1px; }
+.stat-foot { font-size:12px; color:var(--muted); margin-top:6px; }
+.stat-alert { color:var(--red); }
+
+/* SECTION */
+.sec-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.sec-title { font-size:15px; font-weight:700; }
+.filter-group { display:flex; gap:6px; flex-wrap:wrap; }
+.ftab { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s; border:1px solid var(--border); color:var(--muted); background:var(--white); font-family:var(--font); }
+.ftab:hover { border-color:var(--black); color:var(--black); }
+.ftab.active { background:var(--black); color:#fff; border-color:var(--black); }
+
+/* TABLE */
+.table-card { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+table { width:100%; border-collapse:collapse; font-size:13.5px; }
+thead { border-bottom:1px solid var(--border); }
+th { padding:11px 16px; text-align:left; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); background:var(--surface); white-space:nowrap; }
+td { padding:13px 16px; border-bottom:1px solid rgba(232,232,228,0.6); color:var(--text); vertical-align:middle; }
+tr:last-child td { border-bottom:none; }
+tbody tr:hover { background:#fafaf8; }
+
+/* BADGES */
+.badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; }
+.badge::before { content:''; width:5px; height:5px; border-radius:50%; }
+.b-pending { background:var(--yellow-bg); color:var(--yellow); } .b-pending::before { background:var(--yellow); }
+.b-approved,.b-yes,.b-online,.b-completed,.b-paid { background:var(--green-bg); color:var(--green); }
+.b-approved::before,.b-yes::before,.b-online::before,.b-completed::before,.b-paid::before { background:var(--green); }
+.b-rejected,.b-no,.b-cancelled,.b-failed { background:var(--red-bg); color:var(--red); }
+.b-rejected::before,.b-no::before,.b-cancelled::before,.b-failed::before { background:var(--red); }
+.b-offline { background:#f5f5f0; color:var(--muted); } .b-offline::before { background:var(--muted-light); }
+.b-card { background:var(--blue-bg); color:var(--blue); } .b-card::before { background:var(--blue); }
+.b-wallet { background:var(--green-bg); color:var(--green); } .b-wallet::before { background:var(--green); }
+.b-cash { background:#f5f5f0; color:var(--muted); } .b-cash::before { background:var(--muted-light); }
+.b-open { background:var(--yellow-bg); color:var(--yellow); } .b-open::before { background:var(--yellow); }
+.b-resolved { background:var(--green-bg); color:var(--green); } .b-resolved::before { background:var(--green); }
+.b-high { background:var(--red-bg); color:var(--red); } .b-high::before { background:var(--red); }
+.b-medium { background:var(--yellow-bg); color:var(--yellow); } .b-medium::before { background:var(--yellow); }
+.b-low { background:var(--green-bg); color:var(--green); } .b-low::before { background:var(--green); }
+.b-admin { background:var(--blue-bg); color:var(--blue); } .b-admin::before { background:var(--blue); }
+.b-driver { background:var(--yellow-bg); color:var(--yellow); } .b-driver::before { background:var(--yellow); }
+.b-client { background:#f5f5f0; color:var(--muted); } .b-client::before { background:var(--muted-light); }
+
+/* BUTTONS */
+.btn-sm { padding:5px 12px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s; border:1px solid; font-family:var(--font); }
+.btn-approve { background:var(--green-bg); color:var(--green); border-color:#c0e8d0; }
+.btn-approve:hover { background:#d0f0e0; }
+.btn-reject { background:var(--red-bg); color:var(--red); border-color:#f0c0b8; }
+.btn-reject:hover { background:#fce0dc; }
+.btn-detail { background:var(--bg); color:var(--text); border-color:var(--border); }
+.btn-detail:hover { background:#ececea; }
+.btn-paid { background:var(--blue-bg); color:var(--blue); border-color:#b8d0f0; }
+.action-cell { display:flex; gap:6px; flex-wrap:wrap; }
+
+/* EMPTY / LOADING */
+.empty { padding:56px 24px; text-align:center; color:var(--muted); }
+.empty-icon { font-size:36px; margin-bottom:12px; }
+.empty-text { font-size:13px; font-weight:500; }
+.empty-sub { font-size:12px; color:var(--muted-light); margin-top:4px; }
+.loading { padding:40px; text-align:center; color:var(--muted-light); font-size:13px; font-family:var(--mono); }
+
+/* MODAL */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); z-index:1000; display:none; align-items:center; justify-content:center; }
+.overlay.open { display:flex; }
+.modal { background:var(--white); border-radius:14px; width:600px; max-width:96vw; max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.15); animation:modalIn 0.25s ease; }
+@keyframes modalIn { from{opacity:0;transform:translateY(16px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+.modal-head { padding:22px 24px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.modal-title { font-size:17px; font-weight:700; }
+.modal-sub { font-size:12px; color:var(--muted); margin-top:2px; }
+.modal-x { width:30px; height:30px; border:1px solid var(--border); border-radius:7px; background:none; cursor:pointer; font-size:14px; color:var(--muted); transition:all 0.15s; }
+.modal-x:hover { background:var(--bg); color:var(--text); }
+.modal-body { padding:22px 24px; }
+.modal-foot { padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; }
+.info-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.info-row { display:flex; flex-direction:column; gap:3px; }
+.info-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); }
+.info-val { font-size:14px; font-weight:500; }
+.btn-lg { padding:9px 22px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; border:1px solid; transition:all 0.15s; font-family:var(--font); }
+.btn-black { background:var(--black); color:#fff; border-color:var(--black); } .btn-black:hover { opacity:0.8; }
+.btn-green { background:var(--green); color:#fff; border-color:var(--green); } .btn-green:hover { opacity:0.85; }
+.btn-red { background:var(--red); color:#fff; border-color:var(--red); } .btn-red:hover { opacity:0.85; }
+.btn-outline { background:transparent; color:var(--text); border-color:var(--border); } .btn-outline:hover { background:var(--bg); }
+
+/* DOCS GRID */
+.docs-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:4px; }
+.doc-card { border:1px solid var(--border); border-radius:10px; padding:14px; text-align:center; background:var(--surface); }
+.doc-label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; }
+.doc-img { width:100%; max-height:160px; object-fit:cover; border-radius:6px; border:1px solid var(--border); }
+.doc-link { display:block; margin-top:8px; font-size:12px; color:var(--blue); font-weight:600; text-decoration:none; }
+.doc-link:hover { text-decoration:underline; }
+
+/* TOAST */
+.toast { position:fixed; bottom:24px; right:24px; background:var(--black); color:#fff; border-radius:10px; padding:12px 18px; font-size:13px; font-weight:500; z-index:2000; transform:translateY(70px); opacity:0; transition:all 0.3s ease; display:flex; align-items:center; gap:8px; box-shadow:var(--shadow-md); }
+.toast.show { transform:translateY(0); opacity:1; }
+.toast.t-ok { background:var(--green); }
+.toast.t-err { background:var(--red); }
+
+/* NOTICE */
+.notice { background:var(--yellow-bg); border:1px solid #e8d080; border-radius:var(--radius); padding:14px 18px; font-size:13px; color:#7a6000; margin-bottom:20px; display:flex; gap:10px; align-items:flex-start; }
+
+/* LOGIN */
+.login-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(6px); z-index:2000; display:none; align-items:center; justify-content:center; }
+.login-overlay.show { display:flex; }
+.login-card { background:var(--white); border-radius:16px; padding:32px; width:380px; max-width:94vw; box-shadow:0 24px 64px rgba(0,0,0,0.2); }
+.login-logo { font-size:22px; font-weight:800; margin-bottom:4px; }
+.login-logo em { opacity:0.4; font-style:normal; }
+.login-sub { font-size:12px; color:var(--muted); margin-bottom:24px; }
+.field { display:grid; gap:6px; margin-bottom:14px; }
+.f-label { font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
+.f-input { background:var(--bg); border:1px solid var(--border); color:var(--text); padding:10px 12px; border-radius:10px; outline:none; font-family:var(--font); font-size:14px; transition:border-color 0.15s; }
+.f-input:focus { border-color:var(--black); }
+.login-err { color:var(--red); font-size:12px; margin-top:6px; min-height:18px; }
+.btn-login { width:100%; background:var(--black); color:#fff; border:none; padding:12px; border-radius:10px; font-family:var(--font); font-size:14px; font-weight:700; cursor:pointer; margin-top:8px; transition:opacity 0.15s; }
+.btn-login:hover { opacity:0.85; }
+
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border-dark); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-wordmark">A2B <em>LIFT</em></div>
+    <div class="logo-sub">Admin Panel</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="go('overview',this)">
+      <span class="nav-icon">▦</span> Dashboard
+    </div>
+
+    <div class="nav-section">Drivers</div>
+    <div class="nav-item" onclick="go('chauffeurs',this)">
+      <span class="nav-icon">🚗</span> Chauffeurs
+      <span class="nav-badge" id="nb-pending" style="display:none">0</span>
+    </div>
+
+    <div class="nav-section">Operations</div>
+    <div class="nav-item" onclick="go('rides',this)">
+      <span class="nav-icon">🗺</span> Rides
+    </div>
+    <div class="nav-item" onclick="go('payments',this)">
+      <span class="nav-icon">💳</span> Payments
+    </div>
+    <div class="nav-item" onclick="go('withdrawals',this)">
+      <span class="nav-icon">🏦</span> Withdrawals
+      <span class="nav-badge" id="nb-withdrawals" style="display:none">0</span>
+    </div>
+    <div class="nav-item" onclick="go('safety',this)">
+      <span class="nav-icon">⚠️</span> Safety Reports
+      <span class="nav-badge" id="nb-safety" style="display:none">0</span>
+    </div>
+
+    <div class="nav-section">Accounts</div>
+    <div class="nav-item" onclick="go('users',this)">
+      <span class="nav-icon">👤</span> All Users
+    </div>
+  </nav>
+  <div class="sidebar-foot">
+    <div class="live-pill">
+      <span class="live-dot"></span> <span id="live-status">Connecting…</span>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div class="page-heading" id="page-title">Dashboard</div>
+    <div class="topbar-right">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" placeholder="Search…" id="srch" oninput="doSearch(this.value)"/>
+      </div>
+      <span class="timestamp" id="last-updated"></span>
+      <button class="btn-refresh" onclick="loadView()">↻ Refresh</button>
+      <button class="btn-logout" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-overview">
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card"><div class="loading">Loading…</div></div>
+      </div>
+      <div class="sec-head"><div class="sec-title">Pending Chauffeur Approvals</div></div>
+      <div class="table-card" id="pending-table"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- CHAUFFEURS -->
+    <div class="view" id="view-chauffeurs">
+      <div class="sec-head">
+        <div class="sec-title">Registered Chauffeurs</div>
+        <div class="filter-group">
+          <button class="ftab active" onclick="fChauf('all',this)">All</button>
+          <button class="ftab" onclick="fChauf('online',this)">Online</button>
+          <button class="ftab" onclick="fChauf('approved',this)">Approved</button>
+          <button class="ftab" onclick="fChauf('pending',this)">Pending Approval</button>
+        </div>
+      </div>
+      <div class="table-card" id="chauf-table"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- RIDES -->
+    <div class="view" id="view-rides">
+      <div class="sec-head"><div class="sec-title">All Rides</div></div>
+      <div class="table-card" id="rides-table"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- PAYMENTS -->
+    <div class="view" id="view-payments">
+      <div id="pay-summary" class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px"></div>
+      <div class="sec-head"><div class="sec-title">Rider Payments</div></div>
+      <div class="table-card" id="pay-table"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- WITHDRAWALS -->
+    <div class="view" id="view-withdrawals">
+      <div class="sec-head">
+        <div class="sec-title">Driver Withdrawal Requests</div>
+        <div class="filter-group">
+          <button class="ftab active" onclick="fWd('all',this)">All</button>
+          <button class="ftab" onclick="fWd('pending',this)">Pending</button>
+          <button class="ftab" onclick="fWd('approved',this)">Approved</button>
+          <button class="ftab" onclick="fWd('paid',this)">Paid</button>
+        </div>
+      </div>
+      <div class="table-card" id="wd-table"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- SAFETY -->
+    <div class="view" id="view-safety">
+      <div class="sec-head">
+        <div class="sec-title">Safety Reports</div>
+        <div class="filter-group">
+          <button class="ftab active" onclick="fSafe('all',this)">All</button>
+          <button class="ftab" onclick="fSafe('open',this)">Open</button>
+          <button class="ftab" onclick="fSafe('resolved',this)">Resolved</button>
+        </div>
+      </div>
+      <div class="table-card" id="safe-table"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- USERS -->
+    <div class="view" id="view-users">
+      <div class="notice">⚠️ <span>Users with <strong>role: driver</strong> have started chauffeur registration. Users with <strong>role: client</strong> are riders.</span></div>
+      <div class="sec-head"><div class="sec-title">All Users</div></div>
+      <div class="table-card" id="users-table"><div class="loading">Loading…</div></div>
+    </div>
+
+  </div>
+</main>
+
+<!-- DETAILS MODAL -->
+<div class="overlay" id="modal-wrap">
+  <div class="modal">
+    <div class="modal-head">
+      <div><div class="modal-title" id="m-title">Details</div><div class="modal-sub" id="m-sub"></div></div>
+      <button class="modal-x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="m-body"></div>
+    <div class="modal-foot" id="m-foot"></div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="login-overlay show" id="login-overlay">
+  <div class="login-card">
+    <div class="login-logo">A2B <em>LIFT</em></div>
+    <div class="login-sub">Sign in with an admin account to continue.</div>
+    <div class="field">
+      <div class="f-label">Username</div>
+      <input class="f-input" id="l-user" placeholder="admin" autocomplete="username"/>
+    </div>
+    <div class="field">
+      <div class="f-label">Password</div>
+      <input class="f-input" id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="login-err" id="l-err"></div>
+    <button class="btn-login" onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? '' : 'https://api-production-0783.up.railway.app';
+const TOKEN_KEY = 'a2b_admin_token';
+
+function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+function saveToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+function dropToken() { localStorage.removeItem(TOKEN_KEY); }
+
+function authHeaders() {
+  const t = getToken();
+  return t ? { 'Authorization': 'Bearer ' + t } : {};
+}
+
+async function apiFetch(path, opts = {}) {
+  const headers = Object.assign({}, opts.headers || {}, authHeaders());
+  const res = await fetch(API + path, Object.assign({}, opts, { headers }));
+  if (res.status === 401 || res.status === 403) {
+    showLogin(true);
+  }
+  return res;
+}
+
+function showLogin(show) {
+  document.getElementById('login-overlay').classList.toggle('show', !!show);
+}
+
+async function doLogin() {
+  const u = document.getElementById('l-user').value.trim();
+  const p = document.getElementById('l-pass').value;
+  const errEl = document.getElementById('l-err');
+  errEl.textContent = '';
+  if (!u || !p) { errEl.textContent = 'Enter username and password.'; return; }
+  try {
+    const res = await fetch(API + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p }),
+    });
+    if (!res.ok) { errEl.textContent = 'Login failed — check credentials.'; return; }
+    const data = await res.json();
+    if (!data?.user || data.user.role !== 'admin') {
+      errEl.textContent = 'This account does not have admin access.';
+      return;
+    }
+    if (data.accessToken) saveToken(data.accessToken);
+    showLogin(false);
+    document.getElementById('live-status').textContent = 'Connected · Railway';
+    loadAll();
+    startAutoRefresh();
+  } catch(e) {
+    errEl.textContent = 'Network error — is the backend running?';
+  }
+}
+
+async function doLogout() {
+  stopAutoRefresh();
+  dropToken();
+  try { await fetch(API + '/api/auth/logout', { method: 'POST' }); } catch(e) {}
+  showLogin(true);
+}
+
+// ── NAV ──
+let curView = 'overview';
+let allChauf = [], allWd = [], allSafe = [], chaufFilter = 'all', wdFilter = 'all', safeFilter = 'all';
+const VIEW_TITLES = { overview:'Dashboard', chauffeurs:'Chauffeurs', rides:'Rides', payments:'Payments', withdrawals:'Withdrawals', safety:'Safety Reports', users:'All Users' };
+
+function go(view, el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.getElementById('page-title').textContent = VIEW_TITLES[view] || view;
+  document.getElementById('srch').value = '';
+  curView = view;
+  loadView();
+}
+
+function loadView() {
+  ({ overview:loadOverview, chauffeurs:loadChauf, rides:loadRides, payments:loadPay, withdrawals:loadWd, safety:loadSafe, users:loadUsers })[curView]?.();
+}
+
+function loadAll() {
+  loadOverview();
+  loadChauf();
+  loadRides();
+  loadPay();
+  loadWd();
+  loadSafe();
+  loadUsers();
+}
+
+// ── AUTO-REFRESH ──
+let _timer = null;
+function startAutoRefresh() { if (_timer) clearInterval(_timer); _timer = setInterval(loadAll, 30000); }
+function stopAutoRefresh() { if (_timer) { clearInterval(_timer); _timer = null; } }
+
+function tick() {
+  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+// ── OVERVIEW ──
+async function loadOverview() {
+  try {
+    const res = await apiFetch('/api/admin/stats');
+    if (!res.ok) throw new Error(res.status);
+    const s = await res.json();
+    tick();
+
+    const pending = s.pendingApprovals || 0;
+    const pendingWd = s.pendingWithdrawals || 0;
+    const openRep = s.openReports || 0;
+
+    // Update sidebar badges
+    const nbPending = document.getElementById('nb-pending');
+    nbPending.textContent = pending;
+    nbPending.style.display = pending > 0 ? '' : 'none';
+    const nbWd = document.getElementById('nb-withdrawals');
+    nbWd.textContent = pendingWd;
+    nbWd.style.display = pendingWd > 0 ? '' : 'none';
+    const nbSafe = document.getElementById('nb-safety');
+    nbSafe.textContent = openRep;
+    nbSafe.style.display = openRep > 0 ? '' : 'none';
+
+    document.getElementById('stats-row').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-top"><div class="stat-label">Total Rides</div><div class="stat-icon si-black">🗺</div></div>
+        <div class="stat-value">${s.totalRides}</div>
+        <div class="stat-foot">${s.completedRides} completed · ${s.activeRides} active</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top"><div class="stat-label">Revenue</div><div class="stat-icon si-green">💰</div></div>
+        <div class="stat-value" style="color:var(--green)">R ${s.totalRevenue}</div>
+        <div class="stat-foot">From completed rides</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top"><div class="stat-label">Chauffeurs</div><div class="stat-icon si-blue">🚗</div></div>
+        <div class="stat-value">${s.totalChauffeurs}</div>
+        <div class="stat-foot">${s.onlineChauffeurs} online now</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top"><div class="stat-label">Pending Approvals</div><div class="stat-icon si-red">⏳</div></div>
+        <div class="stat-value ${pending > 0 ? 'stat-alert' : ''}">${pending}</div>
+        <div class="stat-foot">Drivers waiting for review</div>
+      </div>
+    `;
+
+    // Pending chauffeurs table
+    const pendingList = allChauf.filter(c => !c.isApproved);
+    if (!pendingList.length) {
+      document.getElementById('pending-table').innerHTML = emptyState('✅', 'All caught up', 'No pending chauffeur approvals');
+    } else {
+      renderChauffeurTable('pending-table', pendingList, false);
+    }
+  } catch(e) {
+    document.getElementById('stats-row').innerHTML = `<div class="notice">⚠️ Failed to load stats: ${e.message}</div>`;
+  }
+}
+
+// ── CHAUFFEURS ──
+async function loadChauf() {
+  spin('chauf-table');
+  try {
+    const res = await apiFetch('/api/chauffeurs');
+    if (!res.ok) throw new Error(res.status);
+    allChauf = await res.json();
+    if (!Array.isArray(allChauf)) allChauf = [];
+    renderFilteredChauf();
+    // Also refresh pending table if on overview
+    if (curView === 'overview') loadOverview();
+  } catch(e) {
+    document.getElementById('chauf-table').innerHTML = emptyState('❌', 'Failed to load', e.message);
+  }
+}
+
+function fChauf(f, el) {
+  document.querySelectorAll('#view-chauffeurs .ftab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active'); chaufFilter = f; renderFilteredChauf();
+}
+
+function renderFilteredChauf() {
+  let list = allChauf;
+  if (chaufFilter === 'online') list = allChauf.filter(c => c.isOnline);
+  if (chaufFilter === 'approved') list = allChauf.filter(c => c.isApproved);
+  if (chaufFilter === 'pending') list = allChauf.filter(c => !c.isApproved);
+  renderChauffeurTable('chauf-table', list, true);
+}
+
+function renderChauffeurTable(tableId, data, showActions) {
+  const w = document.getElementById(tableId);
+  if (!data.length) { w.innerHTML = emptyState('🚗', 'No chauffeurs', 'Drivers who complete registration appear here'); return; }
+  w.innerHTML = `<table>
+    <thead><tr><th>Driver</th><th>Vehicle</th><th>Plate</th><th>Type</th><th>Capacity</th><th>Online</th><th>Approved</th><th>Actions</th></tr></thead>
+    <tbody>${data.map(c => `<tr>
+      <td>
+        <div style="font-weight:600">${c.userName || '—'}</div>
+        <div style="font-size:11px;color:var(--muted)">${c.userEmail || ''}</div>
+        <div style="font-size:11px;color:var(--muted)">${c.phone || c.userPhone || ''}</div>
+      </td>
+      <td>
+        <div style="font-weight:600">${[c.carMake, c.vehicleModel].filter(Boolean).join(' ') || '—'}</div>
+        <div style="font-size:11px;color:var(--muted)">${c.carColor || ''}</div>
+      </td>
+      <td><span style="font-family:var(--mono);font-size:12px;background:var(--bg);padding:3px 8px;border-radius:5px;border:1px solid var(--border)">${c.plateNumber || '—'}</span></td>
+      <td style="font-size:13px">${c.vehicleType || '—'}</td>
+      <td style="font-size:12px">👥 ${c.passengerCapacity || 4} · 🧳 ${c.luggageCapacity || 2}</td>
+      <td><span class="badge ${c.isOnline ? 'b-online' : 'b-offline'}">${c.isOnline ? 'Online' : 'Offline'}</span></td>
+      <td><span class="badge ${c.isApproved ? 'b-approved' : 'b-pending'}">${c.isApproved ? 'Yes' : 'No'}</span></td>
+      <td><div class="action-cell">
+        ${!c.isApproved ? `<button class="btn-sm btn-approve" onclick="approveChauf('${c.id}')">✓ Approve</button>` : ''}
+        <button class="btn-sm btn-detail" onclick="chaufDetail('${c.id}')">Details</button>
+        <button class="btn-sm btn-detail" onclick="viewDocs('${c.id}','${(c.userName||'Driver').replace(/'/g,"\\'")}')">📄 Docs</button>
+      </div></td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+async function approveChauf(id) {
+  try {
+    const res = await apiFetch('/api/chauffeurs/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isApproved: true }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast('✅ Chauffeur approved!', 'ok');
+    loadChauf();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+function chaufDetail(id) {
+  const c = allChauf.find(x => x.id === id); if (!c) return;
+  document.getElementById('m-title').textContent = (c.userName || 'Chauffeur');
+  document.getElementById('m-sub').textContent = [c.carMake, c.vehicleModel].filter(Boolean).join(' ') + (c.plateNumber ? ' · ' + c.plateNumber : '');
+  document.getElementById('m-body').innerHTML = `<div class="info-grid">
+    <div class="info-row"><div class="info-label">Name</div><div class="info-val">${c.userName || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Email</div><div class="info-val">${c.userEmail || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Phone</div><div class="info-val">${c.phone || c.userPhone || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Vehicle</div><div class="info-val">${[c.carMake, c.vehicleModel].filter(Boolean).join(' ') || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Plate</div><div class="info-val"><span style="font-family:var(--mono)">${c.plateNumber || '—'}</span></div></div>
+    <div class="info-row"><div class="info-label">Color</div><div class="info-val">${c.carColor || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Type</div><div class="info-val">${c.vehicleType || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Passengers</div><div class="info-val">${c.passengerCapacity || 4}</div></div>
+    <div class="info-row"><div class="info-label">Luggage</div><div class="info-val">${c.luggageCapacity || 2}</div></div>
+    <div class="info-row"><div class="info-label">Online</div><div class="info-val"><span class="badge ${c.isOnline ? 'b-online' : 'b-offline'}">${c.isOnline ? 'Yes' : 'No'}</span></div></div>
+    <div class="info-row"><div class="info-label">Approved</div><div class="info-val"><span class="badge ${c.isApproved ? 'b-approved' : 'b-pending'}">${c.isApproved ? 'Yes' : 'No'}</span></div></div>
+    <div class="info-row"><div class="info-label">Registered</div><div class="info-val">${fmt(c.createdAt)}</div></div>
+  </div>`;
+  document.getElementById('m-foot').innerHTML = `
+    <button class="btn-lg btn-outline" onclick="closeModal()">Close</button>
+    <button class="btn-lg btn-outline" onclick="closeModal();viewDocs('${c.id}','${(c.userName||'Driver').replace(/'/g,"\\'")}')">📄 View Docs</button>
+    ${!c.isApproved ? `<button class="btn-lg btn-green" onclick="approveChauf('${c.id}');closeModal()">✓ Approve</button>` : ''}
+  `;
+  openModal();
+}
+
+async function viewDocs(chauffeurId, name) {
+  document.getElementById('m-title').textContent = name + ' — Documents';
+  document.getElementById('m-sub').textContent = 'Uploaded verification documents';
+  document.getElementById('m-body').innerHTML = '<div class="loading">Loading documents…</div>';
+  document.getElementById('m-foot').innerHTML = `<button class="btn-lg btn-black" onclick="closeModal()">Close</button>`;
+  openModal();
+  try {
+    const res = await apiFetch('/api/chauffeurs/' + chauffeurId + '/documents');
+    const docs = await res.json();
+    const DOC_LABELS = {
+      pdrp_certificate:'PDRP Certificate', drivers_license:"Driver's License",
+      driver_evaluation:'Driver Evaluation', criminal_background_check:'Background Check',
+      double_license_disk:'License Disk', passenger_liability_insurance:'Liability Insurance',
+      dekra_report:'Dekra Report', driver_photo:'Driver Photo',
+      id_document:'ID / Passport', proof_of_address:'Proof of Address',
+      vehicle_registration:'Vehicle Registration', prDP:'PrDP Certificate',
+    };
+    if (!Array.isArray(docs) || !docs.length) {
+      document.getElementById('m-body').innerHTML = emptyState('📂', 'No documents uploaded', 'This driver has not uploaded any documents yet.');
+      return;
+    }
+    let html = '<div class="docs-grid">';
+    for (const d of docs) {
+      const label = DOC_LABELS[d.documentType] || (d.documentType || '').replace(/_/g,' ').replace(/\b\w/g, l => l.toUpperCase());
+      const isImg = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(d.url || '') || (d.url || '').includes('supabase');
+      html += `<div class="doc-card">
+        <div class="doc-label">${label}</div>
+        ${isImg ? `<img class="doc-img" src="${d.url}" onerror="this.style.display='none'" />` : `<div style="font-size:36px;margin:12px 0">📄</div>`}
+        <a class="doc-link" href="${d.url}" target="_blank">View / Download ↗</a>
+      </div>`;
+    }
+    html += '</div>';
+    document.getElementById('m-body').innerHTML = html;
+  } catch(e) {
+    document.getElementById('m-body').innerHTML = `<div class="notice">❌ Failed to load documents: ${e.message}</div>`;
+  }
+}
+
+// ── RIDES ──
+async function loadRides() {
+  spin('rides-table');
+  try {
+    const res = await apiFetch('/api/rides');
+    if (!res.ok) throw new Error(res.status);
+    const rides = await res.json();
+    if (!Array.isArray(rides) || !rides.length) {
+      document.getElementById('rides-table').innerHTML = emptyState('🗺', 'No rides yet', 'Rides appear here once users book them');
+      return;
+    }
+    document.getElementById('rides-table').innerHTML = `<table>
+      <thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th></tr></thead>
+      <tbody>${rides.map(r => `<tr>
+        <td style="max-width:180px;font-size:13px">${r.pickupAddress || 'N/A'}</td>
+        <td style="max-width:180px;font-size:13px">${r.dropoffAddress || 'N/A'}</td>
+        <td><span class="badge ${r.status === 'trip_completed' ? 'b-completed' : r.status === 'cancelled' ? 'b-cancelled' : 'b-pending'}">${r.status || '—'}</span></td>
+        <td style="font-weight:700;color:var(--green)">R ${r.price || '—'}</td>
+        <td><span class="badge ${r.paymentStatus === 'paid' ? 'b-paid' : 'b-pending'}">${r.paymentStatus || 'unpaid'}</span></td>
+        <td style="font-size:12px">${fmt(r.createdAt)}</td>
+      </tr>`).join('')}
+      </tbody></table>`;
+  } catch(e) {
+    document.getElementById('rides-table').innerHTML = emptyState('❌', 'Failed to load rides', e.message);
+  }
+}
+
+// ── PAYMENTS ──
+async function loadPay() {
+  spin('pay-table');
+  try {
+    const res = await apiFetch('/api/admin/payments');
+    if (!res.ok) throw new Error('API returned ' + res.status);
+    const payments = await res.json();
+    if (!Array.isArray(payments)) throw new Error('Invalid response');
+
+    const paid = payments.filter(p => p.status === 'paid');
+    const total = paid.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+    const cardTotal = paid.filter(p => p.method === 'card').reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+    const walletTotal = paid.filter(p => p.method === 'wallet').reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+
+    document.getElementById('pay-summary').innerHTML = `
+      <div class="stat-card"><div class="stat-top"><div class="stat-label">Total Collected</div><div class="stat-icon si-green">💰</div></div><div class="stat-value" style="color:var(--green)">R ${total.toFixed(2)}</div><div class="stat-foot">${paid.length} successful payments</div></div>
+      <div class="stat-card"><div class="stat-top"><div class="stat-label">Via Card</div><div class="stat-icon si-blue">💳</div></div><div class="stat-value" style="font-size:22px">R ${cardTotal.toFixed(2)}</div><div class="stat-foot">Paystack card payments</div></div>
+      <div class="stat-card"><div class="stat-top"><div class="stat-label">Via Wallet</div><div class="stat-icon si-black">👛</div></div><div class="stat-value" style="font-size:22px">R ${walletTotal.toFixed(2)}</div><div class="stat-foot">Wallet balance payments</div></div>
+    `;
+
+    if (!payments.length) {
+      document.getElementById('pay-table').innerHTML = emptyState('💳', 'No payments yet', 'Payment records appear here');
+      return;
+    }
+    document.getElementById('pay-table').innerHTML = `<table>
+      <thead><tr><th>Rider</th><th>Route</th><th>Method</th><th>Amount</th><th>Status</th><th>Reference</th><th>Date</th></tr></thead>
+      <tbody>${payments.map(p => `<tr>
+        <td><div style="font-weight:600">${p.riderName || '—'}</div><div style="font-size:11px;color:var(--muted)">${p.riderEmail || ''}</div></td>
+        <td style="font-size:12px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.rideRoute||'').replace(/"/g,'&quot;')}">${p.rideRoute || '—'}</td>
+        <td><span class="badge b-${p.method || 'cash'}">${(p.method || 'cash').toUpperCase()}</span></td>
+        <td style="font-weight:700;color:var(--green)">R ${Number(p.amount || 0).toFixed(2)}</td>
+        <td><span class="badge b-${p.status === 'paid' ? 'paid' : p.status === 'failed' ? 'failed' : 'pending'}">${p.status || '—'}</span></td>
+        <td style="font-size:11px;color:var(--muted);font-family:var(--mono)">${p.paystackReference ? p.paystackReference.slice(0,18)+'…' : '—'}</td>
+        <td style="font-size:12px">${fmtFull(p.paidAt || p.createdAt)}</td>
+      </tr>`).join('')}
+      </tbody></table>`;
+  } catch(e) {
+    document.getElementById('pay-table').innerHTML = emptyState('❌', 'Failed to load payments', e.message);
+  }
+}
+
+// ── WITHDRAWALS ──
+async function loadWd() {
+  spin('wd-table');
+  try {
+    const res = await apiFetch('/api/withdrawals');
+    if (!res.ok) throw new Error(res.status);
+    allWd = await res.json();
+    if (!Array.isArray(allWd)) allWd = [];
+    renderFilteredWd();
+  } catch(e) {
+    document.getElementById('wd-table').innerHTML = emptyState('❌', 'Failed to load withdrawals', e.message);
+  }
+}
+
+function fWd(f, el) {
+  document.querySelectorAll('#view-withdrawals .ftab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active'); wdFilter = f; renderFilteredWd();
+}
+
+function renderFilteredWd() {
+  const list = wdFilter === 'all' ? allWd : allWd.filter(w => w.status === wdFilter);
+  const w = document.getElementById('wd-table');
+  if (!list.length) { w.innerHTML = emptyState('🏦', 'No withdrawal requests', 'Driver withdrawal requests appear here'); return; }
+  w.innerHTML = `<table>
+    <thead><tr><th>Driver</th><th>Bank</th><th>Account</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+    <tbody>${list.map(wd => `<tr>
+      <td style="font-size:13px;font-weight:600">${wd.accountHolder || ('ID …' + (wd.chauffeurId||'').slice(-6))}</td>
+      <td>${wd.bankName || '—'}</td>
+      <td style="font-family:var(--mono);font-size:12px">${wd.accountNumber ? '•••• ' + String(wd.accountNumber).slice(-4) : '—'}</td>
+      <td style="font-weight:700;color:var(--green)">R ${Number(wd.amount||0).toFixed(2)}</td>
+      <td><span class="badge b-${wd.status}">${wd.status}</span></td>
+      <td style="font-size:12px">${fmt(wd.processedAt || wd.createdAt)}</td>
+      <td><div class="action-cell">
+        ${wd.status === 'pending' ? `<button class="btn-sm btn-approve" onclick="actWd('${wd.id}','approved')">✓ Approve</button><button class="btn-sm btn-reject" onclick="actWd('${wd.id}','rejected')">✕ Reject</button>` : ''}
+        ${wd.status === 'approved' ? `<button class="btn-sm btn-paid" onclick="actWd('${wd.id}','paid')">Mark Paid</button>` : ''}
+        ${wd.status === 'paid' || wd.status === 'rejected' ? '<span style="font-size:12px;color:var(--muted-light)">Done</span>' : ''}
+      </div></td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+async function actWd(id, status) {
+  try {
+    const res = await apiFetch('/api/withdrawals/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast(status === 'approved' ? '✅ Withdrawal approved' : status === 'paid' ? '✅ Marked as paid' : '🚫 Withdrawal rejected', status === 'rejected' ? 'err' : 'ok');
+    loadWd();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+// ── SAFETY ──
+async function loadSafe() {
+  spin('safe-table');
+  try {
+    const res = await apiFetch('/api/safety-reports');
+    if (!res.ok) throw new Error(res.status);
+    allSafe = await res.json();
+    if (!Array.isArray(allSafe)) allSafe = [];
+    renderFilteredSafe();
+  } catch(e) {
+    document.getElementById('safe-table').innerHTML = emptyState('❌', 'Failed to load safety reports', e.message);
+  }
+}
+
+function fSafe(f, el) {
+  document.querySelectorAll('#view-safety .ftab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active'); safeFilter = f; renderFilteredSafe();
+}
+
+function renderFilteredSafe() {
+  const list = safeFilter === 'all' ? allSafe : allSafe.filter(s => s.status === safeFilter);
+  const w = document.getElementById('safe-table');
+  if (!list.length) { w.innerHTML = emptyState('✅', 'All clear', 'No safety reports to show'); return; }
+  w.innerHTML = `<table>
+    <thead><tr><th>Type</th><th>Priority</th><th>Description</th><th>AI Response</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+    <tbody>${list.map(s => `<tr>
+      <td style="font-weight:600;text-transform:capitalize">${s.type || '—'}</td>
+      <td><span class="badge b-${s.priority || 'medium'}">${(s.priority || 'medium').toUpperCase()}</span></td>
+      <td style="font-size:12px;color:var(--muted);max-width:160px">${(s.description||'').slice(0,60)}${(s.description||'').length>60?'…':''}</td>
+      <td style="font-size:12px;color:var(--muted);max-width:160px">${(s.aiResponse||'—').slice(0,60)}${(s.aiResponse||'').length>60?'…':''}</td>
+      <td><span class="badge b-${s.status}">${s.status}</span></td>
+      <td style="font-size:12px">${fmt(s.createdAt)}</td>
+      <td>${s.status === 'open' ? `<button class="btn-sm btn-approve" onclick="resolveReport('${s.id}')">Mark Resolved</button>` : '<span style="font-size:12px;color:var(--muted-light)">Done</span>'}</td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+async function resolveReport(id) {
+  try {
+    const res = await apiFetch('/api/safety-reports/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'resolved' }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast('✅ Report resolved', 'ok');
+    loadSafe();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+// ── USERS ──
+async function loadUsers() {
+  spin('users-table');
+  try {
+    const res = await apiFetch('/api/users');
+    if (!res.ok) throw new Error(res.status);
+    const users = await res.json();
+    if (!Array.isArray(users) || !users.length) {
+      document.getElementById('users-table').innerHTML = emptyState('👤', 'No users yet', 'Registered user accounts will appear here');
+      return;
+    }
+    document.getElementById('users-table').innerHTML = `<table>
+      <thead><tr><th>Name</th><th>Username</th><th>Phone</th><th>Role</th><th>Rating</th><th>Wallet Balance</th><th>Joined</th></tr></thead>
+      <tbody>${users.map(u => `<tr>
+        <td style="font-weight:600">${u.name || '—'}</td>
+        <td style="color:var(--muted);font-size:13px">@${u.username || '—'}</td>
+        <td>${u.phone || '—'}</td>
+        <td><span class="badge b-${u.role || 'client'}">${u.role || 'client'}</span></td>
+        <td>⭐ ${Number(u.rating || 5).toFixed(1)}</td>
+        <td style="font-weight:600;color:var(--green)">R ${Number(u.walletBalance || 0).toFixed(2)}</td>
+        <td style="font-size:12px">${fmt(u.createdAt)}</td>
+      </tr>`).join('')}
+      </tbody></table>`;
+  } catch(e) {
+    document.getElementById('users-table').innerHTML = emptyState('❌', 'Failed to load users', e.message);
+  }
+}
+
+// ── SEARCH ──
+function doSearch(q) {
+  if (curView === 'chauffeurs') {
+    const f = allChauf.filter(c => `${c.userName} ${c.carMake} ${c.vehicleModel} ${c.plateNumber} ${c.carColor}`.toLowerCase().includes(q.toLowerCase()));
+    renderChauffeurTable('chauf-table', f, true);
+  }
+}
+
+// ── UTILS ──
+function fmt(d) { return d ? new Date(d).toLocaleDateString('en-ZA', { day:'2-digit', month:'short', year:'numeric' }) : '—'; }
+function fmtFull(d) { return d ? new Date(d).toLocaleString('en-ZA') : '—'; }
+function spin(id) { const el = document.getElementById(id); if (el) el.innerHTML = '<div class="loading">Loading…</div>'; }
+function emptyState(icon, title, sub) { return `<div class="empty"><div class="empty-icon">${icon}</div><div class="empty-text">${title}</div><div class="empty-sub">${sub}</div></div>`; }
+function openModal() { document.getElementById('modal-wrap').classList.add('open'); }
+function closeModal() { document.getElementById('modal-wrap').classList.remove('open'); }
+document.getElementById('modal-wrap').addEventListener('click', e => { if (e.target === document.getElementById('modal-wrap')) closeModal(); });
+
+function toast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast t-${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ── BOOT ──
+if (getToken()) {
+  showLogin(false);
+  document.getElementById('live-status').textContent = 'Connected · Railway';
+  loadAll();
+  startAutoRefresh();
+} else {
+  document.getElementById('live-status').textContent = 'Not signed in';
+}
+</script>
+</body>
+</html>

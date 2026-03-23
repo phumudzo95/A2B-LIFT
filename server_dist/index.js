@@ -8,9 +8,9 @@ var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
+var __export = (target, all3) => {
+  for (var name in all3)
+    __defProp(target, name, { get: all3[name], enumerable: true });
 };
 var __copyProps = (to, from, except2, desc2) => {
   if (from && typeof from === "object" || typeof from === "function") {
@@ -103,7 +103,7 @@ var require_main = __commonJS({
     var fs2 = require("fs");
     var path2 = require("path");
     var os = require("os");
-    var crypto3 = require("crypto");
+    var crypto4 = require("crypto");
     var packageJson = require_package();
     var version2 = packageJson.version;
     var TIPS = [
@@ -354,7 +354,7 @@ var require_main = __commonJS({
       const authTag = ciphertext.subarray(-16);
       ciphertext = ciphertext.subarray(12, -16);
       try {
-        const aesgcm = crypto3.createDecipheriv("aes-256-gcm", key, nonce);
+        const aesgcm = crypto4.createDecipheriv("aes-256-gcm", key, nonce);
         aesgcm.setAuthTag(authTag);
         return `${aesgcm.update(ciphertext)}${aesgcm.final()}`;
       } catch (error) {
@@ -621,12 +621,12 @@ var require_common = __commonJS({
           if (!debug.enabled) {
             return;
           }
-          const self = debug;
+          const self2 = debug;
           const curr = Number(/* @__PURE__ */ new Date());
           const ms = curr - (prevTime || curr);
-          self.diff = ms;
-          self.prev = prevTime;
-          self.curr = curr;
+          self2.diff = ms;
+          self2.prev = prevTime;
+          self2.curr = curr;
           prevTime = curr;
           args[0] = createDebug.coerce(args[0]);
           if (typeof args[0] !== "string") {
@@ -641,20 +641,20 @@ var require_common = __commonJS({
             const formatter = createDebug.formatters[format];
             if (typeof formatter === "function") {
               const val = args[index];
-              match = formatter.call(self, val);
+              match = formatter.call(self2, val);
               args.splice(index, 1);
               index--;
             }
             return match;
           });
-          createDebug.formatArgs.call(self, args);
-          const logFn = self.log || createDebug.log;
-          logFn.apply(self, args);
+          createDebug.formatArgs.call(self2, args);
+          const logFn = self2.log || createDebug.log;
+          logFn.apply(self2, args);
         }
         debug.namespace = namespace;
         debug.useColors = createDebug.useColors();
         debug.color = createDebug.selectColor(namespace);
-        debug.extend = extend;
+        debug.extend = extend2;
         debug.destroy = createDebug.destroy;
         Object.defineProperty(debug, "enabled", {
           enumerable: true,
@@ -678,7 +678,7 @@ var require_common = __commonJS({
         }
         return debug;
       }
-      function extend(namespace, delimiter) {
+      function extend2(namespace, delimiter) {
         const newDebug = createDebug(this.namespace + (typeof delimiter === "undefined" ? ":" : delimiter) + namespace);
         newDebug.log = this.log;
         return newDebug;
@@ -1035,8 +1035,8 @@ var require_supports_color = __commonJS({
       }
       return min;
     }
-    function getSupportLevel(stream) {
-      const level = supportsColor(stream, stream && stream.isTTY);
+    function getSupportLevel(stream4) {
+      const level = supportsColor(stream4, stream4 && stream4.isTTY);
       return translateLevel(level);
     }
     module2.exports = {
@@ -1051,14 +1051,14 @@ var require_supports_color = __commonJS({
 var require_node = __commonJS({
   "node_modules/debug/src/node.js"(exports2, module2) {
     var tty = require("tty");
-    var util2 = require("util");
+    var util4 = require("util");
     exports2.init = init;
     exports2.log = log2;
     exports2.formatArgs = formatArgs;
     exports2.save = save;
     exports2.load = load;
     exports2.useColors = useColors;
-    exports2.destroy = util2.deprecate(
+    exports2.destroy = util4.deprecate(
       () => {
       },
       "Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`."
@@ -1189,7 +1189,7 @@ var require_node = __commonJS({
       return (/* @__PURE__ */ new Date()).toISOString() + " ";
     }
     function log2(...args) {
-      return process.stderr.write(util2.formatWithOptions(exports2.inspectOpts, ...args) + "\n");
+      return process.stderr.write(util4.formatWithOptions(exports2.inspectOpts, ...args) + "\n");
     }
     function save(namespaces) {
       if (namespaces) {
@@ -1212,11 +1212,11 @@ var require_node = __commonJS({
     var { formatters } = module2.exports;
     formatters.o = function(v) {
       this.inspectOpts.colors = this.useColors;
-      return util2.inspect(v, this.inspectOpts).split("\n").map((str) => str.trim()).join(" ");
+      return util4.inspect(v, this.inspectOpts).split("\n").map((str) => str.trim()).join(" ");
     };
     formatters.O = function(v) {
       this.inspectOpts.colors = this.useColors;
-      return util2.inspect(v, this.inspectOpts);
+      return util4.inspect(v, this.inspectOpts);
     };
   }
 });
@@ -1704,7 +1704,7 @@ var require_statuses = __commonJS({
 var require_inherits_browser = __commonJS({
   "node_modules/inherits/inherits_browser.js"(exports2, module2) {
     if (typeof Object.create === "function") {
-      module2.exports = function inherits(ctor, superCtor) {
+      module2.exports = function inherits2(ctor, superCtor) {
         if (superCtor) {
           ctor.super_ = superCtor;
           ctor.prototype = Object.create(superCtor.prototype, {
@@ -1718,7 +1718,7 @@ var require_inherits_browser = __commonJS({
         }
       };
     } else {
-      module2.exports = function inherits(ctor, superCtor) {
+      module2.exports = function inherits2(ctor, superCtor) {
         if (superCtor) {
           ctor.super_ = superCtor;
           var TempCtor = function() {
@@ -1736,13 +1736,13 @@ var require_inherits_browser = __commonJS({
 var require_inherits = __commonJS({
   "node_modules/inherits/inherits.js"(exports2, module2) {
     try {
-      util2 = require("util");
-      if (typeof util2.inherits !== "function") throw "";
-      module2.exports = util2.inherits;
+      util4 = require("util");
+      if (typeof util4.inherits !== "function") throw "";
+      module2.exports = util4.inherits;
     } catch (e) {
       module2.exports = require_inherits_browser();
     }
-    var util2;
+    var util4;
   }
 });
 
@@ -1766,7 +1766,7 @@ var require_http_errors = __commonJS({
     var deprecate = require_depd()("http-errors");
     var setPrototypeOf = require_setprototypeof();
     var statuses = require_statuses();
-    var inherits = require_inherits();
+    var inherits2 = require_inherits();
     var toIdentifier = require_toidentifier();
     module2.exports = createError;
     module2.exports.HttpError = createHttpErrorConstructor();
@@ -1822,7 +1822,7 @@ var require_http_errors = __commonJS({
       function HttpError() {
         throw new TypeError("cannot construct abstract class");
       }
-      inherits(HttpError, Error);
+      inherits2(HttpError, Error);
       return HttpError;
     }
     function createClientErrorConstructor(HttpError, name, code) {
@@ -1846,7 +1846,7 @@ var require_http_errors = __commonJS({
         });
         return err;
       }
-      inherits(ClientError, HttpError);
+      inherits2(ClientError, HttpError);
       nameFunc(ClientError, className);
       ClientError.prototype.status = code;
       ClientError.prototype.statusCode = code;
@@ -1885,7 +1885,7 @@ var require_http_errors = __commonJS({
         });
         return err;
       }
-      inherits(ServerError, HttpError);
+      inherits2(ServerError, HttpError);
       nameFunc(ServerError, className);
       ServerError.prototype.status = code;
       ServerError.prototype.statusCode = code;
@@ -5672,7 +5672,7 @@ var require_lib = __commonJS({
     module2.exports.encodings = null;
     module2.exports.defaultCharUnicode = "\uFFFD";
     module2.exports.defaultCharSingleByte = "?";
-    module2.exports.encode = function encode(str, encoding, options) {
+    module2.exports.encode = function encode3(str, encoding, options) {
       str = "" + (str || "");
       var encoder = module2.exports.getEncoder(encoding, options);
       var res = encoder.write(str);
@@ -5799,8 +5799,8 @@ var require_unpipe = __commonJS({
   "node_modules/unpipe/index.js"(exports2, module2) {
     "use strict";
     module2.exports = unpipe;
-    function hasPipeDataListeners(stream) {
-      var listeners = stream.listeners("data");
+    function hasPipeDataListeners(stream4) {
+      var listeners = stream4.listeners("data");
       for (var i = 0; i < listeners.length; i++) {
         if (listeners[i].name === "ondata") {
           return true;
@@ -5808,25 +5808,25 @@ var require_unpipe = __commonJS({
       }
       return false;
     }
-    function unpipe(stream) {
-      if (!stream) {
+    function unpipe(stream4) {
+      if (!stream4) {
         throw new TypeError("argument stream is required");
       }
-      if (typeof stream.unpipe === "function") {
-        stream.unpipe();
+      if (typeof stream4.unpipe === "function") {
+        stream4.unpipe();
         return;
       }
-      if (!hasPipeDataListeners(stream)) {
+      if (!hasPipeDataListeners(stream4)) {
         return;
       }
       var listener;
-      var listeners = stream.listeners("close");
+      var listeners = stream4.listeners("close");
       for (var i = 0; i < listeners.length; i++) {
         listener = listeners[i];
         if (listener.name !== "cleanup" && listener.name !== "onclose") {
           continue;
         }
-        listener.call(stream);
+        listener.call(stream4);
       }
     }
   }
@@ -5855,12 +5855,12 @@ var require_raw_body = __commonJS({
         });
       }
     }
-    function getRawBody(stream, options, callback) {
+    function getRawBody(stream4, options, callback) {
       var done = callback;
       var opts = options || {};
-      if (stream === void 0) {
+      if (stream4 === void 0) {
         throw new TypeError("argument stream is required");
-      } else if (typeof stream !== "object" || stream === null || typeof stream.on !== "function") {
+      } else if (typeof stream4 !== "object" || stream4 === null || typeof stream4.on !== "function") {
         throw new TypeError("argument stream must be a stream");
       }
       if (options === true || typeof options === "string") {
@@ -5882,22 +5882,22 @@ var require_raw_body = __commonJS({
       var limit = bytes.parse(opts.limit);
       var length = opts.length != null && !isNaN(opts.length) ? parseInt(opts.length, 10) : null;
       if (done) {
-        return readStream(stream, encoding, length, limit, wrap(done));
+        return readStream2(stream4, encoding, length, limit, wrap(done));
       }
       return new Promise(function executor(resolve2, reject) {
-        readStream(stream, encoding, length, limit, function onRead(err, buf) {
+        readStream2(stream4, encoding, length, limit, function onRead(err, buf) {
           if (err) return reject(err);
           resolve2(buf);
         });
       });
     }
-    function halt(stream) {
-      unpipe(stream);
-      if (typeof stream.pause === "function") {
-        stream.pause();
+    function halt(stream4) {
+      unpipe(stream4);
+      if (typeof stream4.pause === "function") {
+        stream4.pause();
       }
     }
-    function readStream(stream, encoding, length, limit, callback) {
+    function readStream2(stream4, encoding, length, limit, callback) {
       var complete = false;
       var sync = true;
       if (limit !== null && length !== null && length > limit) {
@@ -5908,13 +5908,13 @@ var require_raw_body = __commonJS({
           type: "entity.too.large"
         }));
       }
-      var state = stream._readableState;
-      if (stream._decoder || state && (state.encoding || state.decoder)) {
+      var state = stream4._readableState;
+      if (stream4._decoder || state && (state.encoding || state.decoder)) {
         return done(createError(500, "stream encoding should not be set", {
           type: "stream.encoding.set"
         }));
       }
-      if (typeof stream.readable !== "undefined" && !stream.readable) {
+      if (typeof stream4.readable !== "undefined" && !stream4.readable) {
         return done(createError(500, "stream is not readable", {
           type: "stream.not.readable"
         }));
@@ -5927,11 +5927,11 @@ var require_raw_body = __commonJS({
         return done(err);
       }
       var buffer = decoder ? "" : [];
-      stream.on("aborted", onAborted);
-      stream.on("close", cleanup);
-      stream.on("data", onData);
-      stream.on("end", onEnd);
-      stream.on("error", onEnd);
+      stream4.on("aborted", onAborted);
+      stream4.on("close", cleanup);
+      stream4.on("data", onData);
+      stream4.on("end", onEnd);
+      stream4.on("error", onEnd);
       sync = false;
       function done() {
         var args = new Array(arguments.length);
@@ -5947,7 +5947,7 @@ var require_raw_body = __commonJS({
         function invokeCallback() {
           cleanup();
           if (args[0]) {
-            halt(stream);
+            halt(stream4);
           }
           callback.apply(null, args);
         }
@@ -5994,11 +5994,11 @@ var require_raw_body = __commonJS({
       }
       function cleanup() {
         buffer = null;
-        stream.removeListener("aborted", onAborted);
-        stream.removeListener("data", onData);
-        stream.removeListener("end", onEnd);
-        stream.removeListener("error", onEnd);
-        stream.removeListener("close", cleanup);
+        stream4.removeListener("aborted", onAborted);
+        stream4.removeListener("data", onData);
+        stream4.removeListener("end", onEnd);
+        stream4.removeListener("error", onEnd);
+        stream4.removeListener("close", cleanup);
       }
     }
     function tryRequireAsyncHooks() {
@@ -15799,7 +15799,7 @@ var require_media_typer = __commonJS({
     var TYPE_REGEXP = /^ *([A-Za-z0-9][A-Za-z0-9!#$&^_-]{0,126})\/([A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,126}) *$/;
     exports2.format = format;
     exports2.parse = parse;
-    exports2.test = test;
+    exports2.test = test2;
     function format(obj) {
       if (!obj || typeof obj !== "object") {
         throw new TypeError("argument obj is required");
@@ -15822,7 +15822,7 @@ var require_media_typer = __commonJS({
       }
       return string;
     }
-    function test(string) {
+    function test2(string) {
       if (!string) {
         throw new TypeError("argument string is required");
       }
@@ -16013,7 +16013,7 @@ var require_read = __commonJS({
     var getBody = require_raw_body();
     var iconv = require_lib();
     var onFinished = require_on_finished();
-    var zlib = require("node:zlib");
+    var zlib2 = require("node:zlib");
     var hasBody = require_type_is().hasBody;
     var { getCharset } = require_utils();
     module2.exports = read;
@@ -16051,12 +16051,12 @@ var require_read = __commonJS({
       }
       var length;
       var opts = options;
-      var stream;
+      var stream4;
       var verify = opts.verify;
       try {
-        stream = contentstream(req, debug, opts.inflate);
-        length = stream.length;
-        stream.length = void 0;
+        stream4 = contentstream(req, debug, opts.inflate);
+        length = stream4.length;
+        stream4.length = void 0;
       } catch (err) {
         return next(err);
       }
@@ -16069,7 +16069,7 @@ var require_read = __commonJS({
         }));
       }
       debug("read body");
-      getBody(stream, opts, function(error, body) {
+      getBody(stream4, opts, function(error, body) {
         if (error) {
           var _error;
           if (error.type === "encoding.unsupported") {
@@ -16080,9 +16080,9 @@ var require_read = __commonJS({
           } else {
             _error = createError(400, error);
           }
-          if (stream !== req) {
+          if (stream4 !== req) {
             req.unpipe();
-            stream.destroy();
+            stream4.destroy();
           }
           dump(req, function onfinished() {
             next(createError(400, _error));
@@ -16130,21 +16130,21 @@ var require_read = __commonJS({
         req.length = length;
         return req;
       }
-      var stream = createDecompressionStream(encoding, debug);
-      req.pipe(stream);
-      return stream;
+      var stream4 = createDecompressionStream(encoding, debug);
+      req.pipe(stream4);
+      return stream4;
     }
     function createDecompressionStream(encoding, debug) {
       switch (encoding) {
         case "deflate":
           debug("inflate body");
-          return zlib.createInflate();
+          return zlib2.createInflate();
         case "gzip":
           debug("gunzip body");
-          return zlib.createGunzip();
+          return zlib2.createGunzip();
         case "br":
           debug("brotli decompress body");
-          return zlib.createBrotliDecompress();
+          return zlib2.createBrotliDecompress();
         default:
           throw createError(415, 'unsupported content encoding "' + encoding + '"', {
             encoding,
@@ -16333,7 +16333,7 @@ var require_object_inspect = __commonJS({
     var gOPS = Object.getOwnPropertySymbols;
     var symToString = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? Symbol.prototype.toString : null;
     var hasShammedSymbols = typeof Symbol === "function" && typeof Symbol.iterator === "object";
-    var toStringTag = typeof Symbol === "function" && Symbol.toStringTag && (typeof Symbol.toStringTag === hasShammedSymbols ? "object" : "symbol") ? Symbol.toStringTag : null;
+    var toStringTag2 = typeof Symbol === "function" && Symbol.toStringTag && (typeof Symbol.toStringTag === hasShammedSymbols ? "object" : "symbol") ? Symbol.toStringTag : null;
     var isEnumerable = Object.prototype.propertyIsEnumerable;
     var gPO = (typeof Reflect === "function" ? Reflect.getPrototypeOf : Object.getPrototypeOf) || ([].__proto__ === Array.prototype ? function(O) {
       return O.__proto__;
@@ -16413,7 +16413,7 @@ var require_object_inspect = __commonJS({
         depth = 0;
       }
       if (depth >= maxDepth && maxDepth > 0 && typeof obj === "object") {
-        return isArray(obj) ? "[Array]" : "[Object]";
+        return isArray2(obj) ? "[Array]" : "[Object]";
       }
       var indent = getIndent(opts, depth);
       if (typeof seen === "undefined") {
@@ -16437,7 +16437,7 @@ var require_object_inspect = __commonJS({
         }
         return inspect_(value, opts, depth + 1, seen);
       }
-      if (typeof obj === "function" && !isRegExp(obj)) {
+      if (typeof obj === "function" && !isRegExp2(obj)) {
         var name = nameOf(obj);
         var keys = arrObjKeys(obj, inspect);
         return "[Function" + (name ? ": " + name : " (anonymous)") + "]" + (keys.length > 0 ? " { " + $join.call(keys, ", ") + " }" : "");
@@ -16459,7 +16459,7 @@ var require_object_inspect = __commonJS({
         s += "</" + $toLowerCase.call(String(obj.nodeName)) + ">";
         return s;
       }
-      if (isArray(obj)) {
+      if (isArray2(obj)) {
         if (obj.length === 0) {
           return "[]";
         }
@@ -16513,16 +16513,16 @@ var require_object_inspect = __commonJS({
       if (isWeakRef(obj)) {
         return weakCollectionOf("WeakRef");
       }
-      if (isNumber(obj)) {
+      if (isNumber2(obj)) {
         return markBoxed(inspect(Number(obj)));
       }
       if (isBigInt(obj)) {
         return markBoxed(inspect(bigIntValueOf.call(obj)));
       }
-      if (isBoolean(obj)) {
+      if (isBoolean2(obj)) {
         return markBoxed(booleanValueOf.call(obj));
       }
-      if (isString(obj)) {
+      if (isString2(obj)) {
         return markBoxed(inspect(String(obj)));
       }
       if (typeof window !== "undefined" && obj === window) {
@@ -16531,12 +16531,12 @@ var require_object_inspect = __commonJS({
       if (typeof globalThis !== "undefined" && obj === globalThis || typeof global !== "undefined" && obj === global) {
         return "{ [object globalThis] }";
       }
-      if (!isDate(obj) && !isRegExp(obj)) {
+      if (!isDate2(obj) && !isRegExp2(obj)) {
         var ys = arrObjKeys(obj, inspect);
-        var isPlainObject = gPO ? gPO(obj) === Object.prototype : obj instanceof Object || obj.constructor === Object;
+        var isPlainObject2 = gPO ? gPO(obj) === Object.prototype : obj instanceof Object || obj.constructor === Object;
         var protoTag = obj instanceof Object ? "" : "null prototype";
-        var stringTag = !isPlainObject && toStringTag && Object(obj) === obj && toStringTag in obj ? $slice.call(toStr(obj), 8, -1) : protoTag ? "Object" : "";
-        var constructorTag = isPlainObject || typeof obj.constructor !== "function" ? "" : obj.constructor.name ? obj.constructor.name + " " : "";
+        var stringTag = !isPlainObject2 && toStringTag2 && Object(obj) === obj && toStringTag2 in obj ? $slice.call(toStr(obj), 8, -1) : protoTag ? "Object" : "";
+        var constructorTag = isPlainObject2 || typeof obj.constructor !== "function" ? "" : obj.constructor.name ? obj.constructor.name + " " : "";
         var tag = constructorTag + (stringTag || protoTag ? "[" + $join.call($concat.call([], stringTag || [], protoTag || []), ": ") + "] " : "");
         if (ys.length === 0) {
           return tag + "{}";
@@ -16557,27 +16557,27 @@ var require_object_inspect = __commonJS({
       return $replace.call(String(s), /"/g, "&quot;");
     }
     function canTrustToString(obj) {
-      return !toStringTag || !(typeof obj === "object" && (toStringTag in obj || typeof obj[toStringTag] !== "undefined"));
+      return !toStringTag2 || !(typeof obj === "object" && (toStringTag2 in obj || typeof obj[toStringTag2] !== "undefined"));
     }
-    function isArray(obj) {
+    function isArray2(obj) {
       return toStr(obj) === "[object Array]" && canTrustToString(obj);
     }
-    function isDate(obj) {
+    function isDate2(obj) {
       return toStr(obj) === "[object Date]" && canTrustToString(obj);
     }
-    function isRegExp(obj) {
+    function isRegExp2(obj) {
       return toStr(obj) === "[object RegExp]" && canTrustToString(obj);
     }
     function isError(obj) {
       return toStr(obj) === "[object Error]" && canTrustToString(obj);
     }
-    function isString(obj) {
+    function isString2(obj) {
       return toStr(obj) === "[object String]" && canTrustToString(obj);
     }
-    function isNumber(obj) {
+    function isNumber2(obj) {
       return toStr(obj) === "[object Number]" && canTrustToString(obj);
     }
-    function isBoolean(obj) {
+    function isBoolean2(obj) {
       return toStr(obj) === "[object Boolean]" && canTrustToString(obj);
     }
     function isSymbol(obj) {
@@ -16787,7 +16787,7 @@ var require_object_inspect = __commonJS({
       return lineJoiner + $join.call(xs, "," + lineJoiner) + "\n" + indent.prev;
     }
     function arrObjKeys(obj, inspect) {
-      var isArr = isArray(obj);
+      var isArr = isArray2(obj);
       var xs = [];
       if (isArr) {
         xs.length = obj.length;
@@ -17223,7 +17223,7 @@ var require_implementation = __commonJS({
       }
       return str;
     };
-    module2.exports = function bind(that) {
+    module2.exports = function bind2(that) {
       var target = this;
       if (typeof target !== "function" || toStr.apply(target) !== funcType) {
         throw new TypeError(ERROR_MESSAGE + target);
@@ -17301,11 +17301,11 @@ var require_reflectApply = __commonJS({
 var require_actualApply = __commonJS({
   "node_modules/call-bind-apply-helpers/actualApply.js"(exports2, module2) {
     "use strict";
-    var bind = require_function_bind();
+    var bind2 = require_function_bind();
     var $apply = require_functionApply();
     var $call = require_functionCall();
     var $reflectApply = require_reflectApply();
-    module2.exports = $reflectApply || bind.call($call, $apply);
+    module2.exports = $reflectApply || bind2.call($call, $apply);
   }
 });
 
@@ -17313,7 +17313,7 @@ var require_actualApply = __commonJS({
 var require_call_bind_apply_helpers = __commonJS({
   "node_modules/call-bind-apply-helpers/index.js"(exports2, module2) {
     "use strict";
-    var bind = require_function_bind();
+    var bind2 = require_function_bind();
     var $TypeError = require_type();
     var $call = require_functionCall();
     var $actualApply = require_actualApply();
@@ -17321,7 +17321,7 @@ var require_call_bind_apply_helpers = __commonJS({
       if (args.length < 1 || typeof args[0] !== "function") {
         throw new $TypeError("a function is required");
       }
-      return $actualApply(bind, $call, args);
+      return $actualApply(bind2, $call, args);
     };
   }
 });
@@ -17383,8 +17383,8 @@ var require_hasown = __commonJS({
     "use strict";
     var call = Function.prototype.call;
     var $hasOwn = Object.prototype.hasOwnProperty;
-    var bind = require_function_bind();
-    module2.exports = bind.call(call, $hasOwn);
+    var bind2 = require_function_bind();
+    module2.exports = bind2.call(call, $hasOwn);
   }
 });
 
@@ -17609,13 +17609,13 @@ var require_get_intrinsic = __commonJS({
       "%WeakMapPrototype%": ["WeakMap", "prototype"],
       "%WeakSetPrototype%": ["WeakSet", "prototype"]
     };
-    var bind = require_function_bind();
+    var bind2 = require_function_bind();
     var hasOwn = require_hasown();
-    var $concat = bind.call($call, Array.prototype.concat);
-    var $spliceApply = bind.call($apply, Array.prototype.splice);
-    var $replace = bind.call($call, String.prototype.replace);
-    var $strSlice = bind.call($call, String.prototype.slice);
-    var $exec = bind.call($call, RegExp.prototype.exec);
+    var $concat = bind2.call($call, Array.prototype.concat);
+    var $spliceApply = bind2.call($apply, Array.prototype.splice);
+    var $replace = bind2.call($call, String.prototype.replace);
+    var $strSlice = bind2.call($call, String.prototype.slice);
+    var $exec = bind2.call($call, RegExp.prototype.exec);
     var rePropName = /[^%.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|%$))/g;
     var reEscapeChar = /\\(\\)?/g;
     var stringToPath = function stringToPath2(string) {
@@ -17943,7 +17943,7 @@ var require_utils2 = __commonJS({
     var formats = require_formats();
     var getSideChannel = require_side_channel();
     var has = Object.prototype.hasOwnProperty;
-    var isArray = Array.isArray;
+    var isArray2 = Array.isArray;
     var overflowChannel = getSideChannel();
     var markOverflow = function markOverflow2(obj, maxIndex) {
       overflowChannel.set(obj, maxIndex);
@@ -17969,7 +17969,7 @@ var require_utils2 = __commonJS({
       while (queue.length > 1) {
         var item = queue.pop();
         var obj = item.obj[item.prop];
-        if (isArray(obj)) {
+        if (isArray2(obj)) {
           var compacted = [];
           for (var j = 0; j < obj.length; ++j) {
             if (typeof obj[j] !== "undefined") {
@@ -17980,7 +17980,7 @@ var require_utils2 = __commonJS({
         }
       }
     };
-    var arrayToObject = function arrayToObject2(source, options) {
+    var arrayToObject2 = function arrayToObject3(source, options) {
       var obj = options && options.plainObjects ? { __proto__: null } : {};
       for (var i = 0; i < source.length; ++i) {
         if (typeof source[i] !== "undefined") {
@@ -17989,15 +17989,15 @@ var require_utils2 = __commonJS({
       }
       return obj;
     };
-    var merge = function merge2(target, source, options) {
+    var merge2 = function merge3(target, source, options) {
       if (!source) {
         return target;
       }
       if (typeof source !== "object" && typeof source !== "function") {
-        if (isArray(target)) {
+        if (isArray2(target)) {
           var nextIndex = target.length;
           if (options && typeof options.arrayLimit === "number" && nextIndex > options.arrayLimit) {
-            return markOverflow(arrayToObject(target.concat(source), options), nextIndex);
+            return markOverflow(arrayToObject2(target.concat(source), options), nextIndex);
           }
           target[nextIndex] = source;
         } else if (target && typeof target === "object") {
@@ -18027,20 +18027,20 @@ var require_utils2 = __commonJS({
         }
         var combined = [target].concat(source);
         if (options && typeof options.arrayLimit === "number" && combined.length > options.arrayLimit) {
-          return markOverflow(arrayToObject(combined, options), combined.length - 1);
+          return markOverflow(arrayToObject2(combined, options), combined.length - 1);
         }
         return combined;
       }
       var mergeTarget = target;
-      if (isArray(target) && !isArray(source)) {
-        mergeTarget = arrayToObject(target, options);
+      if (isArray2(target) && !isArray2(source)) {
+        mergeTarget = arrayToObject2(target, options);
       }
-      if (isArray(target) && isArray(source)) {
+      if (isArray2(target) && isArray2(source)) {
         source.forEach(function(item, i) {
           if (has.call(target, i)) {
             var targetItem = target[i];
             if (targetItem && typeof targetItem === "object" && item && typeof item === "object") {
-              target[i] = merge2(targetItem, item, options);
+              target[i] = merge3(targetItem, item, options);
             } else {
               target[target.length] = item;
             }
@@ -18053,7 +18053,7 @@ var require_utils2 = __commonJS({
       return Object.keys(source).reduce(function(acc, key) {
         var value = source[key];
         if (has.call(acc, key)) {
-          acc[key] = merge2(acc[key], value, options);
+          acc[key] = merge3(acc[key], value, options);
         } else {
           acc[key] = value;
         }
@@ -18087,7 +18087,7 @@ var require_utils2 = __commonJS({
       }
     };
     var limit = 1024;
-    var encode = function encode2(str, defaultEncoder, charset, kind, format) {
+    var encode3 = function encode4(str, defaultEncoder, charset, kind, format) {
       if (str.length === 0) {
         return str;
       }
@@ -18151,10 +18151,10 @@ var require_utils2 = __commonJS({
       compactQueue(queue);
       return value;
     };
-    var isRegExp = function isRegExp2(obj) {
+    var isRegExp2 = function isRegExp3(obj) {
       return Object.prototype.toString.call(obj) === "[object RegExp]";
     };
-    var isBuffer = function isBuffer2(obj) {
+    var isBuffer2 = function isBuffer3(obj) {
       if (!obj || typeof obj !== "object") {
         return false;
       }
@@ -18169,12 +18169,12 @@ var require_utils2 = __commonJS({
       }
       var result = [].concat(a, b);
       if (result.length > arrayLimit) {
-        return markOverflow(arrayToObject(result, { plainObjects }), result.length - 1);
+        return markOverflow(arrayToObject2(result, { plainObjects }), result.length - 1);
       }
       return result;
     };
     var maybeMap = function maybeMap2(val, fn) {
-      if (isArray(val)) {
+      if (isArray2(val)) {
         var mapped = [];
         for (var i = 0; i < val.length; i += 1) {
           mapped[mapped.length] = fn(val[i]);
@@ -18184,18 +18184,18 @@ var require_utils2 = __commonJS({
       return fn(val);
     };
     module2.exports = {
-      arrayToObject,
+      arrayToObject: arrayToObject2,
       assign,
       combine,
       compact,
       decode,
-      encode,
-      isBuffer,
+      encode: encode3,
+      isBuffer: isBuffer2,
       isOverflow,
-      isRegExp,
+      isRegExp: isRegExp2,
       markOverflow,
       maybeMap,
-      merge
+      merge: merge2
     };
   }
 });
@@ -18220,14 +18220,14 @@ var require_stringify = __commonJS({
         return prefix;
       }
     };
-    var isArray = Array.isArray;
+    var isArray2 = Array.isArray;
     var push = Array.prototype.push;
     var pushToArray = function(arr, valueOrArray) {
-      push.apply(arr, isArray(valueOrArray) ? valueOrArray : [valueOrArray]);
+      push.apply(arr, isArray2(valueOrArray) ? valueOrArray : [valueOrArray]);
     };
     var toISO = Date.prototype.toISOString;
     var defaultFormat = formats["default"];
-    var defaults2 = {
+    var defaults3 = {
       addQueryPrefix: false,
       allowDots: false,
       allowEmptyArrays: false,
@@ -18255,7 +18255,7 @@ var require_stringify = __commonJS({
       return typeof v === "string" || typeof v === "number" || typeof v === "boolean" || typeof v === "symbol" || typeof v === "bigint";
     };
     var sentinel = {};
-    var stringify = function stringify2(object, prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, encoder, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, sideChannel) {
+    var stringify = function stringify2(object, prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, encoder, filter2, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, sideChannel) {
       var obj = object;
       var tmpSc = sideChannel;
       var step = 0;
@@ -18274,11 +18274,11 @@ var require_stringify = __commonJS({
           step = 0;
         }
       }
-      if (typeof filter === "function") {
-        obj = filter(prefix, obj);
+      if (typeof filter2 === "function") {
+        obj = filter2(prefix, obj);
       } else if (obj instanceof Date) {
         obj = serializeDate(obj);
-      } else if (generateArrayPrefix === "comma" && isArray(obj)) {
+      } else if (generateArrayPrefix === "comma" && isArray2(obj)) {
         obj = utils.maybeMap(obj, function(value2) {
           if (value2 instanceof Date) {
             return serializeDate(value2);
@@ -18288,14 +18288,14 @@ var require_stringify = __commonJS({
       }
       if (obj === null) {
         if (strictNullHandling) {
-          return encoder && !encodeValuesOnly ? encoder(prefix, defaults2.encoder, charset, "key", format) : prefix;
+          return encoder && !encodeValuesOnly ? encoder(prefix, defaults3.encoder, charset, "key", format) : prefix;
         }
         obj = "";
       }
       if (isNonNullishPrimitive(obj) || utils.isBuffer(obj)) {
         if (encoder) {
-          var keyValue = encodeValuesOnly ? prefix : encoder(prefix, defaults2.encoder, charset, "key", format);
-          return [formatter(keyValue) + "=" + formatter(encoder(obj, defaults2.encoder, charset, "value", format))];
+          var keyValue = encodeValuesOnly ? prefix : encoder(prefix, defaults3.encoder, charset, "key", format);
+          return [formatter(keyValue) + "=" + formatter(encoder(obj, defaults3.encoder, charset, "value", format))];
         }
         return [formatter(prefix) + "=" + formatter(String(obj))];
       }
@@ -18304,20 +18304,20 @@ var require_stringify = __commonJS({
         return values;
       }
       var objKeys;
-      if (generateArrayPrefix === "comma" && isArray(obj)) {
+      if (generateArrayPrefix === "comma" && isArray2(obj)) {
         if (encodeValuesOnly && encoder) {
           obj = utils.maybeMap(obj, encoder);
         }
         objKeys = [{ value: obj.length > 0 ? obj.join(",") || null : void 0 }];
-      } else if (isArray(filter)) {
-        objKeys = filter;
+      } else if (isArray2(filter2)) {
+        objKeys = filter2;
       } else {
         var keys = Object.keys(obj);
         objKeys = sort ? keys.sort(sort) : keys;
       }
       var encodedPrefix = encodeDotInKeys ? String(prefix).replace(/\./g, "%2E") : String(prefix);
-      var adjustedPrefix = commaRoundTrip && isArray(obj) && obj.length === 1 ? encodedPrefix + "[]" : encodedPrefix;
-      if (allowEmptyArrays && isArray(obj) && obj.length === 0) {
+      var adjustedPrefix = commaRoundTrip && isArray2(obj) && obj.length === 1 ? encodedPrefix + "[]" : encodedPrefix;
+      if (allowEmptyArrays && isArray2(obj) && obj.length === 0) {
         return adjustedPrefix + "[]";
       }
       for (var j = 0; j < objKeys.length; ++j) {
@@ -18327,7 +18327,7 @@ var require_stringify = __commonJS({
           continue;
         }
         var encodedKey = allowDots && encodeDotInKeys ? String(key).replace(/\./g, "%2E") : String(key);
-        var keyPrefix = isArray(obj) ? typeof generateArrayPrefix === "function" ? generateArrayPrefix(adjustedPrefix, encodedKey) : adjustedPrefix : adjustedPrefix + (allowDots ? "." + encodedKey : "[" + encodedKey + "]");
+        var keyPrefix = isArray2(obj) ? typeof generateArrayPrefix === "function" ? generateArrayPrefix(adjustedPrefix, encodedKey) : adjustedPrefix : adjustedPrefix + (allowDots ? "." + encodedKey : "[" + encodedKey + "]");
         sideChannel.set(object, step);
         var valueSideChannel = getSideChannel();
         valueSideChannel.set(sentinel, sideChannel);
@@ -18340,8 +18340,8 @@ var require_stringify = __commonJS({
           strictNullHandling,
           skipNulls,
           encodeDotInKeys,
-          generateArrayPrefix === "comma" && encodeValuesOnly && isArray(obj) ? null : encoder,
-          filter,
+          generateArrayPrefix === "comma" && encodeValuesOnly && isArray2(obj) ? null : encoder,
+          filter2,
           sort,
           allowDots,
           serializeDate,
@@ -18356,7 +18356,7 @@ var require_stringify = __commonJS({
     };
     var normalizeStringifyOptions = function normalizeStringifyOptions2(opts) {
       if (!opts) {
-        return defaults2;
+        return defaults3;
       }
       if (typeof opts.allowEmptyArrays !== "undefined" && typeof opts.allowEmptyArrays !== "boolean") {
         throw new TypeError("`allowEmptyArrays` option can only be `true` or `false`, when provided");
@@ -18367,7 +18367,7 @@ var require_stringify = __commonJS({
       if (opts.encoder !== null && typeof opts.encoder !== "undefined" && typeof opts.encoder !== "function") {
         throw new TypeError("Encoder has to be a function.");
       }
-      var charset = opts.charset || defaults2.charset;
+      var charset = opts.charset || defaults3.charset;
       if (typeof opts.charset !== "undefined" && opts.charset !== "utf-8" && opts.charset !== "iso-8859-1") {
         throw new TypeError("The charset option must be either utf-8, iso-8859-1, or undefined");
       }
@@ -18379,9 +18379,9 @@ var require_stringify = __commonJS({
         format = opts.format;
       }
       var formatter = formats.formatters[format];
-      var filter = defaults2.filter;
-      if (typeof opts.filter === "function" || isArray(opts.filter)) {
-        filter = opts.filter;
+      var filter2 = defaults3.filter;
+      if (typeof opts.filter === "function" || isArray2(opts.filter)) {
+        filter2 = opts.filter;
       }
       var arrayFormat;
       if (opts.arrayFormat in arrayPrefixGenerators) {
@@ -18389,45 +18389,45 @@ var require_stringify = __commonJS({
       } else if ("indices" in opts) {
         arrayFormat = opts.indices ? "indices" : "repeat";
       } else {
-        arrayFormat = defaults2.arrayFormat;
+        arrayFormat = defaults3.arrayFormat;
       }
       if ("commaRoundTrip" in opts && typeof opts.commaRoundTrip !== "boolean") {
         throw new TypeError("`commaRoundTrip` must be a boolean, or absent");
       }
-      var allowDots = typeof opts.allowDots === "undefined" ? opts.encodeDotInKeys === true ? true : defaults2.allowDots : !!opts.allowDots;
+      var allowDots = typeof opts.allowDots === "undefined" ? opts.encodeDotInKeys === true ? true : defaults3.allowDots : !!opts.allowDots;
       return {
-        addQueryPrefix: typeof opts.addQueryPrefix === "boolean" ? opts.addQueryPrefix : defaults2.addQueryPrefix,
+        addQueryPrefix: typeof opts.addQueryPrefix === "boolean" ? opts.addQueryPrefix : defaults3.addQueryPrefix,
         allowDots,
-        allowEmptyArrays: typeof opts.allowEmptyArrays === "boolean" ? !!opts.allowEmptyArrays : defaults2.allowEmptyArrays,
+        allowEmptyArrays: typeof opts.allowEmptyArrays === "boolean" ? !!opts.allowEmptyArrays : defaults3.allowEmptyArrays,
         arrayFormat,
         charset,
-        charsetSentinel: typeof opts.charsetSentinel === "boolean" ? opts.charsetSentinel : defaults2.charsetSentinel,
+        charsetSentinel: typeof opts.charsetSentinel === "boolean" ? opts.charsetSentinel : defaults3.charsetSentinel,
         commaRoundTrip: !!opts.commaRoundTrip,
-        delimiter: typeof opts.delimiter === "undefined" ? defaults2.delimiter : opts.delimiter,
-        encode: typeof opts.encode === "boolean" ? opts.encode : defaults2.encode,
-        encodeDotInKeys: typeof opts.encodeDotInKeys === "boolean" ? opts.encodeDotInKeys : defaults2.encodeDotInKeys,
-        encoder: typeof opts.encoder === "function" ? opts.encoder : defaults2.encoder,
-        encodeValuesOnly: typeof opts.encodeValuesOnly === "boolean" ? opts.encodeValuesOnly : defaults2.encodeValuesOnly,
-        filter,
+        delimiter: typeof opts.delimiter === "undefined" ? defaults3.delimiter : opts.delimiter,
+        encode: typeof opts.encode === "boolean" ? opts.encode : defaults3.encode,
+        encodeDotInKeys: typeof opts.encodeDotInKeys === "boolean" ? opts.encodeDotInKeys : defaults3.encodeDotInKeys,
+        encoder: typeof opts.encoder === "function" ? opts.encoder : defaults3.encoder,
+        encodeValuesOnly: typeof opts.encodeValuesOnly === "boolean" ? opts.encodeValuesOnly : defaults3.encodeValuesOnly,
+        filter: filter2,
         format,
         formatter,
-        serializeDate: typeof opts.serializeDate === "function" ? opts.serializeDate : defaults2.serializeDate,
-        skipNulls: typeof opts.skipNulls === "boolean" ? opts.skipNulls : defaults2.skipNulls,
+        serializeDate: typeof opts.serializeDate === "function" ? opts.serializeDate : defaults3.serializeDate,
+        skipNulls: typeof opts.skipNulls === "boolean" ? opts.skipNulls : defaults3.skipNulls,
         sort: typeof opts.sort === "function" ? opts.sort : null,
-        strictNullHandling: typeof opts.strictNullHandling === "boolean" ? opts.strictNullHandling : defaults2.strictNullHandling
+        strictNullHandling: typeof opts.strictNullHandling === "boolean" ? opts.strictNullHandling : defaults3.strictNullHandling
       };
     };
     module2.exports = function(object, opts) {
       var obj = object;
       var options = normalizeStringifyOptions(opts);
       var objKeys;
-      var filter;
+      var filter2;
       if (typeof options.filter === "function") {
-        filter = options.filter;
-        obj = filter("", obj);
-      } else if (isArray(options.filter)) {
-        filter = options.filter;
-        objKeys = filter;
+        filter2 = options.filter;
+        obj = filter2("", obj);
+      } else if (isArray2(options.filter)) {
+        filter2 = options.filter;
+        objKeys = filter2;
       }
       var keys = [];
       if (typeof obj !== "object" || obj === null) {
@@ -18489,8 +18489,8 @@ var require_parse = __commonJS({
     "use strict";
     var utils = require_utils2();
     var has = Object.prototype.hasOwnProperty;
-    var isArray = Array.isArray;
-    var defaults2 = {
+    var isArray2 = Array.isArray;
+    var defaults3 = {
       allowDots: false,
       allowEmptyArrays: false,
       allowPrototypes: false,
@@ -18568,19 +18568,19 @@ var require_parse = __commonJS({
         var key;
         var val;
         if (pos === -1) {
-          key = options.decoder(part, defaults2.decoder, charset, "key");
+          key = options.decoder(part, defaults3.decoder, charset, "key");
           val = options.strictNullHandling ? null : "";
         } else {
-          key = options.decoder(part.slice(0, pos), defaults2.decoder, charset, "key");
+          key = options.decoder(part.slice(0, pos), defaults3.decoder, charset, "key");
           if (key !== null) {
             val = utils.maybeMap(
               parseArrayValue(
                 part.slice(pos + 1),
                 options,
-                isArray(obj[key]) ? obj[key].length : 0
+                isArray2(obj[key]) ? obj[key].length : 0
               ),
               function(encodedVal) {
-                return options.decoder(encodedVal, defaults2.decoder, charset, "value");
+                return options.decoder(encodedVal, defaults3.decoder, charset, "value");
               }
             );
           }
@@ -18589,9 +18589,9 @@ var require_parse = __commonJS({
           val = interpretNumericEntities(String(val));
         }
         if (part.indexOf("[]=") > -1) {
-          val = isArray(val) ? [val] : val;
+          val = isArray2(val) ? [val] : val;
         }
-        if (options.comma && isArray(val) && val.length > options.arrayLimit) {
+        if (options.comma && isArray2(val) && val.length > options.arrayLimit) {
           if (options.throwOnLimitExceeded) {
             throw new RangeError("Array limit exceeded. Only " + options.arrayLimit + " element" + (options.arrayLimit === 1 ? "" : "s") + " allowed in an array.");
           }
@@ -18712,7 +18712,7 @@ var require_parse = __commonJS({
     };
     var normalizeParseOptions = function normalizeParseOptions2(opts) {
       if (!opts) {
-        return defaults2;
+        return defaults3;
       }
       if (typeof opts.allowEmptyArrays !== "undefined" && typeof opts.allowEmptyArrays !== "boolean") {
         throw new TypeError("`allowEmptyArrays` option can only be `true` or `false`, when provided");
@@ -18729,35 +18729,35 @@ var require_parse = __commonJS({
       if (typeof opts.throwOnLimitExceeded !== "undefined" && typeof opts.throwOnLimitExceeded !== "boolean") {
         throw new TypeError("`throwOnLimitExceeded` option must be a boolean");
       }
-      var charset = typeof opts.charset === "undefined" ? defaults2.charset : opts.charset;
-      var duplicates = typeof opts.duplicates === "undefined" ? defaults2.duplicates : opts.duplicates;
+      var charset = typeof opts.charset === "undefined" ? defaults3.charset : opts.charset;
+      var duplicates = typeof opts.duplicates === "undefined" ? defaults3.duplicates : opts.duplicates;
       if (duplicates !== "combine" && duplicates !== "first" && duplicates !== "last") {
         throw new TypeError("The duplicates option must be either combine, first, or last");
       }
-      var allowDots = typeof opts.allowDots === "undefined" ? opts.decodeDotInKeys === true ? true : defaults2.allowDots : !!opts.allowDots;
+      var allowDots = typeof opts.allowDots === "undefined" ? opts.decodeDotInKeys === true ? true : defaults3.allowDots : !!opts.allowDots;
       return {
         allowDots,
-        allowEmptyArrays: typeof opts.allowEmptyArrays === "boolean" ? !!opts.allowEmptyArrays : defaults2.allowEmptyArrays,
-        allowPrototypes: typeof opts.allowPrototypes === "boolean" ? opts.allowPrototypes : defaults2.allowPrototypes,
-        allowSparse: typeof opts.allowSparse === "boolean" ? opts.allowSparse : defaults2.allowSparse,
-        arrayLimit: typeof opts.arrayLimit === "number" ? opts.arrayLimit : defaults2.arrayLimit,
+        allowEmptyArrays: typeof opts.allowEmptyArrays === "boolean" ? !!opts.allowEmptyArrays : defaults3.allowEmptyArrays,
+        allowPrototypes: typeof opts.allowPrototypes === "boolean" ? opts.allowPrototypes : defaults3.allowPrototypes,
+        allowSparse: typeof opts.allowSparse === "boolean" ? opts.allowSparse : defaults3.allowSparse,
+        arrayLimit: typeof opts.arrayLimit === "number" ? opts.arrayLimit : defaults3.arrayLimit,
         charset,
-        charsetSentinel: typeof opts.charsetSentinel === "boolean" ? opts.charsetSentinel : defaults2.charsetSentinel,
-        comma: typeof opts.comma === "boolean" ? opts.comma : defaults2.comma,
-        decodeDotInKeys: typeof opts.decodeDotInKeys === "boolean" ? opts.decodeDotInKeys : defaults2.decodeDotInKeys,
-        decoder: typeof opts.decoder === "function" ? opts.decoder : defaults2.decoder,
-        delimiter: typeof opts.delimiter === "string" || utils.isRegExp(opts.delimiter) ? opts.delimiter : defaults2.delimiter,
+        charsetSentinel: typeof opts.charsetSentinel === "boolean" ? opts.charsetSentinel : defaults3.charsetSentinel,
+        comma: typeof opts.comma === "boolean" ? opts.comma : defaults3.comma,
+        decodeDotInKeys: typeof opts.decodeDotInKeys === "boolean" ? opts.decodeDotInKeys : defaults3.decodeDotInKeys,
+        decoder: typeof opts.decoder === "function" ? opts.decoder : defaults3.decoder,
+        delimiter: typeof opts.delimiter === "string" || utils.isRegExp(opts.delimiter) ? opts.delimiter : defaults3.delimiter,
         // eslint-disable-next-line no-implicit-coercion, no-extra-parens
-        depth: typeof opts.depth === "number" || opts.depth === false ? +opts.depth : defaults2.depth,
+        depth: typeof opts.depth === "number" || opts.depth === false ? +opts.depth : defaults3.depth,
         duplicates,
         ignoreQueryPrefix: opts.ignoreQueryPrefix === true,
-        interpretNumericEntities: typeof opts.interpretNumericEntities === "boolean" ? opts.interpretNumericEntities : defaults2.interpretNumericEntities,
-        parameterLimit: typeof opts.parameterLimit === "number" ? opts.parameterLimit : defaults2.parameterLimit,
+        interpretNumericEntities: typeof opts.interpretNumericEntities === "boolean" ? opts.interpretNumericEntities : defaults3.interpretNumericEntities,
+        parameterLimit: typeof opts.parameterLimit === "number" ? opts.parameterLimit : defaults3.parameterLimit,
         parseArrays: opts.parseArrays !== false,
-        plainObjects: typeof opts.plainObjects === "boolean" ? opts.plainObjects : defaults2.plainObjects,
-        strictDepth: typeof opts.strictDepth === "boolean" ? !!opts.strictDepth : defaults2.strictDepth,
-        strictMerge: typeof opts.strictMerge === "boolean" ? !!opts.strictMerge : defaults2.strictMerge,
-        strictNullHandling: typeof opts.strictNullHandling === "boolean" ? opts.strictNullHandling : defaults2.strictNullHandling,
+        plainObjects: typeof opts.plainObjects === "boolean" ? opts.plainObjects : defaults3.plainObjects,
+        strictDepth: typeof opts.strictDepth === "boolean" ? !!opts.strictDepth : defaults3.strictDepth,
+        strictMerge: typeof opts.strictMerge === "boolean" ? !!opts.strictMerge : defaults3.strictMerge,
+        strictNullHandling: typeof opts.strictNullHandling === "boolean" ? opts.strictNullHandling : defaults3.strictNullHandling,
         throwOnLimitExceeded: typeof opts.throwOnLimitExceeded === "boolean" ? opts.throwOnLimitExceeded : false
       };
     };
@@ -18948,8 +18948,8 @@ var require_encodeurl = __commonJS({
     var ENCODE_CHARS_REGEXP = /(?:[^\x21\x23-\x3B\x3D\x3F-\x5F\x61-\x7A\x7C\x7E]|%(?:[^0-9A-Fa-f]|[0-9A-Fa-f][^0-9A-Fa-f]|$))+/g;
     var UNMATCHED_SURROGATE_PAIR_REGEXP = /(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]|[\uD800-\uDBFF]([^\uDC00-\uDFFF]|$)/g;
     var UNMATCHED_SURROGATE_PAIR_REPLACE = "$1\uFFFD$2";
-    function encodeUrl(url) {
-      return String(url).replace(UNMATCHED_SURROGATE_PAIR_REGEXP, UNMATCHED_SURROGATE_PAIR_REPLACE).replace(ENCODE_CHARS_REGEXP, encodeURI);
+    function encodeUrl(url2) {
+      return String(url2).replace(UNMATCHED_SURROGATE_PAIR_REGEXP, UNMATCHED_SURROGATE_PAIR_REPLACE).replace(ENCODE_CHARS_REGEXP, encodeURI);
     }
   }
 });
@@ -19005,35 +19005,35 @@ var require_escape_html = __commonJS({
 var require_parseurl = __commonJS({
   "node_modules/parseurl/index.js"(exports2, module2) {
     "use strict";
-    var url = require("url");
-    var parse = url.parse;
-    var Url = url.Url;
+    var url2 = require("url");
+    var parse = url2.parse;
+    var Url = url2.Url;
     module2.exports = parseurl;
     module2.exports.original = originalurl;
     function parseurl(req) {
-      var url2 = req.url;
-      if (url2 === void 0) {
+      var url3 = req.url;
+      if (url3 === void 0) {
         return void 0;
       }
       var parsed = req._parsedUrl;
-      if (fresh(url2, parsed)) {
+      if (fresh(url3, parsed)) {
         return parsed;
       }
-      parsed = fastparse(url2);
-      parsed._raw = url2;
+      parsed = fastparse(url3);
+      parsed._raw = url3;
       return req._parsedUrl = parsed;
     }
     function originalurl(req) {
-      var url2 = req.originalUrl;
-      if (typeof url2 !== "string") {
+      var url3 = req.originalUrl;
+      if (typeof url3 !== "string") {
         return parseurl(req);
       }
       var parsed = req._parsedOriginalUrl;
-      if (fresh(url2, parsed)) {
+      if (fresh(url3, parsed)) {
         return parsed;
       }
-      parsed = fastparse(url2);
-      parsed._raw = url2;
+      parsed = fastparse(url3);
+      parsed._raw = url3;
       return req._parsedOriginalUrl = parsed;
     }
     function fastparse(str) {
@@ -19069,18 +19069,18 @@ var require_parseurl = __commonJS({
             return parse(str);
         }
       }
-      var url2 = Url !== void 0 ? new Url() : {};
-      url2.path = str;
-      url2.href = str;
-      url2.pathname = pathname;
+      var url3 = Url !== void 0 ? new Url() : {};
+      url3.path = str;
+      url3.href = str;
+      url3.pathname = pathname;
       if (search !== null) {
-        url2.query = query;
-        url2.search = search;
+        url3.query = query;
+        url3.search = search;
       }
-      return url2;
+      return url3;
     }
-    function fresh(url2, parsedUrl) {
-      return typeof parsedUrl === "object" && parsedUrl !== null && (Url === void 0 || parsedUrl instanceof Url) && parsedUrl._raw === url2;
+    function fresh(url3, parsedUrl) {
+      return typeof parsedUrl === "object" && parsedUrl !== null && (Url === void 0 || parsedUrl instanceof Url) && parsedUrl._raw === url3;
     }
   }
 });
@@ -19311,14 +19311,14 @@ var require_etag = __commonJS({
   "node_modules/etag/index.js"(exports2, module2) {
     "use strict";
     module2.exports = etag;
-    var crypto3 = require("crypto");
+    var crypto4 = require("crypto");
     var Stats = require("fs").Stats;
-    var toString = Object.prototype.toString;
+    var toString3 = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash2 = crypto3.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash2 = crypto4.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash2 + '"';
     }
@@ -19338,7 +19338,7 @@ var require_etag = __commonJS({
       if (typeof Stats === "function" && obj instanceof Stats) {
         return true;
       }
-      return obj && typeof obj === "object" && "ctime" in obj && toString.call(obj.ctime) === "[object Date]" && "mtime" in obj && toString.call(obj.mtime) === "[object Date]" && "ino" in obj && typeof obj.ino === "number" && "size" in obj && typeof obj.size === "number";
+      return obj && typeof obj === "object" && "ctime" in obj && toString3.call(obj.ctime) === "[object Date]" && "mtime" in obj && toString3.call(obj.mtime) === "[object Date]" && "ino" in obj && typeof obj.ino === "number" && "size" in obj && typeof obj.size === "number";
     }
     function stattag(stat) {
       var mtime = stat.mtime.getTime().toString(16);
@@ -20529,9 +20529,9 @@ var require_dist = __commonJS({
       return new TokenData(consumeUntil("end"), str);
     }
     function compile(path2, options = {}) {
-      const { encode = encodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
+      const { encode: encode3 = encodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
       const data = typeof path2 === "object" ? path2 : parse(path2, options);
-      const fn = tokensToFunction(data.tokens, delimiter, encode);
+      const fn = tokensToFunction(data.tokens, delimiter, encode3);
       return function path3(params = {}) {
         const [path4, ...missing] = fn(params);
         if (missing.length) {
@@ -20540,8 +20540,8 @@ var require_dist = __commonJS({
         return path4;
       };
     }
-    function tokensToFunction(tokens, delimiter, encode) {
-      const encoders = tokens.map((token) => tokenToFunction(token, delimiter, encode));
+    function tokensToFunction(tokens, delimiter, encode3) {
+      const encoders = tokens.map((token) => tokenToFunction(token, delimiter, encode3));
       return (data) => {
         const result = [""];
         for (const encoder of encoders) {
@@ -20552,11 +20552,11 @@ var require_dist = __commonJS({
         return result;
       };
     }
-    function tokenToFunction(token, delimiter, encode) {
+    function tokenToFunction(token, delimiter, encode3) {
       if (token.type === "text")
         return () => [token.value];
       if (token.type === "group") {
-        const fn = tokensToFunction(token.tokens, delimiter, encode);
+        const fn = tokensToFunction(token.tokens, delimiter, encode3);
         return (data) => {
           const [value, ...missing] = fn(data);
           if (!missing.length)
@@ -20564,8 +20564,8 @@ var require_dist = __commonJS({
           return [""];
         };
       }
-      const encodeValue = encode || NOOP_VALUE;
-      if (token.type === "wildcard" && encode !== false) {
+      const encodeValue = encode3 || NOOP_VALUE;
+      if (token.type === "wildcard" && encode3 !== false) {
         return (data) => {
           const value = data[token.name];
           if (value == null)
@@ -20973,7 +20973,7 @@ var require_route = __commonJS({
         sync = 0;
       }
     };
-    Route.prototype.all = function all(handler) {
+    Route.prototype.all = function all3(handler) {
       const callbacks = flatten.call(slice.call(arguments), Infinity);
       if (callbacks.length === 0) {
         throw new TypeError("argument handler is required");
@@ -21076,7 +21076,7 @@ var require_router = __commonJS({
       let methods2;
       const protohost = getProtohost(req.url) || "";
       let removed = "";
-      const self = this;
+      const self2 = this;
       let slashAdded = false;
       let sync = 0;
       const paramcalled = {};
@@ -21153,9 +21153,9 @@ var require_router = __commonJS({
         if (route) {
           req.route = route;
         }
-        req.params = self.mergeParams ? mergeParams(layer.params, parentParams) : layer.params;
+        req.params = self2.mergeParams ? mergeParams(layer.params, parentParams) : layer.params;
         const layerPath = layer.path;
-        processParams(self.params, layer, paramcalled, req, res, function(err2) {
+        processParams(self2.params, layer, paramcalled, req, res, function(err2) {
           if (err2) {
             next(layerError || err2);
           } else if (route) {
@@ -21263,14 +21263,14 @@ var require_router = __commonJS({
         return void 0;
       }
     }
-    function getProtohost(url) {
-      if (typeof url !== "string" || url.length === 0 || url[0] === "/") {
+    function getProtohost(url2) {
+      if (typeof url2 !== "string" || url2.length === 0 || url2[0] === "/") {
         return void 0;
       }
-      const searchIndex = url.indexOf("?");
-      const pathLength = searchIndex !== -1 ? searchIndex : url.length;
-      const fqdnIndex = url.substring(0, pathLength).indexOf("://");
-      return fqdnIndex !== -1 ? url.substring(0, url.indexOf("/", 3 + fqdnIndex)) : void 0;
+      const searchIndex = url2.indexOf("?");
+      const pathLength = searchIndex !== -1 ? searchIndex : url2.length;
+      const fqdnIndex = url2.substring(0, pathLength).indexOf("://");
+      return fqdnIndex !== -1 ? url2.substring(0, url2.indexOf("/", 3 + fqdnIndex)) : void 0;
     }
     function matchLayer(layer, path2) {
       try {
@@ -21418,7 +21418,7 @@ var require_application = __commonJS({
     var finalhandler = require_finalhandler();
     var debug = require_src()("express:application");
     var View2 = require_view();
-    var http = require("node:http");
+    var http3 = require("node:http");
     var methods = require_utils3().methods;
     var compileETag = require_utils3().compileETag;
     var compileQueryParser = require_utils3().compileQueryParser;
@@ -21606,7 +21606,7 @@ var require_application = __commonJS({
         return this;
       };
     });
-    app2.all = function all(path2) {
+    app2.all = function all3(path2) {
       var route = this.route(path2);
       var args = slice.call(arguments, 1);
       for (var i = 0; i < methods.length; i++) {
@@ -21651,7 +21651,7 @@ var require_application = __commonJS({
       tryRender(view, renderOptions, done);
     };
     app2.listen = function listen() {
-      var server = http.createServer(this);
+      var server = http3.createServer(this);
       var args = slice.call(arguments);
       if (typeof args[args.length - 1] === "function") {
         var done = args[args.length - 1] = once(args[args.length - 1]);
@@ -22426,12 +22426,12 @@ var require_request = __commonJS({
     var accepts = require_accepts();
     var isIP = require("node:net").isIP;
     var typeis = require_type_is();
-    var http = require("node:http");
+    var http3 = require("node:http");
     var fresh = require_fresh();
     var parseRange = require_range_parser();
     var parse = require_parseurl();
     var proxyaddr = require_proxy_addr();
-    var req = Object.create(http.IncomingMessage.prototype);
+    var req = Object.create(http3.IncomingMessage.prototype);
     module2.exports = req;
     req.get = req.header = function header(name) {
       if (!name) {
@@ -22733,17 +22733,17 @@ var require_content_disposition = __commonJS({
 // node_modules/express/node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "node_modules/express/node_modules/cookie-signature/index.js"(exports2) {
-    var crypto3 = require("crypto");
+    var crypto4 = require("crypto");
     exports2.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto3.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto4.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports2.unsign = function(input, secret) {
       if ("string" != typeof input) throw new TypeError("Signed cookie string must be provided.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
       var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports2.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
-      return expectedBuffer.length === inputBuffer.length && crypto3.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
+      return expectedBuffer.length === inputBuffer.length && crypto4.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
 });
@@ -22847,7 +22847,7 @@ var require_cookie = __commonJS({
       }
       if (opt.expires) {
         var expires = opt.expires;
-        if (!isDate(expires) || isNaN(expires.valueOf())) {
+        if (!isDate2(expires) || isNaN(expires.valueOf())) {
           throw new TypeError("option expires is invalid");
         }
         str += "; Expires=" + expires.toUTCString();
@@ -22901,7 +22901,7 @@ var require_cookie = __commonJS({
     function decode(str) {
       return str.indexOf("%") !== -1 ? decodeURIComponent(str) : str;
     }
-    function isDate(val) {
+    function isDate2(val) {
       return __toString.call(val) === "[object Date]";
     }
     function tryDecode(str, decode2) {
@@ -22932,7 +22932,7 @@ var require_send = __commonJS({
     var path2 = require("path");
     var statuses = require_statuses();
     var Stream = require("stream");
-    var util2 = require("util");
+    var util4 = require("util");
     var extname = path2.extname;
     var join = path2.join;
     var normalize = path2.normalize;
@@ -22967,7 +22967,7 @@ var require_send = __commonJS({
       this._maxage = !isNaN(this._maxage) ? Math.min(Math.max(0, this._maxage), MAX_MAXAGE) : 0;
       this._root = opts.root ? resolve2(opts.root) : null;
     }
-    util2.inherits(SendStream, Stream);
+    util4.inherits(SendStream, Stream);
     SendStream.prototype.error = function error(status, err) {
       if (hasListeners(this, "error")) {
         return this.emit("error", createHttpError(status, err));
@@ -23204,68 +23204,68 @@ var require_send = __commonJS({
     };
     SendStream.prototype.sendFile = function sendFile(path3) {
       var i = 0;
-      var self = this;
+      var self2 = this;
       debug('stat "%s"', path3);
       fs2.stat(path3, function onstat(err, stat) {
         var pathEndsWithSep = path3[path3.length - 1] === sep;
         if (err && err.code === "ENOENT" && !extname(path3) && !pathEndsWithSep) {
           return next(err);
         }
-        if (err) return self.onStatError(err);
-        if (stat.isDirectory()) return self.redirect(path3);
-        if (pathEndsWithSep) return self.error(404);
-        self.emit("file", path3, stat);
-        self.send(path3, stat);
+        if (err) return self2.onStatError(err);
+        if (stat.isDirectory()) return self2.redirect(path3);
+        if (pathEndsWithSep) return self2.error(404);
+        self2.emit("file", path3, stat);
+        self2.send(path3, stat);
       });
       function next(err) {
-        if (self._extensions.length <= i) {
-          return err ? self.onStatError(err) : self.error(404);
+        if (self2._extensions.length <= i) {
+          return err ? self2.onStatError(err) : self2.error(404);
         }
-        var p = path3 + "." + self._extensions[i++];
+        var p = path3 + "." + self2._extensions[i++];
         debug('stat "%s"', p);
         fs2.stat(p, function(err2, stat) {
           if (err2) return next(err2);
           if (stat.isDirectory()) return next();
-          self.emit("file", p, stat);
-          self.send(p, stat);
+          self2.emit("file", p, stat);
+          self2.send(p, stat);
         });
       }
     };
     SendStream.prototype.sendIndex = function sendIndex(path3) {
       var i = -1;
-      var self = this;
+      var self2 = this;
       function next(err) {
-        if (++i >= self._index.length) {
-          if (err) return self.onStatError(err);
-          return self.error(404);
+        if (++i >= self2._index.length) {
+          if (err) return self2.onStatError(err);
+          return self2.error(404);
         }
-        var p = join(path3, self._index[i]);
+        var p = join(path3, self2._index[i]);
         debug('stat "%s"', p);
         fs2.stat(p, function(err2, stat) {
           if (err2) return next(err2);
           if (stat.isDirectory()) return next();
-          self.emit("file", p, stat);
-          self.send(p, stat);
+          self2.emit("file", p, stat);
+          self2.send(p, stat);
         });
       }
       next();
     };
-    SendStream.prototype.stream = function stream(path3, options) {
-      var self = this;
+    SendStream.prototype.stream = function stream4(path3, options) {
+      var self2 = this;
       var res = this.res;
-      var stream2 = fs2.createReadStream(path3, options);
-      this.emit("stream", stream2);
-      stream2.pipe(res);
+      var stream5 = fs2.createReadStream(path3, options);
+      this.emit("stream", stream5);
+      stream5.pipe(res);
       function cleanup() {
-        stream2.destroy();
+        stream5.destroy();
       }
       onFinished(res, cleanup);
-      stream2.on("error", function onerror(err) {
+      stream5.on("error", function onerror(err) {
         cleanup();
-        self.onStatError(err);
+        self2.onStatError(err);
       });
-      stream2.on("end", function onend() {
-        self.emit("end");
+      stream5.on("end", function onend() {
+        self2.emit("end");
       });
     };
     SendStream.prototype.type = function type(path3) {
@@ -23402,9 +23402,9 @@ var require_vary = __commonJS({
   "node_modules/vary/index.js"(exports2, module2) {
     "use strict";
     module2.exports = vary;
-    module2.exports.append = append;
+    module2.exports.append = append2;
     var FIELD_NAME_REGEXP = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
-    function append(header, field) {
+    function append2(header, field) {
       if (typeof header !== "string") {
         throw new TypeError("header argument is required");
       }
@@ -23463,7 +23463,7 @@ var require_vary = __commonJS({
       }
       var val = res.getHeader("Vary") || "";
       var header = Array.isArray(val) ? val.join(", ") : String(val);
-      if (val = append(header, field)) {
+      if (val = append2(header, field)) {
         res.setHeader("Vary", val);
       }
     }
@@ -23479,7 +23479,7 @@ var require_response = __commonJS({
     var deprecate = require_depd()("express");
     var encodeUrl = require_encodeurl();
     var escapeHtml = require_escape_html();
-    var http = require("node:http");
+    var http3 = require("node:http");
     var onFinished = require_on_finished();
     var mime = require_mime_types();
     var path2 = require("node:path");
@@ -23495,7 +23495,7 @@ var require_response = __commonJS({
     var resolve2 = path2.resolve;
     var vary = require_vary();
     var { Buffer: Buffer2 } = require("node:buffer");
-    var res = Object.create(http.ServerResponse.prototype);
+    var res = Object.create(http3.ServerResponse.prototype);
     module2.exports = res;
     res.status = function status(code) {
       if (!Number.isInteger(code)) {
@@ -23734,7 +23734,7 @@ var require_response = __commonJS({
       this.set("Content-Disposition", contentDisposition(filename));
       return this;
     };
-    res.append = function append(field, val) {
+    res.append = function append2(field, val) {
       var prev = this.get(field);
       var value = val;
       if (prev) {
@@ -23791,11 +23791,11 @@ var require_response = __commonJS({
       this.append("Set-Cookie", cookie.serialize(name, String(val), opts));
       return this;
     };
-    res.location = function location(url) {
-      return this.set("Location", encodeUrl(url));
+    res.location = function location(url2) {
+      return this.set("Location", encodeUrl(url2));
     };
-    res.redirect = function redirect(url) {
-      var address = url;
+    res.redirect = function redirect(url2) {
+      var address = url2;
       var body;
       var status = 302;
       if (arguments.length === 2) {
@@ -23841,15 +23841,15 @@ var require_response = __commonJS({
       var done = callback;
       var opts = options || {};
       var req = this.req;
-      var self = this;
+      var self2 = this;
       if (typeof options === "function") {
         done = options;
         opts = {};
       }
-      opts._locals = self.locals;
+      opts._locals = self2.locals;
       done = done || function(err, str) {
         if (err) return req.next(err);
-        self.send(str);
+        self2.send(str);
       };
       app2.render(view, opts, done);
     };
@@ -23949,7 +23949,7 @@ var require_serve_static = __commonJS({
     var parseUrl = require_parseurl();
     var resolve2 = require("path").resolve;
     var send = require_send();
-    var url = require("url");
+    var url2 = require("url");
     module2.exports = serveStatic;
     function serveStatic(root, options) {
       if (!root) {
@@ -23985,24 +23985,24 @@ var require_serve_static = __commonJS({
         if (path2 === "/" && originalUrl.pathname.substr(-1) !== "/") {
           path2 = "";
         }
-        var stream = send(req, path2, opts);
-        stream.on("directory", onDirectory);
+        var stream4 = send(req, path2, opts);
+        stream4.on("directory", onDirectory);
         if (setHeaders) {
-          stream.on("headers", setHeaders);
+          stream4.on("headers", setHeaders);
         }
         if (fallthrough) {
-          stream.on("file", function onFile() {
+          stream4.on("file", function onFile() {
             forwardError = true;
           });
         }
-        stream.on("error", function error(err) {
+        stream4.on("error", function error(err) {
           if (forwardError || !(err.statusCode < 500)) {
             next(err);
             return;
           }
           next();
         });
-        stream.pipe(res);
+        stream4.pipe(res);
       };
     }
     function collapseLeadingSlashes(str) {
@@ -24030,7 +24030,7 @@ var require_serve_static = __commonJS({
         var originalUrl = parseUrl.original(this.req);
         originalUrl.path = null;
         originalUrl.pathname = collapseLeadingSlashes(originalUrl.pathname + "/");
-        var loc = encodeUrl(url.format(originalUrl));
+        var loc = encodeUrl(url2.format(originalUrl));
         var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml(loc));
         res.statusCode = 301;
         res.setHeader("Content-Type", "text/html; charset=UTF-8");
@@ -24049,7 +24049,7 @@ var require_express = __commonJS({
   "node_modules/express/lib/express.js"(exports2, module2) {
     "use strict";
     var bodyParser = require_body_parser();
-    var EventEmitter = require("node:events").EventEmitter;
+    var EventEmitter2 = require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
     var Router = require_router();
@@ -24060,7 +24060,7 @@ var require_express = __commonJS({
       var app2 = function(req2, res2, next) {
         app2.handle(req2, res2, next);
       };
-      mixin(app2, EventEmitter.prototype, false);
+      mixin(app2, EventEmitter2.prototype, false);
       mixin(app2, proto, false);
       app2.request = Object.create(req, {
         app: { configurable: true, enumerable: true, writable: true, value: app2 }
@@ -33295,20 +33295,20 @@ var require_accepts2 = __commonJS({
 // node_modules/base64id/lib/base64id.js
 var require_base64id = __commonJS({
   "node_modules/base64id/lib/base64id.js"(exports2, module2) {
-    var crypto3 = require("crypto");
+    var crypto4 = require("crypto");
     var Base64Id = function() {
     };
     Base64Id.prototype.getRandomBytes = function(bytes) {
       var BUFFER_SIZE = 4096;
-      var self = this;
+      var self2 = this;
       bytes = bytes || 12;
       if (bytes > BUFFER_SIZE) {
-        return crypto3.randomBytes(bytes);
+        return crypto4.randomBytes(bytes);
       }
       var bytesInBuffer = parseInt(BUFFER_SIZE / bytes);
       var threshold = parseInt(bytesInBuffer * 0.85);
       if (!threshold) {
-        return crypto3.randomBytes(bytes);
+        return crypto4.randomBytes(bytes);
       }
       if (this.bytesBufferIndex == null) {
         this.bytesBufferIndex = -1;
@@ -33320,14 +33320,14 @@ var require_base64id = __commonJS({
       if (this.bytesBufferIndex == -1 || this.bytesBufferIndex > threshold) {
         if (!this.isGeneratingBytes) {
           this.isGeneratingBytes = true;
-          crypto3.randomBytes(BUFFER_SIZE, function(err, bytes2) {
-            self.bytesBuffer = bytes2;
-            self.bytesBufferIndex = 0;
-            self.isGeneratingBytes = false;
+          crypto4.randomBytes(BUFFER_SIZE, function(err, bytes2) {
+            self2.bytesBuffer = bytes2;
+            self2.bytesBufferIndex = 0;
+            self2.isGeneratingBytes = false;
           });
         }
         if (this.bytesBufferIndex == -1) {
-          return crypto3.randomBytes(bytes);
+          return crypto4.randomBytes(bytes);
         }
       }
       var result = this.bytesBuffer.slice(bytes * this.bytesBufferIndex, bytes * (this.bytesBufferIndex + 1));
@@ -33341,7 +33341,7 @@ var require_base64id = __commonJS({
       }
       this.sequenceNumber = this.sequenceNumber + 1 | 0;
       rand.writeInt32BE(this.sequenceNumber, 11);
-      if (crypto3.randomBytes) {
+      if (crypto4.randomBytes) {
         this.getRandomBytes(12).copy(rand);
       } else {
         [0, 4, 8].forEach(function(i) {
@@ -34069,7 +34069,7 @@ var require_parser_v3 = __commonJS({
       var i;
       while (bufferTail.length > 0) {
         var strLen = "";
-        var isString = bufferTail[0] === 0;
+        var isString2 = bufferTail[0] === 0;
         for (i = 1; ; i++) {
           if (bufferTail[i] === 255)
             break;
@@ -34081,7 +34081,7 @@ var require_parser_v3 = __commonJS({
         bufferTail = bufferTail.slice(strLen.length + 1);
         var msgLength = parseInt(strLen, 10);
         var msg = bufferTail.slice(1, msgLength + 1);
-        if (isString)
+        if (isString2)
           msg = bufferToString(msg);
         buffers.push(msg);
         bufferTail = bufferTail.slice(msgLength + 1);
@@ -34106,7 +34106,7 @@ var require_transport = __commonJS({
     var parser_v3 = require_parser_v3();
     var debug_1 = require_src();
     var debug = (0, debug_1.default)("engine:transport");
-    function noop() {
+    function noop2() {
     }
     var Transport = class extends events_1.EventEmitter {
       get readyState() {
@@ -34155,7 +34155,7 @@ var require_transport = __commonJS({
         if ("closed" === this.readyState || "closing" === this.readyState)
           return;
         this.readyState = "closing";
-        this.doClose(fn || noop);
+        this.doClose(fn || noop2);
       }
       /**
        * Called with a transport error.
@@ -43620,8 +43620,8 @@ var require_polling = __commonJS({
        * @protected
        */
       doWrite(data, options, callback) {
-        const isString = typeof data === "string";
-        const contentType = isString ? "text/plain; charset=UTF-8" : "application/octet-stream";
+        const isString2 = typeof data === "string";
+        const contentType = isString2 ? "text/plain; charset=UTF-8" : "application/octet-stream";
         const headers = {
           "Content-Type": contentType
         };
@@ -43635,7 +43635,7 @@ var require_polling = __commonJS({
           respond(data);
           return;
         }
-        const len = isString ? Buffer.byteLength(data) : data.length;
+        const len = isString2 ? Buffer.byteLength(data) : data.length;
         if (len < this.httpCompression.threshold) {
           respond(data);
           return;
@@ -43864,11 +43864,11 @@ var require_webtransport = __commonJS({
     var engine_io_parser_1 = require_cjs();
     var debug = (0, debug_1.default)("engine:webtransport");
     var WebTransport = class extends transport_1.Transport {
-      constructor(session, stream, reader) {
+      constructor(session, stream4, reader) {
         super({ _query: { EIO: "4" } });
         this.session = session;
         const transformStream = (0, engine_io_parser_1.createPacketEncoderStream)();
-        transformStream.readable.pipeTo(stream.writable).catch(() => {
+        transformStream.readable.pipeTo(stream4.writable).catch(() => {
           debug("the stream was closed");
         });
         this.writer = transformStream.writable.getWriter();
@@ -44529,7 +44529,7 @@ var require_limiter = __commonJS({
 var require_permessage_deflate = __commonJS({
   "node_modules/engine.io/node_modules/ws/lib/permessage-deflate.js"(exports2, module2) {
     "use strict";
-    var zlib = require("zlib");
+    var zlib2 = require("zlib");
     var bufferUtil = require_buffer_util();
     var Limiter = require_limiter();
     var { kStatusCode } = require_constants();
@@ -44796,8 +44796,8 @@ var require_permessage_deflate = __commonJS({
         const endpoint = this._isServer ? "client" : "server";
         if (!this._inflate) {
           const key = `${endpoint}_max_window_bits`;
-          const windowBits = typeof this.params[key] !== "number" ? zlib.Z_DEFAULT_WINDOWBITS : this.params[key];
-          this._inflate = zlib.createInflateRaw({
+          const windowBits = typeof this.params[key] !== "number" ? zlib2.Z_DEFAULT_WINDOWBITS : this.params[key];
+          this._inflate = zlib2.createInflateRaw({
             ...this._options.zlibInflateOptions,
             windowBits
           });
@@ -44847,8 +44847,8 @@ var require_permessage_deflate = __commonJS({
         const endpoint = this._isServer ? "server" : "client";
         if (!this._deflate) {
           const key = `${endpoint}_max_window_bits`;
-          const windowBits = typeof this.params[key] !== "number" ? zlib.Z_DEFAULT_WINDOWBITS : this.params[key];
-          this._deflate = zlib.createDeflateRaw({
+          const windowBits = typeof this.params[key] !== "number" ? zlib2.Z_DEFAULT_WINDOWBITS : this.params[key];
+          this._deflate = zlib2.createDeflateRaw({
             ...this._options.zlibDeflateOptions,
             windowBits
           });
@@ -44858,7 +44858,7 @@ var require_permessage_deflate = __commonJS({
         }
         this._deflate[kCallback] = callback;
         this._deflate.write(data);
-        this._deflate.flush(zlib.Z_SYNC_FLUSH, () => {
+        this._deflate.flush(zlib2.Z_SYNC_FLUSH, () => {
           if (!this._deflate) {
             return;
           }
@@ -45084,11 +45084,11 @@ var require_validation = __commonJS({
       }
       return true;
     }
-    function isBlob(value) {
+    function isBlob2(value) {
       return hasBlob && typeof value === "object" && typeof value.arrayBuffer === "function" && typeof value.type === "string" && typeof value.stream === "function" && (value[Symbol.toStringTag] === "Blob" || value[Symbol.toStringTag] === "File");
     }
     module2.exports = {
-      isBlob,
+      isBlob: isBlob2,
       isValidStatusCode,
       isValidUTF8: _isValidUTF8,
       tokenChars
@@ -45709,7 +45709,7 @@ var require_sender = __commonJS({
     var { randomFillSync } = require("crypto");
     var PerMessageDeflate = require_permessage_deflate();
     var { EMPTY_BUFFER, kWebSocket, NOOP } = require_constants();
-    var { isBlob, isValidStatusCode } = require_validation();
+    var { isBlob: isBlob2, isValidStatusCode } = require_validation();
     var { mask: applyMask, toBuffer } = require_buffer_util();
     var kByteLength = Symbol("kByteLength");
     var maskBuffer = Buffer.alloc(4);
@@ -45766,7 +45766,7 @@ var require_sender = __commonJS({
        */
       static frame(data, options) {
         let mask;
-        let merge = false;
+        let merge2 = false;
         let offset = 2;
         let skipMasking = false;
         if (options.mask) {
@@ -45799,7 +45799,7 @@ var require_sender = __commonJS({
           }
         } else {
           dataLength = data.length;
-          merge = options.mask && options.readOnly && !skipMasking;
+          merge2 = options.mask && options.readOnly && !skipMasking;
         }
         let payloadLength = dataLength;
         if (dataLength >= 65536) {
@@ -45809,7 +45809,7 @@ var require_sender = __commonJS({
           offset += 2;
           payloadLength = 126;
         }
-        const target = Buffer.allocUnsafe(merge ? dataLength + offset : offset);
+        const target = Buffer.allocUnsafe(merge2 ? dataLength + offset : offset);
         target[0] = options.fin ? options.opcode | 128 : options.opcode;
         if (options.rsv1) target[0] |= 64;
         target[1] = payloadLength;
@@ -45826,7 +45826,7 @@ var require_sender = __commonJS({
         target[offset - 2] = mask[2];
         target[offset - 1] = mask[3];
         if (skipMasking) return [target, data];
-        if (merge) {
+        if (merge2) {
           applyMask(data, mask, target, offset, dataLength);
           return [target];
         }
@@ -45894,7 +45894,7 @@ var require_sender = __commonJS({
         if (typeof data === "string") {
           byteLength = Buffer.byteLength(data);
           readOnly = false;
-        } else if (isBlob(data)) {
+        } else if (isBlob2(data)) {
           byteLength = data.size;
           readOnly = false;
         } else {
@@ -45915,7 +45915,7 @@ var require_sender = __commonJS({
           readOnly,
           rsv1: false
         };
-        if (isBlob(data)) {
+        if (isBlob2(data)) {
           if (this._state !== DEFAULT) {
             this.enqueue([this.getBlobData, data, false, options, cb]);
           } else {
@@ -45941,7 +45941,7 @@ var require_sender = __commonJS({
         if (typeof data === "string") {
           byteLength = Buffer.byteLength(data);
           readOnly = false;
-        } else if (isBlob(data)) {
+        } else if (isBlob2(data)) {
           byteLength = data.size;
           readOnly = false;
         } else {
@@ -45962,7 +45962,7 @@ var require_sender = __commonJS({
           readOnly,
           rsv1: false
         };
-        if (isBlob(data)) {
+        if (isBlob2(data)) {
           if (this._state !== DEFAULT) {
             this.enqueue([this.getBlobData, data, false, options, cb]);
           } else {
@@ -45999,7 +45999,7 @@ var require_sender = __commonJS({
         if (typeof data === "string") {
           byteLength = Buffer.byteLength(data);
           readOnly = false;
-        } else if (isBlob(data)) {
+        } else if (isBlob2(data)) {
           byteLength = data.size;
           readOnly = false;
         } else {
@@ -46028,7 +46028,7 @@ var require_sender = __commonJS({
           readOnly,
           rsv1
         };
-        if (isBlob(data)) {
+        if (isBlob2(data)) {
           if (this._state !== DEFAULT) {
             this.enqueue([this.getBlobData, data, this._compress, opts, cb]);
           } else {
@@ -46575,18 +46575,18 @@ var require_extension = __commonJS({
 var require_websocket2 = __commonJS({
   "node_modules/engine.io/node_modules/ws/lib/websocket.js"(exports2, module2) {
     "use strict";
-    var EventEmitter = require("events");
-    var https = require("https");
-    var http = require("http");
+    var EventEmitter2 = require("events");
+    var https2 = require("https");
+    var http3 = require("http");
     var net = require("net");
     var tls = require("tls");
     var { randomBytes: randomBytes2, createHash } = require("crypto");
-    var { Duplex, Readable } = require("stream");
+    var { Duplex, Readable: Readable2 } = require("stream");
     var { URL: URL2 } = require("url");
     var PerMessageDeflate = require_permessage_deflate();
     var Receiver = require_receiver();
     var Sender = require_sender();
-    var { isBlob } = require_validation();
+    var { isBlob: isBlob2 } = require_validation();
     var {
       BINARY_TYPES,
       EMPTY_BUFFER,
@@ -46607,7 +46607,7 @@ var require_websocket2 = __commonJS({
     var protocolVersions = [8, 13];
     var readyStates = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
     var subprotocolRegex = /^[!#$%&'*+\-.0-9A-Z^_`|a-z~]+$/;
-    var WebSocket = class _WebSocket extends EventEmitter {
+    var WebSocket = class _WebSocket extends EventEmitter2 {
       /**
        * Create a new `WebSocket`.
        *
@@ -47108,7 +47108,7 @@ var require_websocket2 = __commonJS({
       }
       const defaultPort = isSecure ? 443 : 80;
       const key = randomBytes2(16).toString("base64");
-      const request = isSecure ? https.request : http.request;
+      const request = isSecure ? https2.request : http3.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
       opts.createConnection = opts.createConnection || (isSecure ? tlsConnect : netConnect);
@@ -47318,26 +47318,26 @@ var require_websocket2 = __commonJS({
       }
       return tls.connect(options);
     }
-    function abortHandshake(websocket, stream, message) {
+    function abortHandshake(websocket, stream4, message) {
       websocket._readyState = WebSocket.CLOSING;
       const err = new Error(message);
       Error.captureStackTrace(err, abortHandshake);
-      if (stream.setHeader) {
-        stream[kAborted] = true;
-        stream.abort();
-        if (stream.socket && !stream.socket.destroyed) {
-          stream.socket.destroy();
+      if (stream4.setHeader) {
+        stream4[kAborted] = true;
+        stream4.abort();
+        if (stream4.socket && !stream4.socket.destroyed) {
+          stream4.socket.destroy();
         }
         process.nextTick(emitErrorAndClose, websocket, err);
       } else {
-        stream.destroy(err);
-        stream.once("error", websocket.emit.bind(websocket, "error"));
-        stream.once("close", websocket.emitClose.bind(websocket));
+        stream4.destroy(err);
+        stream4.once("error", websocket.emit.bind(websocket, "error"));
+        stream4.once("close", websocket.emitClose.bind(websocket));
       }
     }
     function sendAfterClose(websocket, data, cb) {
       if (data) {
-        const length = isBlob(data) ? data.size : toBuffer(data).length;
+        const length = isBlob2(data) ? data.size : toBuffer(data).length;
         if (websocket._socket) websocket._sender._bufferedBytes += length;
         else websocket._bufferedAmount += length;
       }
@@ -47389,8 +47389,8 @@ var require_websocket2 = __commonJS({
     function receiverOnPong(data) {
       this[kWebSocket].emit("pong", data);
     }
-    function resume(stream) {
-      stream.resume();
+    function resume(stream4) {
+      stream4.resume();
     }
     function senderOnError(err) {
       const websocket = this[kWebSocket];
@@ -47460,8 +47460,8 @@ var require_stream = __commonJS({
     "use strict";
     var WebSocket = require_websocket2();
     var { Duplex } = require("stream");
-    function emitClose(stream) {
-      stream.emit("close");
+    function emitClose(stream4) {
+      stream4.emit("close");
     }
     function duplexOnEnd() {
       if (!this.destroyed && this._writableState.finished) {
@@ -47601,8 +47601,8 @@ var require_subprotocol = __commonJS({
 var require_websocket_server = __commonJS({
   "node_modules/engine.io/node_modules/ws/lib/websocket-server.js"(exports2, module2) {
     "use strict";
-    var EventEmitter = require("events");
-    var http = require("http");
+    var EventEmitter2 = require("events");
+    var http3 = require("http");
     var { Duplex } = require("stream");
     var { createHash } = require("crypto");
     var extension = require_extension();
@@ -47614,7 +47614,7 @@ var require_websocket_server = __commonJS({
     var RUNNING = 0;
     var CLOSING = 1;
     var CLOSED = 2;
-    var WebSocketServer = class extends EventEmitter {
+    var WebSocketServer = class extends EventEmitter2 {
       /**
        * Create a `WebSocketServer` instance.
        *
@@ -47673,8 +47673,8 @@ var require_websocket_server = __commonJS({
           );
         }
         if (options.port != null) {
-          this._server = http.createServer((req, res) => {
-            const body = http.STATUS_CODES[426];
+          this._server = http3.createServer((req, res) => {
+            const body = http3.STATUS_CODES[426];
             res.writeHead(426, {
               "Content-Length": body.length,
               "Content-Type": "text/plain"
@@ -47961,7 +47961,7 @@ var require_websocket_server = __commonJS({
       this.destroy();
     }
     function abortHandshake(socket, code, message, headers) {
-      message = message || http.STATUS_CODES[code];
+      message = message || http3.STATUS_CODES[code];
       headers = {
         Connection: "close",
         "Content-Type": "text/html",
@@ -47970,7 +47970,7 @@ var require_websocket_server = __commonJS({
       };
       socket.once("finish", socket.destroy);
       socket.end(
-        `HTTP/1.1 ${code} ${http.STATUS_CODES[code]}\r
+        `HTTP/1.1 ${code} ${http3.STATUS_CODES[code]}\r
 ` + Object.keys(headers).map((h) => `${h}: ${headers[h]}`).join("\r\n") + "\r\n\r\n" + message
       );
     }
@@ -48006,7 +48006,7 @@ var require_object_assign = __commonJS({
   "node_modules/object-assign/index.js"(exports2, module2) {
     "use strict";
     var getOwnPropertySymbols = Object.getOwnPropertySymbols;
-    var hasOwnProperty = Object.prototype.hasOwnProperty;
+    var hasOwnProperty2 = Object.prototype.hasOwnProperty;
     var propIsEnumerable = Object.prototype.propertyIsEnumerable;
     function toObject(val) {
       if (val === null || val === void 0) {
@@ -48053,7 +48053,7 @@ var require_object_assign = __commonJS({
       for (var s = 1; s < arguments.length; s++) {
         from = Object(arguments[s]);
         for (var key in from) {
-          if (hasOwnProperty.call(from, key)) {
+          if (hasOwnProperty2.call(from, key)) {
             to[key] = from[key];
           }
         }
@@ -48078,27 +48078,27 @@ var require_lib3 = __commonJS({
       "use strict";
       var assign = require_object_assign();
       var vary = require_vary();
-      var defaults2 = {
+      var defaults3 = {
         origin: "*",
         methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
         preflightContinue: false,
         optionsSuccessStatus: 204
       };
-      function isString(s) {
+      function isString2(s) {
         return typeof s === "string" || s instanceof String;
       }
-      function isOriginAllowed(origin, allowedOrigin) {
+      function isOriginAllowed(origin2, allowedOrigin) {
         if (Array.isArray(allowedOrigin)) {
           for (var i = 0; i < allowedOrigin.length; ++i) {
-            if (isOriginAllowed(origin, allowedOrigin[i])) {
+            if (isOriginAllowed(origin2, allowedOrigin[i])) {
               return true;
             }
           }
           return false;
-        } else if (isString(allowedOrigin)) {
-          return origin === allowedOrigin;
+        } else if (isString2(allowedOrigin)) {
+          return origin2 === allowedOrigin;
         } else if (allowedOrigin instanceof RegExp) {
-          return allowedOrigin.test(origin);
+          return allowedOrigin.test(origin2);
         } else {
           return !!allowedOrigin;
         }
@@ -48110,7 +48110,7 @@ var require_lib3 = __commonJS({
             key: "Access-Control-Allow-Origin",
             value: "*"
           }]);
-        } else if (isString(options.origin)) {
+        } else if (isString2(options.origin)) {
           headers.push([{
             key: "Access-Control-Allow-Origin",
             value: options.origin
@@ -48249,21 +48249,21 @@ var require_lib3 = __commonJS({
             if (err) {
               next(err);
             } else {
-              var corsOptions = assign({}, defaults2, options);
+              var corsOptions = assign({}, defaults3, options);
               var originCallback = null;
               if (corsOptions.origin && typeof corsOptions.origin === "function") {
                 originCallback = corsOptions.origin;
               } else if (corsOptions.origin) {
-                originCallback = function(origin, cb) {
+                originCallback = function(origin2, cb) {
                   cb(null, corsOptions.origin);
                 };
               }
               if (originCallback) {
-                originCallback(req.headers.origin, function(err2, origin) {
-                  if (err2 || !origin) {
+                originCallback(req.headers.origin, function(err2, origin2) {
+                  if (err2 || !origin2) {
                     next(err2);
                   } else {
-                    corsOptions.origin = origin;
+                    corsOptions.origin = origin2;
                     cors(corsOptions, req, res, next);
                   }
                 });
@@ -48387,12 +48387,12 @@ var require_server = __commonJS({
         }
         const isOriginInvalid = checkInvalidHeaderChar(req.headers.origin);
         if (isOriginInvalid) {
-          const origin = req.headers.origin;
+          const origin2 = req.headers.origin;
           req.headers.origin = null;
           debug("origin header invalid");
           return fn(Server2.errors.BAD_REQUEST, {
             name: "INVALID_ORIGIN",
-            origin
+            origin: origin2
           });
         }
         const sid = req._query.sid;
@@ -48599,9 +48599,9 @@ var require_server = __commonJS({
           debug("session is closed");
           return;
         }
-        const stream = result.value;
+        const stream4 = result.value;
         const transformStream = (0, engine_io_parser_1.createPacketDecoderStream)(this.opts.maxHttpBufferSize, "nodebuffer");
-        const reader = stream.readable.pipeThrough(transformStream).getReader();
+        const reader = stream4.readable.pipeThrough(transformStream).getReader();
         const { value, done } = await reader.read();
         if (done) {
           debug("stream is closed");
@@ -48613,7 +48613,7 @@ var require_server = __commonJS({
           return session.close();
         }
         if (value.data === void 0) {
-          const transport = new webtransport_1.WebTransport(session, stream, reader);
+          const transport = new webtransport_1.WebTransport(session, stream4, reader);
           const id = base64id.generateId();
           debug('handshaking client "%s" (WebTransport)', id);
           const socket = new socket_1.Socket(id, this, transport, null, 4);
@@ -48643,7 +48643,7 @@ var require_server = __commonJS({
           session.close();
         } else {
           debug("upgrading existing transport");
-          const transport = new webtransport_1.WebTransport(session, stream, reader);
+          const transport = new webtransport_1.WebTransport(session, stream4, reader);
           client._maybeUpgrade(transport);
         }
       }
@@ -48734,8 +48734,8 @@ var require_server = __commonJS({
        */
       prepare(req) {
         if (!req._query) {
-          const url = new URL(req.url, "https://socket.io");
-          req._query = Object.fromEntries(url.searchParams.entries());
+          const url2 = new URL(req.url, "https://socket.io");
+          req._query = Object.fromEntries(url2.searchParams.entries());
         }
       }
       createTransport(transportName, req) {
@@ -49470,8 +49470,8 @@ var require_polling2 = __commonJS({
        * @private
        */
       doWrite(data, options, callback) {
-        const isString = typeof data === "string";
-        const contentType = isString ? "text/plain; charset=UTF-8" : "application/octet-stream";
+        const isString2 = typeof data === "string";
+        const contentType = isString2 ? "text/plain; charset=UTF-8" : "application/octet-stream";
         const headers = {
           "Content-Type": contentType
         };
@@ -49489,7 +49489,7 @@ var require_polling2 = __commonJS({
           respond(data);
           return;
         }
-        const len = isString ? Buffer.byteLength(data) : data.length;
+        const len = isString2 ? Buffer.byteLength(data) : data.length;
         if (len < this.httpCompression.threshold) {
           respond(data);
           return;
@@ -50071,9 +50071,9 @@ var require_is_binary = __commonJS({
     var isView2 = (obj) => {
       return typeof ArrayBuffer.isView === "function" ? ArrayBuffer.isView(obj) : obj.buffer instanceof ArrayBuffer;
     };
-    var toString = Object.prototype.toString;
-    var withNativeBlob = typeof Blob === "function" || typeof Blob !== "undefined" && toString.call(Blob) === "[object BlobConstructor]";
-    var withNativeFile = typeof File === "function" || typeof File !== "undefined" && toString.call(File) === "[object FileConstructor]";
+    var toString3 = Object.prototype.toString;
+    var withNativeBlob = typeof Blob === "function" || typeof Blob !== "undefined" && toString3.call(Blob) === "[object BlobConstructor]";
+    var withNativeFile = typeof File === "function" || typeof File !== "undefined" && toString3.call(File) === "[object FileConstructor]";
     function isBinary(obj) {
       return withNativeArrayBuffer && (obj instanceof ArrayBuffer || isView2(obj)) || withNativeBlob && obj instanceof Blob || withNativeFile && obj instanceof File;
     }
@@ -50394,11 +50394,11 @@ var require_cjs3 = __commonJS({
       static isPayloadValid(type, payload) {
         switch (type) {
           case PacketType.CONNECT:
-            return isObject(payload);
+            return isObject2(payload);
           case PacketType.DISCONNECT:
             return payload === void 0;
           case PacketType.CONNECT_ERROR:
-            return typeof payload === "string" || isObject(payload);
+            return typeof payload === "string" || isObject2(payload);
           case PacketType.EVENT:
           case PacketType.BINARY_EVENT:
             return Array.isArray(payload) && (typeof payload[0] === "number" || typeof payload[0] === "string" && RESERVED_EVENTS.indexOf(payload[0]) === -1);
@@ -50458,13 +50458,13 @@ var require_cjs3 = __commonJS({
     function isAckIdValid(id) {
       return id === void 0 || isInteger(id);
     }
-    function isObject(value) {
+    function isObject2(value) {
       return Object.prototype.toString.call(value) === "[object Object]";
     }
     function isDataValid(type, payload) {
       switch (type) {
         case PacketType.CONNECT:
-          return payload === void 0 || isObject(payload);
+          return payload === void 0 || isObject2(payload);
         case PacketType.DISCONNECT:
           return payload === void 0;
         case PacketType.EVENT:
@@ -50472,7 +50472,7 @@ var require_cjs3 = __commonJS({
         case PacketType.ACK:
           return Array.isArray(payload);
         case PacketType.CONNECT_ERROR:
-          return typeof payload === "string" || isObject(payload);
+          return typeof payload === "string" || isObject2(payload);
         default:
           return false;
       }
@@ -50692,10 +50692,10 @@ var require_client = __commonJS({
             authPayload: packet.data
           };
         }
-        const url = new URL(packet.nsp, "https://socket.io");
+        const url2 = new URL(packet.nsp, "https://socket.io");
         return {
-          namespace: url.pathname,
-          authPayload: Object.fromEntries(url.searchParams.entries())
+          namespace: url2.pathname,
+          authPayload: Object.fromEntries(url2.searchParams.entries())
         };
       }
       /**
@@ -50845,8 +50845,8 @@ var require_broadcast_operator = __commonJS({
     var socket_types_1 = require_socket_types();
     var socket_io_parser_1 = require_cjs3();
     var BroadcastOperator = class _BroadcastOperator {
-      constructor(adapter, rooms = /* @__PURE__ */ new Set(), exceptRooms = /* @__PURE__ */ new Set(), flags = {}) {
-        this.adapter = adapter;
+      constructor(adapter2, rooms = /* @__PURE__ */ new Set(), exceptRooms = /* @__PURE__ */ new Set(), flags = {}) {
+        this.adapter = adapter2;
         this.rooms = rooms;
         this.exceptRooms = exceptRooms;
         this.flags = flags;
@@ -51195,12 +51195,12 @@ var require_broadcast_operator = __commonJS({
     };
     exports2.BroadcastOperator = BroadcastOperator;
     var RemoteSocket = class {
-      constructor(adapter, details) {
+      constructor(adapter2, details) {
         this.id = details.id;
         this.handshake = details.handshake;
         this.rooms = new Set(details.rooms);
         this.data = details.data;
-        this.operator = new BroadcastOperator(adapter, /* @__PURE__ */ new Set([this.id]), /* @__PURE__ */ new Set(), {
+        this.operator = new BroadcastOperator(adapter2, /* @__PURE__ */ new Set([this.id]), /* @__PURE__ */ new Set(), {
           expectSingleResponse: true
           // so that remoteSocket.emit() with acknowledgement behaves like socket.emit()
         });
@@ -51289,7 +51289,7 @@ var require_socket2 = __commonJS({
       "server shutting down",
       "forced server close"
     ]);
-    function noop() {
+    function noop2() {
     }
     var Socket2 = class extends typed_events_1.StrictEventEmitter {
       /**
@@ -51335,7 +51335,7 @@ var require_socket2 = __commonJS({
           }
         }
         this.handshake = this.buildHandshake(auth);
-        this.on("error", noop);
+        this.on("error", noop2);
       }
       /**
        * Builds the `handshake` BC object
@@ -51679,14 +51679,14 @@ var require_socket2 = __commonJS({
        * @private
        */
       ack(id) {
-        const self = this;
+        const self2 = this;
         let sent = false;
         return function() {
           if (sent)
             return;
           const args = Array.prototype.slice.call(arguments);
           debug("sending ack %j", args);
-          self.packet({
+          self2.packet({
             id,
             type: socket_io_parser_1.PacketType.ACK,
             data: args
@@ -51763,7 +51763,7 @@ var require_socket2 = __commonJS({
       _cleanup() {
         this.leaveAll();
         this.nsp._remove(this);
-        this.join = noop;
+        this.join = noop2;
       }
       /**
        * Produces an `error` packet.
@@ -52689,7 +52689,7 @@ var require_yeast = __commonJS({
   "node_modules/socket.io-adapter/dist/contrib/yeast.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.encode = encode;
+    exports2.encode = encode3;
     exports2.decode = decode;
     exports2.yeast = yeast;
     var alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_".split("");
@@ -52698,7 +52698,7 @@ var require_yeast = __commonJS({
     var seed = 0;
     var i = 0;
     var prev;
-    function encode(num) {
+    function encode3(num) {
       let encoded = "";
       do {
         encoded = alphabet[num % length] + encoded;
@@ -52714,10 +52714,10 @@ var require_yeast = __commonJS({
       return decoded;
     }
     function yeast() {
-      const now = encode(+/* @__PURE__ */ new Date());
+      const now = encode3(+/* @__PURE__ */ new Date());
       if (now !== prev)
         return seed = 0, prev = now;
-      return now + "." + encode(seed++);
+      return now + "." + encode3(seed++);
     }
     for (; i < length; i++)
       map[alphabet[i]] = i;
@@ -52875,7 +52875,7 @@ var require_limiter2 = __commonJS({
 var require_permessage_deflate2 = __commonJS({
   "node_modules/socket.io-adapter/node_modules/ws/lib/permessage-deflate.js"(exports2, module2) {
     "use strict";
-    var zlib = require("zlib");
+    var zlib2 = require("zlib");
     var bufferUtil = require_buffer_util2();
     var Limiter = require_limiter2();
     var { kStatusCode } = require_constants2();
@@ -53142,8 +53142,8 @@ var require_permessage_deflate2 = __commonJS({
         const endpoint = this._isServer ? "client" : "server";
         if (!this._inflate) {
           const key = `${endpoint}_max_window_bits`;
-          const windowBits = typeof this.params[key] !== "number" ? zlib.Z_DEFAULT_WINDOWBITS : this.params[key];
-          this._inflate = zlib.createInflateRaw({
+          const windowBits = typeof this.params[key] !== "number" ? zlib2.Z_DEFAULT_WINDOWBITS : this.params[key];
+          this._inflate = zlib2.createInflateRaw({
             ...this._options.zlibInflateOptions,
             windowBits
           });
@@ -53193,8 +53193,8 @@ var require_permessage_deflate2 = __commonJS({
         const endpoint = this._isServer ? "server" : "client";
         if (!this._deflate) {
           const key = `${endpoint}_max_window_bits`;
-          const windowBits = typeof this.params[key] !== "number" ? zlib.Z_DEFAULT_WINDOWBITS : this.params[key];
-          this._deflate = zlib.createDeflateRaw({
+          const windowBits = typeof this.params[key] !== "number" ? zlib2.Z_DEFAULT_WINDOWBITS : this.params[key];
+          this._deflate = zlib2.createDeflateRaw({
             ...this._options.zlibDeflateOptions,
             windowBits
           });
@@ -53204,7 +53204,7 @@ var require_permessage_deflate2 = __commonJS({
         }
         this._deflate[kCallback] = callback;
         this._deflate.write(data);
-        this._deflate.flush(zlib.Z_SYNC_FLUSH, () => {
+        this._deflate.flush(zlib2.Z_SYNC_FLUSH, () => {
           if (!this._deflate) {
             return;
           }
@@ -53430,11 +53430,11 @@ var require_validation2 = __commonJS({
       }
       return true;
     }
-    function isBlob(value) {
+    function isBlob2(value) {
       return hasBlob && typeof value === "object" && typeof value.arrayBuffer === "function" && typeof value.type === "string" && typeof value.stream === "function" && (value[Symbol.toStringTag] === "Blob" || value[Symbol.toStringTag] === "File");
     }
     module2.exports = {
-      isBlob,
+      isBlob: isBlob2,
       isValidStatusCode,
       isValidUTF8: _isValidUTF8,
       tokenChars
@@ -54055,7 +54055,7 @@ var require_sender2 = __commonJS({
     var { randomFillSync } = require("crypto");
     var PerMessageDeflate = require_permessage_deflate2();
     var { EMPTY_BUFFER, kWebSocket, NOOP } = require_constants2();
-    var { isBlob, isValidStatusCode } = require_validation2();
+    var { isBlob: isBlob2, isValidStatusCode } = require_validation2();
     var { mask: applyMask, toBuffer } = require_buffer_util2();
     var kByteLength = Symbol("kByteLength");
     var maskBuffer = Buffer.alloc(4);
@@ -54112,7 +54112,7 @@ var require_sender2 = __commonJS({
        */
       static frame(data, options) {
         let mask;
-        let merge = false;
+        let merge2 = false;
         let offset = 2;
         let skipMasking = false;
         if (options.mask) {
@@ -54145,7 +54145,7 @@ var require_sender2 = __commonJS({
           }
         } else {
           dataLength = data.length;
-          merge = options.mask && options.readOnly && !skipMasking;
+          merge2 = options.mask && options.readOnly && !skipMasking;
         }
         let payloadLength = dataLength;
         if (dataLength >= 65536) {
@@ -54155,7 +54155,7 @@ var require_sender2 = __commonJS({
           offset += 2;
           payloadLength = 126;
         }
-        const target = Buffer.allocUnsafe(merge ? dataLength + offset : offset);
+        const target = Buffer.allocUnsafe(merge2 ? dataLength + offset : offset);
         target[0] = options.fin ? options.opcode | 128 : options.opcode;
         if (options.rsv1) target[0] |= 64;
         target[1] = payloadLength;
@@ -54172,7 +54172,7 @@ var require_sender2 = __commonJS({
         target[offset - 2] = mask[2];
         target[offset - 1] = mask[3];
         if (skipMasking) return [target, data];
-        if (merge) {
+        if (merge2) {
           applyMask(data, mask, target, offset, dataLength);
           return [target];
         }
@@ -54240,7 +54240,7 @@ var require_sender2 = __commonJS({
         if (typeof data === "string") {
           byteLength = Buffer.byteLength(data);
           readOnly = false;
-        } else if (isBlob(data)) {
+        } else if (isBlob2(data)) {
           byteLength = data.size;
           readOnly = false;
         } else {
@@ -54261,7 +54261,7 @@ var require_sender2 = __commonJS({
           readOnly,
           rsv1: false
         };
-        if (isBlob(data)) {
+        if (isBlob2(data)) {
           if (this._state !== DEFAULT) {
             this.enqueue([this.getBlobData, data, false, options, cb]);
           } else {
@@ -54287,7 +54287,7 @@ var require_sender2 = __commonJS({
         if (typeof data === "string") {
           byteLength = Buffer.byteLength(data);
           readOnly = false;
-        } else if (isBlob(data)) {
+        } else if (isBlob2(data)) {
           byteLength = data.size;
           readOnly = false;
         } else {
@@ -54308,7 +54308,7 @@ var require_sender2 = __commonJS({
           readOnly,
           rsv1: false
         };
-        if (isBlob(data)) {
+        if (isBlob2(data)) {
           if (this._state !== DEFAULT) {
             this.enqueue([this.getBlobData, data, false, options, cb]);
           } else {
@@ -54345,7 +54345,7 @@ var require_sender2 = __commonJS({
         if (typeof data === "string") {
           byteLength = Buffer.byteLength(data);
           readOnly = false;
-        } else if (isBlob(data)) {
+        } else if (isBlob2(data)) {
           byteLength = data.size;
           readOnly = false;
         } else {
@@ -54374,7 +54374,7 @@ var require_sender2 = __commonJS({
           readOnly,
           rsv1
         };
-        if (isBlob(data)) {
+        if (isBlob2(data)) {
           if (this._state !== DEFAULT) {
             this.enqueue([this.getBlobData, data, this._compress, opts, cb]);
           } else {
@@ -54921,18 +54921,18 @@ var require_extension2 = __commonJS({
 var require_websocket4 = __commonJS({
   "node_modules/socket.io-adapter/node_modules/ws/lib/websocket.js"(exports2, module2) {
     "use strict";
-    var EventEmitter = require("events");
-    var https = require("https");
-    var http = require("http");
+    var EventEmitter2 = require("events");
+    var https2 = require("https");
+    var http3 = require("http");
     var net = require("net");
     var tls = require("tls");
     var { randomBytes: randomBytes2, createHash } = require("crypto");
-    var { Duplex, Readable } = require("stream");
+    var { Duplex, Readable: Readable2 } = require("stream");
     var { URL: URL2 } = require("url");
     var PerMessageDeflate = require_permessage_deflate2();
     var Receiver = require_receiver2();
     var Sender = require_sender2();
-    var { isBlob } = require_validation2();
+    var { isBlob: isBlob2 } = require_validation2();
     var {
       BINARY_TYPES,
       EMPTY_BUFFER,
@@ -54953,7 +54953,7 @@ var require_websocket4 = __commonJS({
     var protocolVersions = [8, 13];
     var readyStates = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
     var subprotocolRegex = /^[!#$%&'*+\-.0-9A-Z^_`|a-z~]+$/;
-    var WebSocket = class _WebSocket extends EventEmitter {
+    var WebSocket = class _WebSocket extends EventEmitter2 {
       /**
        * Create a new `WebSocket`.
        *
@@ -55454,7 +55454,7 @@ var require_websocket4 = __commonJS({
       }
       const defaultPort = isSecure ? 443 : 80;
       const key = randomBytes2(16).toString("base64");
-      const request = isSecure ? https.request : http.request;
+      const request = isSecure ? https2.request : http3.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
       opts.createConnection = opts.createConnection || (isSecure ? tlsConnect : netConnect);
@@ -55664,26 +55664,26 @@ var require_websocket4 = __commonJS({
       }
       return tls.connect(options);
     }
-    function abortHandshake(websocket, stream, message) {
+    function abortHandshake(websocket, stream4, message) {
       websocket._readyState = WebSocket.CLOSING;
       const err = new Error(message);
       Error.captureStackTrace(err, abortHandshake);
-      if (stream.setHeader) {
-        stream[kAborted] = true;
-        stream.abort();
-        if (stream.socket && !stream.socket.destroyed) {
-          stream.socket.destroy();
+      if (stream4.setHeader) {
+        stream4[kAborted] = true;
+        stream4.abort();
+        if (stream4.socket && !stream4.socket.destroyed) {
+          stream4.socket.destroy();
         }
         process.nextTick(emitErrorAndClose, websocket, err);
       } else {
-        stream.destroy(err);
-        stream.once("error", websocket.emit.bind(websocket, "error"));
-        stream.once("close", websocket.emitClose.bind(websocket));
+        stream4.destroy(err);
+        stream4.once("error", websocket.emit.bind(websocket, "error"));
+        stream4.once("close", websocket.emitClose.bind(websocket));
       }
     }
     function sendAfterClose(websocket, data, cb) {
       if (data) {
-        const length = isBlob(data) ? data.size : toBuffer(data).length;
+        const length = isBlob2(data) ? data.size : toBuffer(data).length;
         if (websocket._socket) websocket._sender._bufferedBytes += length;
         else websocket._bufferedAmount += length;
       }
@@ -55735,8 +55735,8 @@ var require_websocket4 = __commonJS({
     function receiverOnPong(data) {
       this[kWebSocket].emit("pong", data);
     }
-    function resume(stream) {
-      stream.resume();
+    function resume(stream4) {
+      stream4.resume();
     }
     function senderOnError(err) {
       const websocket = this[kWebSocket];
@@ -55806,8 +55806,8 @@ var require_stream2 = __commonJS({
     "use strict";
     var WebSocket = require_websocket4();
     var { Duplex } = require("stream");
-    function emitClose(stream) {
-      stream.emit("close");
+    function emitClose(stream4) {
+      stream4.emit("close");
     }
     function duplexOnEnd() {
       if (!this.destroyed && this._writableState.finished) {
@@ -55947,8 +55947,8 @@ var require_subprotocol2 = __commonJS({
 var require_websocket_server2 = __commonJS({
   "node_modules/socket.io-adapter/node_modules/ws/lib/websocket-server.js"(exports2, module2) {
     "use strict";
-    var EventEmitter = require("events");
-    var http = require("http");
+    var EventEmitter2 = require("events");
+    var http3 = require("http");
     var { Duplex } = require("stream");
     var { createHash } = require("crypto");
     var extension = require_extension2();
@@ -55960,7 +55960,7 @@ var require_websocket_server2 = __commonJS({
     var RUNNING = 0;
     var CLOSING = 1;
     var CLOSED = 2;
-    var WebSocketServer = class extends EventEmitter {
+    var WebSocketServer = class extends EventEmitter2 {
       /**
        * Create a `WebSocketServer` instance.
        *
@@ -56019,8 +56019,8 @@ var require_websocket_server2 = __commonJS({
           );
         }
         if (options.port != null) {
-          this._server = http.createServer((req, res) => {
-            const body = http.STATUS_CODES[426];
+          this._server = http3.createServer((req, res) => {
+            const body = http3.STATUS_CODES[426];
             res.writeHead(426, {
               "Content-Length": body.length,
               "Content-Type": "text/plain"
@@ -56307,7 +56307,7 @@ var require_websocket_server2 = __commonJS({
       this.destroy();
     }
     function abortHandshake(socket, code, message, headers) {
-      message = message || http.STATUS_CODES[code];
+      message = message || http3.STATUS_CODES[code];
       headers = {
         Connection: "close",
         "Content-Type": "text/html",
@@ -56316,7 +56316,7 @@ var require_websocket_server2 = __commonJS({
       };
       socket.once("finish", socket.destroy);
       socket.end(
-        `HTTP/1.1 ${code} ${http.STATUS_CODES[code]}\r
+        `HTTP/1.1 ${code} ${http3.STATUS_CODES[code]}\r
 ` + Object.keys(headers).map((h) => `${h}: ${headers[h]}`).join("\r\n") + "\r\n\r\n" + message
       );
     }
@@ -57587,8 +57587,8 @@ var require_uws = __commonJS({
     };
     function serveFile(res, filepath) {
       const { size } = (0, fs_1.statSync)(filepath);
-      const readStream = (0, fs_1.createReadStream)(filepath);
-      const destroyReadStream = () => !readStream.destroyed && readStream.destroy();
+      const readStream2 = (0, fs_1.createReadStream)(filepath);
+      const destroyReadStream = () => !readStream2.destroyed && readStream2.destroy();
       const onError = (error) => {
         destroyReadStream();
         throw error;
@@ -57599,11 +57599,11 @@ var require_uws = __commonJS({
           const lastOffset = res.getWriteOffset();
           const [ok, done] = res.tryEnd(arrayBufferChunk, size);
           if (!done && !ok) {
-            readStream.pause();
+            readStream2.pause();
             res.onWritable((offset) => {
               const [ok2, done2] = res.tryEnd(arrayBufferChunk.slice(offset - lastOffset), size);
               if (!done2 && ok2) {
-                readStream.resume();
+                readStream2.resume();
               }
               return ok2;
             });
@@ -57611,7 +57611,7 @@ var require_uws = __commonJS({
         });
       };
       res.onAborted(destroyReadStream);
-      readStream.on("data", onDataChunk).on("error", onError).on("end", destroyReadStream);
+      readStream2.on("data", onDataChunk).on("error", onError).on("end", destroyReadStream);
     }
   }
 });
@@ -58028,7 +58028,7 @@ var require_dist3 = __commonJS({
        * @private
        */
       static sendFile(filename, req, res) {
-        const readStream = (0, fs_1.createReadStream)(path2.join(__dirname, "../client-dist/", filename));
+        const readStream2 = (0, fs_1.createReadStream)(path2.join(__dirname, "../client-dist/", filename));
         const encoding = accepts(req).encodings(["br", "gzip", "deflate"]);
         const onError = (err) => {
           if (err) {
@@ -58038,19 +58038,19 @@ var require_dist3 = __commonJS({
         switch (encoding) {
           case "br":
             res.writeHead(200, { "content-encoding": "br" });
-            (0, stream_1.pipeline)(readStream, (0, zlib_1.createBrotliCompress)(), res, onError);
+            (0, stream_1.pipeline)(readStream2, (0, zlib_1.createBrotliCompress)(), res, onError);
             break;
           case "gzip":
             res.writeHead(200, { "content-encoding": "gzip" });
-            (0, stream_1.pipeline)(readStream, (0, zlib_1.createGzip)(), res, onError);
+            (0, stream_1.pipeline)(readStream2, (0, zlib_1.createGzip)(), res, onError);
             break;
           case "deflate":
             res.writeHead(200, { "content-encoding": "deflate" });
-            (0, stream_1.pipeline)(readStream, (0, zlib_1.createDeflate)(), res, onError);
+            (0, stream_1.pipeline)(readStream2, (0, zlib_1.createDeflate)(), res, onError);
             break;
           default:
             res.writeHead(200);
-            (0, stream_1.pipeline)(readStream, res, onError);
+            (0, stream_1.pipeline)(readStream2, res, onError);
         }
       }
       /**
@@ -58462,6 +58462,10058 @@ var require_dist3 = __commonJS({
   }
 });
 
+// node_modules/delayed-stream/lib/delayed_stream.js
+var require_delayed_stream = __commonJS({
+  "node_modules/delayed-stream/lib/delayed_stream.js"(exports2, module2) {
+    var Stream = require("stream").Stream;
+    var util4 = require("util");
+    module2.exports = DelayedStream;
+    function DelayedStream() {
+      this.source = null;
+      this.dataSize = 0;
+      this.maxDataSize = 1024 * 1024;
+      this.pauseStream = true;
+      this._maxDataSizeExceeded = false;
+      this._released = false;
+      this._bufferedEvents = [];
+    }
+    util4.inherits(DelayedStream, Stream);
+    DelayedStream.create = function(source, options) {
+      var delayedStream = new this();
+      options = options || {};
+      for (var option in options) {
+        delayedStream[option] = options[option];
+      }
+      delayedStream.source = source;
+      var realEmit = source.emit;
+      source.emit = function() {
+        delayedStream._handleEmit(arguments);
+        return realEmit.apply(source, arguments);
+      };
+      source.on("error", function() {
+      });
+      if (delayedStream.pauseStream) {
+        source.pause();
+      }
+      return delayedStream;
+    };
+    Object.defineProperty(DelayedStream.prototype, "readable", {
+      configurable: true,
+      enumerable: true,
+      get: function() {
+        return this.source.readable;
+      }
+    });
+    DelayedStream.prototype.setEncoding = function() {
+      return this.source.setEncoding.apply(this.source, arguments);
+    };
+    DelayedStream.prototype.resume = function() {
+      if (!this._released) {
+        this.release();
+      }
+      this.source.resume();
+    };
+    DelayedStream.prototype.pause = function() {
+      this.source.pause();
+    };
+    DelayedStream.prototype.release = function() {
+      this._released = true;
+      this._bufferedEvents.forEach(function(args) {
+        this.emit.apply(this, args);
+      }.bind(this));
+      this._bufferedEvents = [];
+    };
+    DelayedStream.prototype.pipe = function() {
+      var r = Stream.prototype.pipe.apply(this, arguments);
+      this.resume();
+      return r;
+    };
+    DelayedStream.prototype._handleEmit = function(args) {
+      if (this._released) {
+        this.emit.apply(this, args);
+        return;
+      }
+      if (args[0] === "data") {
+        this.dataSize += args[1].length;
+        this._checkIfMaxDataSizeExceeded();
+      }
+      this._bufferedEvents.push(args);
+    };
+    DelayedStream.prototype._checkIfMaxDataSizeExceeded = function() {
+      if (this._maxDataSizeExceeded) {
+        return;
+      }
+      if (this.dataSize <= this.maxDataSize) {
+        return;
+      }
+      this._maxDataSizeExceeded = true;
+      var message = "DelayedStream#maxDataSize of " + this.maxDataSize + " bytes exceeded.";
+      this.emit("error", new Error(message));
+    };
+  }
+});
+
+// node_modules/combined-stream/lib/combined_stream.js
+var require_combined_stream = __commonJS({
+  "node_modules/combined-stream/lib/combined_stream.js"(exports2, module2) {
+    var util4 = require("util");
+    var Stream = require("stream").Stream;
+    var DelayedStream = require_delayed_stream();
+    module2.exports = CombinedStream;
+    function CombinedStream() {
+      this.writable = false;
+      this.readable = true;
+      this.dataSize = 0;
+      this.maxDataSize = 2 * 1024 * 1024;
+      this.pauseStreams = true;
+      this._released = false;
+      this._streams = [];
+      this._currentStream = null;
+      this._insideLoop = false;
+      this._pendingNext = false;
+    }
+    util4.inherits(CombinedStream, Stream);
+    CombinedStream.create = function(options) {
+      var combinedStream = new this();
+      options = options || {};
+      for (var option in options) {
+        combinedStream[option] = options[option];
+      }
+      return combinedStream;
+    };
+    CombinedStream.isStreamLike = function(stream4) {
+      return typeof stream4 !== "function" && typeof stream4 !== "string" && typeof stream4 !== "boolean" && typeof stream4 !== "number" && !Buffer.isBuffer(stream4);
+    };
+    CombinedStream.prototype.append = function(stream4) {
+      var isStreamLike = CombinedStream.isStreamLike(stream4);
+      if (isStreamLike) {
+        if (!(stream4 instanceof DelayedStream)) {
+          var newStream = DelayedStream.create(stream4, {
+            maxDataSize: Infinity,
+            pauseStream: this.pauseStreams
+          });
+          stream4.on("data", this._checkDataSize.bind(this));
+          stream4 = newStream;
+        }
+        this._handleErrors(stream4);
+        if (this.pauseStreams) {
+          stream4.pause();
+        }
+      }
+      this._streams.push(stream4);
+      return this;
+    };
+    CombinedStream.prototype.pipe = function(dest, options) {
+      Stream.prototype.pipe.call(this, dest, options);
+      this.resume();
+      return dest;
+    };
+    CombinedStream.prototype._getNext = function() {
+      this._currentStream = null;
+      if (this._insideLoop) {
+        this._pendingNext = true;
+        return;
+      }
+      this._insideLoop = true;
+      try {
+        do {
+          this._pendingNext = false;
+          this._realGetNext();
+        } while (this._pendingNext);
+      } finally {
+        this._insideLoop = false;
+      }
+    };
+    CombinedStream.prototype._realGetNext = function() {
+      var stream4 = this._streams.shift();
+      if (typeof stream4 == "undefined") {
+        this.end();
+        return;
+      }
+      if (typeof stream4 !== "function") {
+        this._pipeNext(stream4);
+        return;
+      }
+      var getStream = stream4;
+      getStream(function(stream5) {
+        var isStreamLike = CombinedStream.isStreamLike(stream5);
+        if (isStreamLike) {
+          stream5.on("data", this._checkDataSize.bind(this));
+          this._handleErrors(stream5);
+        }
+        this._pipeNext(stream5);
+      }.bind(this));
+    };
+    CombinedStream.prototype._pipeNext = function(stream4) {
+      this._currentStream = stream4;
+      var isStreamLike = CombinedStream.isStreamLike(stream4);
+      if (isStreamLike) {
+        stream4.on("end", this._getNext.bind(this));
+        stream4.pipe(this, { end: false });
+        return;
+      }
+      var value = stream4;
+      this.write(value);
+      this._getNext();
+    };
+    CombinedStream.prototype._handleErrors = function(stream4) {
+      var self2 = this;
+      stream4.on("error", function(err) {
+        self2._emitError(err);
+      });
+    };
+    CombinedStream.prototype.write = function(data) {
+      this.emit("data", data);
+    };
+    CombinedStream.prototype.pause = function() {
+      if (!this.pauseStreams) {
+        return;
+      }
+      if (this.pauseStreams && this._currentStream && typeof this._currentStream.pause == "function") this._currentStream.pause();
+      this.emit("pause");
+    };
+    CombinedStream.prototype.resume = function() {
+      if (!this._released) {
+        this._released = true;
+        this.writable = true;
+        this._getNext();
+      }
+      if (this.pauseStreams && this._currentStream && typeof this._currentStream.resume == "function") this._currentStream.resume();
+      this.emit("resume");
+    };
+    CombinedStream.prototype.end = function() {
+      this._reset();
+      this.emit("end");
+    };
+    CombinedStream.prototype.destroy = function() {
+      this._reset();
+      this.emit("close");
+    };
+    CombinedStream.prototype._reset = function() {
+      this.writable = false;
+      this._streams = [];
+      this._currentStream = null;
+    };
+    CombinedStream.prototype._checkDataSize = function() {
+      this._updateDataSize();
+      if (this.dataSize <= this.maxDataSize) {
+        return;
+      }
+      var message = "DelayedStream#maxDataSize of " + this.maxDataSize + " bytes exceeded.";
+      this._emitError(new Error(message));
+    };
+    CombinedStream.prototype._updateDataSize = function() {
+      this.dataSize = 0;
+      var self2 = this;
+      this._streams.forEach(function(stream4) {
+        if (!stream4.dataSize) {
+          return;
+        }
+        self2.dataSize += stream4.dataSize;
+      });
+      if (this._currentStream && this._currentStream.dataSize) {
+        this.dataSize += this._currentStream.dataSize;
+      }
+    };
+    CombinedStream.prototype._emitError = function(err) {
+      this._reset();
+      this.emit("error", err);
+    };
+  }
+});
+
+// node_modules/form-data/node_modules/mime-db/db.json
+var require_db4 = __commonJS({
+  "node_modules/form-data/node_modules/mime-db/db.json"(exports2, module2) {
+    module2.exports = {
+      "application/1d-interleaved-parityfec": {
+        source: "iana"
+      },
+      "application/3gpdash-qoe-report+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/3gpp-ims+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/3gpphal+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/3gpphalforms+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/a2l": {
+        source: "iana"
+      },
+      "application/ace+cbor": {
+        source: "iana"
+      },
+      "application/activemessage": {
+        source: "iana"
+      },
+      "application/activity+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-costmap+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-costmapfilter+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-directory+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-endpointcost+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-endpointcostparams+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-endpointprop+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-endpointpropparams+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-error+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-networkmap+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-networkmapfilter+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-updatestreamcontrol+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/alto-updatestreamparams+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/aml": {
+        source: "iana"
+      },
+      "application/andrew-inset": {
+        source: "iana",
+        extensions: ["ez"]
+      },
+      "application/applefile": {
+        source: "iana"
+      },
+      "application/applixware": {
+        source: "apache",
+        extensions: ["aw"]
+      },
+      "application/at+jwt": {
+        source: "iana"
+      },
+      "application/atf": {
+        source: "iana"
+      },
+      "application/atfx": {
+        source: "iana"
+      },
+      "application/atom+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["atom"]
+      },
+      "application/atomcat+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["atomcat"]
+      },
+      "application/atomdeleted+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["atomdeleted"]
+      },
+      "application/atomicmail": {
+        source: "iana"
+      },
+      "application/atomsvc+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["atomsvc"]
+      },
+      "application/atsc-dwd+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["dwd"]
+      },
+      "application/atsc-dynamic-event-message": {
+        source: "iana"
+      },
+      "application/atsc-held+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["held"]
+      },
+      "application/atsc-rdt+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/atsc-rsat+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rsat"]
+      },
+      "application/atxml": {
+        source: "iana"
+      },
+      "application/auth-policy+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/bacnet-xdd+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/batch-smtp": {
+        source: "iana"
+      },
+      "application/bdoc": {
+        compressible: false,
+        extensions: ["bdoc"]
+      },
+      "application/beep+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/calendar+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/calendar+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xcs"]
+      },
+      "application/call-completion": {
+        source: "iana"
+      },
+      "application/cals-1840": {
+        source: "iana"
+      },
+      "application/captive+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cbor": {
+        source: "iana"
+      },
+      "application/cbor-seq": {
+        source: "iana"
+      },
+      "application/cccex": {
+        source: "iana"
+      },
+      "application/ccmp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/ccxml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ccxml"]
+      },
+      "application/cdfx+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["cdfx"]
+      },
+      "application/cdmi-capability": {
+        source: "iana",
+        extensions: ["cdmia"]
+      },
+      "application/cdmi-container": {
+        source: "iana",
+        extensions: ["cdmic"]
+      },
+      "application/cdmi-domain": {
+        source: "iana",
+        extensions: ["cdmid"]
+      },
+      "application/cdmi-object": {
+        source: "iana",
+        extensions: ["cdmio"]
+      },
+      "application/cdmi-queue": {
+        source: "iana",
+        extensions: ["cdmiq"]
+      },
+      "application/cdni": {
+        source: "iana"
+      },
+      "application/cea": {
+        source: "iana"
+      },
+      "application/cea-2018+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cellml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cfw": {
+        source: "iana"
+      },
+      "application/city+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/clr": {
+        source: "iana"
+      },
+      "application/clue+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/clue_info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cms": {
+        source: "iana"
+      },
+      "application/cnrp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/coap-group+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/coap-payload": {
+        source: "iana"
+      },
+      "application/commonground": {
+        source: "iana"
+      },
+      "application/conference-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cose": {
+        source: "iana"
+      },
+      "application/cose-key": {
+        source: "iana"
+      },
+      "application/cose-key-set": {
+        source: "iana"
+      },
+      "application/cpl+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["cpl"]
+      },
+      "application/csrattrs": {
+        source: "iana"
+      },
+      "application/csta+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cstadata+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/csvm+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/cu-seeme": {
+        source: "apache",
+        extensions: ["cu"]
+      },
+      "application/cwt": {
+        source: "iana"
+      },
+      "application/cybercash": {
+        source: "iana"
+      },
+      "application/dart": {
+        compressible: true
+      },
+      "application/dash+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mpd"]
+      },
+      "application/dash-patch+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mpp"]
+      },
+      "application/dashdelta": {
+        source: "iana"
+      },
+      "application/davmount+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["davmount"]
+      },
+      "application/dca-rft": {
+        source: "iana"
+      },
+      "application/dcd": {
+        source: "iana"
+      },
+      "application/dec-dx": {
+        source: "iana"
+      },
+      "application/dialog-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/dicom": {
+        source: "iana"
+      },
+      "application/dicom+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/dicom+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/dii": {
+        source: "iana"
+      },
+      "application/dit": {
+        source: "iana"
+      },
+      "application/dns": {
+        source: "iana"
+      },
+      "application/dns+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/dns-message": {
+        source: "iana"
+      },
+      "application/docbook+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["dbk"]
+      },
+      "application/dots+cbor": {
+        source: "iana"
+      },
+      "application/dskpp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/dssc+der": {
+        source: "iana",
+        extensions: ["dssc"]
+      },
+      "application/dssc+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xdssc"]
+      },
+      "application/dvcs": {
+        source: "iana"
+      },
+      "application/ecmascript": {
+        source: "iana",
+        compressible: true,
+        extensions: ["es", "ecma"]
+      },
+      "application/edi-consent": {
+        source: "iana"
+      },
+      "application/edi-x12": {
+        source: "iana",
+        compressible: false
+      },
+      "application/edifact": {
+        source: "iana",
+        compressible: false
+      },
+      "application/efi": {
+        source: "iana"
+      },
+      "application/elm+json": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/elm+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.cap+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/emergencycalldata.comment+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.control+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.deviceinfo+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.ecall.msd": {
+        source: "iana"
+      },
+      "application/emergencycalldata.providerinfo+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.serviceinfo+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.subscriberinfo+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emergencycalldata.veds+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/emma+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["emma"]
+      },
+      "application/emotionml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["emotionml"]
+      },
+      "application/encaprtp": {
+        source: "iana"
+      },
+      "application/epp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/epub+zip": {
+        source: "iana",
+        compressible: false,
+        extensions: ["epub"]
+      },
+      "application/eshop": {
+        source: "iana"
+      },
+      "application/exi": {
+        source: "iana",
+        extensions: ["exi"]
+      },
+      "application/expect-ct-report+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/express": {
+        source: "iana",
+        extensions: ["exp"]
+      },
+      "application/fastinfoset": {
+        source: "iana"
+      },
+      "application/fastsoap": {
+        source: "iana"
+      },
+      "application/fdt+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["fdt"]
+      },
+      "application/fhir+json": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/fhir+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/fido.trusted-apps+json": {
+        compressible: true
+      },
+      "application/fits": {
+        source: "iana"
+      },
+      "application/flexfec": {
+        source: "iana"
+      },
+      "application/font-sfnt": {
+        source: "iana"
+      },
+      "application/font-tdpfr": {
+        source: "iana",
+        extensions: ["pfr"]
+      },
+      "application/font-woff": {
+        source: "iana",
+        compressible: false
+      },
+      "application/framework-attributes+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/geo+json": {
+        source: "iana",
+        compressible: true,
+        extensions: ["geojson"]
+      },
+      "application/geo+json-seq": {
+        source: "iana"
+      },
+      "application/geopackage+sqlite3": {
+        source: "iana"
+      },
+      "application/geoxacml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/gltf-buffer": {
+        source: "iana"
+      },
+      "application/gml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["gml"]
+      },
+      "application/gpx+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["gpx"]
+      },
+      "application/gxf": {
+        source: "apache",
+        extensions: ["gxf"]
+      },
+      "application/gzip": {
+        source: "iana",
+        compressible: false,
+        extensions: ["gz"]
+      },
+      "application/h224": {
+        source: "iana"
+      },
+      "application/held+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/hjson": {
+        extensions: ["hjson"]
+      },
+      "application/http": {
+        source: "iana"
+      },
+      "application/hyperstudio": {
+        source: "iana",
+        extensions: ["stk"]
+      },
+      "application/ibe-key-request+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/ibe-pkg-reply+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/ibe-pp-data": {
+        source: "iana"
+      },
+      "application/iges": {
+        source: "iana"
+      },
+      "application/im-iscomposing+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/index": {
+        source: "iana"
+      },
+      "application/index.cmd": {
+        source: "iana"
+      },
+      "application/index.obj": {
+        source: "iana"
+      },
+      "application/index.response": {
+        source: "iana"
+      },
+      "application/index.vnd": {
+        source: "iana"
+      },
+      "application/inkml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ink", "inkml"]
+      },
+      "application/iotp": {
+        source: "iana"
+      },
+      "application/ipfix": {
+        source: "iana",
+        extensions: ["ipfix"]
+      },
+      "application/ipp": {
+        source: "iana"
+      },
+      "application/isup": {
+        source: "iana"
+      },
+      "application/its+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["its"]
+      },
+      "application/java-archive": {
+        source: "apache",
+        compressible: false,
+        extensions: ["jar", "war", "ear"]
+      },
+      "application/java-serialized-object": {
+        source: "apache",
+        compressible: false,
+        extensions: ["ser"]
+      },
+      "application/java-vm": {
+        source: "apache",
+        compressible: false,
+        extensions: ["class"]
+      },
+      "application/javascript": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["js", "mjs"]
+      },
+      "application/jf2feed+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/jose": {
+        source: "iana"
+      },
+      "application/jose+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/jrd+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/jscalendar+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/json": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["json", "map"]
+      },
+      "application/json-patch+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/json-seq": {
+        source: "iana"
+      },
+      "application/json5": {
+        extensions: ["json5"]
+      },
+      "application/jsonml+json": {
+        source: "apache",
+        compressible: true,
+        extensions: ["jsonml"]
+      },
+      "application/jwk+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/jwk-set+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/jwt": {
+        source: "iana"
+      },
+      "application/kpml-request+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/kpml-response+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/ld+json": {
+        source: "iana",
+        compressible: true,
+        extensions: ["jsonld"]
+      },
+      "application/lgr+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["lgr"]
+      },
+      "application/link-format": {
+        source: "iana"
+      },
+      "application/load-control+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/lost+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["lostxml"]
+      },
+      "application/lostsync+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/lpf+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/lxf": {
+        source: "iana"
+      },
+      "application/mac-binhex40": {
+        source: "iana",
+        extensions: ["hqx"]
+      },
+      "application/mac-compactpro": {
+        source: "apache",
+        extensions: ["cpt"]
+      },
+      "application/macwriteii": {
+        source: "iana"
+      },
+      "application/mads+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mads"]
+      },
+      "application/manifest+json": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["webmanifest"]
+      },
+      "application/marc": {
+        source: "iana",
+        extensions: ["mrc"]
+      },
+      "application/marcxml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mrcx"]
+      },
+      "application/mathematica": {
+        source: "iana",
+        extensions: ["ma", "nb", "mb"]
+      },
+      "application/mathml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mathml"]
+      },
+      "application/mathml-content+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mathml-presentation+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-associated-procedure-description+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-deregister+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-envelope+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-msk+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-msk-response+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-protection-description+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-reception-report+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-register+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-register-response+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-schedule+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbms-user-service-description+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mbox": {
+        source: "iana",
+        extensions: ["mbox"]
+      },
+      "application/media-policy-dataset+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mpf"]
+      },
+      "application/media_control+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mediaservercontrol+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mscml"]
+      },
+      "application/merge-patch+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/metalink+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["metalink"]
+      },
+      "application/metalink4+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["meta4"]
+      },
+      "application/mets+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mets"]
+      },
+      "application/mf4": {
+        source: "iana"
+      },
+      "application/mikey": {
+        source: "iana"
+      },
+      "application/mipc": {
+        source: "iana"
+      },
+      "application/missing-blocks+cbor-seq": {
+        source: "iana"
+      },
+      "application/mmt-aei+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["maei"]
+      },
+      "application/mmt-usd+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["musd"]
+      },
+      "application/mods+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mods"]
+      },
+      "application/moss-keys": {
+        source: "iana"
+      },
+      "application/moss-signature": {
+        source: "iana"
+      },
+      "application/mosskey-data": {
+        source: "iana"
+      },
+      "application/mosskey-request": {
+        source: "iana"
+      },
+      "application/mp21": {
+        source: "iana",
+        extensions: ["m21", "mp21"]
+      },
+      "application/mp4": {
+        source: "iana",
+        extensions: ["mp4s", "m4p"]
+      },
+      "application/mpeg4-generic": {
+        source: "iana"
+      },
+      "application/mpeg4-iod": {
+        source: "iana"
+      },
+      "application/mpeg4-iod-xmt": {
+        source: "iana"
+      },
+      "application/mrb-consumer+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/mrb-publish+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/msc-ivr+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/msc-mixer+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/msword": {
+        source: "iana",
+        compressible: false,
+        extensions: ["doc", "dot"]
+      },
+      "application/mud+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/multipart-core": {
+        source: "iana"
+      },
+      "application/mxf": {
+        source: "iana",
+        extensions: ["mxf"]
+      },
+      "application/n-quads": {
+        source: "iana",
+        extensions: ["nq"]
+      },
+      "application/n-triples": {
+        source: "iana",
+        extensions: ["nt"]
+      },
+      "application/nasdata": {
+        source: "iana"
+      },
+      "application/news-checkgroups": {
+        source: "iana",
+        charset: "US-ASCII"
+      },
+      "application/news-groupinfo": {
+        source: "iana",
+        charset: "US-ASCII"
+      },
+      "application/news-transmission": {
+        source: "iana"
+      },
+      "application/nlsml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/node": {
+        source: "iana",
+        extensions: ["cjs"]
+      },
+      "application/nss": {
+        source: "iana"
+      },
+      "application/oauth-authz-req+jwt": {
+        source: "iana"
+      },
+      "application/oblivious-dns-message": {
+        source: "iana"
+      },
+      "application/ocsp-request": {
+        source: "iana"
+      },
+      "application/ocsp-response": {
+        source: "iana"
+      },
+      "application/octet-stream": {
+        source: "iana",
+        compressible: false,
+        extensions: ["bin", "dms", "lrf", "mar", "so", "dist", "distz", "pkg", "bpk", "dump", "elc", "deploy", "exe", "dll", "deb", "dmg", "iso", "img", "msi", "msp", "msm", "buffer"]
+      },
+      "application/oda": {
+        source: "iana",
+        extensions: ["oda"]
+      },
+      "application/odm+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/odx": {
+        source: "iana"
+      },
+      "application/oebps-package+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["opf"]
+      },
+      "application/ogg": {
+        source: "iana",
+        compressible: false,
+        extensions: ["ogx"]
+      },
+      "application/omdoc+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["omdoc"]
+      },
+      "application/onenote": {
+        source: "apache",
+        extensions: ["onetoc", "onetoc2", "onetmp", "onepkg"]
+      },
+      "application/opc-nodeset+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/oscore": {
+        source: "iana"
+      },
+      "application/oxps": {
+        source: "iana",
+        extensions: ["oxps"]
+      },
+      "application/p21": {
+        source: "iana"
+      },
+      "application/p21+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/p2p-overlay+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["relo"]
+      },
+      "application/parityfec": {
+        source: "iana"
+      },
+      "application/passport": {
+        source: "iana"
+      },
+      "application/patch-ops-error+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xer"]
+      },
+      "application/pdf": {
+        source: "iana",
+        compressible: false,
+        extensions: ["pdf"]
+      },
+      "application/pdx": {
+        source: "iana"
+      },
+      "application/pem-certificate-chain": {
+        source: "iana"
+      },
+      "application/pgp-encrypted": {
+        source: "iana",
+        compressible: false,
+        extensions: ["pgp"]
+      },
+      "application/pgp-keys": {
+        source: "iana",
+        extensions: ["asc"]
+      },
+      "application/pgp-signature": {
+        source: "iana",
+        extensions: ["asc", "sig"]
+      },
+      "application/pics-rules": {
+        source: "apache",
+        extensions: ["prf"]
+      },
+      "application/pidf+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/pidf-diff+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/pkcs10": {
+        source: "iana",
+        extensions: ["p10"]
+      },
+      "application/pkcs12": {
+        source: "iana"
+      },
+      "application/pkcs7-mime": {
+        source: "iana",
+        extensions: ["p7m", "p7c"]
+      },
+      "application/pkcs7-signature": {
+        source: "iana",
+        extensions: ["p7s"]
+      },
+      "application/pkcs8": {
+        source: "iana",
+        extensions: ["p8"]
+      },
+      "application/pkcs8-encrypted": {
+        source: "iana"
+      },
+      "application/pkix-attr-cert": {
+        source: "iana",
+        extensions: ["ac"]
+      },
+      "application/pkix-cert": {
+        source: "iana",
+        extensions: ["cer"]
+      },
+      "application/pkix-crl": {
+        source: "iana",
+        extensions: ["crl"]
+      },
+      "application/pkix-pkipath": {
+        source: "iana",
+        extensions: ["pkipath"]
+      },
+      "application/pkixcmp": {
+        source: "iana",
+        extensions: ["pki"]
+      },
+      "application/pls+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["pls"]
+      },
+      "application/poc-settings+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/postscript": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ai", "eps", "ps"]
+      },
+      "application/ppsp-tracker+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/problem+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/problem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/provenance+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["provx"]
+      },
+      "application/prs.alvestrand.titrax-sheet": {
+        source: "iana"
+      },
+      "application/prs.cww": {
+        source: "iana",
+        extensions: ["cww"]
+      },
+      "application/prs.cyn": {
+        source: "iana",
+        charset: "7-BIT"
+      },
+      "application/prs.hpub+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/prs.nprend": {
+        source: "iana"
+      },
+      "application/prs.plucker": {
+        source: "iana"
+      },
+      "application/prs.rdf-xml-crypt": {
+        source: "iana"
+      },
+      "application/prs.xsf+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/pskc+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["pskcxml"]
+      },
+      "application/pvd+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/qsig": {
+        source: "iana"
+      },
+      "application/raml+yaml": {
+        compressible: true,
+        extensions: ["raml"]
+      },
+      "application/raptorfec": {
+        source: "iana"
+      },
+      "application/rdap+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/rdf+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rdf", "owl"]
+      },
+      "application/reginfo+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rif"]
+      },
+      "application/relax-ng-compact-syntax": {
+        source: "iana",
+        extensions: ["rnc"]
+      },
+      "application/remote-printing": {
+        source: "iana"
+      },
+      "application/reputon+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/resource-lists+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rl"]
+      },
+      "application/resource-lists-diff+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rld"]
+      },
+      "application/rfc+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/riscos": {
+        source: "iana"
+      },
+      "application/rlmi+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/rls-services+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rs"]
+      },
+      "application/route-apd+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rapd"]
+      },
+      "application/route-s-tsid+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["sls"]
+      },
+      "application/route-usd+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rusd"]
+      },
+      "application/rpki-ghostbusters": {
+        source: "iana",
+        extensions: ["gbr"]
+      },
+      "application/rpki-manifest": {
+        source: "iana",
+        extensions: ["mft"]
+      },
+      "application/rpki-publication": {
+        source: "iana"
+      },
+      "application/rpki-roa": {
+        source: "iana",
+        extensions: ["roa"]
+      },
+      "application/rpki-updown": {
+        source: "iana"
+      },
+      "application/rsd+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["rsd"]
+      },
+      "application/rss+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["rss"]
+      },
+      "application/rtf": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rtf"]
+      },
+      "application/rtploopback": {
+        source: "iana"
+      },
+      "application/rtx": {
+        source: "iana"
+      },
+      "application/samlassertion+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/samlmetadata+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sarif+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sarif-external-properties+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sbe": {
+        source: "iana"
+      },
+      "application/sbml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["sbml"]
+      },
+      "application/scaip+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/scim+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/scvp-cv-request": {
+        source: "iana",
+        extensions: ["scq"]
+      },
+      "application/scvp-cv-response": {
+        source: "iana",
+        extensions: ["scs"]
+      },
+      "application/scvp-vp-request": {
+        source: "iana",
+        extensions: ["spq"]
+      },
+      "application/scvp-vp-response": {
+        source: "iana",
+        extensions: ["spp"]
+      },
+      "application/sdp": {
+        source: "iana",
+        extensions: ["sdp"]
+      },
+      "application/secevent+jwt": {
+        source: "iana"
+      },
+      "application/senml+cbor": {
+        source: "iana"
+      },
+      "application/senml+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/senml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["senmlx"]
+      },
+      "application/senml-etch+cbor": {
+        source: "iana"
+      },
+      "application/senml-etch+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/senml-exi": {
+        source: "iana"
+      },
+      "application/sensml+cbor": {
+        source: "iana"
+      },
+      "application/sensml+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sensml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["sensmlx"]
+      },
+      "application/sensml-exi": {
+        source: "iana"
+      },
+      "application/sep+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sep-exi": {
+        source: "iana"
+      },
+      "application/session-info": {
+        source: "iana"
+      },
+      "application/set-payment": {
+        source: "iana"
+      },
+      "application/set-payment-initiation": {
+        source: "iana",
+        extensions: ["setpay"]
+      },
+      "application/set-registration": {
+        source: "iana"
+      },
+      "application/set-registration-initiation": {
+        source: "iana",
+        extensions: ["setreg"]
+      },
+      "application/sgml": {
+        source: "iana"
+      },
+      "application/sgml-open-catalog": {
+        source: "iana"
+      },
+      "application/shf+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["shf"]
+      },
+      "application/sieve": {
+        source: "iana",
+        extensions: ["siv", "sieve"]
+      },
+      "application/simple-filter+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/simple-message-summary": {
+        source: "iana"
+      },
+      "application/simplesymbolcontainer": {
+        source: "iana"
+      },
+      "application/sipc": {
+        source: "iana"
+      },
+      "application/slate": {
+        source: "iana"
+      },
+      "application/smil": {
+        source: "iana"
+      },
+      "application/smil+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["smi", "smil"]
+      },
+      "application/smpte336m": {
+        source: "iana"
+      },
+      "application/soap+fastinfoset": {
+        source: "iana"
+      },
+      "application/soap+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sparql-query": {
+        source: "iana",
+        extensions: ["rq"]
+      },
+      "application/sparql-results+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["srx"]
+      },
+      "application/spdx+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/spirits-event+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/sql": {
+        source: "iana"
+      },
+      "application/srgs": {
+        source: "iana",
+        extensions: ["gram"]
+      },
+      "application/srgs+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["grxml"]
+      },
+      "application/sru+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["sru"]
+      },
+      "application/ssdl+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["ssdl"]
+      },
+      "application/ssml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ssml"]
+      },
+      "application/stix+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/swid+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["swidtag"]
+      },
+      "application/tamp-apex-update": {
+        source: "iana"
+      },
+      "application/tamp-apex-update-confirm": {
+        source: "iana"
+      },
+      "application/tamp-community-update": {
+        source: "iana"
+      },
+      "application/tamp-community-update-confirm": {
+        source: "iana"
+      },
+      "application/tamp-error": {
+        source: "iana"
+      },
+      "application/tamp-sequence-adjust": {
+        source: "iana"
+      },
+      "application/tamp-sequence-adjust-confirm": {
+        source: "iana"
+      },
+      "application/tamp-status-query": {
+        source: "iana"
+      },
+      "application/tamp-status-response": {
+        source: "iana"
+      },
+      "application/tamp-update": {
+        source: "iana"
+      },
+      "application/tamp-update-confirm": {
+        source: "iana"
+      },
+      "application/tar": {
+        compressible: true
+      },
+      "application/taxii+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/td+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/tei+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["tei", "teicorpus"]
+      },
+      "application/tetra_isi": {
+        source: "iana"
+      },
+      "application/thraud+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["tfi"]
+      },
+      "application/timestamp-query": {
+        source: "iana"
+      },
+      "application/timestamp-reply": {
+        source: "iana"
+      },
+      "application/timestamped-data": {
+        source: "iana",
+        extensions: ["tsd"]
+      },
+      "application/tlsrpt+gzip": {
+        source: "iana"
+      },
+      "application/tlsrpt+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/tnauthlist": {
+        source: "iana"
+      },
+      "application/token-introspection+jwt": {
+        source: "iana"
+      },
+      "application/toml": {
+        compressible: true,
+        extensions: ["toml"]
+      },
+      "application/trickle-ice-sdpfrag": {
+        source: "iana"
+      },
+      "application/trig": {
+        source: "iana",
+        extensions: ["trig"]
+      },
+      "application/ttml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ttml"]
+      },
+      "application/tve-trigger": {
+        source: "iana"
+      },
+      "application/tzif": {
+        source: "iana"
+      },
+      "application/tzif-leap": {
+        source: "iana"
+      },
+      "application/ubjson": {
+        compressible: false,
+        extensions: ["ubj"]
+      },
+      "application/ulpfec": {
+        source: "iana"
+      },
+      "application/urc-grpsheet+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/urc-ressheet+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rsheet"]
+      },
+      "application/urc-targetdesc+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["td"]
+      },
+      "application/urc-uisocketdesc+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vcard+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vcard+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vemmi": {
+        source: "iana"
+      },
+      "application/vividence.scriptfile": {
+        source: "apache"
+      },
+      "application/vnd.1000minds.decision-model+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["1km"]
+      },
+      "application/vnd.3gpp-prose+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp-prose-pc3ch+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp-v2x-local-service-information": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.5gnas": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.access-transfer-events+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.bsf+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.gmop+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.gtpc": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.interworking-data": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.lpp": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.mc-signalling-ear": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.mcdata-affiliation-command+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcdata-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcdata-payload": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.mcdata-service-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcdata-signalling": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.mcdata-ue-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcdata-user-profile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-affiliation-command+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-floor-request+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-location-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-mbms-usage-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-service-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-signed+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-ue-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-ue-init-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcptt-user-profile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-affiliation-command+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-affiliation-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-location-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-mbms-usage-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-service-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-transmission-request+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-ue-config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mcvideo-user-profile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.mid-call+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.ngap": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.pfcp": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.pic-bw-large": {
+        source: "iana",
+        extensions: ["plb"]
+      },
+      "application/vnd.3gpp.pic-bw-small": {
+        source: "iana",
+        extensions: ["psb"]
+      },
+      "application/vnd.3gpp.pic-bw-var": {
+        source: "iana",
+        extensions: ["pvb"]
+      },
+      "application/vnd.3gpp.s1ap": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.sms": {
+        source: "iana"
+      },
+      "application/vnd.3gpp.sms+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.srvcc-ext+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.srvcc-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.state-and-event-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp.ussd+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp2.bcmcsinfo+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.3gpp2.sms": {
+        source: "iana"
+      },
+      "application/vnd.3gpp2.tcap": {
+        source: "iana",
+        extensions: ["tcap"]
+      },
+      "application/vnd.3lightssoftware.imagescal": {
+        source: "iana"
+      },
+      "application/vnd.3m.post-it-notes": {
+        source: "iana",
+        extensions: ["pwn"]
+      },
+      "application/vnd.accpac.simply.aso": {
+        source: "iana",
+        extensions: ["aso"]
+      },
+      "application/vnd.accpac.simply.imp": {
+        source: "iana",
+        extensions: ["imp"]
+      },
+      "application/vnd.acucobol": {
+        source: "iana",
+        extensions: ["acu"]
+      },
+      "application/vnd.acucorp": {
+        source: "iana",
+        extensions: ["atc", "acutc"]
+      },
+      "application/vnd.adobe.air-application-installer-package+zip": {
+        source: "apache",
+        compressible: false,
+        extensions: ["air"]
+      },
+      "application/vnd.adobe.flash.movie": {
+        source: "iana"
+      },
+      "application/vnd.adobe.formscentral.fcdt": {
+        source: "iana",
+        extensions: ["fcdt"]
+      },
+      "application/vnd.adobe.fxp": {
+        source: "iana",
+        extensions: ["fxp", "fxpl"]
+      },
+      "application/vnd.adobe.partial-upload": {
+        source: "iana"
+      },
+      "application/vnd.adobe.xdp+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xdp"]
+      },
+      "application/vnd.adobe.xfdf": {
+        source: "iana",
+        extensions: ["xfdf"]
+      },
+      "application/vnd.aether.imp": {
+        source: "iana"
+      },
+      "application/vnd.afpc.afplinedata": {
+        source: "iana"
+      },
+      "application/vnd.afpc.afplinedata-pagedef": {
+        source: "iana"
+      },
+      "application/vnd.afpc.cmoca-cmresource": {
+        source: "iana"
+      },
+      "application/vnd.afpc.foca-charset": {
+        source: "iana"
+      },
+      "application/vnd.afpc.foca-codedfont": {
+        source: "iana"
+      },
+      "application/vnd.afpc.foca-codepage": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca-cmtable": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca-formdef": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca-mediummap": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca-objectcontainer": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca-overlay": {
+        source: "iana"
+      },
+      "application/vnd.afpc.modca-pagesegment": {
+        source: "iana"
+      },
+      "application/vnd.age": {
+        source: "iana",
+        extensions: ["age"]
+      },
+      "application/vnd.ah-barcode": {
+        source: "iana"
+      },
+      "application/vnd.ahead.space": {
+        source: "iana",
+        extensions: ["ahead"]
+      },
+      "application/vnd.airzip.filesecure.azf": {
+        source: "iana",
+        extensions: ["azf"]
+      },
+      "application/vnd.airzip.filesecure.azs": {
+        source: "iana",
+        extensions: ["azs"]
+      },
+      "application/vnd.amadeus+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.amazon.ebook": {
+        source: "apache",
+        extensions: ["azw"]
+      },
+      "application/vnd.amazon.mobi8-ebook": {
+        source: "iana"
+      },
+      "application/vnd.americandynamics.acc": {
+        source: "iana",
+        extensions: ["acc"]
+      },
+      "application/vnd.amiga.ami": {
+        source: "iana",
+        extensions: ["ami"]
+      },
+      "application/vnd.amundsen.maze+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.android.ota": {
+        source: "iana"
+      },
+      "application/vnd.android.package-archive": {
+        source: "apache",
+        compressible: false,
+        extensions: ["apk"]
+      },
+      "application/vnd.anki": {
+        source: "iana"
+      },
+      "application/vnd.anser-web-certificate-issue-initiation": {
+        source: "iana",
+        extensions: ["cii"]
+      },
+      "application/vnd.anser-web-funds-transfer-initiation": {
+        source: "apache",
+        extensions: ["fti"]
+      },
+      "application/vnd.antix.game-component": {
+        source: "iana",
+        extensions: ["atx"]
+      },
+      "application/vnd.apache.arrow.file": {
+        source: "iana"
+      },
+      "application/vnd.apache.arrow.stream": {
+        source: "iana"
+      },
+      "application/vnd.apache.thrift.binary": {
+        source: "iana"
+      },
+      "application/vnd.apache.thrift.compact": {
+        source: "iana"
+      },
+      "application/vnd.apache.thrift.json": {
+        source: "iana"
+      },
+      "application/vnd.api+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.aplextor.warrp+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.apothekende.reservation+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.apple.installer+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mpkg"]
+      },
+      "application/vnd.apple.keynote": {
+        source: "iana",
+        extensions: ["key"]
+      },
+      "application/vnd.apple.mpegurl": {
+        source: "iana",
+        extensions: ["m3u8"]
+      },
+      "application/vnd.apple.numbers": {
+        source: "iana",
+        extensions: ["numbers"]
+      },
+      "application/vnd.apple.pages": {
+        source: "iana",
+        extensions: ["pages"]
+      },
+      "application/vnd.apple.pkpass": {
+        compressible: false,
+        extensions: ["pkpass"]
+      },
+      "application/vnd.arastra.swi": {
+        source: "iana"
+      },
+      "application/vnd.aristanetworks.swi": {
+        source: "iana",
+        extensions: ["swi"]
+      },
+      "application/vnd.artisan+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.artsquare": {
+        source: "iana"
+      },
+      "application/vnd.astraea-software.iota": {
+        source: "iana",
+        extensions: ["iota"]
+      },
+      "application/vnd.audiograph": {
+        source: "iana",
+        extensions: ["aep"]
+      },
+      "application/vnd.autopackage": {
+        source: "iana"
+      },
+      "application/vnd.avalon+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.avistar+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.balsamiq.bmml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["bmml"]
+      },
+      "application/vnd.balsamiq.bmpr": {
+        source: "iana"
+      },
+      "application/vnd.banana-accounting": {
+        source: "iana"
+      },
+      "application/vnd.bbf.usp.error": {
+        source: "iana"
+      },
+      "application/vnd.bbf.usp.msg": {
+        source: "iana"
+      },
+      "application/vnd.bbf.usp.msg+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.bekitzur-stech+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.bint.med-content": {
+        source: "iana"
+      },
+      "application/vnd.biopax.rdf+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.blink-idb-value-wrapper": {
+        source: "iana"
+      },
+      "application/vnd.blueice.multipass": {
+        source: "iana",
+        extensions: ["mpm"]
+      },
+      "application/vnd.bluetooth.ep.oob": {
+        source: "iana"
+      },
+      "application/vnd.bluetooth.le.oob": {
+        source: "iana"
+      },
+      "application/vnd.bmi": {
+        source: "iana",
+        extensions: ["bmi"]
+      },
+      "application/vnd.bpf": {
+        source: "iana"
+      },
+      "application/vnd.bpf3": {
+        source: "iana"
+      },
+      "application/vnd.businessobjects": {
+        source: "iana",
+        extensions: ["rep"]
+      },
+      "application/vnd.byu.uapi+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.cab-jscript": {
+        source: "iana"
+      },
+      "application/vnd.canon-cpdl": {
+        source: "iana"
+      },
+      "application/vnd.canon-lips": {
+        source: "iana"
+      },
+      "application/vnd.capasystems-pg+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.cendio.thinlinc.clientconf": {
+        source: "iana"
+      },
+      "application/vnd.century-systems.tcp_stream": {
+        source: "iana"
+      },
+      "application/vnd.chemdraw+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["cdxml"]
+      },
+      "application/vnd.chess-pgn": {
+        source: "iana"
+      },
+      "application/vnd.chipnuts.karaoke-mmd": {
+        source: "iana",
+        extensions: ["mmd"]
+      },
+      "application/vnd.ciedi": {
+        source: "iana"
+      },
+      "application/vnd.cinderella": {
+        source: "iana",
+        extensions: ["cdy"]
+      },
+      "application/vnd.cirpack.isdn-ext": {
+        source: "iana"
+      },
+      "application/vnd.citationstyles.style+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["csl"]
+      },
+      "application/vnd.claymore": {
+        source: "iana",
+        extensions: ["cla"]
+      },
+      "application/vnd.cloanto.rp9": {
+        source: "iana",
+        extensions: ["rp9"]
+      },
+      "application/vnd.clonk.c4group": {
+        source: "iana",
+        extensions: ["c4g", "c4d", "c4f", "c4p", "c4u"]
+      },
+      "application/vnd.cluetrust.cartomobile-config": {
+        source: "iana",
+        extensions: ["c11amc"]
+      },
+      "application/vnd.cluetrust.cartomobile-config-pkg": {
+        source: "iana",
+        extensions: ["c11amz"]
+      },
+      "application/vnd.coffeescript": {
+        source: "iana"
+      },
+      "application/vnd.collabio.xodocuments.document": {
+        source: "iana"
+      },
+      "application/vnd.collabio.xodocuments.document-template": {
+        source: "iana"
+      },
+      "application/vnd.collabio.xodocuments.presentation": {
+        source: "iana"
+      },
+      "application/vnd.collabio.xodocuments.presentation-template": {
+        source: "iana"
+      },
+      "application/vnd.collabio.xodocuments.spreadsheet": {
+        source: "iana"
+      },
+      "application/vnd.collabio.xodocuments.spreadsheet-template": {
+        source: "iana"
+      },
+      "application/vnd.collection+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.collection.doc+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.collection.next+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.comicbook+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.comicbook-rar": {
+        source: "iana"
+      },
+      "application/vnd.commerce-battelle": {
+        source: "iana"
+      },
+      "application/vnd.commonspace": {
+        source: "iana",
+        extensions: ["csp"]
+      },
+      "application/vnd.contact.cmsg": {
+        source: "iana",
+        extensions: ["cdbcmsg"]
+      },
+      "application/vnd.coreos.ignition+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.cosmocaller": {
+        source: "iana",
+        extensions: ["cmc"]
+      },
+      "application/vnd.crick.clicker": {
+        source: "iana",
+        extensions: ["clkx"]
+      },
+      "application/vnd.crick.clicker.keyboard": {
+        source: "iana",
+        extensions: ["clkk"]
+      },
+      "application/vnd.crick.clicker.palette": {
+        source: "iana",
+        extensions: ["clkp"]
+      },
+      "application/vnd.crick.clicker.template": {
+        source: "iana",
+        extensions: ["clkt"]
+      },
+      "application/vnd.crick.clicker.wordbank": {
+        source: "iana",
+        extensions: ["clkw"]
+      },
+      "application/vnd.criticaltools.wbs+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["wbs"]
+      },
+      "application/vnd.cryptii.pipe+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.crypto-shade-file": {
+        source: "iana"
+      },
+      "application/vnd.cryptomator.encrypted": {
+        source: "iana"
+      },
+      "application/vnd.cryptomator.vault": {
+        source: "iana"
+      },
+      "application/vnd.ctc-posml": {
+        source: "iana",
+        extensions: ["pml"]
+      },
+      "application/vnd.ctct.ws+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.cups-pdf": {
+        source: "iana"
+      },
+      "application/vnd.cups-postscript": {
+        source: "iana"
+      },
+      "application/vnd.cups-ppd": {
+        source: "iana",
+        extensions: ["ppd"]
+      },
+      "application/vnd.cups-raster": {
+        source: "iana"
+      },
+      "application/vnd.cups-raw": {
+        source: "iana"
+      },
+      "application/vnd.curl": {
+        source: "iana"
+      },
+      "application/vnd.curl.car": {
+        source: "apache",
+        extensions: ["car"]
+      },
+      "application/vnd.curl.pcurl": {
+        source: "apache",
+        extensions: ["pcurl"]
+      },
+      "application/vnd.cyan.dean.root+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.cybank": {
+        source: "iana"
+      },
+      "application/vnd.cyclonedx+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.cyclonedx+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.d2l.coursepackage1p0+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.d3m-dataset": {
+        source: "iana"
+      },
+      "application/vnd.d3m-problem": {
+        source: "iana"
+      },
+      "application/vnd.dart": {
+        source: "iana",
+        compressible: true,
+        extensions: ["dart"]
+      },
+      "application/vnd.data-vision.rdz": {
+        source: "iana",
+        extensions: ["rdz"]
+      },
+      "application/vnd.datapackage+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dataresource+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dbf": {
+        source: "iana",
+        extensions: ["dbf"]
+      },
+      "application/vnd.debian.binary-package": {
+        source: "iana"
+      },
+      "application/vnd.dece.data": {
+        source: "iana",
+        extensions: ["uvf", "uvvf", "uvd", "uvvd"]
+      },
+      "application/vnd.dece.ttml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["uvt", "uvvt"]
+      },
+      "application/vnd.dece.unspecified": {
+        source: "iana",
+        extensions: ["uvx", "uvvx"]
+      },
+      "application/vnd.dece.zip": {
+        source: "iana",
+        extensions: ["uvz", "uvvz"]
+      },
+      "application/vnd.denovo.fcselayout-link": {
+        source: "iana",
+        extensions: ["fe_launch"]
+      },
+      "application/vnd.desmume.movie": {
+        source: "iana"
+      },
+      "application/vnd.dir-bi.plate-dl-nosuffix": {
+        source: "iana"
+      },
+      "application/vnd.dm.delegation+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dna": {
+        source: "iana",
+        extensions: ["dna"]
+      },
+      "application/vnd.document+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dolby.mlp": {
+        source: "apache",
+        extensions: ["mlp"]
+      },
+      "application/vnd.dolby.mobile.1": {
+        source: "iana"
+      },
+      "application/vnd.dolby.mobile.2": {
+        source: "iana"
+      },
+      "application/vnd.doremir.scorecloud-binary-document": {
+        source: "iana"
+      },
+      "application/vnd.dpgraph": {
+        source: "iana",
+        extensions: ["dpg"]
+      },
+      "application/vnd.dreamfactory": {
+        source: "iana",
+        extensions: ["dfac"]
+      },
+      "application/vnd.drive+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ds-keypoint": {
+        source: "apache",
+        extensions: ["kpxx"]
+      },
+      "application/vnd.dtg.local": {
+        source: "iana"
+      },
+      "application/vnd.dtg.local.flash": {
+        source: "iana"
+      },
+      "application/vnd.dtg.local.html": {
+        source: "iana"
+      },
+      "application/vnd.dvb.ait": {
+        source: "iana",
+        extensions: ["ait"]
+      },
+      "application/vnd.dvb.dvbisl+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.dvbj": {
+        source: "iana"
+      },
+      "application/vnd.dvb.esgcontainer": {
+        source: "iana"
+      },
+      "application/vnd.dvb.ipdcdftnotifaccess": {
+        source: "iana"
+      },
+      "application/vnd.dvb.ipdcesgaccess": {
+        source: "iana"
+      },
+      "application/vnd.dvb.ipdcesgaccess2": {
+        source: "iana"
+      },
+      "application/vnd.dvb.ipdcesgpdd": {
+        source: "iana"
+      },
+      "application/vnd.dvb.ipdcroaming": {
+        source: "iana"
+      },
+      "application/vnd.dvb.iptv.alfec-base": {
+        source: "iana"
+      },
+      "application/vnd.dvb.iptv.alfec-enhancement": {
+        source: "iana"
+      },
+      "application/vnd.dvb.notif-aggregate-root+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.notif-container+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.notif-generic+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.notif-ia-msglist+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.notif-ia-registration-request+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.notif-ia-registration-response+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.notif-init+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.dvb.pfr": {
+        source: "iana"
+      },
+      "application/vnd.dvb.service": {
+        source: "iana",
+        extensions: ["svc"]
+      },
+      "application/vnd.dxr": {
+        source: "iana"
+      },
+      "application/vnd.dynageo": {
+        source: "iana",
+        extensions: ["geo"]
+      },
+      "application/vnd.dzr": {
+        source: "iana"
+      },
+      "application/vnd.easykaraoke.cdgdownload": {
+        source: "iana"
+      },
+      "application/vnd.ecdis-update": {
+        source: "iana"
+      },
+      "application/vnd.ecip.rlp": {
+        source: "iana"
+      },
+      "application/vnd.eclipse.ditto+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ecowin.chart": {
+        source: "iana",
+        extensions: ["mag"]
+      },
+      "application/vnd.ecowin.filerequest": {
+        source: "iana"
+      },
+      "application/vnd.ecowin.fileupdate": {
+        source: "iana"
+      },
+      "application/vnd.ecowin.series": {
+        source: "iana"
+      },
+      "application/vnd.ecowin.seriesrequest": {
+        source: "iana"
+      },
+      "application/vnd.ecowin.seriesupdate": {
+        source: "iana"
+      },
+      "application/vnd.efi.img": {
+        source: "iana"
+      },
+      "application/vnd.efi.iso": {
+        source: "iana"
+      },
+      "application/vnd.emclient.accessrequest+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.enliven": {
+        source: "iana",
+        extensions: ["nml"]
+      },
+      "application/vnd.enphase.envoy": {
+        source: "iana"
+      },
+      "application/vnd.eprints.data+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.epson.esf": {
+        source: "iana",
+        extensions: ["esf"]
+      },
+      "application/vnd.epson.msf": {
+        source: "iana",
+        extensions: ["msf"]
+      },
+      "application/vnd.epson.quickanime": {
+        source: "iana",
+        extensions: ["qam"]
+      },
+      "application/vnd.epson.salt": {
+        source: "iana",
+        extensions: ["slt"]
+      },
+      "application/vnd.epson.ssf": {
+        source: "iana",
+        extensions: ["ssf"]
+      },
+      "application/vnd.ericsson.quickcall": {
+        source: "iana"
+      },
+      "application/vnd.espass-espass+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.eszigno3+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["es3", "et3"]
+      },
+      "application/vnd.etsi.aoc+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.asic-e+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.etsi.asic-s+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.etsi.cug+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvcommand+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvdiscovery+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvprofile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvsad-bc+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvsad-cod+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvsad-npvr+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvservice+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvsync+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.iptvueprofile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.mcid+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.mheg5": {
+        source: "iana"
+      },
+      "application/vnd.etsi.overload-control-policy-dataset+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.pstn+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.sci+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.simservs+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.timestamp-token": {
+        source: "iana"
+      },
+      "application/vnd.etsi.tsl+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.etsi.tsl.der": {
+        source: "iana"
+      },
+      "application/vnd.eu.kasparian.car+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.eudora.data": {
+        source: "iana"
+      },
+      "application/vnd.evolv.ecig.profile": {
+        source: "iana"
+      },
+      "application/vnd.evolv.ecig.settings": {
+        source: "iana"
+      },
+      "application/vnd.evolv.ecig.theme": {
+        source: "iana"
+      },
+      "application/vnd.exstream-empower+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.exstream-package": {
+        source: "iana"
+      },
+      "application/vnd.ezpix-album": {
+        source: "iana",
+        extensions: ["ez2"]
+      },
+      "application/vnd.ezpix-package": {
+        source: "iana",
+        extensions: ["ez3"]
+      },
+      "application/vnd.f-secure.mobile": {
+        source: "iana"
+      },
+      "application/vnd.familysearch.gedcom+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.fastcopy-disk-image": {
+        source: "iana"
+      },
+      "application/vnd.fdf": {
+        source: "iana",
+        extensions: ["fdf"]
+      },
+      "application/vnd.fdsn.mseed": {
+        source: "iana",
+        extensions: ["mseed"]
+      },
+      "application/vnd.fdsn.seed": {
+        source: "iana",
+        extensions: ["seed", "dataless"]
+      },
+      "application/vnd.ffsns": {
+        source: "iana"
+      },
+      "application/vnd.ficlab.flb+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.filmit.zfc": {
+        source: "iana"
+      },
+      "application/vnd.fints": {
+        source: "iana"
+      },
+      "application/vnd.firemonkeys.cloudcell": {
+        source: "iana"
+      },
+      "application/vnd.flographit": {
+        source: "iana",
+        extensions: ["gph"]
+      },
+      "application/vnd.fluxtime.clip": {
+        source: "iana",
+        extensions: ["ftc"]
+      },
+      "application/vnd.font-fontforge-sfd": {
+        source: "iana"
+      },
+      "application/vnd.framemaker": {
+        source: "iana",
+        extensions: ["fm", "frame", "maker", "book"]
+      },
+      "application/vnd.frogans.fnc": {
+        source: "iana",
+        extensions: ["fnc"]
+      },
+      "application/vnd.frogans.ltf": {
+        source: "iana",
+        extensions: ["ltf"]
+      },
+      "application/vnd.fsc.weblaunch": {
+        source: "iana",
+        extensions: ["fsc"]
+      },
+      "application/vnd.fujifilm.fb.docuworks": {
+        source: "iana"
+      },
+      "application/vnd.fujifilm.fb.docuworks.binder": {
+        source: "iana"
+      },
+      "application/vnd.fujifilm.fb.docuworks.container": {
+        source: "iana"
+      },
+      "application/vnd.fujifilm.fb.jfi+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.fujitsu.oasys": {
+        source: "iana",
+        extensions: ["oas"]
+      },
+      "application/vnd.fujitsu.oasys2": {
+        source: "iana",
+        extensions: ["oa2"]
+      },
+      "application/vnd.fujitsu.oasys3": {
+        source: "iana",
+        extensions: ["oa3"]
+      },
+      "application/vnd.fujitsu.oasysgp": {
+        source: "iana",
+        extensions: ["fg5"]
+      },
+      "application/vnd.fujitsu.oasysprs": {
+        source: "iana",
+        extensions: ["bh2"]
+      },
+      "application/vnd.fujixerox.art-ex": {
+        source: "iana"
+      },
+      "application/vnd.fujixerox.art4": {
+        source: "iana"
+      },
+      "application/vnd.fujixerox.ddd": {
+        source: "iana",
+        extensions: ["ddd"]
+      },
+      "application/vnd.fujixerox.docuworks": {
+        source: "iana",
+        extensions: ["xdw"]
+      },
+      "application/vnd.fujixerox.docuworks.binder": {
+        source: "iana",
+        extensions: ["xbd"]
+      },
+      "application/vnd.fujixerox.docuworks.container": {
+        source: "iana"
+      },
+      "application/vnd.fujixerox.hbpl": {
+        source: "iana"
+      },
+      "application/vnd.fut-misnet": {
+        source: "iana"
+      },
+      "application/vnd.futoin+cbor": {
+        source: "iana"
+      },
+      "application/vnd.futoin+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.fuzzysheet": {
+        source: "iana",
+        extensions: ["fzs"]
+      },
+      "application/vnd.genomatix.tuxedo": {
+        source: "iana",
+        extensions: ["txd"]
+      },
+      "application/vnd.gentics.grd+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.geo+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.geocube+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.geogebra.file": {
+        source: "iana",
+        extensions: ["ggb"]
+      },
+      "application/vnd.geogebra.slides": {
+        source: "iana"
+      },
+      "application/vnd.geogebra.tool": {
+        source: "iana",
+        extensions: ["ggt"]
+      },
+      "application/vnd.geometry-explorer": {
+        source: "iana",
+        extensions: ["gex", "gre"]
+      },
+      "application/vnd.geonext": {
+        source: "iana",
+        extensions: ["gxt"]
+      },
+      "application/vnd.geoplan": {
+        source: "iana",
+        extensions: ["g2w"]
+      },
+      "application/vnd.geospace": {
+        source: "iana",
+        extensions: ["g3w"]
+      },
+      "application/vnd.gerber": {
+        source: "iana"
+      },
+      "application/vnd.globalplatform.card-content-mgt": {
+        source: "iana"
+      },
+      "application/vnd.globalplatform.card-content-mgt-response": {
+        source: "iana"
+      },
+      "application/vnd.gmx": {
+        source: "iana",
+        extensions: ["gmx"]
+      },
+      "application/vnd.google-apps.document": {
+        compressible: false,
+        extensions: ["gdoc"]
+      },
+      "application/vnd.google-apps.presentation": {
+        compressible: false,
+        extensions: ["gslides"]
+      },
+      "application/vnd.google-apps.spreadsheet": {
+        compressible: false,
+        extensions: ["gsheet"]
+      },
+      "application/vnd.google-earth.kml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["kml"]
+      },
+      "application/vnd.google-earth.kmz": {
+        source: "iana",
+        compressible: false,
+        extensions: ["kmz"]
+      },
+      "application/vnd.gov.sk.e-form+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.gov.sk.e-form+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.gov.sk.xmldatacontainer+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.grafeq": {
+        source: "iana",
+        extensions: ["gqf", "gqs"]
+      },
+      "application/vnd.gridmp": {
+        source: "iana"
+      },
+      "application/vnd.groove-account": {
+        source: "iana",
+        extensions: ["gac"]
+      },
+      "application/vnd.groove-help": {
+        source: "iana",
+        extensions: ["ghf"]
+      },
+      "application/vnd.groove-identity-message": {
+        source: "iana",
+        extensions: ["gim"]
+      },
+      "application/vnd.groove-injector": {
+        source: "iana",
+        extensions: ["grv"]
+      },
+      "application/vnd.groove-tool-message": {
+        source: "iana",
+        extensions: ["gtm"]
+      },
+      "application/vnd.groove-tool-template": {
+        source: "iana",
+        extensions: ["tpl"]
+      },
+      "application/vnd.groove-vcard": {
+        source: "iana",
+        extensions: ["vcg"]
+      },
+      "application/vnd.hal+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.hal+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["hal"]
+      },
+      "application/vnd.handheld-entertainment+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["zmm"]
+      },
+      "application/vnd.hbci": {
+        source: "iana",
+        extensions: ["hbci"]
+      },
+      "application/vnd.hc+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.hcl-bireports": {
+        source: "iana"
+      },
+      "application/vnd.hdt": {
+        source: "iana"
+      },
+      "application/vnd.heroku+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.hhe.lesson-player": {
+        source: "iana",
+        extensions: ["les"]
+      },
+      "application/vnd.hl7cda+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/vnd.hl7v2+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/vnd.hp-hpgl": {
+        source: "iana",
+        extensions: ["hpgl"]
+      },
+      "application/vnd.hp-hpid": {
+        source: "iana",
+        extensions: ["hpid"]
+      },
+      "application/vnd.hp-hps": {
+        source: "iana",
+        extensions: ["hps"]
+      },
+      "application/vnd.hp-jlyt": {
+        source: "iana",
+        extensions: ["jlt"]
+      },
+      "application/vnd.hp-pcl": {
+        source: "iana",
+        extensions: ["pcl"]
+      },
+      "application/vnd.hp-pclxl": {
+        source: "iana",
+        extensions: ["pclxl"]
+      },
+      "application/vnd.httphone": {
+        source: "iana"
+      },
+      "application/vnd.hydrostatix.sof-data": {
+        source: "iana",
+        extensions: ["sfd-hdstx"]
+      },
+      "application/vnd.hyper+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.hyper-item+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.hyperdrive+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.hzn-3d-crossword": {
+        source: "iana"
+      },
+      "application/vnd.ibm.afplinedata": {
+        source: "iana"
+      },
+      "application/vnd.ibm.electronic-media": {
+        source: "iana"
+      },
+      "application/vnd.ibm.minipay": {
+        source: "iana",
+        extensions: ["mpy"]
+      },
+      "application/vnd.ibm.modcap": {
+        source: "iana",
+        extensions: ["afp", "listafp", "list3820"]
+      },
+      "application/vnd.ibm.rights-management": {
+        source: "iana",
+        extensions: ["irm"]
+      },
+      "application/vnd.ibm.secure-container": {
+        source: "iana",
+        extensions: ["sc"]
+      },
+      "application/vnd.iccprofile": {
+        source: "iana",
+        extensions: ["icc", "icm"]
+      },
+      "application/vnd.ieee.1905": {
+        source: "iana"
+      },
+      "application/vnd.igloader": {
+        source: "iana",
+        extensions: ["igl"]
+      },
+      "application/vnd.imagemeter.folder+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.imagemeter.image+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.immervision-ivp": {
+        source: "iana",
+        extensions: ["ivp"]
+      },
+      "application/vnd.immervision-ivu": {
+        source: "iana",
+        extensions: ["ivu"]
+      },
+      "application/vnd.ims.imsccv1p1": {
+        source: "iana"
+      },
+      "application/vnd.ims.imsccv1p2": {
+        source: "iana"
+      },
+      "application/vnd.ims.imsccv1p3": {
+        source: "iana"
+      },
+      "application/vnd.ims.lis.v2.result+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ims.lti.v2.toolconsumerprofile+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ims.lti.v2.toolproxy+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ims.lti.v2.toolproxy.id+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ims.lti.v2.toolsettings+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ims.lti.v2.toolsettings.simple+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.informedcontrol.rms+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.informix-visionary": {
+        source: "iana"
+      },
+      "application/vnd.infotech.project": {
+        source: "iana"
+      },
+      "application/vnd.infotech.project+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.innopath.wamp.notification": {
+        source: "iana"
+      },
+      "application/vnd.insors.igm": {
+        source: "iana",
+        extensions: ["igm"]
+      },
+      "application/vnd.intercon.formnet": {
+        source: "iana",
+        extensions: ["xpw", "xpx"]
+      },
+      "application/vnd.intergeo": {
+        source: "iana",
+        extensions: ["i2g"]
+      },
+      "application/vnd.intertrust.digibox": {
+        source: "iana"
+      },
+      "application/vnd.intertrust.nncp": {
+        source: "iana"
+      },
+      "application/vnd.intu.qbo": {
+        source: "iana",
+        extensions: ["qbo"]
+      },
+      "application/vnd.intu.qfx": {
+        source: "iana",
+        extensions: ["qfx"]
+      },
+      "application/vnd.iptc.g2.catalogitem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.iptc.g2.conceptitem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.iptc.g2.knowledgeitem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.iptc.g2.newsitem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.iptc.g2.newsmessage+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.iptc.g2.packageitem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.iptc.g2.planningitem+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ipunplugged.rcprofile": {
+        source: "iana",
+        extensions: ["rcprofile"]
+      },
+      "application/vnd.irepository.package+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["irp"]
+      },
+      "application/vnd.is-xpr": {
+        source: "iana",
+        extensions: ["xpr"]
+      },
+      "application/vnd.isac.fcs": {
+        source: "iana",
+        extensions: ["fcs"]
+      },
+      "application/vnd.iso11783-10+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.jam": {
+        source: "iana",
+        extensions: ["jam"]
+      },
+      "application/vnd.japannet-directory-service": {
+        source: "iana"
+      },
+      "application/vnd.japannet-jpnstore-wakeup": {
+        source: "iana"
+      },
+      "application/vnd.japannet-payment-wakeup": {
+        source: "iana"
+      },
+      "application/vnd.japannet-registration": {
+        source: "iana"
+      },
+      "application/vnd.japannet-registration-wakeup": {
+        source: "iana"
+      },
+      "application/vnd.japannet-setstore-wakeup": {
+        source: "iana"
+      },
+      "application/vnd.japannet-verification": {
+        source: "iana"
+      },
+      "application/vnd.japannet-verification-wakeup": {
+        source: "iana"
+      },
+      "application/vnd.jcp.javame.midlet-rms": {
+        source: "iana",
+        extensions: ["rms"]
+      },
+      "application/vnd.jisp": {
+        source: "iana",
+        extensions: ["jisp"]
+      },
+      "application/vnd.joost.joda-archive": {
+        source: "iana",
+        extensions: ["joda"]
+      },
+      "application/vnd.jsk.isdn-ngn": {
+        source: "iana"
+      },
+      "application/vnd.kahootz": {
+        source: "iana",
+        extensions: ["ktz", "ktr"]
+      },
+      "application/vnd.kde.karbon": {
+        source: "iana",
+        extensions: ["karbon"]
+      },
+      "application/vnd.kde.kchart": {
+        source: "iana",
+        extensions: ["chrt"]
+      },
+      "application/vnd.kde.kformula": {
+        source: "iana",
+        extensions: ["kfo"]
+      },
+      "application/vnd.kde.kivio": {
+        source: "iana",
+        extensions: ["flw"]
+      },
+      "application/vnd.kde.kontour": {
+        source: "iana",
+        extensions: ["kon"]
+      },
+      "application/vnd.kde.kpresenter": {
+        source: "iana",
+        extensions: ["kpr", "kpt"]
+      },
+      "application/vnd.kde.kspread": {
+        source: "iana",
+        extensions: ["ksp"]
+      },
+      "application/vnd.kde.kword": {
+        source: "iana",
+        extensions: ["kwd", "kwt"]
+      },
+      "application/vnd.kenameaapp": {
+        source: "iana",
+        extensions: ["htke"]
+      },
+      "application/vnd.kidspiration": {
+        source: "iana",
+        extensions: ["kia"]
+      },
+      "application/vnd.kinar": {
+        source: "iana",
+        extensions: ["kne", "knp"]
+      },
+      "application/vnd.koan": {
+        source: "iana",
+        extensions: ["skp", "skd", "skt", "skm"]
+      },
+      "application/vnd.kodak-descriptor": {
+        source: "iana",
+        extensions: ["sse"]
+      },
+      "application/vnd.las": {
+        source: "iana"
+      },
+      "application/vnd.las.las+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.las.las+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["lasxml"]
+      },
+      "application/vnd.laszip": {
+        source: "iana"
+      },
+      "application/vnd.leap+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.liberty-request+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.llamagraphics.life-balance.desktop": {
+        source: "iana",
+        extensions: ["lbd"]
+      },
+      "application/vnd.llamagraphics.life-balance.exchange+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["lbe"]
+      },
+      "application/vnd.logipipe.circuit+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.loom": {
+        source: "iana"
+      },
+      "application/vnd.lotus-1-2-3": {
+        source: "iana",
+        extensions: ["123"]
+      },
+      "application/vnd.lotus-approach": {
+        source: "iana",
+        extensions: ["apr"]
+      },
+      "application/vnd.lotus-freelance": {
+        source: "iana",
+        extensions: ["pre"]
+      },
+      "application/vnd.lotus-notes": {
+        source: "iana",
+        extensions: ["nsf"]
+      },
+      "application/vnd.lotus-organizer": {
+        source: "iana",
+        extensions: ["org"]
+      },
+      "application/vnd.lotus-screencam": {
+        source: "iana",
+        extensions: ["scm"]
+      },
+      "application/vnd.lotus-wordpro": {
+        source: "iana",
+        extensions: ["lwp"]
+      },
+      "application/vnd.macports.portpkg": {
+        source: "iana",
+        extensions: ["portpkg"]
+      },
+      "application/vnd.mapbox-vector-tile": {
+        source: "iana",
+        extensions: ["mvt"]
+      },
+      "application/vnd.marlin.drm.actiontoken+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.marlin.drm.conftoken+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.marlin.drm.license+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.marlin.drm.mdcf": {
+        source: "iana"
+      },
+      "application/vnd.mason+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.maxar.archive.3tz+zip": {
+        source: "iana",
+        compressible: false
+      },
+      "application/vnd.maxmind.maxmind-db": {
+        source: "iana"
+      },
+      "application/vnd.mcd": {
+        source: "iana",
+        extensions: ["mcd"]
+      },
+      "application/vnd.medcalcdata": {
+        source: "iana",
+        extensions: ["mc1"]
+      },
+      "application/vnd.mediastation.cdkey": {
+        source: "iana",
+        extensions: ["cdkey"]
+      },
+      "application/vnd.meridian-slingshot": {
+        source: "iana"
+      },
+      "application/vnd.mfer": {
+        source: "iana",
+        extensions: ["mwf"]
+      },
+      "application/vnd.mfmp": {
+        source: "iana",
+        extensions: ["mfm"]
+      },
+      "application/vnd.micro+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.micrografx.flo": {
+        source: "iana",
+        extensions: ["flo"]
+      },
+      "application/vnd.micrografx.igx": {
+        source: "iana",
+        extensions: ["igx"]
+      },
+      "application/vnd.microsoft.portable-executable": {
+        source: "iana"
+      },
+      "application/vnd.microsoft.windows.thumbnail-cache": {
+        source: "iana"
+      },
+      "application/vnd.miele+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.mif": {
+        source: "iana",
+        extensions: ["mif"]
+      },
+      "application/vnd.minisoft-hp3000-save": {
+        source: "iana"
+      },
+      "application/vnd.mitsubishi.misty-guard.trustweb": {
+        source: "iana"
+      },
+      "application/vnd.mobius.daf": {
+        source: "iana",
+        extensions: ["daf"]
+      },
+      "application/vnd.mobius.dis": {
+        source: "iana",
+        extensions: ["dis"]
+      },
+      "application/vnd.mobius.mbk": {
+        source: "iana",
+        extensions: ["mbk"]
+      },
+      "application/vnd.mobius.mqy": {
+        source: "iana",
+        extensions: ["mqy"]
+      },
+      "application/vnd.mobius.msl": {
+        source: "iana",
+        extensions: ["msl"]
+      },
+      "application/vnd.mobius.plc": {
+        source: "iana",
+        extensions: ["plc"]
+      },
+      "application/vnd.mobius.txf": {
+        source: "iana",
+        extensions: ["txf"]
+      },
+      "application/vnd.mophun.application": {
+        source: "iana",
+        extensions: ["mpn"]
+      },
+      "application/vnd.mophun.certificate": {
+        source: "iana",
+        extensions: ["mpc"]
+      },
+      "application/vnd.motorola.flexsuite": {
+        source: "iana"
+      },
+      "application/vnd.motorola.flexsuite.adsi": {
+        source: "iana"
+      },
+      "application/vnd.motorola.flexsuite.fis": {
+        source: "iana"
+      },
+      "application/vnd.motorola.flexsuite.gotap": {
+        source: "iana"
+      },
+      "application/vnd.motorola.flexsuite.kmr": {
+        source: "iana"
+      },
+      "application/vnd.motorola.flexsuite.ttc": {
+        source: "iana"
+      },
+      "application/vnd.motorola.flexsuite.wem": {
+        source: "iana"
+      },
+      "application/vnd.motorola.iprm": {
+        source: "iana"
+      },
+      "application/vnd.mozilla.xul+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xul"]
+      },
+      "application/vnd.ms-3mfdocument": {
+        source: "iana"
+      },
+      "application/vnd.ms-artgalry": {
+        source: "iana",
+        extensions: ["cil"]
+      },
+      "application/vnd.ms-asf": {
+        source: "iana"
+      },
+      "application/vnd.ms-cab-compressed": {
+        source: "iana",
+        extensions: ["cab"]
+      },
+      "application/vnd.ms-color.iccprofile": {
+        source: "apache"
+      },
+      "application/vnd.ms-excel": {
+        source: "iana",
+        compressible: false,
+        extensions: ["xls", "xlm", "xla", "xlc", "xlt", "xlw"]
+      },
+      "application/vnd.ms-excel.addin.macroenabled.12": {
+        source: "iana",
+        extensions: ["xlam"]
+      },
+      "application/vnd.ms-excel.sheet.binary.macroenabled.12": {
+        source: "iana",
+        extensions: ["xlsb"]
+      },
+      "application/vnd.ms-excel.sheet.macroenabled.12": {
+        source: "iana",
+        extensions: ["xlsm"]
+      },
+      "application/vnd.ms-excel.template.macroenabled.12": {
+        source: "iana",
+        extensions: ["xltm"]
+      },
+      "application/vnd.ms-fontobject": {
+        source: "iana",
+        compressible: true,
+        extensions: ["eot"]
+      },
+      "application/vnd.ms-htmlhelp": {
+        source: "iana",
+        extensions: ["chm"]
+      },
+      "application/vnd.ms-ims": {
+        source: "iana",
+        extensions: ["ims"]
+      },
+      "application/vnd.ms-lrm": {
+        source: "iana",
+        extensions: ["lrm"]
+      },
+      "application/vnd.ms-office.activex+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ms-officetheme": {
+        source: "iana",
+        extensions: ["thmx"]
+      },
+      "application/vnd.ms-opentype": {
+        source: "apache",
+        compressible: true
+      },
+      "application/vnd.ms-outlook": {
+        compressible: false,
+        extensions: ["msg"]
+      },
+      "application/vnd.ms-package.obfuscated-opentype": {
+        source: "apache"
+      },
+      "application/vnd.ms-pki.seccat": {
+        source: "apache",
+        extensions: ["cat"]
+      },
+      "application/vnd.ms-pki.stl": {
+        source: "apache",
+        extensions: ["stl"]
+      },
+      "application/vnd.ms-playready.initiator+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ms-powerpoint": {
+        source: "iana",
+        compressible: false,
+        extensions: ["ppt", "pps", "pot"]
+      },
+      "application/vnd.ms-powerpoint.addin.macroenabled.12": {
+        source: "iana",
+        extensions: ["ppam"]
+      },
+      "application/vnd.ms-powerpoint.presentation.macroenabled.12": {
+        source: "iana",
+        extensions: ["pptm"]
+      },
+      "application/vnd.ms-powerpoint.slide.macroenabled.12": {
+        source: "iana",
+        extensions: ["sldm"]
+      },
+      "application/vnd.ms-powerpoint.slideshow.macroenabled.12": {
+        source: "iana",
+        extensions: ["ppsm"]
+      },
+      "application/vnd.ms-powerpoint.template.macroenabled.12": {
+        source: "iana",
+        extensions: ["potm"]
+      },
+      "application/vnd.ms-printdevicecapabilities+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ms-printing.printticket+xml": {
+        source: "apache",
+        compressible: true
+      },
+      "application/vnd.ms-printschematicket+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ms-project": {
+        source: "iana",
+        extensions: ["mpp", "mpt"]
+      },
+      "application/vnd.ms-tnef": {
+        source: "iana"
+      },
+      "application/vnd.ms-windows.devicepairing": {
+        source: "iana"
+      },
+      "application/vnd.ms-windows.nwprinting.oob": {
+        source: "iana"
+      },
+      "application/vnd.ms-windows.printerpairing": {
+        source: "iana"
+      },
+      "application/vnd.ms-windows.wsd.oob": {
+        source: "iana"
+      },
+      "application/vnd.ms-wmdrm.lic-chlg-req": {
+        source: "iana"
+      },
+      "application/vnd.ms-wmdrm.lic-resp": {
+        source: "iana"
+      },
+      "application/vnd.ms-wmdrm.meter-chlg-req": {
+        source: "iana"
+      },
+      "application/vnd.ms-wmdrm.meter-resp": {
+        source: "iana"
+      },
+      "application/vnd.ms-word.document.macroenabled.12": {
+        source: "iana",
+        extensions: ["docm"]
+      },
+      "application/vnd.ms-word.template.macroenabled.12": {
+        source: "iana",
+        extensions: ["dotm"]
+      },
+      "application/vnd.ms-works": {
+        source: "iana",
+        extensions: ["wps", "wks", "wcm", "wdb"]
+      },
+      "application/vnd.ms-wpl": {
+        source: "iana",
+        extensions: ["wpl"]
+      },
+      "application/vnd.ms-xpsdocument": {
+        source: "iana",
+        compressible: false,
+        extensions: ["xps"]
+      },
+      "application/vnd.msa-disk-image": {
+        source: "iana"
+      },
+      "application/vnd.mseq": {
+        source: "iana",
+        extensions: ["mseq"]
+      },
+      "application/vnd.msign": {
+        source: "iana"
+      },
+      "application/vnd.multiad.creator": {
+        source: "iana"
+      },
+      "application/vnd.multiad.creator.cif": {
+        source: "iana"
+      },
+      "application/vnd.music-niff": {
+        source: "iana"
+      },
+      "application/vnd.musician": {
+        source: "iana",
+        extensions: ["mus"]
+      },
+      "application/vnd.muvee.style": {
+        source: "iana",
+        extensions: ["msty"]
+      },
+      "application/vnd.mynfc": {
+        source: "iana",
+        extensions: ["taglet"]
+      },
+      "application/vnd.nacamar.ybrid+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.ncd.control": {
+        source: "iana"
+      },
+      "application/vnd.ncd.reference": {
+        source: "iana"
+      },
+      "application/vnd.nearst.inv+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.nebumind.line": {
+        source: "iana"
+      },
+      "application/vnd.nervana": {
+        source: "iana"
+      },
+      "application/vnd.netfpx": {
+        source: "iana"
+      },
+      "application/vnd.neurolanguage.nlu": {
+        source: "iana",
+        extensions: ["nlu"]
+      },
+      "application/vnd.nimn": {
+        source: "iana"
+      },
+      "application/vnd.nintendo.nitro.rom": {
+        source: "iana"
+      },
+      "application/vnd.nintendo.snes.rom": {
+        source: "iana"
+      },
+      "application/vnd.nitf": {
+        source: "iana",
+        extensions: ["ntf", "nitf"]
+      },
+      "application/vnd.noblenet-directory": {
+        source: "iana",
+        extensions: ["nnd"]
+      },
+      "application/vnd.noblenet-sealer": {
+        source: "iana",
+        extensions: ["nns"]
+      },
+      "application/vnd.noblenet-web": {
+        source: "iana",
+        extensions: ["nnw"]
+      },
+      "application/vnd.nokia.catalogs": {
+        source: "iana"
+      },
+      "application/vnd.nokia.conml+wbxml": {
+        source: "iana"
+      },
+      "application/vnd.nokia.conml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.nokia.iptv.config+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.nokia.isds-radio-presets": {
+        source: "iana"
+      },
+      "application/vnd.nokia.landmark+wbxml": {
+        source: "iana"
+      },
+      "application/vnd.nokia.landmark+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.nokia.landmarkcollection+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.nokia.n-gage.ac+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ac"]
+      },
+      "application/vnd.nokia.n-gage.data": {
+        source: "iana",
+        extensions: ["ngdat"]
+      },
+      "application/vnd.nokia.n-gage.symbian.install": {
+        source: "iana",
+        extensions: ["n-gage"]
+      },
+      "application/vnd.nokia.ncd": {
+        source: "iana"
+      },
+      "application/vnd.nokia.pcd+wbxml": {
+        source: "iana"
+      },
+      "application/vnd.nokia.pcd+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.nokia.radio-preset": {
+        source: "iana",
+        extensions: ["rpst"]
+      },
+      "application/vnd.nokia.radio-presets": {
+        source: "iana",
+        extensions: ["rpss"]
+      },
+      "application/vnd.novadigm.edm": {
+        source: "iana",
+        extensions: ["edm"]
+      },
+      "application/vnd.novadigm.edx": {
+        source: "iana",
+        extensions: ["edx"]
+      },
+      "application/vnd.novadigm.ext": {
+        source: "iana",
+        extensions: ["ext"]
+      },
+      "application/vnd.ntt-local.content-share": {
+        source: "iana"
+      },
+      "application/vnd.ntt-local.file-transfer": {
+        source: "iana"
+      },
+      "application/vnd.ntt-local.ogw_remote-access": {
+        source: "iana"
+      },
+      "application/vnd.ntt-local.sip-ta_remote": {
+        source: "iana"
+      },
+      "application/vnd.ntt-local.sip-ta_tcp_stream": {
+        source: "iana"
+      },
+      "application/vnd.oasis.opendocument.chart": {
+        source: "iana",
+        extensions: ["odc"]
+      },
+      "application/vnd.oasis.opendocument.chart-template": {
+        source: "iana",
+        extensions: ["otc"]
+      },
+      "application/vnd.oasis.opendocument.database": {
+        source: "iana",
+        extensions: ["odb"]
+      },
+      "application/vnd.oasis.opendocument.formula": {
+        source: "iana",
+        extensions: ["odf"]
+      },
+      "application/vnd.oasis.opendocument.formula-template": {
+        source: "iana",
+        extensions: ["odft"]
+      },
+      "application/vnd.oasis.opendocument.graphics": {
+        source: "iana",
+        compressible: false,
+        extensions: ["odg"]
+      },
+      "application/vnd.oasis.opendocument.graphics-template": {
+        source: "iana",
+        extensions: ["otg"]
+      },
+      "application/vnd.oasis.opendocument.image": {
+        source: "iana",
+        extensions: ["odi"]
+      },
+      "application/vnd.oasis.opendocument.image-template": {
+        source: "iana",
+        extensions: ["oti"]
+      },
+      "application/vnd.oasis.opendocument.presentation": {
+        source: "iana",
+        compressible: false,
+        extensions: ["odp"]
+      },
+      "application/vnd.oasis.opendocument.presentation-template": {
+        source: "iana",
+        extensions: ["otp"]
+      },
+      "application/vnd.oasis.opendocument.spreadsheet": {
+        source: "iana",
+        compressible: false,
+        extensions: ["ods"]
+      },
+      "application/vnd.oasis.opendocument.spreadsheet-template": {
+        source: "iana",
+        extensions: ["ots"]
+      },
+      "application/vnd.oasis.opendocument.text": {
+        source: "iana",
+        compressible: false,
+        extensions: ["odt"]
+      },
+      "application/vnd.oasis.opendocument.text-master": {
+        source: "iana",
+        extensions: ["odm"]
+      },
+      "application/vnd.oasis.opendocument.text-template": {
+        source: "iana",
+        extensions: ["ott"]
+      },
+      "application/vnd.oasis.opendocument.text-web": {
+        source: "iana",
+        extensions: ["oth"]
+      },
+      "application/vnd.obn": {
+        source: "iana"
+      },
+      "application/vnd.ocf+cbor": {
+        source: "iana"
+      },
+      "application/vnd.oci.image.manifest.v1+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oftn.l10n+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.contentaccessdownload+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.contentaccessstreaming+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.cspg-hexbinary": {
+        source: "iana"
+      },
+      "application/vnd.oipf.dae.svg+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.dae.xhtml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.mippvcontrolmessage+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.pae.gem": {
+        source: "iana"
+      },
+      "application/vnd.oipf.spdiscovery+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.spdlist+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.ueprofile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oipf.userprofile+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.olpc-sugar": {
+        source: "iana",
+        extensions: ["xo"]
+      },
+      "application/vnd.oma-scws-config": {
+        source: "iana"
+      },
+      "application/vnd.oma-scws-http-request": {
+        source: "iana"
+      },
+      "application/vnd.oma-scws-http-response": {
+        source: "iana"
+      },
+      "application/vnd.oma.bcast.associated-procedure-parameter+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.drm-trigger+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.imd+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.ltkm": {
+        source: "iana"
+      },
+      "application/vnd.oma.bcast.notification+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.provisioningtrigger": {
+        source: "iana"
+      },
+      "application/vnd.oma.bcast.sgboot": {
+        source: "iana"
+      },
+      "application/vnd.oma.bcast.sgdd+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.sgdu": {
+        source: "iana"
+      },
+      "application/vnd.oma.bcast.simple-symbol-container": {
+        source: "iana"
+      },
+      "application/vnd.oma.bcast.smartcard-trigger+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.sprov+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.bcast.stkm": {
+        source: "iana"
+      },
+      "application/vnd.oma.cab-address-book+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.cab-feature-handler+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.cab-pcc+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.cab-subs-invite+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.cab-user-prefs+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.dcd": {
+        source: "iana"
+      },
+      "application/vnd.oma.dcdc": {
+        source: "iana"
+      },
+      "application/vnd.oma.dd2+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["dd2"]
+      },
+      "application/vnd.oma.drm.risd+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.group-usage-list+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.lwm2m+cbor": {
+        source: "iana"
+      },
+      "application/vnd.oma.lwm2m+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.lwm2m+tlv": {
+        source: "iana"
+      },
+      "application/vnd.oma.pal+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.poc.detailed-progress-report+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.poc.final-report+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.poc.groups+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.poc.invocation-descriptor+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.poc.optimized-progress-report+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.push": {
+        source: "iana"
+      },
+      "application/vnd.oma.scidm.messages+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oma.xcap-directory+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.omads-email+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/vnd.omads-file+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/vnd.omads-folder+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/vnd.omaloc-supl-init": {
+        source: "iana"
+      },
+      "application/vnd.onepager": {
+        source: "iana"
+      },
+      "application/vnd.onepagertamp": {
+        source: "iana"
+      },
+      "application/vnd.onepagertamx": {
+        source: "iana"
+      },
+      "application/vnd.onepagertat": {
+        source: "iana"
+      },
+      "application/vnd.onepagertatp": {
+        source: "iana"
+      },
+      "application/vnd.onepagertatx": {
+        source: "iana"
+      },
+      "application/vnd.openblox.game+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["obgx"]
+      },
+      "application/vnd.openblox.game-binary": {
+        source: "iana"
+      },
+      "application/vnd.openeye.oeb": {
+        source: "iana"
+      },
+      "application/vnd.openofficeorg.extension": {
+        source: "apache",
+        extensions: ["oxt"]
+      },
+      "application/vnd.openstreetmap.data+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["osm"]
+      },
+      "application/vnd.opentimestamps.ots": {
+        source: "iana"
+      },
+      "application/vnd.openxmlformats-officedocument.custom-properties+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.customxmlproperties+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawing+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawingml.chart+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawingml.diagramcolors+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawingml.diagramdata+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawingml.diagramlayout+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.drawingml.diagramstyle+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.extended-properties+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.commentauthors+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.comments+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.handoutmaster+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.notesmaster+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.notesslide+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
+        source: "iana",
+        compressible: false,
+        extensions: ["pptx"]
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.presprops+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slide": {
+        source: "iana",
+        extensions: ["sldx"]
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slide+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slidelayout+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slidemaster+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slideshow": {
+        source: "iana",
+        extensions: ["ppsx"]
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slideshow.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.slideupdateinfo+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.tablestyles+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.tags+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.template": {
+        source: "iana",
+        extensions: ["potx"]
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.template.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.presentationml.viewprops+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.calcchain+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.dialogsheet+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.externallink+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotcachedefinition+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotcacherecords+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.pivottable+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.querytable+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.revisionheaders+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.revisionlog+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedstrings+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+        source: "iana",
+        compressible: false,
+        extensions: ["xlsx"]
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheetmetadata+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.tablesinglecells+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.template": {
+        source: "iana",
+        extensions: ["xltx"]
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.template.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.usernames+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.volatiledependencies+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.theme+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.themeoverride+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.vmldrawing": {
+        source: "iana"
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+        source: "iana",
+        compressible: false,
+        extensions: ["docx"]
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document.glossary+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.fonttable+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.template": {
+        source: "iana",
+        extensions: ["dotx"]
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.websettings+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-package.core-properties+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-package.digital-signature-xmlsignature+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.openxmlformats-package.relationships+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oracle.resource+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.orange.indata": {
+        source: "iana"
+      },
+      "application/vnd.osa.netdeploy": {
+        source: "iana"
+      },
+      "application/vnd.osgeo.mapguide.package": {
+        source: "iana",
+        extensions: ["mgp"]
+      },
+      "application/vnd.osgi.bundle": {
+        source: "iana"
+      },
+      "application/vnd.osgi.dp": {
+        source: "iana",
+        extensions: ["dp"]
+      },
+      "application/vnd.osgi.subsystem": {
+        source: "iana",
+        extensions: ["esa"]
+      },
+      "application/vnd.otps.ct-kip+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.oxli.countgraph": {
+        source: "iana"
+      },
+      "application/vnd.pagerduty+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.palm": {
+        source: "iana",
+        extensions: ["pdb", "pqa", "oprc"]
+      },
+      "application/vnd.panoply": {
+        source: "iana"
+      },
+      "application/vnd.paos.xml": {
+        source: "iana"
+      },
+      "application/vnd.patentdive": {
+        source: "iana"
+      },
+      "application/vnd.patientecommsdoc": {
+        source: "iana"
+      },
+      "application/vnd.pawaafile": {
+        source: "iana",
+        extensions: ["paw"]
+      },
+      "application/vnd.pcos": {
+        source: "iana"
+      },
+      "application/vnd.pg.format": {
+        source: "iana",
+        extensions: ["str"]
+      },
+      "application/vnd.pg.osasli": {
+        source: "iana",
+        extensions: ["ei6"]
+      },
+      "application/vnd.piaccess.application-licence": {
+        source: "iana"
+      },
+      "application/vnd.picsel": {
+        source: "iana",
+        extensions: ["efif"]
+      },
+      "application/vnd.pmi.widget": {
+        source: "iana",
+        extensions: ["wg"]
+      },
+      "application/vnd.poc.group-advertisement+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.pocketlearn": {
+        source: "iana",
+        extensions: ["plf"]
+      },
+      "application/vnd.powerbuilder6": {
+        source: "iana",
+        extensions: ["pbd"]
+      },
+      "application/vnd.powerbuilder6-s": {
+        source: "iana"
+      },
+      "application/vnd.powerbuilder7": {
+        source: "iana"
+      },
+      "application/vnd.powerbuilder7-s": {
+        source: "iana"
+      },
+      "application/vnd.powerbuilder75": {
+        source: "iana"
+      },
+      "application/vnd.powerbuilder75-s": {
+        source: "iana"
+      },
+      "application/vnd.preminet": {
+        source: "iana"
+      },
+      "application/vnd.previewsystems.box": {
+        source: "iana",
+        extensions: ["box"]
+      },
+      "application/vnd.proteus.magazine": {
+        source: "iana",
+        extensions: ["mgz"]
+      },
+      "application/vnd.psfs": {
+        source: "iana"
+      },
+      "application/vnd.publishare-delta-tree": {
+        source: "iana",
+        extensions: ["qps"]
+      },
+      "application/vnd.pvi.ptid1": {
+        source: "iana",
+        extensions: ["ptid"]
+      },
+      "application/vnd.pwg-multiplexed": {
+        source: "iana"
+      },
+      "application/vnd.pwg-xhtml-print+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.qualcomm.brew-app-res": {
+        source: "iana"
+      },
+      "application/vnd.quarantainenet": {
+        source: "iana"
+      },
+      "application/vnd.quark.quarkxpress": {
+        source: "iana",
+        extensions: ["qxd", "qxt", "qwd", "qwt", "qxl", "qxb"]
+      },
+      "application/vnd.quobject-quoxdocument": {
+        source: "iana"
+      },
+      "application/vnd.radisys.moml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-audit+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-audit-conf+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-audit-conn+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-audit-dialog+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-audit-stream+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-conf+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog-base+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog-fax-detect+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog-fax-sendrecv+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog-group+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog-speech+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.radisys.msml-dialog-transform+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.rainstor.data": {
+        source: "iana"
+      },
+      "application/vnd.rapid": {
+        source: "iana"
+      },
+      "application/vnd.rar": {
+        source: "iana",
+        extensions: ["rar"]
+      },
+      "application/vnd.realvnc.bed": {
+        source: "iana",
+        extensions: ["bed"]
+      },
+      "application/vnd.recordare.musicxml": {
+        source: "iana",
+        extensions: ["mxl"]
+      },
+      "application/vnd.recordare.musicxml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["musicxml"]
+      },
+      "application/vnd.renlearn.rlprint": {
+        source: "iana"
+      },
+      "application/vnd.resilient.logic": {
+        source: "iana"
+      },
+      "application/vnd.restful+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.rig.cryptonote": {
+        source: "iana",
+        extensions: ["cryptonote"]
+      },
+      "application/vnd.rim.cod": {
+        source: "apache",
+        extensions: ["cod"]
+      },
+      "application/vnd.rn-realmedia": {
+        source: "apache",
+        extensions: ["rm"]
+      },
+      "application/vnd.rn-realmedia-vbr": {
+        source: "apache",
+        extensions: ["rmvb"]
+      },
+      "application/vnd.route66.link66+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["link66"]
+      },
+      "application/vnd.rs-274x": {
+        source: "iana"
+      },
+      "application/vnd.ruckus.download": {
+        source: "iana"
+      },
+      "application/vnd.s3sms": {
+        source: "iana"
+      },
+      "application/vnd.sailingtracker.track": {
+        source: "iana",
+        extensions: ["st"]
+      },
+      "application/vnd.sar": {
+        source: "iana"
+      },
+      "application/vnd.sbm.cid": {
+        source: "iana"
+      },
+      "application/vnd.sbm.mid2": {
+        source: "iana"
+      },
+      "application/vnd.scribus": {
+        source: "iana"
+      },
+      "application/vnd.sealed.3df": {
+        source: "iana"
+      },
+      "application/vnd.sealed.csf": {
+        source: "iana"
+      },
+      "application/vnd.sealed.doc": {
+        source: "iana"
+      },
+      "application/vnd.sealed.eml": {
+        source: "iana"
+      },
+      "application/vnd.sealed.mht": {
+        source: "iana"
+      },
+      "application/vnd.sealed.net": {
+        source: "iana"
+      },
+      "application/vnd.sealed.ppt": {
+        source: "iana"
+      },
+      "application/vnd.sealed.tiff": {
+        source: "iana"
+      },
+      "application/vnd.sealed.xls": {
+        source: "iana"
+      },
+      "application/vnd.sealedmedia.softseal.html": {
+        source: "iana"
+      },
+      "application/vnd.sealedmedia.softseal.pdf": {
+        source: "iana"
+      },
+      "application/vnd.seemail": {
+        source: "iana",
+        extensions: ["see"]
+      },
+      "application/vnd.seis+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.sema": {
+        source: "iana",
+        extensions: ["sema"]
+      },
+      "application/vnd.semd": {
+        source: "iana",
+        extensions: ["semd"]
+      },
+      "application/vnd.semf": {
+        source: "iana",
+        extensions: ["semf"]
+      },
+      "application/vnd.shade-save-file": {
+        source: "iana"
+      },
+      "application/vnd.shana.informed.formdata": {
+        source: "iana",
+        extensions: ["ifm"]
+      },
+      "application/vnd.shana.informed.formtemplate": {
+        source: "iana",
+        extensions: ["itp"]
+      },
+      "application/vnd.shana.informed.interchange": {
+        source: "iana",
+        extensions: ["iif"]
+      },
+      "application/vnd.shana.informed.package": {
+        source: "iana",
+        extensions: ["ipk"]
+      },
+      "application/vnd.shootproof+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.shopkick+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.shp": {
+        source: "iana"
+      },
+      "application/vnd.shx": {
+        source: "iana"
+      },
+      "application/vnd.sigrok.session": {
+        source: "iana"
+      },
+      "application/vnd.simtech-mindmapper": {
+        source: "iana",
+        extensions: ["twd", "twds"]
+      },
+      "application/vnd.siren+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.smaf": {
+        source: "iana",
+        extensions: ["mmf"]
+      },
+      "application/vnd.smart.notebook": {
+        source: "iana"
+      },
+      "application/vnd.smart.teacher": {
+        source: "iana",
+        extensions: ["teacher"]
+      },
+      "application/vnd.snesdev-page-table": {
+        source: "iana"
+      },
+      "application/vnd.software602.filler.form+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["fo"]
+      },
+      "application/vnd.software602.filler.form-xml-zip": {
+        source: "iana"
+      },
+      "application/vnd.solent.sdkm+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["sdkm", "sdkd"]
+      },
+      "application/vnd.spotfire.dxp": {
+        source: "iana",
+        extensions: ["dxp"]
+      },
+      "application/vnd.spotfire.sfs": {
+        source: "iana",
+        extensions: ["sfs"]
+      },
+      "application/vnd.sqlite3": {
+        source: "iana"
+      },
+      "application/vnd.sss-cod": {
+        source: "iana"
+      },
+      "application/vnd.sss-dtf": {
+        source: "iana"
+      },
+      "application/vnd.sss-ntf": {
+        source: "iana"
+      },
+      "application/vnd.stardivision.calc": {
+        source: "apache",
+        extensions: ["sdc"]
+      },
+      "application/vnd.stardivision.draw": {
+        source: "apache",
+        extensions: ["sda"]
+      },
+      "application/vnd.stardivision.impress": {
+        source: "apache",
+        extensions: ["sdd"]
+      },
+      "application/vnd.stardivision.math": {
+        source: "apache",
+        extensions: ["smf"]
+      },
+      "application/vnd.stardivision.writer": {
+        source: "apache",
+        extensions: ["sdw", "vor"]
+      },
+      "application/vnd.stardivision.writer-global": {
+        source: "apache",
+        extensions: ["sgl"]
+      },
+      "application/vnd.stepmania.package": {
+        source: "iana",
+        extensions: ["smzip"]
+      },
+      "application/vnd.stepmania.stepchart": {
+        source: "iana",
+        extensions: ["sm"]
+      },
+      "application/vnd.street-stream": {
+        source: "iana"
+      },
+      "application/vnd.sun.wadl+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["wadl"]
+      },
+      "application/vnd.sun.xml.calc": {
+        source: "apache",
+        extensions: ["sxc"]
+      },
+      "application/vnd.sun.xml.calc.template": {
+        source: "apache",
+        extensions: ["stc"]
+      },
+      "application/vnd.sun.xml.draw": {
+        source: "apache",
+        extensions: ["sxd"]
+      },
+      "application/vnd.sun.xml.draw.template": {
+        source: "apache",
+        extensions: ["std"]
+      },
+      "application/vnd.sun.xml.impress": {
+        source: "apache",
+        extensions: ["sxi"]
+      },
+      "application/vnd.sun.xml.impress.template": {
+        source: "apache",
+        extensions: ["sti"]
+      },
+      "application/vnd.sun.xml.math": {
+        source: "apache",
+        extensions: ["sxm"]
+      },
+      "application/vnd.sun.xml.writer": {
+        source: "apache",
+        extensions: ["sxw"]
+      },
+      "application/vnd.sun.xml.writer.global": {
+        source: "apache",
+        extensions: ["sxg"]
+      },
+      "application/vnd.sun.xml.writer.template": {
+        source: "apache",
+        extensions: ["stw"]
+      },
+      "application/vnd.sus-calendar": {
+        source: "iana",
+        extensions: ["sus", "susp"]
+      },
+      "application/vnd.svd": {
+        source: "iana",
+        extensions: ["svd"]
+      },
+      "application/vnd.swiftview-ics": {
+        source: "iana"
+      },
+      "application/vnd.sycle+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.syft+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.symbian.install": {
+        source: "apache",
+        extensions: ["sis", "sisx"]
+      },
+      "application/vnd.syncml+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["xsm"]
+      },
+      "application/vnd.syncml.dm+wbxml": {
+        source: "iana",
+        charset: "UTF-8",
+        extensions: ["bdm"]
+      },
+      "application/vnd.syncml.dm+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["xdm"]
+      },
+      "application/vnd.syncml.dm.notification": {
+        source: "iana"
+      },
+      "application/vnd.syncml.dmddf+wbxml": {
+        source: "iana"
+      },
+      "application/vnd.syncml.dmddf+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["ddf"]
+      },
+      "application/vnd.syncml.dmtnds+wbxml": {
+        source: "iana"
+      },
+      "application/vnd.syncml.dmtnds+xml": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true
+      },
+      "application/vnd.syncml.ds.notification": {
+        source: "iana"
+      },
+      "application/vnd.tableschema+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.tao.intent-module-archive": {
+        source: "iana",
+        extensions: ["tao"]
+      },
+      "application/vnd.tcpdump.pcap": {
+        source: "iana",
+        extensions: ["pcap", "cap", "dmp"]
+      },
+      "application/vnd.think-cell.ppttc+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.tmd.mediaflex.api+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.tml": {
+        source: "iana"
+      },
+      "application/vnd.tmobile-livetv": {
+        source: "iana",
+        extensions: ["tmo"]
+      },
+      "application/vnd.tri.onesource": {
+        source: "iana"
+      },
+      "application/vnd.trid.tpt": {
+        source: "iana",
+        extensions: ["tpt"]
+      },
+      "application/vnd.triscape.mxs": {
+        source: "iana",
+        extensions: ["mxs"]
+      },
+      "application/vnd.trueapp": {
+        source: "iana",
+        extensions: ["tra"]
+      },
+      "application/vnd.truedoc": {
+        source: "iana"
+      },
+      "application/vnd.ubisoft.webplayer": {
+        source: "iana"
+      },
+      "application/vnd.ufdl": {
+        source: "iana",
+        extensions: ["ufd", "ufdl"]
+      },
+      "application/vnd.uiq.theme": {
+        source: "iana",
+        extensions: ["utz"]
+      },
+      "application/vnd.umajin": {
+        source: "iana",
+        extensions: ["umj"]
+      },
+      "application/vnd.unity": {
+        source: "iana",
+        extensions: ["unityweb"]
+      },
+      "application/vnd.uoml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["uoml"]
+      },
+      "application/vnd.uplanet.alert": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.alert-wbxml": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.bearer-choice": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.bearer-choice-wbxml": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.cacheop": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.cacheop-wbxml": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.channel": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.channel-wbxml": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.list": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.list-wbxml": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.listcmd": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.listcmd-wbxml": {
+        source: "iana"
+      },
+      "application/vnd.uplanet.signal": {
+        source: "iana"
+      },
+      "application/vnd.uri-map": {
+        source: "iana"
+      },
+      "application/vnd.valve.source.material": {
+        source: "iana"
+      },
+      "application/vnd.vcx": {
+        source: "iana",
+        extensions: ["vcx"]
+      },
+      "application/vnd.vd-study": {
+        source: "iana"
+      },
+      "application/vnd.vectorworks": {
+        source: "iana"
+      },
+      "application/vnd.vel+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.verimatrix.vcas": {
+        source: "iana"
+      },
+      "application/vnd.veritone.aion+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.veryant.thin": {
+        source: "iana"
+      },
+      "application/vnd.ves.encrypted": {
+        source: "iana"
+      },
+      "application/vnd.vidsoft.vidconference": {
+        source: "iana"
+      },
+      "application/vnd.visio": {
+        source: "iana",
+        extensions: ["vsd", "vst", "vss", "vsw"]
+      },
+      "application/vnd.visionary": {
+        source: "iana",
+        extensions: ["vis"]
+      },
+      "application/vnd.vividence.scriptfile": {
+        source: "iana"
+      },
+      "application/vnd.vsf": {
+        source: "iana",
+        extensions: ["vsf"]
+      },
+      "application/vnd.wap.sic": {
+        source: "iana"
+      },
+      "application/vnd.wap.slc": {
+        source: "iana"
+      },
+      "application/vnd.wap.wbxml": {
+        source: "iana",
+        charset: "UTF-8",
+        extensions: ["wbxml"]
+      },
+      "application/vnd.wap.wmlc": {
+        source: "iana",
+        extensions: ["wmlc"]
+      },
+      "application/vnd.wap.wmlscriptc": {
+        source: "iana",
+        extensions: ["wmlsc"]
+      },
+      "application/vnd.webturbo": {
+        source: "iana",
+        extensions: ["wtb"]
+      },
+      "application/vnd.wfa.dpp": {
+        source: "iana"
+      },
+      "application/vnd.wfa.p2p": {
+        source: "iana"
+      },
+      "application/vnd.wfa.wsc": {
+        source: "iana"
+      },
+      "application/vnd.windows.devicepairing": {
+        source: "iana"
+      },
+      "application/vnd.wmc": {
+        source: "iana"
+      },
+      "application/vnd.wmf.bootstrap": {
+        source: "iana"
+      },
+      "application/vnd.wolfram.mathematica": {
+        source: "iana"
+      },
+      "application/vnd.wolfram.mathematica.package": {
+        source: "iana"
+      },
+      "application/vnd.wolfram.player": {
+        source: "iana",
+        extensions: ["nbp"]
+      },
+      "application/vnd.wordperfect": {
+        source: "iana",
+        extensions: ["wpd"]
+      },
+      "application/vnd.wqd": {
+        source: "iana",
+        extensions: ["wqd"]
+      },
+      "application/vnd.wrq-hp3000-labelled": {
+        source: "iana"
+      },
+      "application/vnd.wt.stf": {
+        source: "iana",
+        extensions: ["stf"]
+      },
+      "application/vnd.wv.csp+wbxml": {
+        source: "iana"
+      },
+      "application/vnd.wv.csp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.wv.ssp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.xacml+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.xara": {
+        source: "iana",
+        extensions: ["xar"]
+      },
+      "application/vnd.xfdl": {
+        source: "iana",
+        extensions: ["xfdl"]
+      },
+      "application/vnd.xfdl.webform": {
+        source: "iana"
+      },
+      "application/vnd.xmi+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vnd.xmpie.cpkg": {
+        source: "iana"
+      },
+      "application/vnd.xmpie.dpkg": {
+        source: "iana"
+      },
+      "application/vnd.xmpie.plan": {
+        source: "iana"
+      },
+      "application/vnd.xmpie.ppkg": {
+        source: "iana"
+      },
+      "application/vnd.xmpie.xlim": {
+        source: "iana"
+      },
+      "application/vnd.yamaha.hv-dic": {
+        source: "iana",
+        extensions: ["hvd"]
+      },
+      "application/vnd.yamaha.hv-script": {
+        source: "iana",
+        extensions: ["hvs"]
+      },
+      "application/vnd.yamaha.hv-voice": {
+        source: "iana",
+        extensions: ["hvp"]
+      },
+      "application/vnd.yamaha.openscoreformat": {
+        source: "iana",
+        extensions: ["osf"]
+      },
+      "application/vnd.yamaha.openscoreformat.osfpvg+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["osfpvg"]
+      },
+      "application/vnd.yamaha.remote-setup": {
+        source: "iana"
+      },
+      "application/vnd.yamaha.smaf-audio": {
+        source: "iana",
+        extensions: ["saf"]
+      },
+      "application/vnd.yamaha.smaf-phrase": {
+        source: "iana",
+        extensions: ["spf"]
+      },
+      "application/vnd.yamaha.through-ngn": {
+        source: "iana"
+      },
+      "application/vnd.yamaha.tunnel-udpencap": {
+        source: "iana"
+      },
+      "application/vnd.yaoweme": {
+        source: "iana"
+      },
+      "application/vnd.yellowriver-custom-menu": {
+        source: "iana",
+        extensions: ["cmp"]
+      },
+      "application/vnd.youtube.yt": {
+        source: "iana"
+      },
+      "application/vnd.zul": {
+        source: "iana",
+        extensions: ["zir", "zirz"]
+      },
+      "application/vnd.zzazz.deck+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["zaz"]
+      },
+      "application/voicexml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["vxml"]
+      },
+      "application/voucher-cms+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/vq-rtcpxr": {
+        source: "iana"
+      },
+      "application/wasm": {
+        source: "iana",
+        compressible: true,
+        extensions: ["wasm"]
+      },
+      "application/watcherinfo+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["wif"]
+      },
+      "application/webpush-options+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/whoispp-query": {
+        source: "iana"
+      },
+      "application/whoispp-response": {
+        source: "iana"
+      },
+      "application/widget": {
+        source: "iana",
+        extensions: ["wgt"]
+      },
+      "application/winhlp": {
+        source: "apache",
+        extensions: ["hlp"]
+      },
+      "application/wita": {
+        source: "iana"
+      },
+      "application/wordperfect5.1": {
+        source: "iana"
+      },
+      "application/wsdl+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["wsdl"]
+      },
+      "application/wspolicy+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["wspolicy"]
+      },
+      "application/x-7z-compressed": {
+        source: "apache",
+        compressible: false,
+        extensions: ["7z"]
+      },
+      "application/x-abiword": {
+        source: "apache",
+        extensions: ["abw"]
+      },
+      "application/x-ace-compressed": {
+        source: "apache",
+        extensions: ["ace"]
+      },
+      "application/x-amf": {
+        source: "apache"
+      },
+      "application/x-apple-diskimage": {
+        source: "apache",
+        extensions: ["dmg"]
+      },
+      "application/x-arj": {
+        compressible: false,
+        extensions: ["arj"]
+      },
+      "application/x-authorware-bin": {
+        source: "apache",
+        extensions: ["aab", "x32", "u32", "vox"]
+      },
+      "application/x-authorware-map": {
+        source: "apache",
+        extensions: ["aam"]
+      },
+      "application/x-authorware-seg": {
+        source: "apache",
+        extensions: ["aas"]
+      },
+      "application/x-bcpio": {
+        source: "apache",
+        extensions: ["bcpio"]
+      },
+      "application/x-bdoc": {
+        compressible: false,
+        extensions: ["bdoc"]
+      },
+      "application/x-bittorrent": {
+        source: "apache",
+        extensions: ["torrent"]
+      },
+      "application/x-blorb": {
+        source: "apache",
+        extensions: ["blb", "blorb"]
+      },
+      "application/x-bzip": {
+        source: "apache",
+        compressible: false,
+        extensions: ["bz"]
+      },
+      "application/x-bzip2": {
+        source: "apache",
+        compressible: false,
+        extensions: ["bz2", "boz"]
+      },
+      "application/x-cbr": {
+        source: "apache",
+        extensions: ["cbr", "cba", "cbt", "cbz", "cb7"]
+      },
+      "application/x-cdlink": {
+        source: "apache",
+        extensions: ["vcd"]
+      },
+      "application/x-cfs-compressed": {
+        source: "apache",
+        extensions: ["cfs"]
+      },
+      "application/x-chat": {
+        source: "apache",
+        extensions: ["chat"]
+      },
+      "application/x-chess-pgn": {
+        source: "apache",
+        extensions: ["pgn"]
+      },
+      "application/x-chrome-extension": {
+        extensions: ["crx"]
+      },
+      "application/x-cocoa": {
+        source: "nginx",
+        extensions: ["cco"]
+      },
+      "application/x-compress": {
+        source: "apache"
+      },
+      "application/x-conference": {
+        source: "apache",
+        extensions: ["nsc"]
+      },
+      "application/x-cpio": {
+        source: "apache",
+        extensions: ["cpio"]
+      },
+      "application/x-csh": {
+        source: "apache",
+        extensions: ["csh"]
+      },
+      "application/x-deb": {
+        compressible: false
+      },
+      "application/x-debian-package": {
+        source: "apache",
+        extensions: ["deb", "udeb"]
+      },
+      "application/x-dgc-compressed": {
+        source: "apache",
+        extensions: ["dgc"]
+      },
+      "application/x-director": {
+        source: "apache",
+        extensions: ["dir", "dcr", "dxr", "cst", "cct", "cxt", "w3d", "fgd", "swa"]
+      },
+      "application/x-doom": {
+        source: "apache",
+        extensions: ["wad"]
+      },
+      "application/x-dtbncx+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["ncx"]
+      },
+      "application/x-dtbook+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["dtb"]
+      },
+      "application/x-dtbresource+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["res"]
+      },
+      "application/x-dvi": {
+        source: "apache",
+        compressible: false,
+        extensions: ["dvi"]
+      },
+      "application/x-envoy": {
+        source: "apache",
+        extensions: ["evy"]
+      },
+      "application/x-eva": {
+        source: "apache",
+        extensions: ["eva"]
+      },
+      "application/x-font-bdf": {
+        source: "apache",
+        extensions: ["bdf"]
+      },
+      "application/x-font-dos": {
+        source: "apache"
+      },
+      "application/x-font-framemaker": {
+        source: "apache"
+      },
+      "application/x-font-ghostscript": {
+        source: "apache",
+        extensions: ["gsf"]
+      },
+      "application/x-font-libgrx": {
+        source: "apache"
+      },
+      "application/x-font-linux-psf": {
+        source: "apache",
+        extensions: ["psf"]
+      },
+      "application/x-font-pcf": {
+        source: "apache",
+        extensions: ["pcf"]
+      },
+      "application/x-font-snf": {
+        source: "apache",
+        extensions: ["snf"]
+      },
+      "application/x-font-speedo": {
+        source: "apache"
+      },
+      "application/x-font-sunos-news": {
+        source: "apache"
+      },
+      "application/x-font-type1": {
+        source: "apache",
+        extensions: ["pfa", "pfb", "pfm", "afm"]
+      },
+      "application/x-font-vfont": {
+        source: "apache"
+      },
+      "application/x-freearc": {
+        source: "apache",
+        extensions: ["arc"]
+      },
+      "application/x-futuresplash": {
+        source: "apache",
+        extensions: ["spl"]
+      },
+      "application/x-gca-compressed": {
+        source: "apache",
+        extensions: ["gca"]
+      },
+      "application/x-glulx": {
+        source: "apache",
+        extensions: ["ulx"]
+      },
+      "application/x-gnumeric": {
+        source: "apache",
+        extensions: ["gnumeric"]
+      },
+      "application/x-gramps-xml": {
+        source: "apache",
+        extensions: ["gramps"]
+      },
+      "application/x-gtar": {
+        source: "apache",
+        extensions: ["gtar"]
+      },
+      "application/x-gzip": {
+        source: "apache"
+      },
+      "application/x-hdf": {
+        source: "apache",
+        extensions: ["hdf"]
+      },
+      "application/x-httpd-php": {
+        compressible: true,
+        extensions: ["php"]
+      },
+      "application/x-install-instructions": {
+        source: "apache",
+        extensions: ["install"]
+      },
+      "application/x-iso9660-image": {
+        source: "apache",
+        extensions: ["iso"]
+      },
+      "application/x-iwork-keynote-sffkey": {
+        extensions: ["key"]
+      },
+      "application/x-iwork-numbers-sffnumbers": {
+        extensions: ["numbers"]
+      },
+      "application/x-iwork-pages-sffpages": {
+        extensions: ["pages"]
+      },
+      "application/x-java-archive-diff": {
+        source: "nginx",
+        extensions: ["jardiff"]
+      },
+      "application/x-java-jnlp-file": {
+        source: "apache",
+        compressible: false,
+        extensions: ["jnlp"]
+      },
+      "application/x-javascript": {
+        compressible: true
+      },
+      "application/x-keepass2": {
+        extensions: ["kdbx"]
+      },
+      "application/x-latex": {
+        source: "apache",
+        compressible: false,
+        extensions: ["latex"]
+      },
+      "application/x-lua-bytecode": {
+        extensions: ["luac"]
+      },
+      "application/x-lzh-compressed": {
+        source: "apache",
+        extensions: ["lzh", "lha"]
+      },
+      "application/x-makeself": {
+        source: "nginx",
+        extensions: ["run"]
+      },
+      "application/x-mie": {
+        source: "apache",
+        extensions: ["mie"]
+      },
+      "application/x-mobipocket-ebook": {
+        source: "apache",
+        extensions: ["prc", "mobi"]
+      },
+      "application/x-mpegurl": {
+        compressible: false
+      },
+      "application/x-ms-application": {
+        source: "apache",
+        extensions: ["application"]
+      },
+      "application/x-ms-shortcut": {
+        source: "apache",
+        extensions: ["lnk"]
+      },
+      "application/x-ms-wmd": {
+        source: "apache",
+        extensions: ["wmd"]
+      },
+      "application/x-ms-wmz": {
+        source: "apache",
+        extensions: ["wmz"]
+      },
+      "application/x-ms-xbap": {
+        source: "apache",
+        extensions: ["xbap"]
+      },
+      "application/x-msaccess": {
+        source: "apache",
+        extensions: ["mdb"]
+      },
+      "application/x-msbinder": {
+        source: "apache",
+        extensions: ["obd"]
+      },
+      "application/x-mscardfile": {
+        source: "apache",
+        extensions: ["crd"]
+      },
+      "application/x-msclip": {
+        source: "apache",
+        extensions: ["clp"]
+      },
+      "application/x-msdos-program": {
+        extensions: ["exe"]
+      },
+      "application/x-msdownload": {
+        source: "apache",
+        extensions: ["exe", "dll", "com", "bat", "msi"]
+      },
+      "application/x-msmediaview": {
+        source: "apache",
+        extensions: ["mvb", "m13", "m14"]
+      },
+      "application/x-msmetafile": {
+        source: "apache",
+        extensions: ["wmf", "wmz", "emf", "emz"]
+      },
+      "application/x-msmoney": {
+        source: "apache",
+        extensions: ["mny"]
+      },
+      "application/x-mspublisher": {
+        source: "apache",
+        extensions: ["pub"]
+      },
+      "application/x-msschedule": {
+        source: "apache",
+        extensions: ["scd"]
+      },
+      "application/x-msterminal": {
+        source: "apache",
+        extensions: ["trm"]
+      },
+      "application/x-mswrite": {
+        source: "apache",
+        extensions: ["wri"]
+      },
+      "application/x-netcdf": {
+        source: "apache",
+        extensions: ["nc", "cdf"]
+      },
+      "application/x-ns-proxy-autoconfig": {
+        compressible: true,
+        extensions: ["pac"]
+      },
+      "application/x-nzb": {
+        source: "apache",
+        extensions: ["nzb"]
+      },
+      "application/x-perl": {
+        source: "nginx",
+        extensions: ["pl", "pm"]
+      },
+      "application/x-pilot": {
+        source: "nginx",
+        extensions: ["prc", "pdb"]
+      },
+      "application/x-pkcs12": {
+        source: "apache",
+        compressible: false,
+        extensions: ["p12", "pfx"]
+      },
+      "application/x-pkcs7-certificates": {
+        source: "apache",
+        extensions: ["p7b", "spc"]
+      },
+      "application/x-pkcs7-certreqresp": {
+        source: "apache",
+        extensions: ["p7r"]
+      },
+      "application/x-pki-message": {
+        source: "iana"
+      },
+      "application/x-rar-compressed": {
+        source: "apache",
+        compressible: false,
+        extensions: ["rar"]
+      },
+      "application/x-redhat-package-manager": {
+        source: "nginx",
+        extensions: ["rpm"]
+      },
+      "application/x-research-info-systems": {
+        source: "apache",
+        extensions: ["ris"]
+      },
+      "application/x-sea": {
+        source: "nginx",
+        extensions: ["sea"]
+      },
+      "application/x-sh": {
+        source: "apache",
+        compressible: true,
+        extensions: ["sh"]
+      },
+      "application/x-shar": {
+        source: "apache",
+        extensions: ["shar"]
+      },
+      "application/x-shockwave-flash": {
+        source: "apache",
+        compressible: false,
+        extensions: ["swf"]
+      },
+      "application/x-silverlight-app": {
+        source: "apache",
+        extensions: ["xap"]
+      },
+      "application/x-sql": {
+        source: "apache",
+        extensions: ["sql"]
+      },
+      "application/x-stuffit": {
+        source: "apache",
+        compressible: false,
+        extensions: ["sit"]
+      },
+      "application/x-stuffitx": {
+        source: "apache",
+        extensions: ["sitx"]
+      },
+      "application/x-subrip": {
+        source: "apache",
+        extensions: ["srt"]
+      },
+      "application/x-sv4cpio": {
+        source: "apache",
+        extensions: ["sv4cpio"]
+      },
+      "application/x-sv4crc": {
+        source: "apache",
+        extensions: ["sv4crc"]
+      },
+      "application/x-t3vm-image": {
+        source: "apache",
+        extensions: ["t3"]
+      },
+      "application/x-tads": {
+        source: "apache",
+        extensions: ["gam"]
+      },
+      "application/x-tar": {
+        source: "apache",
+        compressible: true,
+        extensions: ["tar"]
+      },
+      "application/x-tcl": {
+        source: "apache",
+        extensions: ["tcl", "tk"]
+      },
+      "application/x-tex": {
+        source: "apache",
+        extensions: ["tex"]
+      },
+      "application/x-tex-tfm": {
+        source: "apache",
+        extensions: ["tfm"]
+      },
+      "application/x-texinfo": {
+        source: "apache",
+        extensions: ["texinfo", "texi"]
+      },
+      "application/x-tgif": {
+        source: "apache",
+        extensions: ["obj"]
+      },
+      "application/x-ustar": {
+        source: "apache",
+        extensions: ["ustar"]
+      },
+      "application/x-virtualbox-hdd": {
+        compressible: true,
+        extensions: ["hdd"]
+      },
+      "application/x-virtualbox-ova": {
+        compressible: true,
+        extensions: ["ova"]
+      },
+      "application/x-virtualbox-ovf": {
+        compressible: true,
+        extensions: ["ovf"]
+      },
+      "application/x-virtualbox-vbox": {
+        compressible: true,
+        extensions: ["vbox"]
+      },
+      "application/x-virtualbox-vbox-extpack": {
+        compressible: false,
+        extensions: ["vbox-extpack"]
+      },
+      "application/x-virtualbox-vdi": {
+        compressible: true,
+        extensions: ["vdi"]
+      },
+      "application/x-virtualbox-vhd": {
+        compressible: true,
+        extensions: ["vhd"]
+      },
+      "application/x-virtualbox-vmdk": {
+        compressible: true,
+        extensions: ["vmdk"]
+      },
+      "application/x-wais-source": {
+        source: "apache",
+        extensions: ["src"]
+      },
+      "application/x-web-app-manifest+json": {
+        compressible: true,
+        extensions: ["webapp"]
+      },
+      "application/x-www-form-urlencoded": {
+        source: "iana",
+        compressible: true
+      },
+      "application/x-x509-ca-cert": {
+        source: "iana",
+        extensions: ["der", "crt", "pem"]
+      },
+      "application/x-x509-ca-ra-cert": {
+        source: "iana"
+      },
+      "application/x-x509-next-ca-cert": {
+        source: "iana"
+      },
+      "application/x-xfig": {
+        source: "apache",
+        extensions: ["fig"]
+      },
+      "application/x-xliff+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["xlf"]
+      },
+      "application/x-xpinstall": {
+        source: "apache",
+        compressible: false,
+        extensions: ["xpi"]
+      },
+      "application/x-xz": {
+        source: "apache",
+        extensions: ["xz"]
+      },
+      "application/x-zmachine": {
+        source: "apache",
+        extensions: ["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8"]
+      },
+      "application/x400-bp": {
+        source: "iana"
+      },
+      "application/xacml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/xaml+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["xaml"]
+      },
+      "application/xcap-att+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xav"]
+      },
+      "application/xcap-caps+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xca"]
+      },
+      "application/xcap-diff+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xdf"]
+      },
+      "application/xcap-el+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xel"]
+      },
+      "application/xcap-error+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/xcap-ns+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xns"]
+      },
+      "application/xcon-conference-info+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/xcon-conference-info-diff+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/xenc+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xenc"]
+      },
+      "application/xhtml+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xhtml", "xht"]
+      },
+      "application/xhtml-voice+xml": {
+        source: "apache",
+        compressible: true
+      },
+      "application/xliff+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xlf"]
+      },
+      "application/xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xml", "xsl", "xsd", "rng"]
+      },
+      "application/xml-dtd": {
+        source: "iana",
+        compressible: true,
+        extensions: ["dtd"]
+      },
+      "application/xml-external-parsed-entity": {
+        source: "iana"
+      },
+      "application/xml-patch+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/xmpp+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/xop+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xop"]
+      },
+      "application/xproc+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["xpl"]
+      },
+      "application/xslt+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xsl", "xslt"]
+      },
+      "application/xspf+xml": {
+        source: "apache",
+        compressible: true,
+        extensions: ["xspf"]
+      },
+      "application/xv+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["mxml", "xhvml", "xvml", "xvm"]
+      },
+      "application/yang": {
+        source: "iana",
+        extensions: ["yang"]
+      },
+      "application/yang-data+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/yang-data+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/yang-patch+json": {
+        source: "iana",
+        compressible: true
+      },
+      "application/yang-patch+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "application/yin+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["yin"]
+      },
+      "application/zip": {
+        source: "iana",
+        compressible: false,
+        extensions: ["zip"]
+      },
+      "application/zlib": {
+        source: "iana"
+      },
+      "application/zstd": {
+        source: "iana"
+      },
+      "audio/1d-interleaved-parityfec": {
+        source: "iana"
+      },
+      "audio/32kadpcm": {
+        source: "iana"
+      },
+      "audio/3gpp": {
+        source: "iana",
+        compressible: false,
+        extensions: ["3gpp"]
+      },
+      "audio/3gpp2": {
+        source: "iana"
+      },
+      "audio/aac": {
+        source: "iana"
+      },
+      "audio/ac3": {
+        source: "iana"
+      },
+      "audio/adpcm": {
+        source: "apache",
+        extensions: ["adp"]
+      },
+      "audio/amr": {
+        source: "iana",
+        extensions: ["amr"]
+      },
+      "audio/amr-wb": {
+        source: "iana"
+      },
+      "audio/amr-wb+": {
+        source: "iana"
+      },
+      "audio/aptx": {
+        source: "iana"
+      },
+      "audio/asc": {
+        source: "iana"
+      },
+      "audio/atrac-advanced-lossless": {
+        source: "iana"
+      },
+      "audio/atrac-x": {
+        source: "iana"
+      },
+      "audio/atrac3": {
+        source: "iana"
+      },
+      "audio/basic": {
+        source: "iana",
+        compressible: false,
+        extensions: ["au", "snd"]
+      },
+      "audio/bv16": {
+        source: "iana"
+      },
+      "audio/bv32": {
+        source: "iana"
+      },
+      "audio/clearmode": {
+        source: "iana"
+      },
+      "audio/cn": {
+        source: "iana"
+      },
+      "audio/dat12": {
+        source: "iana"
+      },
+      "audio/dls": {
+        source: "iana"
+      },
+      "audio/dsr-es201108": {
+        source: "iana"
+      },
+      "audio/dsr-es202050": {
+        source: "iana"
+      },
+      "audio/dsr-es202211": {
+        source: "iana"
+      },
+      "audio/dsr-es202212": {
+        source: "iana"
+      },
+      "audio/dv": {
+        source: "iana"
+      },
+      "audio/dvi4": {
+        source: "iana"
+      },
+      "audio/eac3": {
+        source: "iana"
+      },
+      "audio/encaprtp": {
+        source: "iana"
+      },
+      "audio/evrc": {
+        source: "iana"
+      },
+      "audio/evrc-qcp": {
+        source: "iana"
+      },
+      "audio/evrc0": {
+        source: "iana"
+      },
+      "audio/evrc1": {
+        source: "iana"
+      },
+      "audio/evrcb": {
+        source: "iana"
+      },
+      "audio/evrcb0": {
+        source: "iana"
+      },
+      "audio/evrcb1": {
+        source: "iana"
+      },
+      "audio/evrcnw": {
+        source: "iana"
+      },
+      "audio/evrcnw0": {
+        source: "iana"
+      },
+      "audio/evrcnw1": {
+        source: "iana"
+      },
+      "audio/evrcwb": {
+        source: "iana"
+      },
+      "audio/evrcwb0": {
+        source: "iana"
+      },
+      "audio/evrcwb1": {
+        source: "iana"
+      },
+      "audio/evs": {
+        source: "iana"
+      },
+      "audio/flexfec": {
+        source: "iana"
+      },
+      "audio/fwdred": {
+        source: "iana"
+      },
+      "audio/g711-0": {
+        source: "iana"
+      },
+      "audio/g719": {
+        source: "iana"
+      },
+      "audio/g722": {
+        source: "iana"
+      },
+      "audio/g7221": {
+        source: "iana"
+      },
+      "audio/g723": {
+        source: "iana"
+      },
+      "audio/g726-16": {
+        source: "iana"
+      },
+      "audio/g726-24": {
+        source: "iana"
+      },
+      "audio/g726-32": {
+        source: "iana"
+      },
+      "audio/g726-40": {
+        source: "iana"
+      },
+      "audio/g728": {
+        source: "iana"
+      },
+      "audio/g729": {
+        source: "iana"
+      },
+      "audio/g7291": {
+        source: "iana"
+      },
+      "audio/g729d": {
+        source: "iana"
+      },
+      "audio/g729e": {
+        source: "iana"
+      },
+      "audio/gsm": {
+        source: "iana"
+      },
+      "audio/gsm-efr": {
+        source: "iana"
+      },
+      "audio/gsm-hr-08": {
+        source: "iana"
+      },
+      "audio/ilbc": {
+        source: "iana"
+      },
+      "audio/ip-mr_v2.5": {
+        source: "iana"
+      },
+      "audio/isac": {
+        source: "apache"
+      },
+      "audio/l16": {
+        source: "iana"
+      },
+      "audio/l20": {
+        source: "iana"
+      },
+      "audio/l24": {
+        source: "iana",
+        compressible: false
+      },
+      "audio/l8": {
+        source: "iana"
+      },
+      "audio/lpc": {
+        source: "iana"
+      },
+      "audio/melp": {
+        source: "iana"
+      },
+      "audio/melp1200": {
+        source: "iana"
+      },
+      "audio/melp2400": {
+        source: "iana"
+      },
+      "audio/melp600": {
+        source: "iana"
+      },
+      "audio/mhas": {
+        source: "iana"
+      },
+      "audio/midi": {
+        source: "apache",
+        extensions: ["mid", "midi", "kar", "rmi"]
+      },
+      "audio/mobile-xmf": {
+        source: "iana",
+        extensions: ["mxmf"]
+      },
+      "audio/mp3": {
+        compressible: false,
+        extensions: ["mp3"]
+      },
+      "audio/mp4": {
+        source: "iana",
+        compressible: false,
+        extensions: ["m4a", "mp4a"]
+      },
+      "audio/mp4a-latm": {
+        source: "iana"
+      },
+      "audio/mpa": {
+        source: "iana"
+      },
+      "audio/mpa-robust": {
+        source: "iana"
+      },
+      "audio/mpeg": {
+        source: "iana",
+        compressible: false,
+        extensions: ["mpga", "mp2", "mp2a", "mp3", "m2a", "m3a"]
+      },
+      "audio/mpeg4-generic": {
+        source: "iana"
+      },
+      "audio/musepack": {
+        source: "apache"
+      },
+      "audio/ogg": {
+        source: "iana",
+        compressible: false,
+        extensions: ["oga", "ogg", "spx", "opus"]
+      },
+      "audio/opus": {
+        source: "iana"
+      },
+      "audio/parityfec": {
+        source: "iana"
+      },
+      "audio/pcma": {
+        source: "iana"
+      },
+      "audio/pcma-wb": {
+        source: "iana"
+      },
+      "audio/pcmu": {
+        source: "iana"
+      },
+      "audio/pcmu-wb": {
+        source: "iana"
+      },
+      "audio/prs.sid": {
+        source: "iana"
+      },
+      "audio/qcelp": {
+        source: "iana"
+      },
+      "audio/raptorfec": {
+        source: "iana"
+      },
+      "audio/red": {
+        source: "iana"
+      },
+      "audio/rtp-enc-aescm128": {
+        source: "iana"
+      },
+      "audio/rtp-midi": {
+        source: "iana"
+      },
+      "audio/rtploopback": {
+        source: "iana"
+      },
+      "audio/rtx": {
+        source: "iana"
+      },
+      "audio/s3m": {
+        source: "apache",
+        extensions: ["s3m"]
+      },
+      "audio/scip": {
+        source: "iana"
+      },
+      "audio/silk": {
+        source: "apache",
+        extensions: ["sil"]
+      },
+      "audio/smv": {
+        source: "iana"
+      },
+      "audio/smv-qcp": {
+        source: "iana"
+      },
+      "audio/smv0": {
+        source: "iana"
+      },
+      "audio/sofa": {
+        source: "iana"
+      },
+      "audio/sp-midi": {
+        source: "iana"
+      },
+      "audio/speex": {
+        source: "iana"
+      },
+      "audio/t140c": {
+        source: "iana"
+      },
+      "audio/t38": {
+        source: "iana"
+      },
+      "audio/telephone-event": {
+        source: "iana"
+      },
+      "audio/tetra_acelp": {
+        source: "iana"
+      },
+      "audio/tetra_acelp_bb": {
+        source: "iana"
+      },
+      "audio/tone": {
+        source: "iana"
+      },
+      "audio/tsvcis": {
+        source: "iana"
+      },
+      "audio/uemclip": {
+        source: "iana"
+      },
+      "audio/ulpfec": {
+        source: "iana"
+      },
+      "audio/usac": {
+        source: "iana"
+      },
+      "audio/vdvi": {
+        source: "iana"
+      },
+      "audio/vmr-wb": {
+        source: "iana"
+      },
+      "audio/vnd.3gpp.iufp": {
+        source: "iana"
+      },
+      "audio/vnd.4sb": {
+        source: "iana"
+      },
+      "audio/vnd.audiokoz": {
+        source: "iana"
+      },
+      "audio/vnd.celp": {
+        source: "iana"
+      },
+      "audio/vnd.cisco.nse": {
+        source: "iana"
+      },
+      "audio/vnd.cmles.radio-events": {
+        source: "iana"
+      },
+      "audio/vnd.cns.anp1": {
+        source: "iana"
+      },
+      "audio/vnd.cns.inf1": {
+        source: "iana"
+      },
+      "audio/vnd.dece.audio": {
+        source: "iana",
+        extensions: ["uva", "uvva"]
+      },
+      "audio/vnd.digital-winds": {
+        source: "iana",
+        extensions: ["eol"]
+      },
+      "audio/vnd.dlna.adts": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.heaac.1": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.heaac.2": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.mlp": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.mps": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.pl2": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.pl2x": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.pl2z": {
+        source: "iana"
+      },
+      "audio/vnd.dolby.pulse.1": {
+        source: "iana"
+      },
+      "audio/vnd.dra": {
+        source: "iana",
+        extensions: ["dra"]
+      },
+      "audio/vnd.dts": {
+        source: "iana",
+        extensions: ["dts"]
+      },
+      "audio/vnd.dts.hd": {
+        source: "iana",
+        extensions: ["dtshd"]
+      },
+      "audio/vnd.dts.uhd": {
+        source: "iana"
+      },
+      "audio/vnd.dvb.file": {
+        source: "iana"
+      },
+      "audio/vnd.everad.plj": {
+        source: "iana"
+      },
+      "audio/vnd.hns.audio": {
+        source: "iana"
+      },
+      "audio/vnd.lucent.voice": {
+        source: "iana",
+        extensions: ["lvp"]
+      },
+      "audio/vnd.ms-playready.media.pya": {
+        source: "iana",
+        extensions: ["pya"]
+      },
+      "audio/vnd.nokia.mobile-xmf": {
+        source: "iana"
+      },
+      "audio/vnd.nortel.vbk": {
+        source: "iana"
+      },
+      "audio/vnd.nuera.ecelp4800": {
+        source: "iana",
+        extensions: ["ecelp4800"]
+      },
+      "audio/vnd.nuera.ecelp7470": {
+        source: "iana",
+        extensions: ["ecelp7470"]
+      },
+      "audio/vnd.nuera.ecelp9600": {
+        source: "iana",
+        extensions: ["ecelp9600"]
+      },
+      "audio/vnd.octel.sbc": {
+        source: "iana"
+      },
+      "audio/vnd.presonus.multitrack": {
+        source: "iana"
+      },
+      "audio/vnd.qcelp": {
+        source: "iana"
+      },
+      "audio/vnd.rhetorex.32kadpcm": {
+        source: "iana"
+      },
+      "audio/vnd.rip": {
+        source: "iana",
+        extensions: ["rip"]
+      },
+      "audio/vnd.rn-realaudio": {
+        compressible: false
+      },
+      "audio/vnd.sealedmedia.softseal.mpeg": {
+        source: "iana"
+      },
+      "audio/vnd.vmx.cvsd": {
+        source: "iana"
+      },
+      "audio/vnd.wave": {
+        compressible: false
+      },
+      "audio/vorbis": {
+        source: "iana",
+        compressible: false
+      },
+      "audio/vorbis-config": {
+        source: "iana"
+      },
+      "audio/wav": {
+        compressible: false,
+        extensions: ["wav"]
+      },
+      "audio/wave": {
+        compressible: false,
+        extensions: ["wav"]
+      },
+      "audio/webm": {
+        source: "apache",
+        compressible: false,
+        extensions: ["weba"]
+      },
+      "audio/x-aac": {
+        source: "apache",
+        compressible: false,
+        extensions: ["aac"]
+      },
+      "audio/x-aiff": {
+        source: "apache",
+        extensions: ["aif", "aiff", "aifc"]
+      },
+      "audio/x-caf": {
+        source: "apache",
+        compressible: false,
+        extensions: ["caf"]
+      },
+      "audio/x-flac": {
+        source: "apache",
+        extensions: ["flac"]
+      },
+      "audio/x-m4a": {
+        source: "nginx",
+        extensions: ["m4a"]
+      },
+      "audio/x-matroska": {
+        source: "apache",
+        extensions: ["mka"]
+      },
+      "audio/x-mpegurl": {
+        source: "apache",
+        extensions: ["m3u"]
+      },
+      "audio/x-ms-wax": {
+        source: "apache",
+        extensions: ["wax"]
+      },
+      "audio/x-ms-wma": {
+        source: "apache",
+        extensions: ["wma"]
+      },
+      "audio/x-pn-realaudio": {
+        source: "apache",
+        extensions: ["ram", "ra"]
+      },
+      "audio/x-pn-realaudio-plugin": {
+        source: "apache",
+        extensions: ["rmp"]
+      },
+      "audio/x-realaudio": {
+        source: "nginx",
+        extensions: ["ra"]
+      },
+      "audio/x-tta": {
+        source: "apache"
+      },
+      "audio/x-wav": {
+        source: "apache",
+        extensions: ["wav"]
+      },
+      "audio/xm": {
+        source: "apache",
+        extensions: ["xm"]
+      },
+      "chemical/x-cdx": {
+        source: "apache",
+        extensions: ["cdx"]
+      },
+      "chemical/x-cif": {
+        source: "apache",
+        extensions: ["cif"]
+      },
+      "chemical/x-cmdf": {
+        source: "apache",
+        extensions: ["cmdf"]
+      },
+      "chemical/x-cml": {
+        source: "apache",
+        extensions: ["cml"]
+      },
+      "chemical/x-csml": {
+        source: "apache",
+        extensions: ["csml"]
+      },
+      "chemical/x-pdb": {
+        source: "apache"
+      },
+      "chemical/x-xyz": {
+        source: "apache",
+        extensions: ["xyz"]
+      },
+      "font/collection": {
+        source: "iana",
+        extensions: ["ttc"]
+      },
+      "font/otf": {
+        source: "iana",
+        compressible: true,
+        extensions: ["otf"]
+      },
+      "font/sfnt": {
+        source: "iana"
+      },
+      "font/ttf": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ttf"]
+      },
+      "font/woff": {
+        source: "iana",
+        extensions: ["woff"]
+      },
+      "font/woff2": {
+        source: "iana",
+        extensions: ["woff2"]
+      },
+      "image/aces": {
+        source: "iana",
+        extensions: ["exr"]
+      },
+      "image/apng": {
+        compressible: false,
+        extensions: ["apng"]
+      },
+      "image/avci": {
+        source: "iana",
+        extensions: ["avci"]
+      },
+      "image/avcs": {
+        source: "iana",
+        extensions: ["avcs"]
+      },
+      "image/avif": {
+        source: "iana",
+        compressible: false,
+        extensions: ["avif"]
+      },
+      "image/bmp": {
+        source: "iana",
+        compressible: true,
+        extensions: ["bmp"]
+      },
+      "image/cgm": {
+        source: "iana",
+        extensions: ["cgm"]
+      },
+      "image/dicom-rle": {
+        source: "iana",
+        extensions: ["drle"]
+      },
+      "image/emf": {
+        source: "iana",
+        extensions: ["emf"]
+      },
+      "image/fits": {
+        source: "iana",
+        extensions: ["fits"]
+      },
+      "image/g3fax": {
+        source: "iana",
+        extensions: ["g3"]
+      },
+      "image/gif": {
+        source: "iana",
+        compressible: false,
+        extensions: ["gif"]
+      },
+      "image/heic": {
+        source: "iana",
+        extensions: ["heic"]
+      },
+      "image/heic-sequence": {
+        source: "iana",
+        extensions: ["heics"]
+      },
+      "image/heif": {
+        source: "iana",
+        extensions: ["heif"]
+      },
+      "image/heif-sequence": {
+        source: "iana",
+        extensions: ["heifs"]
+      },
+      "image/hej2k": {
+        source: "iana",
+        extensions: ["hej2"]
+      },
+      "image/hsj2": {
+        source: "iana",
+        extensions: ["hsj2"]
+      },
+      "image/ief": {
+        source: "iana",
+        extensions: ["ief"]
+      },
+      "image/jls": {
+        source: "iana",
+        extensions: ["jls"]
+      },
+      "image/jp2": {
+        source: "iana",
+        compressible: false,
+        extensions: ["jp2", "jpg2"]
+      },
+      "image/jpeg": {
+        source: "iana",
+        compressible: false,
+        extensions: ["jpeg", "jpg", "jpe"]
+      },
+      "image/jph": {
+        source: "iana",
+        extensions: ["jph"]
+      },
+      "image/jphc": {
+        source: "iana",
+        extensions: ["jhc"]
+      },
+      "image/jpm": {
+        source: "iana",
+        compressible: false,
+        extensions: ["jpm"]
+      },
+      "image/jpx": {
+        source: "iana",
+        compressible: false,
+        extensions: ["jpx", "jpf"]
+      },
+      "image/jxr": {
+        source: "iana",
+        extensions: ["jxr"]
+      },
+      "image/jxra": {
+        source: "iana",
+        extensions: ["jxra"]
+      },
+      "image/jxrs": {
+        source: "iana",
+        extensions: ["jxrs"]
+      },
+      "image/jxs": {
+        source: "iana",
+        extensions: ["jxs"]
+      },
+      "image/jxsc": {
+        source: "iana",
+        extensions: ["jxsc"]
+      },
+      "image/jxsi": {
+        source: "iana",
+        extensions: ["jxsi"]
+      },
+      "image/jxss": {
+        source: "iana",
+        extensions: ["jxss"]
+      },
+      "image/ktx": {
+        source: "iana",
+        extensions: ["ktx"]
+      },
+      "image/ktx2": {
+        source: "iana",
+        extensions: ["ktx2"]
+      },
+      "image/naplps": {
+        source: "iana"
+      },
+      "image/pjpeg": {
+        compressible: false
+      },
+      "image/png": {
+        source: "iana",
+        compressible: false,
+        extensions: ["png"]
+      },
+      "image/prs.btif": {
+        source: "iana",
+        extensions: ["btif"]
+      },
+      "image/prs.pti": {
+        source: "iana",
+        extensions: ["pti"]
+      },
+      "image/pwg-raster": {
+        source: "iana"
+      },
+      "image/sgi": {
+        source: "apache",
+        extensions: ["sgi"]
+      },
+      "image/svg+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["svg", "svgz"]
+      },
+      "image/t38": {
+        source: "iana",
+        extensions: ["t38"]
+      },
+      "image/tiff": {
+        source: "iana",
+        compressible: false,
+        extensions: ["tif", "tiff"]
+      },
+      "image/tiff-fx": {
+        source: "iana",
+        extensions: ["tfx"]
+      },
+      "image/vnd.adobe.photoshop": {
+        source: "iana",
+        compressible: true,
+        extensions: ["psd"]
+      },
+      "image/vnd.airzip.accelerator.azv": {
+        source: "iana",
+        extensions: ["azv"]
+      },
+      "image/vnd.cns.inf2": {
+        source: "iana"
+      },
+      "image/vnd.dece.graphic": {
+        source: "iana",
+        extensions: ["uvi", "uvvi", "uvg", "uvvg"]
+      },
+      "image/vnd.djvu": {
+        source: "iana",
+        extensions: ["djvu", "djv"]
+      },
+      "image/vnd.dvb.subtitle": {
+        source: "iana",
+        extensions: ["sub"]
+      },
+      "image/vnd.dwg": {
+        source: "iana",
+        extensions: ["dwg"]
+      },
+      "image/vnd.dxf": {
+        source: "iana",
+        extensions: ["dxf"]
+      },
+      "image/vnd.fastbidsheet": {
+        source: "iana",
+        extensions: ["fbs"]
+      },
+      "image/vnd.fpx": {
+        source: "iana",
+        extensions: ["fpx"]
+      },
+      "image/vnd.fst": {
+        source: "iana",
+        extensions: ["fst"]
+      },
+      "image/vnd.fujixerox.edmics-mmr": {
+        source: "iana",
+        extensions: ["mmr"]
+      },
+      "image/vnd.fujixerox.edmics-rlc": {
+        source: "iana",
+        extensions: ["rlc"]
+      },
+      "image/vnd.globalgraphics.pgb": {
+        source: "iana"
+      },
+      "image/vnd.microsoft.icon": {
+        source: "iana",
+        compressible: true,
+        extensions: ["ico"]
+      },
+      "image/vnd.mix": {
+        source: "iana"
+      },
+      "image/vnd.mozilla.apng": {
+        source: "iana"
+      },
+      "image/vnd.ms-dds": {
+        compressible: true,
+        extensions: ["dds"]
+      },
+      "image/vnd.ms-modi": {
+        source: "iana",
+        extensions: ["mdi"]
+      },
+      "image/vnd.ms-photo": {
+        source: "apache",
+        extensions: ["wdp"]
+      },
+      "image/vnd.net-fpx": {
+        source: "iana",
+        extensions: ["npx"]
+      },
+      "image/vnd.pco.b16": {
+        source: "iana",
+        extensions: ["b16"]
+      },
+      "image/vnd.radiance": {
+        source: "iana"
+      },
+      "image/vnd.sealed.png": {
+        source: "iana"
+      },
+      "image/vnd.sealedmedia.softseal.gif": {
+        source: "iana"
+      },
+      "image/vnd.sealedmedia.softseal.jpg": {
+        source: "iana"
+      },
+      "image/vnd.svf": {
+        source: "iana"
+      },
+      "image/vnd.tencent.tap": {
+        source: "iana",
+        extensions: ["tap"]
+      },
+      "image/vnd.valve.source.texture": {
+        source: "iana",
+        extensions: ["vtf"]
+      },
+      "image/vnd.wap.wbmp": {
+        source: "iana",
+        extensions: ["wbmp"]
+      },
+      "image/vnd.xiff": {
+        source: "iana",
+        extensions: ["xif"]
+      },
+      "image/vnd.zbrush.pcx": {
+        source: "iana",
+        extensions: ["pcx"]
+      },
+      "image/webp": {
+        source: "apache",
+        extensions: ["webp"]
+      },
+      "image/wmf": {
+        source: "iana",
+        extensions: ["wmf"]
+      },
+      "image/x-3ds": {
+        source: "apache",
+        extensions: ["3ds"]
+      },
+      "image/x-cmu-raster": {
+        source: "apache",
+        extensions: ["ras"]
+      },
+      "image/x-cmx": {
+        source: "apache",
+        extensions: ["cmx"]
+      },
+      "image/x-freehand": {
+        source: "apache",
+        extensions: ["fh", "fhc", "fh4", "fh5", "fh7"]
+      },
+      "image/x-icon": {
+        source: "apache",
+        compressible: true,
+        extensions: ["ico"]
+      },
+      "image/x-jng": {
+        source: "nginx",
+        extensions: ["jng"]
+      },
+      "image/x-mrsid-image": {
+        source: "apache",
+        extensions: ["sid"]
+      },
+      "image/x-ms-bmp": {
+        source: "nginx",
+        compressible: true,
+        extensions: ["bmp"]
+      },
+      "image/x-pcx": {
+        source: "apache",
+        extensions: ["pcx"]
+      },
+      "image/x-pict": {
+        source: "apache",
+        extensions: ["pic", "pct"]
+      },
+      "image/x-portable-anymap": {
+        source: "apache",
+        extensions: ["pnm"]
+      },
+      "image/x-portable-bitmap": {
+        source: "apache",
+        extensions: ["pbm"]
+      },
+      "image/x-portable-graymap": {
+        source: "apache",
+        extensions: ["pgm"]
+      },
+      "image/x-portable-pixmap": {
+        source: "apache",
+        extensions: ["ppm"]
+      },
+      "image/x-rgb": {
+        source: "apache",
+        extensions: ["rgb"]
+      },
+      "image/x-tga": {
+        source: "apache",
+        extensions: ["tga"]
+      },
+      "image/x-xbitmap": {
+        source: "apache",
+        extensions: ["xbm"]
+      },
+      "image/x-xcf": {
+        compressible: false
+      },
+      "image/x-xpixmap": {
+        source: "apache",
+        extensions: ["xpm"]
+      },
+      "image/x-xwindowdump": {
+        source: "apache",
+        extensions: ["xwd"]
+      },
+      "message/cpim": {
+        source: "iana"
+      },
+      "message/delivery-status": {
+        source: "iana"
+      },
+      "message/disposition-notification": {
+        source: "iana",
+        extensions: [
+          "disposition-notification"
+        ]
+      },
+      "message/external-body": {
+        source: "iana"
+      },
+      "message/feedback-report": {
+        source: "iana"
+      },
+      "message/global": {
+        source: "iana",
+        extensions: ["u8msg"]
+      },
+      "message/global-delivery-status": {
+        source: "iana",
+        extensions: ["u8dsn"]
+      },
+      "message/global-disposition-notification": {
+        source: "iana",
+        extensions: ["u8mdn"]
+      },
+      "message/global-headers": {
+        source: "iana",
+        extensions: ["u8hdr"]
+      },
+      "message/http": {
+        source: "iana",
+        compressible: false
+      },
+      "message/imdn+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "message/news": {
+        source: "iana"
+      },
+      "message/partial": {
+        source: "iana",
+        compressible: false
+      },
+      "message/rfc822": {
+        source: "iana",
+        compressible: true,
+        extensions: ["eml", "mime"]
+      },
+      "message/s-http": {
+        source: "iana"
+      },
+      "message/sip": {
+        source: "iana"
+      },
+      "message/sipfrag": {
+        source: "iana"
+      },
+      "message/tracking-status": {
+        source: "iana"
+      },
+      "message/vnd.si.simp": {
+        source: "iana"
+      },
+      "message/vnd.wfa.wsc": {
+        source: "iana",
+        extensions: ["wsc"]
+      },
+      "model/3mf": {
+        source: "iana",
+        extensions: ["3mf"]
+      },
+      "model/e57": {
+        source: "iana"
+      },
+      "model/gltf+json": {
+        source: "iana",
+        compressible: true,
+        extensions: ["gltf"]
+      },
+      "model/gltf-binary": {
+        source: "iana",
+        compressible: true,
+        extensions: ["glb"]
+      },
+      "model/iges": {
+        source: "iana",
+        compressible: false,
+        extensions: ["igs", "iges"]
+      },
+      "model/mesh": {
+        source: "iana",
+        compressible: false,
+        extensions: ["msh", "mesh", "silo"]
+      },
+      "model/mtl": {
+        source: "iana",
+        extensions: ["mtl"]
+      },
+      "model/obj": {
+        source: "iana",
+        extensions: ["obj"]
+      },
+      "model/step": {
+        source: "iana"
+      },
+      "model/step+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["stpx"]
+      },
+      "model/step+zip": {
+        source: "iana",
+        compressible: false,
+        extensions: ["stpz"]
+      },
+      "model/step-xml+zip": {
+        source: "iana",
+        compressible: false,
+        extensions: ["stpxz"]
+      },
+      "model/stl": {
+        source: "iana",
+        extensions: ["stl"]
+      },
+      "model/vnd.collada+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["dae"]
+      },
+      "model/vnd.dwf": {
+        source: "iana",
+        extensions: ["dwf"]
+      },
+      "model/vnd.flatland.3dml": {
+        source: "iana"
+      },
+      "model/vnd.gdl": {
+        source: "iana",
+        extensions: ["gdl"]
+      },
+      "model/vnd.gs-gdl": {
+        source: "apache"
+      },
+      "model/vnd.gs.gdl": {
+        source: "iana"
+      },
+      "model/vnd.gtw": {
+        source: "iana",
+        extensions: ["gtw"]
+      },
+      "model/vnd.moml+xml": {
+        source: "iana",
+        compressible: true
+      },
+      "model/vnd.mts": {
+        source: "iana",
+        extensions: ["mts"]
+      },
+      "model/vnd.opengex": {
+        source: "iana",
+        extensions: ["ogex"]
+      },
+      "model/vnd.parasolid.transmit.binary": {
+        source: "iana",
+        extensions: ["x_b"]
+      },
+      "model/vnd.parasolid.transmit.text": {
+        source: "iana",
+        extensions: ["x_t"]
+      },
+      "model/vnd.pytha.pyox": {
+        source: "iana"
+      },
+      "model/vnd.rosette.annotated-data-model": {
+        source: "iana"
+      },
+      "model/vnd.sap.vds": {
+        source: "iana",
+        extensions: ["vds"]
+      },
+      "model/vnd.usdz+zip": {
+        source: "iana",
+        compressible: false,
+        extensions: ["usdz"]
+      },
+      "model/vnd.valve.source.compiled-map": {
+        source: "iana",
+        extensions: ["bsp"]
+      },
+      "model/vnd.vtu": {
+        source: "iana",
+        extensions: ["vtu"]
+      },
+      "model/vrml": {
+        source: "iana",
+        compressible: false,
+        extensions: ["wrl", "vrml"]
+      },
+      "model/x3d+binary": {
+        source: "apache",
+        compressible: false,
+        extensions: ["x3db", "x3dbz"]
+      },
+      "model/x3d+fastinfoset": {
+        source: "iana",
+        extensions: ["x3db"]
+      },
+      "model/x3d+vrml": {
+        source: "apache",
+        compressible: false,
+        extensions: ["x3dv", "x3dvz"]
+      },
+      "model/x3d+xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["x3d", "x3dz"]
+      },
+      "model/x3d-vrml": {
+        source: "iana",
+        extensions: ["x3dv"]
+      },
+      "multipart/alternative": {
+        source: "iana",
+        compressible: false
+      },
+      "multipart/appledouble": {
+        source: "iana"
+      },
+      "multipart/byteranges": {
+        source: "iana"
+      },
+      "multipart/digest": {
+        source: "iana"
+      },
+      "multipart/encrypted": {
+        source: "iana",
+        compressible: false
+      },
+      "multipart/form-data": {
+        source: "iana",
+        compressible: false
+      },
+      "multipart/header-set": {
+        source: "iana"
+      },
+      "multipart/mixed": {
+        source: "iana"
+      },
+      "multipart/multilingual": {
+        source: "iana"
+      },
+      "multipart/parallel": {
+        source: "iana"
+      },
+      "multipart/related": {
+        source: "iana",
+        compressible: false
+      },
+      "multipart/report": {
+        source: "iana"
+      },
+      "multipart/signed": {
+        source: "iana",
+        compressible: false
+      },
+      "multipart/vnd.bint.med-plus": {
+        source: "iana"
+      },
+      "multipart/voice-message": {
+        source: "iana"
+      },
+      "multipart/x-mixed-replace": {
+        source: "iana"
+      },
+      "text/1d-interleaved-parityfec": {
+        source: "iana"
+      },
+      "text/cache-manifest": {
+        source: "iana",
+        compressible: true,
+        extensions: ["appcache", "manifest"]
+      },
+      "text/calendar": {
+        source: "iana",
+        extensions: ["ics", "ifb"]
+      },
+      "text/calender": {
+        compressible: true
+      },
+      "text/cmd": {
+        compressible: true
+      },
+      "text/coffeescript": {
+        extensions: ["coffee", "litcoffee"]
+      },
+      "text/cql": {
+        source: "iana"
+      },
+      "text/cql-expression": {
+        source: "iana"
+      },
+      "text/cql-identifier": {
+        source: "iana"
+      },
+      "text/css": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["css"]
+      },
+      "text/csv": {
+        source: "iana",
+        compressible: true,
+        extensions: ["csv"]
+      },
+      "text/csv-schema": {
+        source: "iana"
+      },
+      "text/directory": {
+        source: "iana"
+      },
+      "text/dns": {
+        source: "iana"
+      },
+      "text/ecmascript": {
+        source: "iana"
+      },
+      "text/encaprtp": {
+        source: "iana"
+      },
+      "text/enriched": {
+        source: "iana"
+      },
+      "text/fhirpath": {
+        source: "iana"
+      },
+      "text/flexfec": {
+        source: "iana"
+      },
+      "text/fwdred": {
+        source: "iana"
+      },
+      "text/gff3": {
+        source: "iana"
+      },
+      "text/grammar-ref-list": {
+        source: "iana"
+      },
+      "text/html": {
+        source: "iana",
+        compressible: true,
+        extensions: ["html", "htm", "shtml"]
+      },
+      "text/jade": {
+        extensions: ["jade"]
+      },
+      "text/javascript": {
+        source: "iana",
+        compressible: true
+      },
+      "text/jcr-cnd": {
+        source: "iana"
+      },
+      "text/jsx": {
+        compressible: true,
+        extensions: ["jsx"]
+      },
+      "text/less": {
+        compressible: true,
+        extensions: ["less"]
+      },
+      "text/markdown": {
+        source: "iana",
+        compressible: true,
+        extensions: ["markdown", "md"]
+      },
+      "text/mathml": {
+        source: "nginx",
+        extensions: ["mml"]
+      },
+      "text/mdx": {
+        compressible: true,
+        extensions: ["mdx"]
+      },
+      "text/mizar": {
+        source: "iana"
+      },
+      "text/n3": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["n3"]
+      },
+      "text/parameters": {
+        source: "iana",
+        charset: "UTF-8"
+      },
+      "text/parityfec": {
+        source: "iana"
+      },
+      "text/plain": {
+        source: "iana",
+        compressible: true,
+        extensions: ["txt", "text", "conf", "def", "list", "log", "in", "ini"]
+      },
+      "text/provenance-notation": {
+        source: "iana",
+        charset: "UTF-8"
+      },
+      "text/prs.fallenstein.rst": {
+        source: "iana"
+      },
+      "text/prs.lines.tag": {
+        source: "iana",
+        extensions: ["dsc"]
+      },
+      "text/prs.prop.logic": {
+        source: "iana"
+      },
+      "text/raptorfec": {
+        source: "iana"
+      },
+      "text/red": {
+        source: "iana"
+      },
+      "text/rfc822-headers": {
+        source: "iana"
+      },
+      "text/richtext": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rtx"]
+      },
+      "text/rtf": {
+        source: "iana",
+        compressible: true,
+        extensions: ["rtf"]
+      },
+      "text/rtp-enc-aescm128": {
+        source: "iana"
+      },
+      "text/rtploopback": {
+        source: "iana"
+      },
+      "text/rtx": {
+        source: "iana"
+      },
+      "text/sgml": {
+        source: "iana",
+        extensions: ["sgml", "sgm"]
+      },
+      "text/shaclc": {
+        source: "iana"
+      },
+      "text/shex": {
+        source: "iana",
+        extensions: ["shex"]
+      },
+      "text/slim": {
+        extensions: ["slim", "slm"]
+      },
+      "text/spdx": {
+        source: "iana",
+        extensions: ["spdx"]
+      },
+      "text/strings": {
+        source: "iana"
+      },
+      "text/stylus": {
+        extensions: ["stylus", "styl"]
+      },
+      "text/t140": {
+        source: "iana"
+      },
+      "text/tab-separated-values": {
+        source: "iana",
+        compressible: true,
+        extensions: ["tsv"]
+      },
+      "text/troff": {
+        source: "iana",
+        extensions: ["t", "tr", "roff", "man", "me", "ms"]
+      },
+      "text/turtle": {
+        source: "iana",
+        charset: "UTF-8",
+        extensions: ["ttl"]
+      },
+      "text/ulpfec": {
+        source: "iana"
+      },
+      "text/uri-list": {
+        source: "iana",
+        compressible: true,
+        extensions: ["uri", "uris", "urls"]
+      },
+      "text/vcard": {
+        source: "iana",
+        compressible: true,
+        extensions: ["vcard"]
+      },
+      "text/vnd.a": {
+        source: "iana"
+      },
+      "text/vnd.abc": {
+        source: "iana"
+      },
+      "text/vnd.ascii-art": {
+        source: "iana"
+      },
+      "text/vnd.curl": {
+        source: "iana",
+        extensions: ["curl"]
+      },
+      "text/vnd.curl.dcurl": {
+        source: "apache",
+        extensions: ["dcurl"]
+      },
+      "text/vnd.curl.mcurl": {
+        source: "apache",
+        extensions: ["mcurl"]
+      },
+      "text/vnd.curl.scurl": {
+        source: "apache",
+        extensions: ["scurl"]
+      },
+      "text/vnd.debian.copyright": {
+        source: "iana",
+        charset: "UTF-8"
+      },
+      "text/vnd.dmclientscript": {
+        source: "iana"
+      },
+      "text/vnd.dvb.subtitle": {
+        source: "iana",
+        extensions: ["sub"]
+      },
+      "text/vnd.esmertec.theme-descriptor": {
+        source: "iana",
+        charset: "UTF-8"
+      },
+      "text/vnd.familysearch.gedcom": {
+        source: "iana",
+        extensions: ["ged"]
+      },
+      "text/vnd.ficlab.flt": {
+        source: "iana"
+      },
+      "text/vnd.fly": {
+        source: "iana",
+        extensions: ["fly"]
+      },
+      "text/vnd.fmi.flexstor": {
+        source: "iana",
+        extensions: ["flx"]
+      },
+      "text/vnd.gml": {
+        source: "iana"
+      },
+      "text/vnd.graphviz": {
+        source: "iana",
+        extensions: ["gv"]
+      },
+      "text/vnd.hans": {
+        source: "iana"
+      },
+      "text/vnd.hgl": {
+        source: "iana"
+      },
+      "text/vnd.in3d.3dml": {
+        source: "iana",
+        extensions: ["3dml"]
+      },
+      "text/vnd.in3d.spot": {
+        source: "iana",
+        extensions: ["spot"]
+      },
+      "text/vnd.iptc.newsml": {
+        source: "iana"
+      },
+      "text/vnd.iptc.nitf": {
+        source: "iana"
+      },
+      "text/vnd.latex-z": {
+        source: "iana"
+      },
+      "text/vnd.motorola.reflex": {
+        source: "iana"
+      },
+      "text/vnd.ms-mediapackage": {
+        source: "iana"
+      },
+      "text/vnd.net2phone.commcenter.command": {
+        source: "iana"
+      },
+      "text/vnd.radisys.msml-basic-layout": {
+        source: "iana"
+      },
+      "text/vnd.senx.warpscript": {
+        source: "iana"
+      },
+      "text/vnd.si.uricatalogue": {
+        source: "iana"
+      },
+      "text/vnd.sosi": {
+        source: "iana"
+      },
+      "text/vnd.sun.j2me.app-descriptor": {
+        source: "iana",
+        charset: "UTF-8",
+        extensions: ["jad"]
+      },
+      "text/vnd.trolltech.linguist": {
+        source: "iana",
+        charset: "UTF-8"
+      },
+      "text/vnd.wap.si": {
+        source: "iana"
+      },
+      "text/vnd.wap.sl": {
+        source: "iana"
+      },
+      "text/vnd.wap.wml": {
+        source: "iana",
+        extensions: ["wml"]
+      },
+      "text/vnd.wap.wmlscript": {
+        source: "iana",
+        extensions: ["wmls"]
+      },
+      "text/vtt": {
+        source: "iana",
+        charset: "UTF-8",
+        compressible: true,
+        extensions: ["vtt"]
+      },
+      "text/x-asm": {
+        source: "apache",
+        extensions: ["s", "asm"]
+      },
+      "text/x-c": {
+        source: "apache",
+        extensions: ["c", "cc", "cxx", "cpp", "h", "hh", "dic"]
+      },
+      "text/x-component": {
+        source: "nginx",
+        extensions: ["htc"]
+      },
+      "text/x-fortran": {
+        source: "apache",
+        extensions: ["f", "for", "f77", "f90"]
+      },
+      "text/x-gwt-rpc": {
+        compressible: true
+      },
+      "text/x-handlebars-template": {
+        extensions: ["hbs"]
+      },
+      "text/x-java-source": {
+        source: "apache",
+        extensions: ["java"]
+      },
+      "text/x-jquery-tmpl": {
+        compressible: true
+      },
+      "text/x-lua": {
+        extensions: ["lua"]
+      },
+      "text/x-markdown": {
+        compressible: true,
+        extensions: ["mkd"]
+      },
+      "text/x-nfo": {
+        source: "apache",
+        extensions: ["nfo"]
+      },
+      "text/x-opml": {
+        source: "apache",
+        extensions: ["opml"]
+      },
+      "text/x-org": {
+        compressible: true,
+        extensions: ["org"]
+      },
+      "text/x-pascal": {
+        source: "apache",
+        extensions: ["p", "pas"]
+      },
+      "text/x-processing": {
+        compressible: true,
+        extensions: ["pde"]
+      },
+      "text/x-sass": {
+        extensions: ["sass"]
+      },
+      "text/x-scss": {
+        extensions: ["scss"]
+      },
+      "text/x-setext": {
+        source: "apache",
+        extensions: ["etx"]
+      },
+      "text/x-sfv": {
+        source: "apache",
+        extensions: ["sfv"]
+      },
+      "text/x-suse-ymp": {
+        compressible: true,
+        extensions: ["ymp"]
+      },
+      "text/x-uuencode": {
+        source: "apache",
+        extensions: ["uu"]
+      },
+      "text/x-vcalendar": {
+        source: "apache",
+        extensions: ["vcs"]
+      },
+      "text/x-vcard": {
+        source: "apache",
+        extensions: ["vcf"]
+      },
+      "text/xml": {
+        source: "iana",
+        compressible: true,
+        extensions: ["xml"]
+      },
+      "text/xml-external-parsed-entity": {
+        source: "iana"
+      },
+      "text/yaml": {
+        compressible: true,
+        extensions: ["yaml", "yml"]
+      },
+      "video/1d-interleaved-parityfec": {
+        source: "iana"
+      },
+      "video/3gpp": {
+        source: "iana",
+        extensions: ["3gp", "3gpp"]
+      },
+      "video/3gpp-tt": {
+        source: "iana"
+      },
+      "video/3gpp2": {
+        source: "iana",
+        extensions: ["3g2"]
+      },
+      "video/av1": {
+        source: "iana"
+      },
+      "video/bmpeg": {
+        source: "iana"
+      },
+      "video/bt656": {
+        source: "iana"
+      },
+      "video/celb": {
+        source: "iana"
+      },
+      "video/dv": {
+        source: "iana"
+      },
+      "video/encaprtp": {
+        source: "iana"
+      },
+      "video/ffv1": {
+        source: "iana"
+      },
+      "video/flexfec": {
+        source: "iana"
+      },
+      "video/h261": {
+        source: "iana",
+        extensions: ["h261"]
+      },
+      "video/h263": {
+        source: "iana",
+        extensions: ["h263"]
+      },
+      "video/h263-1998": {
+        source: "iana"
+      },
+      "video/h263-2000": {
+        source: "iana"
+      },
+      "video/h264": {
+        source: "iana",
+        extensions: ["h264"]
+      },
+      "video/h264-rcdo": {
+        source: "iana"
+      },
+      "video/h264-svc": {
+        source: "iana"
+      },
+      "video/h265": {
+        source: "iana"
+      },
+      "video/iso.segment": {
+        source: "iana",
+        extensions: ["m4s"]
+      },
+      "video/jpeg": {
+        source: "iana",
+        extensions: ["jpgv"]
+      },
+      "video/jpeg2000": {
+        source: "iana"
+      },
+      "video/jpm": {
+        source: "apache",
+        extensions: ["jpm", "jpgm"]
+      },
+      "video/jxsv": {
+        source: "iana"
+      },
+      "video/mj2": {
+        source: "iana",
+        extensions: ["mj2", "mjp2"]
+      },
+      "video/mp1s": {
+        source: "iana"
+      },
+      "video/mp2p": {
+        source: "iana"
+      },
+      "video/mp2t": {
+        source: "iana",
+        extensions: ["ts"]
+      },
+      "video/mp4": {
+        source: "iana",
+        compressible: false,
+        extensions: ["mp4", "mp4v", "mpg4"]
+      },
+      "video/mp4v-es": {
+        source: "iana"
+      },
+      "video/mpeg": {
+        source: "iana",
+        compressible: false,
+        extensions: ["mpeg", "mpg", "mpe", "m1v", "m2v"]
+      },
+      "video/mpeg4-generic": {
+        source: "iana"
+      },
+      "video/mpv": {
+        source: "iana"
+      },
+      "video/nv": {
+        source: "iana"
+      },
+      "video/ogg": {
+        source: "iana",
+        compressible: false,
+        extensions: ["ogv"]
+      },
+      "video/parityfec": {
+        source: "iana"
+      },
+      "video/pointer": {
+        source: "iana"
+      },
+      "video/quicktime": {
+        source: "iana",
+        compressible: false,
+        extensions: ["qt", "mov"]
+      },
+      "video/raptorfec": {
+        source: "iana"
+      },
+      "video/raw": {
+        source: "iana"
+      },
+      "video/rtp-enc-aescm128": {
+        source: "iana"
+      },
+      "video/rtploopback": {
+        source: "iana"
+      },
+      "video/rtx": {
+        source: "iana"
+      },
+      "video/scip": {
+        source: "iana"
+      },
+      "video/smpte291": {
+        source: "iana"
+      },
+      "video/smpte292m": {
+        source: "iana"
+      },
+      "video/ulpfec": {
+        source: "iana"
+      },
+      "video/vc1": {
+        source: "iana"
+      },
+      "video/vc2": {
+        source: "iana"
+      },
+      "video/vnd.cctv": {
+        source: "iana"
+      },
+      "video/vnd.dece.hd": {
+        source: "iana",
+        extensions: ["uvh", "uvvh"]
+      },
+      "video/vnd.dece.mobile": {
+        source: "iana",
+        extensions: ["uvm", "uvvm"]
+      },
+      "video/vnd.dece.mp4": {
+        source: "iana"
+      },
+      "video/vnd.dece.pd": {
+        source: "iana",
+        extensions: ["uvp", "uvvp"]
+      },
+      "video/vnd.dece.sd": {
+        source: "iana",
+        extensions: ["uvs", "uvvs"]
+      },
+      "video/vnd.dece.video": {
+        source: "iana",
+        extensions: ["uvv", "uvvv"]
+      },
+      "video/vnd.directv.mpeg": {
+        source: "iana"
+      },
+      "video/vnd.directv.mpeg-tts": {
+        source: "iana"
+      },
+      "video/vnd.dlna.mpeg-tts": {
+        source: "iana"
+      },
+      "video/vnd.dvb.file": {
+        source: "iana",
+        extensions: ["dvb"]
+      },
+      "video/vnd.fvt": {
+        source: "iana",
+        extensions: ["fvt"]
+      },
+      "video/vnd.hns.video": {
+        source: "iana"
+      },
+      "video/vnd.iptvforum.1dparityfec-1010": {
+        source: "iana"
+      },
+      "video/vnd.iptvforum.1dparityfec-2005": {
+        source: "iana"
+      },
+      "video/vnd.iptvforum.2dparityfec-1010": {
+        source: "iana"
+      },
+      "video/vnd.iptvforum.2dparityfec-2005": {
+        source: "iana"
+      },
+      "video/vnd.iptvforum.ttsavc": {
+        source: "iana"
+      },
+      "video/vnd.iptvforum.ttsmpeg2": {
+        source: "iana"
+      },
+      "video/vnd.motorola.video": {
+        source: "iana"
+      },
+      "video/vnd.motorola.videop": {
+        source: "iana"
+      },
+      "video/vnd.mpegurl": {
+        source: "iana",
+        extensions: ["mxu", "m4u"]
+      },
+      "video/vnd.ms-playready.media.pyv": {
+        source: "iana",
+        extensions: ["pyv"]
+      },
+      "video/vnd.nokia.interleaved-multimedia": {
+        source: "iana"
+      },
+      "video/vnd.nokia.mp4vr": {
+        source: "iana"
+      },
+      "video/vnd.nokia.videovoip": {
+        source: "iana"
+      },
+      "video/vnd.objectvideo": {
+        source: "iana"
+      },
+      "video/vnd.radgamettools.bink": {
+        source: "iana"
+      },
+      "video/vnd.radgamettools.smacker": {
+        source: "iana"
+      },
+      "video/vnd.sealed.mpeg1": {
+        source: "iana"
+      },
+      "video/vnd.sealed.mpeg4": {
+        source: "iana"
+      },
+      "video/vnd.sealed.swf": {
+        source: "iana"
+      },
+      "video/vnd.sealedmedia.softseal.mov": {
+        source: "iana"
+      },
+      "video/vnd.uvvu.mp4": {
+        source: "iana",
+        extensions: ["uvu", "uvvu"]
+      },
+      "video/vnd.vivo": {
+        source: "iana",
+        extensions: ["viv"]
+      },
+      "video/vnd.youtube.yt": {
+        source: "iana"
+      },
+      "video/vp8": {
+        source: "iana"
+      },
+      "video/vp9": {
+        source: "iana"
+      },
+      "video/webm": {
+        source: "apache",
+        compressible: false,
+        extensions: ["webm"]
+      },
+      "video/x-f4v": {
+        source: "apache",
+        extensions: ["f4v"]
+      },
+      "video/x-fli": {
+        source: "apache",
+        extensions: ["fli"]
+      },
+      "video/x-flv": {
+        source: "apache",
+        compressible: false,
+        extensions: ["flv"]
+      },
+      "video/x-m4v": {
+        source: "apache",
+        extensions: ["m4v"]
+      },
+      "video/x-matroska": {
+        source: "apache",
+        compressible: false,
+        extensions: ["mkv", "mk3d", "mks"]
+      },
+      "video/x-mng": {
+        source: "apache",
+        extensions: ["mng"]
+      },
+      "video/x-ms-asf": {
+        source: "apache",
+        extensions: ["asf", "asx"]
+      },
+      "video/x-ms-vob": {
+        source: "apache",
+        extensions: ["vob"]
+      },
+      "video/x-ms-wm": {
+        source: "apache",
+        extensions: ["wm"]
+      },
+      "video/x-ms-wmv": {
+        source: "apache",
+        compressible: false,
+        extensions: ["wmv"]
+      },
+      "video/x-ms-wmx": {
+        source: "apache",
+        extensions: ["wmx"]
+      },
+      "video/x-ms-wvx": {
+        source: "apache",
+        extensions: ["wvx"]
+      },
+      "video/x-msvideo": {
+        source: "apache",
+        extensions: ["avi"]
+      },
+      "video/x-sgi-movie": {
+        source: "apache",
+        extensions: ["movie"]
+      },
+      "video/x-smv": {
+        source: "apache",
+        extensions: ["smv"]
+      },
+      "x-conference/x-cooltalk": {
+        source: "apache",
+        extensions: ["ice"]
+      },
+      "x-shader/x-fragment": {
+        compressible: true
+      },
+      "x-shader/x-vertex": {
+        compressible: true
+      }
+    };
+  }
+});
+
+// node_modules/form-data/node_modules/mime-db/index.js
+var require_mime_db4 = __commonJS({
+  "node_modules/form-data/node_modules/mime-db/index.js"(exports2, module2) {
+    module2.exports = require_db4();
+  }
+});
+
+// node_modules/form-data/node_modules/mime-types/index.js
+var require_mime_types4 = __commonJS({
+  "node_modules/form-data/node_modules/mime-types/index.js"(exports2) {
+    "use strict";
+    var db3 = require_mime_db4();
+    var extname = require("path").extname;
+    var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/;
+    var TEXT_TYPE_REGEXP = /^text\//i;
+    exports2.charset = charset;
+    exports2.charsets = { lookup: charset };
+    exports2.contentType = contentType;
+    exports2.extension = extension;
+    exports2.extensions = /* @__PURE__ */ Object.create(null);
+    exports2.lookup = lookup;
+    exports2.types = /* @__PURE__ */ Object.create(null);
+    populateMaps(exports2.extensions, exports2.types);
+    function charset(type) {
+      if (!type || typeof type !== "string") {
+        return false;
+      }
+      var match = EXTRACT_TYPE_REGEXP.exec(type);
+      var mime = match && db3[match[1].toLowerCase()];
+      if (mime && mime.charset) {
+        return mime.charset;
+      }
+      if (match && TEXT_TYPE_REGEXP.test(match[1])) {
+        return "UTF-8";
+      }
+      return false;
+    }
+    function contentType(str) {
+      if (!str || typeof str !== "string") {
+        return false;
+      }
+      var mime = str.indexOf("/") === -1 ? exports2.lookup(str) : str;
+      if (!mime) {
+        return false;
+      }
+      if (mime.indexOf("charset") === -1) {
+        var charset2 = exports2.charset(mime);
+        if (charset2) mime += "; charset=" + charset2.toLowerCase();
+      }
+      return mime;
+    }
+    function extension(type) {
+      if (!type || typeof type !== "string") {
+        return false;
+      }
+      var match = EXTRACT_TYPE_REGEXP.exec(type);
+      var exts = match && exports2.extensions[match[1].toLowerCase()];
+      if (!exts || !exts.length) {
+        return false;
+      }
+      return exts[0];
+    }
+    function lookup(path2) {
+      if (!path2 || typeof path2 !== "string") {
+        return false;
+      }
+      var extension2 = extname("x." + path2).toLowerCase().substr(1);
+      if (!extension2) {
+        return false;
+      }
+      return exports2.types[extension2] || false;
+    }
+    function populateMaps(extensions, types3) {
+      var preference = ["nginx", "apache", void 0, "iana"];
+      Object.keys(db3).forEach(function forEachMimeType(type) {
+        var mime = db3[type];
+        var exts = mime.extensions;
+        if (!exts || !exts.length) {
+          return;
+        }
+        extensions[type] = exts;
+        for (var i = 0; i < exts.length; i++) {
+          var extension2 = exts[i];
+          if (types3[extension2]) {
+            var from = preference.indexOf(db3[types3[extension2]].source);
+            var to = preference.indexOf(mime.source);
+            if (types3[extension2] !== "application/octet-stream" && (from > to || from === to && types3[extension2].substr(0, 12) === "application/")) {
+              continue;
+            }
+          }
+          types3[extension2] = type;
+        }
+      });
+    }
+  }
+});
+
+// node_modules/asynckit/lib/defer.js
+var require_defer = __commonJS({
+  "node_modules/asynckit/lib/defer.js"(exports2, module2) {
+    module2.exports = defer;
+    function defer(fn) {
+      var nextTick2 = typeof setImmediate == "function" ? setImmediate : typeof process == "object" && typeof process.nextTick == "function" ? process.nextTick : null;
+      if (nextTick2) {
+        nextTick2(fn);
+      } else {
+        setTimeout(fn, 0);
+      }
+    }
+  }
+});
+
+// node_modules/asynckit/lib/async.js
+var require_async = __commonJS({
+  "node_modules/asynckit/lib/async.js"(exports2, module2) {
+    var defer = require_defer();
+    module2.exports = async;
+    function async(callback) {
+      var isAsync2 = false;
+      defer(function() {
+        isAsync2 = true;
+      });
+      return function async_callback(err, result) {
+        if (isAsync2) {
+          callback(err, result);
+        } else {
+          defer(function nextTick_callback() {
+            callback(err, result);
+          });
+        }
+      };
+    }
+  }
+});
+
+// node_modules/asynckit/lib/abort.js
+var require_abort = __commonJS({
+  "node_modules/asynckit/lib/abort.js"(exports2, module2) {
+    module2.exports = abort;
+    function abort(state) {
+      Object.keys(state.jobs).forEach(clean.bind(state));
+      state.jobs = {};
+    }
+    function clean(key) {
+      if (typeof this.jobs[key] == "function") {
+        this.jobs[key]();
+      }
+    }
+  }
+});
+
+// node_modules/asynckit/lib/iterate.js
+var require_iterate = __commonJS({
+  "node_modules/asynckit/lib/iterate.js"(exports2, module2) {
+    var async = require_async();
+    var abort = require_abort();
+    module2.exports = iterate;
+    function iterate(list, iterator2, state, callback) {
+      var key = state["keyedList"] ? state["keyedList"][state.index] : state.index;
+      state.jobs[key] = runJob(iterator2, key, list[key], function(error, output) {
+        if (!(key in state.jobs)) {
+          return;
+        }
+        delete state.jobs[key];
+        if (error) {
+          abort(state);
+        } else {
+          state.results[key] = output;
+        }
+        callback(error, state.results);
+      });
+    }
+    function runJob(iterator2, key, item, callback) {
+      var aborter;
+      if (iterator2.length == 2) {
+        aborter = iterator2(item, async(callback));
+      } else {
+        aborter = iterator2(item, key, async(callback));
+      }
+      return aborter;
+    }
+  }
+});
+
+// node_modules/asynckit/lib/state.js
+var require_state = __commonJS({
+  "node_modules/asynckit/lib/state.js"(exports2, module2) {
+    module2.exports = state;
+    function state(list, sortMethod) {
+      var isNamedList = !Array.isArray(list), initState = {
+        index: 0,
+        keyedList: isNamedList || sortMethod ? Object.keys(list) : null,
+        jobs: {},
+        results: isNamedList ? {} : [],
+        size: isNamedList ? Object.keys(list).length : list.length
+      };
+      if (sortMethod) {
+        initState.keyedList.sort(isNamedList ? sortMethod : function(a, b) {
+          return sortMethod(list[a], list[b]);
+        });
+      }
+      return initState;
+    }
+  }
+});
+
+// node_modules/asynckit/lib/terminator.js
+var require_terminator = __commonJS({
+  "node_modules/asynckit/lib/terminator.js"(exports2, module2) {
+    var abort = require_abort();
+    var async = require_async();
+    module2.exports = terminator;
+    function terminator(callback) {
+      if (!Object.keys(this.jobs).length) {
+        return;
+      }
+      this.index = this.size;
+      abort(this);
+      async(callback)(null, this.results);
+    }
+  }
+});
+
+// node_modules/asynckit/parallel.js
+var require_parallel = __commonJS({
+  "node_modules/asynckit/parallel.js"(exports2, module2) {
+    var iterate = require_iterate();
+    var initState = require_state();
+    var terminator = require_terminator();
+    module2.exports = parallel;
+    function parallel(list, iterator2, callback) {
+      var state = initState(list);
+      while (state.index < (state["keyedList"] || list).length) {
+        iterate(list, iterator2, state, function(error, result) {
+          if (error) {
+            callback(error, result);
+            return;
+          }
+          if (Object.keys(state.jobs).length === 0) {
+            callback(null, state.results);
+            return;
+          }
+        });
+        state.index++;
+      }
+      return terminator.bind(state, callback);
+    }
+  }
+});
+
+// node_modules/asynckit/serialOrdered.js
+var require_serialOrdered = __commonJS({
+  "node_modules/asynckit/serialOrdered.js"(exports2, module2) {
+    var iterate = require_iterate();
+    var initState = require_state();
+    var terminator = require_terminator();
+    module2.exports = serialOrdered;
+    module2.exports.ascending = ascending;
+    module2.exports.descending = descending;
+    function serialOrdered(list, iterator2, sortMethod, callback) {
+      var state = initState(list, sortMethod);
+      iterate(list, iterator2, state, function iteratorHandler(error, result) {
+        if (error) {
+          callback(error, result);
+          return;
+        }
+        state.index++;
+        if (state.index < (state["keyedList"] || list).length) {
+          iterate(list, iterator2, state, iteratorHandler);
+          return;
+        }
+        callback(null, state.results);
+      });
+      return terminator.bind(state, callback);
+    }
+    function ascending(a, b) {
+      return a < b ? -1 : a > b ? 1 : 0;
+    }
+    function descending(a, b) {
+      return -1 * ascending(a, b);
+    }
+  }
+});
+
+// node_modules/asynckit/serial.js
+var require_serial = __commonJS({
+  "node_modules/asynckit/serial.js"(exports2, module2) {
+    var serialOrdered = require_serialOrdered();
+    module2.exports = serial2;
+    function serial2(list, iterator2, callback) {
+      return serialOrdered(list, iterator2, null, callback);
+    }
+  }
+});
+
+// node_modules/asynckit/index.js
+var require_asynckit = __commonJS({
+  "node_modules/asynckit/index.js"(exports2, module2) {
+    module2.exports = {
+      parallel: require_parallel(),
+      serial: require_serial(),
+      serialOrdered: require_serialOrdered()
+    };
+  }
+});
+
+// node_modules/has-tostringtag/shams.js
+var require_shams2 = __commonJS({
+  "node_modules/has-tostringtag/shams.js"(exports2, module2) {
+    "use strict";
+    var hasSymbols = require_shams();
+    module2.exports = function hasToStringTagShams() {
+      return hasSymbols() && !!Symbol.toStringTag;
+    };
+  }
+});
+
+// node_modules/es-set-tostringtag/index.js
+var require_es_set_tostringtag = __commonJS({
+  "node_modules/es-set-tostringtag/index.js"(exports2, module2) {
+    "use strict";
+    var GetIntrinsic = require_get_intrinsic();
+    var $defineProperty = GetIntrinsic("%Object.defineProperty%", true);
+    var hasToStringTag = require_shams2()();
+    var hasOwn = require_hasown();
+    var $TypeError = require_type();
+    var toStringTag2 = hasToStringTag ? Symbol.toStringTag : null;
+    module2.exports = function setToStringTag(object, value) {
+      var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
+      var nonConfigurable = arguments.length > 2 && !!arguments[2] && arguments[2].nonConfigurable;
+      if (typeof overrideIfSet !== "undefined" && typeof overrideIfSet !== "boolean" || typeof nonConfigurable !== "undefined" && typeof nonConfigurable !== "boolean") {
+        throw new $TypeError("if provided, the `overrideIfSet` and `nonConfigurable` options must be booleans");
+      }
+      if (toStringTag2 && (overrideIfSet || !hasOwn(object, toStringTag2))) {
+        if ($defineProperty) {
+          $defineProperty(object, toStringTag2, {
+            configurable: !nonConfigurable,
+            enumerable: false,
+            value,
+            writable: false
+          });
+        } else {
+          object[toStringTag2] = value;
+        }
+      }
+    };
+  }
+});
+
+// node_modules/form-data/lib/populate.js
+var require_populate = __commonJS({
+  "node_modules/form-data/lib/populate.js"(exports2, module2) {
+    "use strict";
+    module2.exports = function(dst, src) {
+      Object.keys(src).forEach(function(prop) {
+        dst[prop] = dst[prop] || src[prop];
+      });
+      return dst;
+    };
+  }
+});
+
+// node_modules/form-data/lib/form_data.js
+var require_form_data = __commonJS({
+  "node_modules/form-data/lib/form_data.js"(exports2, module2) {
+    "use strict";
+    var CombinedStream = require_combined_stream();
+    var util4 = require("util");
+    var path2 = require("path");
+    var http3 = require("http");
+    var https2 = require("https");
+    var parseUrl = require("url").parse;
+    var fs2 = require("fs");
+    var Stream = require("stream").Stream;
+    var crypto4 = require("crypto");
+    var mime = require_mime_types4();
+    var asynckit = require_asynckit();
+    var setToStringTag = require_es_set_tostringtag();
+    var hasOwn = require_hasown();
+    var populate = require_populate();
+    function FormData3(options) {
+      if (!(this instanceof FormData3)) {
+        return new FormData3(options);
+      }
+      this._overheadLength = 0;
+      this._valueLength = 0;
+      this._valuesToMeasure = [];
+      CombinedStream.call(this);
+      options = options || {};
+      for (var option in options) {
+        this[option] = options[option];
+      }
+    }
+    util4.inherits(FormData3, CombinedStream);
+    FormData3.LINE_BREAK = "\r\n";
+    FormData3.DEFAULT_CONTENT_TYPE = "application/octet-stream";
+    FormData3.prototype.append = function(field, value, options) {
+      options = options || {};
+      if (typeof options === "string") {
+        options = { filename: options };
+      }
+      var append2 = CombinedStream.prototype.append.bind(this);
+      if (typeof value === "number" || value == null) {
+        value = String(value);
+      }
+      if (Array.isArray(value)) {
+        this._error(new Error("Arrays are not supported."));
+        return;
+      }
+      var header = this._multiPartHeader(field, value, options);
+      var footer = this._multiPartFooter();
+      append2(header);
+      append2(value);
+      append2(footer);
+      this._trackLength(header, value, options);
+    };
+    FormData3.prototype._trackLength = function(header, value, options) {
+      var valueLength = 0;
+      if (options.knownLength != null) {
+        valueLength += Number(options.knownLength);
+      } else if (Buffer.isBuffer(value)) {
+        valueLength = value.length;
+      } else if (typeof value === "string") {
+        valueLength = Buffer.byteLength(value);
+      }
+      this._valueLength += valueLength;
+      this._overheadLength += Buffer.byteLength(header) + FormData3.LINE_BREAK.length;
+      if (!value || !value.path && !(value.readable && hasOwn(value, "httpVersion")) && !(value instanceof Stream)) {
+        return;
+      }
+      if (!options.knownLength) {
+        this._valuesToMeasure.push(value);
+      }
+    };
+    FormData3.prototype._lengthRetriever = function(value, callback) {
+      if (hasOwn(value, "fd")) {
+        if (value.end != void 0 && value.end != Infinity && value.start != void 0) {
+          callback(null, value.end + 1 - (value.start ? value.start : 0));
+        } else {
+          fs2.stat(value.path, function(err, stat) {
+            if (err) {
+              callback(err);
+              return;
+            }
+            var fileSize = stat.size - (value.start ? value.start : 0);
+            callback(null, fileSize);
+          });
+        }
+      } else if (hasOwn(value, "httpVersion")) {
+        callback(null, Number(value.headers["content-length"]));
+      } else if (hasOwn(value, "httpModule")) {
+        value.on("response", function(response) {
+          value.pause();
+          callback(null, Number(response.headers["content-length"]));
+        });
+        value.resume();
+      } else {
+        callback("Unknown stream");
+      }
+    };
+    FormData3.prototype._multiPartHeader = function(field, value, options) {
+      if (typeof options.header === "string") {
+        return options.header;
+      }
+      var contentDisposition = this._getContentDisposition(value, options);
+      var contentType = this._getContentType(value, options);
+      var contents = "";
+      var headers = {
+        // add custom disposition as third element or keep it two elements if not
+        "Content-Disposition": ["form-data", 'name="' + field + '"'].concat(contentDisposition || []),
+        // if no content type. allow it to be empty array
+        "Content-Type": [].concat(contentType || [])
+      };
+      if (typeof options.header === "object") {
+        populate(headers, options.header);
+      }
+      var header;
+      for (var prop in headers) {
+        if (hasOwn(headers, prop)) {
+          header = headers[prop];
+          if (header == null) {
+            continue;
+          }
+          if (!Array.isArray(header)) {
+            header = [header];
+          }
+          if (header.length) {
+            contents += prop + ": " + header.join("; ") + FormData3.LINE_BREAK;
+          }
+        }
+      }
+      return "--" + this.getBoundary() + FormData3.LINE_BREAK + contents + FormData3.LINE_BREAK;
+    };
+    FormData3.prototype._getContentDisposition = function(value, options) {
+      var filename;
+      if (typeof options.filepath === "string") {
+        filename = path2.normalize(options.filepath).replace(/\\/g, "/");
+      } else if (options.filename || value && (value.name || value.path)) {
+        filename = path2.basename(options.filename || value && (value.name || value.path));
+      } else if (value && value.readable && hasOwn(value, "httpVersion")) {
+        filename = path2.basename(value.client._httpMessage.path || "");
+      }
+      if (filename) {
+        return 'filename="' + filename + '"';
+      }
+    };
+    FormData3.prototype._getContentType = function(value, options) {
+      var contentType = options.contentType;
+      if (!contentType && value && value.name) {
+        contentType = mime.lookup(value.name);
+      }
+      if (!contentType && value && value.path) {
+        contentType = mime.lookup(value.path);
+      }
+      if (!contentType && value && value.readable && hasOwn(value, "httpVersion")) {
+        contentType = value.headers["content-type"];
+      }
+      if (!contentType && (options.filepath || options.filename)) {
+        contentType = mime.lookup(options.filepath || options.filename);
+      }
+      if (!contentType && value && typeof value === "object") {
+        contentType = FormData3.DEFAULT_CONTENT_TYPE;
+      }
+      return contentType;
+    };
+    FormData3.prototype._multiPartFooter = function() {
+      return function(next) {
+        var footer = FormData3.LINE_BREAK;
+        var lastPart = this._streams.length === 0;
+        if (lastPart) {
+          footer += this._lastBoundary();
+        }
+        next(footer);
+      }.bind(this);
+    };
+    FormData3.prototype._lastBoundary = function() {
+      return "--" + this.getBoundary() + "--" + FormData3.LINE_BREAK;
+    };
+    FormData3.prototype.getHeaders = function(userHeaders) {
+      var header;
+      var formHeaders = {
+        "content-type": "multipart/form-data; boundary=" + this.getBoundary()
+      };
+      for (header in userHeaders) {
+        if (hasOwn(userHeaders, header)) {
+          formHeaders[header.toLowerCase()] = userHeaders[header];
+        }
+      }
+      return formHeaders;
+    };
+    FormData3.prototype.setBoundary = function(boundary) {
+      if (typeof boundary !== "string") {
+        throw new TypeError("FormData boundary must be a string");
+      }
+      this._boundary = boundary;
+    };
+    FormData3.prototype.getBoundary = function() {
+      if (!this._boundary) {
+        this._generateBoundary();
+      }
+      return this._boundary;
+    };
+    FormData3.prototype.getBuffer = function() {
+      var dataBuffer = new Buffer.alloc(0);
+      var boundary = this.getBoundary();
+      for (var i = 0, len = this._streams.length; i < len; i++) {
+        if (typeof this._streams[i] !== "function") {
+          if (Buffer.isBuffer(this._streams[i])) {
+            dataBuffer = Buffer.concat([dataBuffer, this._streams[i]]);
+          } else {
+            dataBuffer = Buffer.concat([dataBuffer, Buffer.from(this._streams[i])]);
+          }
+          if (typeof this._streams[i] !== "string" || this._streams[i].substring(2, boundary.length + 2) !== boundary) {
+            dataBuffer = Buffer.concat([dataBuffer, Buffer.from(FormData3.LINE_BREAK)]);
+          }
+        }
+      }
+      return Buffer.concat([dataBuffer, Buffer.from(this._lastBoundary())]);
+    };
+    FormData3.prototype._generateBoundary = function() {
+      this._boundary = "--------------------------" + crypto4.randomBytes(12).toString("hex");
+    };
+    FormData3.prototype.getLengthSync = function() {
+      var knownLength = this._overheadLength + this._valueLength;
+      if (this._streams.length) {
+        knownLength += this._lastBoundary().length;
+      }
+      if (!this.hasKnownLength()) {
+        this._error(new Error("Cannot calculate proper length in synchronous way."));
+      }
+      return knownLength;
+    };
+    FormData3.prototype.hasKnownLength = function() {
+      var hasKnownLength = true;
+      if (this._valuesToMeasure.length) {
+        hasKnownLength = false;
+      }
+      return hasKnownLength;
+    };
+    FormData3.prototype.getLength = function(cb) {
+      var knownLength = this._overheadLength + this._valueLength;
+      if (this._streams.length) {
+        knownLength += this._lastBoundary().length;
+      }
+      if (!this._valuesToMeasure.length) {
+        process.nextTick(cb.bind(this, null, knownLength));
+        return;
+      }
+      asynckit.parallel(this._valuesToMeasure, this._lengthRetriever, function(err, values) {
+        if (err) {
+          cb(err);
+          return;
+        }
+        values.forEach(function(length) {
+          knownLength += length;
+        });
+        cb(null, knownLength);
+      });
+    };
+    FormData3.prototype.submit = function(params, cb) {
+      var request;
+      var options;
+      var defaults3 = { method: "post" };
+      if (typeof params === "string") {
+        params = parseUrl(params);
+        options = populate({
+          port: params.port,
+          path: params.pathname,
+          host: params.hostname,
+          protocol: params.protocol
+        }, defaults3);
+      } else {
+        options = populate(params, defaults3);
+        if (!options.port) {
+          options.port = options.protocol === "https:" ? 443 : 80;
+        }
+      }
+      options.headers = this.getHeaders(params.headers);
+      if (options.protocol === "https:") {
+        request = https2.request(options);
+      } else {
+        request = http3.request(options);
+      }
+      this.getLength(function(err, length) {
+        if (err && err !== "Unknown stream") {
+          this._error(err);
+          return;
+        }
+        if (length) {
+          request.setHeader("Content-Length", length);
+        }
+        this.pipe(request);
+        if (cb) {
+          var onResponse;
+          var callback = function(error, responce) {
+            request.removeListener("error", callback);
+            request.removeListener("response", onResponse);
+            return cb.call(this, error, responce);
+          };
+          onResponse = callback.bind(this, null);
+          request.on("error", callback);
+          request.on("response", onResponse);
+        }
+      }.bind(this));
+      return request;
+    };
+    FormData3.prototype._error = function(err) {
+      if (!this.error) {
+        this.error = err;
+        this.pause();
+        this.emit("error", err);
+      }
+    };
+    FormData3.prototype.toString = function() {
+      return "[object FormData]";
+    };
+    setToStringTag(FormData3.prototype, "FormData");
+    module2.exports = FormData3;
+  }
+});
+
+// node_modules/proxy-from-env/index.js
+var require_proxy_from_env = __commonJS({
+  "node_modules/proxy-from-env/index.js"(exports2) {
+    "use strict";
+    var parseUrl = require("url").parse;
+    var DEFAULT_PORTS = {
+      ftp: 21,
+      gopher: 70,
+      http: 80,
+      https: 443,
+      ws: 80,
+      wss: 443
+    };
+    var stringEndsWith = String.prototype.endsWith || function(s) {
+      return s.length <= this.length && this.indexOf(s, this.length - s.length) !== -1;
+    };
+    function getProxyForUrl(url2) {
+      var parsedUrl = typeof url2 === "string" ? parseUrl(url2) : url2 || {};
+      var proto = parsedUrl.protocol;
+      var hostname = parsedUrl.host;
+      var port = parsedUrl.port;
+      if (typeof hostname !== "string" || !hostname || typeof proto !== "string") {
+        return "";
+      }
+      proto = proto.split(":", 1)[0];
+      hostname = hostname.replace(/:\d*$/, "");
+      port = parseInt(port) || DEFAULT_PORTS[proto] || 0;
+      if (!shouldProxy(hostname, port)) {
+        return "";
+      }
+      var proxy = getEnv("npm_config_" + proto + "_proxy") || getEnv(proto + "_proxy") || getEnv("npm_config_proxy") || getEnv("all_proxy");
+      if (proxy && proxy.indexOf("://") === -1) {
+        proxy = proto + "://" + proxy;
+      }
+      return proxy;
+    }
+    function shouldProxy(hostname, port) {
+      var NO_PROXY = (getEnv("npm_config_no_proxy") || getEnv("no_proxy")).toLowerCase();
+      if (!NO_PROXY) {
+        return true;
+      }
+      if (NO_PROXY === "*") {
+        return false;
+      }
+      return NO_PROXY.split(/[,\s]/).every(function(proxy) {
+        if (!proxy) {
+          return true;
+        }
+        var parsedProxy = proxy.match(/^(.+):(\d+)$/);
+        var parsedProxyHostname = parsedProxy ? parsedProxy[1] : proxy;
+        var parsedProxyPort = parsedProxy ? parseInt(parsedProxy[2]) : 0;
+        if (parsedProxyPort && parsedProxyPort !== port) {
+          return true;
+        }
+        if (!/^[.*]/.test(parsedProxyHostname)) {
+          return hostname !== parsedProxyHostname;
+        }
+        if (parsedProxyHostname.charAt(0) === "*") {
+          parsedProxyHostname = parsedProxyHostname.slice(1);
+        }
+        return !stringEndsWith.call(hostname, parsedProxyHostname);
+      });
+    }
+    function getEnv(key) {
+      return process.env[key.toLowerCase()] || process.env[key.toUpperCase()] || "";
+    }
+    exports2.getProxyForUrl = getProxyForUrl;
+  }
+});
+
+// node_modules/follow-redirects/debug.js
+var require_debug = __commonJS({
+  "node_modules/follow-redirects/debug.js"(exports2, module2) {
+    var debug;
+    module2.exports = function() {
+      if (!debug) {
+        try {
+          debug = require_src()("follow-redirects");
+        } catch (error) {
+        }
+        if (typeof debug !== "function") {
+          debug = function() {
+          };
+        }
+      }
+      debug.apply(null, arguments);
+    };
+  }
+});
+
+// node_modules/follow-redirects/index.js
+var require_follow_redirects = __commonJS({
+  "node_modules/follow-redirects/index.js"(exports2, module2) {
+    var url2 = require("url");
+    var URL2 = url2.URL;
+    var http3 = require("http");
+    var https2 = require("https");
+    var Writable = require("stream").Writable;
+    var assert = require("assert");
+    var debug = require_debug();
+    (function detectUnsupportedEnvironment() {
+      var looksLikeNode = typeof process !== "undefined";
+      var looksLikeBrowser = typeof window !== "undefined" && typeof document !== "undefined";
+      var looksLikeV8 = isFunction3(Error.captureStackTrace);
+      if (!looksLikeNode && (looksLikeBrowser || !looksLikeV8)) {
+        console.warn("The follow-redirects package should be excluded from browser builds.");
+      }
+    })();
+    var useNativeURL = false;
+    try {
+      assert(new URL2(""));
+    } catch (error) {
+      useNativeURL = error.code === "ERR_INVALID_URL";
+    }
+    var preservedUrlFields = [
+      "auth",
+      "host",
+      "hostname",
+      "href",
+      "path",
+      "pathname",
+      "port",
+      "protocol",
+      "query",
+      "search",
+      "hash"
+    ];
+    var events = ["abort", "aborted", "connect", "error", "socket", "timeout"];
+    var eventHandlers = /* @__PURE__ */ Object.create(null);
+    events.forEach(function(event) {
+      eventHandlers[event] = function(arg1, arg2, arg3) {
+        this._redirectable.emit(event, arg1, arg2, arg3);
+      };
+    });
+    var InvalidUrlError = createErrorType(
+      "ERR_INVALID_URL",
+      "Invalid URL",
+      TypeError
+    );
+    var RedirectionError = createErrorType(
+      "ERR_FR_REDIRECTION_FAILURE",
+      "Redirected request failed"
+    );
+    var TooManyRedirectsError = createErrorType(
+      "ERR_FR_TOO_MANY_REDIRECTS",
+      "Maximum number of redirects exceeded",
+      RedirectionError
+    );
+    var MaxBodyLengthExceededError = createErrorType(
+      "ERR_FR_MAX_BODY_LENGTH_EXCEEDED",
+      "Request body larger than maxBodyLength limit"
+    );
+    var WriteAfterEndError = createErrorType(
+      "ERR_STREAM_WRITE_AFTER_END",
+      "write after end"
+    );
+    var destroy = Writable.prototype.destroy || noop2;
+    function RedirectableRequest(options, responseCallback) {
+      Writable.call(this);
+      this._sanitizeOptions(options);
+      this._options = options;
+      this._ended = false;
+      this._ending = false;
+      this._redirectCount = 0;
+      this._redirects = [];
+      this._requestBodyLength = 0;
+      this._requestBodyBuffers = [];
+      if (responseCallback) {
+        this.on("response", responseCallback);
+      }
+      var self2 = this;
+      this._onNativeResponse = function(response) {
+        try {
+          self2._processResponse(response);
+        } catch (cause) {
+          self2.emit("error", cause instanceof RedirectionError ? cause : new RedirectionError({ cause }));
+        }
+      };
+      this._performRequest();
+    }
+    RedirectableRequest.prototype = Object.create(Writable.prototype);
+    RedirectableRequest.prototype.abort = function() {
+      destroyRequest(this._currentRequest);
+      this._currentRequest.abort();
+      this.emit("abort");
+    };
+    RedirectableRequest.prototype.destroy = function(error) {
+      destroyRequest(this._currentRequest, error);
+      destroy.call(this, error);
+      return this;
+    };
+    RedirectableRequest.prototype.write = function(data, encoding, callback) {
+      if (this._ending) {
+        throw new WriteAfterEndError();
+      }
+      if (!isString2(data) && !isBuffer2(data)) {
+        throw new TypeError("data should be a string, Buffer or Uint8Array");
+      }
+      if (isFunction3(encoding)) {
+        callback = encoding;
+        encoding = null;
+      }
+      if (data.length === 0) {
+        if (callback) {
+          callback();
+        }
+        return;
+      }
+      if (this._requestBodyLength + data.length <= this._options.maxBodyLength) {
+        this._requestBodyLength += data.length;
+        this._requestBodyBuffers.push({ data, encoding });
+        this._currentRequest.write(data, encoding, callback);
+      } else {
+        this.emit("error", new MaxBodyLengthExceededError());
+        this.abort();
+      }
+    };
+    RedirectableRequest.prototype.end = function(data, encoding, callback) {
+      if (isFunction3(data)) {
+        callback = data;
+        data = encoding = null;
+      } else if (isFunction3(encoding)) {
+        callback = encoding;
+        encoding = null;
+      }
+      if (!data) {
+        this._ended = this._ending = true;
+        this._currentRequest.end(null, null, callback);
+      } else {
+        var self2 = this;
+        var currentRequest = this._currentRequest;
+        this.write(data, encoding, function() {
+          self2._ended = true;
+          currentRequest.end(null, null, callback);
+        });
+        this._ending = true;
+      }
+    };
+    RedirectableRequest.prototype.setHeader = function(name, value) {
+      this._options.headers[name] = value;
+      this._currentRequest.setHeader(name, value);
+    };
+    RedirectableRequest.prototype.removeHeader = function(name) {
+      delete this._options.headers[name];
+      this._currentRequest.removeHeader(name);
+    };
+    RedirectableRequest.prototype.setTimeout = function(msecs, callback) {
+      var self2 = this;
+      function destroyOnTimeout(socket) {
+        socket.setTimeout(msecs);
+        socket.removeListener("timeout", socket.destroy);
+        socket.addListener("timeout", socket.destroy);
+      }
+      function startTimer(socket) {
+        if (self2._timeout) {
+          clearTimeout(self2._timeout);
+        }
+        self2._timeout = setTimeout(function() {
+          self2.emit("timeout");
+          clearTimer();
+        }, msecs);
+        destroyOnTimeout(socket);
+      }
+      function clearTimer() {
+        if (self2._timeout) {
+          clearTimeout(self2._timeout);
+          self2._timeout = null;
+        }
+        self2.removeListener("abort", clearTimer);
+        self2.removeListener("error", clearTimer);
+        self2.removeListener("response", clearTimer);
+        self2.removeListener("close", clearTimer);
+        if (callback) {
+          self2.removeListener("timeout", callback);
+        }
+        if (!self2.socket) {
+          self2._currentRequest.removeListener("socket", startTimer);
+        }
+      }
+      if (callback) {
+        this.on("timeout", callback);
+      }
+      if (this.socket) {
+        startTimer(this.socket);
+      } else {
+        this._currentRequest.once("socket", startTimer);
+      }
+      this.on("socket", destroyOnTimeout);
+      this.on("abort", clearTimer);
+      this.on("error", clearTimer);
+      this.on("response", clearTimer);
+      this.on("close", clearTimer);
+      return this;
+    };
+    [
+      "flushHeaders",
+      "getHeader",
+      "setNoDelay",
+      "setSocketKeepAlive"
+    ].forEach(function(method) {
+      RedirectableRequest.prototype[method] = function(a, b) {
+        return this._currentRequest[method](a, b);
+      };
+    });
+    ["aborted", "connection", "socket"].forEach(function(property) {
+      Object.defineProperty(RedirectableRequest.prototype, property, {
+        get: function() {
+          return this._currentRequest[property];
+        }
+      });
+    });
+    RedirectableRequest.prototype._sanitizeOptions = function(options) {
+      if (!options.headers) {
+        options.headers = {};
+      }
+      if (options.host) {
+        if (!options.hostname) {
+          options.hostname = options.host;
+        }
+        delete options.host;
+      }
+      if (!options.pathname && options.path) {
+        var searchPos = options.path.indexOf("?");
+        if (searchPos < 0) {
+          options.pathname = options.path;
+        } else {
+          options.pathname = options.path.substring(0, searchPos);
+          options.search = options.path.substring(searchPos);
+        }
+      }
+    };
+    RedirectableRequest.prototype._performRequest = function() {
+      var protocol = this._options.protocol;
+      var nativeProtocol = this._options.nativeProtocols[protocol];
+      if (!nativeProtocol) {
+        throw new TypeError("Unsupported protocol " + protocol);
+      }
+      if (this._options.agents) {
+        var scheme = protocol.slice(0, -1);
+        this._options.agent = this._options.agents[scheme];
+      }
+      var request = this._currentRequest = nativeProtocol.request(this._options, this._onNativeResponse);
+      request._redirectable = this;
+      for (var event of events) {
+        request.on(event, eventHandlers[event]);
+      }
+      this._currentUrl = /^\//.test(this._options.path) ? url2.format(this._options) : (
+        // When making a request to a proxy, […]
+        // a client MUST send the target URI in absolute-form […].
+        this._options.path
+      );
+      if (this._isRedirect) {
+        var i = 0;
+        var self2 = this;
+        var buffers = this._requestBodyBuffers;
+        (function writeNext(error) {
+          if (request === self2._currentRequest) {
+            if (error) {
+              self2.emit("error", error);
+            } else if (i < buffers.length) {
+              var buffer = buffers[i++];
+              if (!request.finished) {
+                request.write(buffer.data, buffer.encoding, writeNext);
+              }
+            } else if (self2._ended) {
+              request.end();
+            }
+          }
+        })();
+      }
+    };
+    RedirectableRequest.prototype._processResponse = function(response) {
+      var statusCode = response.statusCode;
+      if (this._options.trackRedirects) {
+        this._redirects.push({
+          url: this._currentUrl,
+          headers: response.headers,
+          statusCode
+        });
+      }
+      var location = response.headers.location;
+      if (!location || this._options.followRedirects === false || statusCode < 300 || statusCode >= 400) {
+        response.responseUrl = this._currentUrl;
+        response.redirects = this._redirects;
+        this.emit("response", response);
+        this._requestBodyBuffers = [];
+        return;
+      }
+      destroyRequest(this._currentRequest);
+      response.destroy();
+      if (++this._redirectCount > this._options.maxRedirects) {
+        throw new TooManyRedirectsError();
+      }
+      var requestHeaders;
+      var beforeRedirect = this._options.beforeRedirect;
+      if (beforeRedirect) {
+        requestHeaders = Object.assign({
+          // The Host header was set by nativeProtocol.request
+          Host: response.req.getHeader("host")
+        }, this._options.headers);
+      }
+      var method = this._options.method;
+      if ((statusCode === 301 || statusCode === 302) && this._options.method === "POST" || // RFC7231§6.4.4: The 303 (See Other) status code indicates that
+      // the server is redirecting the user agent to a different resource […]
+      // A user agent can perform a retrieval request targeting that URI
+      // (a GET or HEAD request if using HTTP) […]
+      statusCode === 303 && !/^(?:GET|HEAD)$/.test(this._options.method)) {
+        this._options.method = "GET";
+        this._requestBodyBuffers = [];
+        removeMatchingHeaders(/^content-/i, this._options.headers);
+      }
+      var currentHostHeader = removeMatchingHeaders(/^host$/i, this._options.headers);
+      var currentUrlParts = parseUrl(this._currentUrl);
+      var currentHost = currentHostHeader || currentUrlParts.host;
+      var currentUrl = /^\w+:/.test(location) ? this._currentUrl : url2.format(Object.assign(currentUrlParts, { host: currentHost }));
+      var redirectUrl = resolveUrl(location, currentUrl);
+      debug("redirecting to", redirectUrl.href);
+      this._isRedirect = true;
+      spreadUrlObject(redirectUrl, this._options);
+      if (redirectUrl.protocol !== currentUrlParts.protocol && redirectUrl.protocol !== "https:" || redirectUrl.host !== currentHost && !isSubdomain(redirectUrl.host, currentHost)) {
+        removeMatchingHeaders(/^(?:(?:proxy-)?authorization|cookie)$/i, this._options.headers);
+      }
+      if (isFunction3(beforeRedirect)) {
+        var responseDetails = {
+          headers: response.headers,
+          statusCode
+        };
+        var requestDetails = {
+          url: currentUrl,
+          method,
+          headers: requestHeaders
+        };
+        beforeRedirect(this._options, responseDetails, requestDetails);
+        this._sanitizeOptions(this._options);
+      }
+      this._performRequest();
+    };
+    function wrap(protocols) {
+      var exports3 = {
+        maxRedirects: 21,
+        maxBodyLength: 10 * 1024 * 1024
+      };
+      var nativeProtocols = {};
+      Object.keys(protocols).forEach(function(scheme) {
+        var protocol = scheme + ":";
+        var nativeProtocol = nativeProtocols[protocol] = protocols[scheme];
+        var wrappedProtocol = exports3[scheme] = Object.create(nativeProtocol);
+        function request(input, options, callback) {
+          if (isURL(input)) {
+            input = spreadUrlObject(input);
+          } else if (isString2(input)) {
+            input = spreadUrlObject(parseUrl(input));
+          } else {
+            callback = options;
+            options = validateUrl(input);
+            input = { protocol };
+          }
+          if (isFunction3(options)) {
+            callback = options;
+            options = null;
+          }
+          options = Object.assign({
+            maxRedirects: exports3.maxRedirects,
+            maxBodyLength: exports3.maxBodyLength
+          }, input, options);
+          options.nativeProtocols = nativeProtocols;
+          if (!isString2(options.host) && !isString2(options.hostname)) {
+            options.hostname = "::1";
+          }
+          assert.equal(options.protocol, protocol, "protocol mismatch");
+          debug("options", options);
+          return new RedirectableRequest(options, callback);
+        }
+        function get(input, options, callback) {
+          var wrappedRequest = wrappedProtocol.request(input, options, callback);
+          wrappedRequest.end();
+          return wrappedRequest;
+        }
+        Object.defineProperties(wrappedProtocol, {
+          request: { value: request, configurable: true, enumerable: true, writable: true },
+          get: { value: get, configurable: true, enumerable: true, writable: true }
+        });
+      });
+      return exports3;
+    }
+    function noop2() {
+    }
+    function parseUrl(input) {
+      var parsed;
+      if (useNativeURL) {
+        parsed = new URL2(input);
+      } else {
+        parsed = validateUrl(url2.parse(input));
+        if (!isString2(parsed.protocol)) {
+          throw new InvalidUrlError({ input });
+        }
+      }
+      return parsed;
+    }
+    function resolveUrl(relative, base) {
+      return useNativeURL ? new URL2(relative, base) : parseUrl(url2.resolve(base, relative));
+    }
+    function validateUrl(input) {
+      if (/^\[/.test(input.hostname) && !/^\[[:0-9a-f]+\]$/i.test(input.hostname)) {
+        throw new InvalidUrlError({ input: input.href || input });
+      }
+      if (/^\[/.test(input.host) && !/^\[[:0-9a-f]+\](:\d+)?$/i.test(input.host)) {
+        throw new InvalidUrlError({ input: input.href || input });
+      }
+      return input;
+    }
+    function spreadUrlObject(urlObject, target) {
+      var spread3 = target || {};
+      for (var key of preservedUrlFields) {
+        spread3[key] = urlObject[key];
+      }
+      if (spread3.hostname.startsWith("[")) {
+        spread3.hostname = spread3.hostname.slice(1, -1);
+      }
+      if (spread3.port !== "") {
+        spread3.port = Number(spread3.port);
+      }
+      spread3.path = spread3.search ? spread3.pathname + spread3.search : spread3.pathname;
+      return spread3;
+    }
+    function removeMatchingHeaders(regex, headers) {
+      var lastValue;
+      for (var header in headers) {
+        if (regex.test(header)) {
+          lastValue = headers[header];
+          delete headers[header];
+        }
+      }
+      return lastValue === null || typeof lastValue === "undefined" ? void 0 : String(lastValue).trim();
+    }
+    function createErrorType(code, message, baseClass) {
+      function CustomError(properties) {
+        if (isFunction3(Error.captureStackTrace)) {
+          Error.captureStackTrace(this, this.constructor);
+        }
+        Object.assign(this, properties || {});
+        this.code = code;
+        this.message = this.cause ? message + ": " + this.cause.message : message;
+      }
+      CustomError.prototype = new (baseClass || Error)();
+      Object.defineProperties(CustomError.prototype, {
+        constructor: {
+          value: CustomError,
+          enumerable: false
+        },
+        name: {
+          value: "Error [" + code + "]",
+          enumerable: false
+        }
+      });
+      return CustomError;
+    }
+    function destroyRequest(request, error) {
+      for (var event of events) {
+        request.removeListener(event, eventHandlers[event]);
+      }
+      request.on("error", noop2);
+      request.destroy(error);
+    }
+    function isSubdomain(subdomain, domain) {
+      assert(isString2(subdomain) && isString2(domain));
+      var dot = subdomain.length - domain.length - 1;
+      return dot > 0 && subdomain[dot] === "." && subdomain.endsWith(domain);
+    }
+    function isString2(value) {
+      return typeof value === "string" || value instanceof String;
+    }
+    function isFunction3(value) {
+      return typeof value === "function";
+    }
+    function isBuffer2(value) {
+      return typeof value === "object" && "length" in value;
+    }
+    function isURL(value) {
+      return URL2 && value instanceof URL2;
+    }
+    module2.exports = wrap({ http: http3, https: https2 });
+    module2.exports.wrap = wrap;
+  }
+});
+
 // node_modules/postgres-array/index.js
 var require_postgres_array = __commonJS({
   "node_modules/postgres-array/index.js"(exports2) {
@@ -58662,13 +68714,13 @@ var require_postgres_date = __commonJS({
 // node_modules/xtend/mutable.js
 var require_mutable = __commonJS({
   "node_modules/xtend/mutable.js"(exports2, module2) {
-    module2.exports = extend;
-    var hasOwnProperty = Object.prototype.hasOwnProperty;
-    function extend(target) {
+    module2.exports = extend2;
+    var hasOwnProperty2 = Object.prototype.hasOwnProperty;
+    function extend2(target) {
       for (var i = 1; i < arguments.length; i++) {
         var source = arguments[i];
         for (var key in source) {
-          if (hasOwnProperty.call(source, key)) {
+          if (hasOwnProperty2.call(source, key)) {
             target[key] = source[key];
           }
         }
@@ -58682,13 +68734,13 @@ var require_mutable = __commonJS({
 var require_postgres_interval = __commonJS({
   "node_modules/postgres-interval/index.js"(exports2, module2) {
     "use strict";
-    var extend = require_mutable();
+    var extend2 = require_mutable();
     module2.exports = PostgresInterval;
     function PostgresInterval(raw) {
       if (!(this instanceof PostgresInterval)) {
         return new PostgresInterval(raw);
       }
-      extend(this, parse(raw));
+      extend2(this, parse(raw));
     }
     var properties = ["seconds", "minutes", "hours", "days", "months", "years"];
     PostgresInterval.prototype.toPostgres = function() {
@@ -59465,9 +69517,9 @@ var require_defaults = __commonJS({
 var require_utils4 = __commonJS({
   "node_modules/pg/lib/utils.js"(exports2, module2) {
     "use strict";
-    var defaults2 = require_defaults();
-    var util2 = require("util");
-    var { isDate } = util2.types || util2;
+    var defaults3 = require_defaults();
+    var util4 = require("util");
+    var { isDate: isDate2 } = util4.types || util4;
     function escapeElement(elementRepresentation) {
       const escaped = elementRepresentation.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
       return '"' + escaped + '"';
@@ -59515,8 +69567,8 @@ var require_utils4 = __commonJS({
           }
           return buf.slice(val.byteOffset, val.byteOffset + val.byteLength);
         }
-        if (isDate(val)) {
-          if (defaults2.parseInputDatesAsUTC) {
+        if (isDate2(val)) {
+          if (defaults3.parseInputDatesAsUTC) {
             return dateToStringUTC(val);
           } else {
             return dateToString(val);
@@ -59672,7 +69724,7 @@ var require_utils_webcrypto = __commonJS({
     };
     var webCrypto = nodeCrypto2.webcrypto || globalThis.crypto;
     var subtleCrypto = webCrypto.subtle;
-    var textEncoder = new TextEncoder();
+    var textEncoder2 = new TextEncoder();
     function randomBytes2(length) {
       return webCrypto.getRandomValues(Buffer.alloc(length));
     }
@@ -59680,7 +69732,7 @@ var require_utils_webcrypto = __commonJS({
       try {
         return nodeCrypto2.createHash("md5").update(string, "utf-8").digest("hex");
       } catch (e) {
-        const data = typeof string === "string" ? textEncoder.encode(string) : string;
+        const data = typeof string === "string" ? textEncoder2.encode(string) : string;
         const hash2 = await subtleCrypto.digest("MD5", data);
         return Array.from(new Uint8Array(hash2)).map((b) => b.toString(16).padStart(2, "0")).join("");
       }
@@ -59698,10 +69750,10 @@ var require_utils_webcrypto = __commonJS({
     }
     async function hmacSha256(keyBuffer, msg) {
       const key = await subtleCrypto.importKey("raw", keyBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-      return await subtleCrypto.sign("HMAC", key, textEncoder.encode(msg));
+      return await subtleCrypto.sign("HMAC", key, textEncoder2.encode(msg));
     }
     async function deriveKey(password, salt, iterations) {
-      const key = await subtleCrypto.importKey("raw", textEncoder.encode(password), "PBKDF2", false, ["deriveBits"]);
+      const key = await subtleCrypto.importKey("raw", textEncoder2.encode(password), "PBKDF2", false, ["deriveBits"]);
       const params = { name: "PBKDF2", hash: "SHA-256", salt, iterations };
       return await subtleCrypto.deriveBits(params, key, 32 * 8, ["deriveBits"]);
     }
@@ -59838,20 +69890,20 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "node_modules/pg/lib/crypto/sasl.js"(exports2, module2) {
     "use strict";
-    var crypto3 = require_utils5();
+    var crypto4 = require_utils5();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
-    function startSession(mechanisms, stream) {
+    function startSession(mechanisms, stream4) {
       const candidates = ["SCRAM-SHA-256"];
-      if (stream) candidates.unshift("SCRAM-SHA-256-PLUS");
+      if (stream4) candidates.unshift("SCRAM-SHA-256-PLUS");
       const mechanism = candidates.find((candidate) => mechanisms.includes(candidate));
       if (!mechanism) {
         throw new Error("SASL: Only mechanism(s) " + candidates.join(" and ") + " are supported");
       }
-      if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
+      if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream4.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto3.randomBytes(18).toString("base64");
-      const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
+      const clientNonce = crypto4.randomBytes(18).toString("base64");
+      const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream4 ? "y" : "n";
       return {
         mechanism,
         clientNonce,
@@ -59859,7 +69911,7 @@ var require_sasl = __commonJS({
         message: "SASLInitialResponse"
       };
     }
-    async function continueSession(session, password, serverData, stream) {
+    async function continueSession(session, password, serverData, stream4) {
       if (session.message !== "SASLInitialResponse") {
         throw new Error("SASL: Last message was not SASLInitialResponse");
       }
@@ -59880,25 +69932,25 @@ var require_sasl = __commonJS({
       }
       const clientFirstMessageBare = "n=*,r=" + session.clientNonce;
       const serverFirstMessage = "r=" + sv.nonce + ",s=" + sv.salt + ",i=" + sv.iteration;
-      let channelBinding = stream ? "eSws" : "biws";
+      let channelBinding = stream4 ? "eSws" : "biws";
       if (session.mechanism === "SCRAM-SHA-256-PLUS") {
-        const peerCert = stream.getPeerCertificate().raw;
+        const peerCert = stream4.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto3.hashByName(hashName, peerCert);
+        const certHash = await crypto4.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto3.deriveKey(password, saltBytes, sv.iteration);
-      const clientKey = await crypto3.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto3.sha256(clientKey);
-      const clientSignature = await crypto3.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto4.deriveKey(password, saltBytes, sv.iteration);
+      const clientKey = await crypto4.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto4.sha256(clientKey);
+      const clientSignature = await crypto4.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto3.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto3.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto4.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto4.hmacSha256(serverKey, authMessage);
       session.message = "SASLResponse";
       session.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -60226,7 +70278,7 @@ var require_connection_parameters = __commonJS({
   "node_modules/pg/lib/connection-parameters.js"(exports2, module2) {
     "use strict";
     var dns = require("dns");
-    var defaults2 = require_defaults();
+    var defaults3 = require_defaults();
     var parse = require_pg_connection_string().parse;
     var val = function(key, config, envVar) {
       if (config[key]) {
@@ -60238,7 +70290,7 @@ var require_connection_parameters = __commonJS({
       } else {
         envVar = process.env[envVar];
       }
-      return envVar || defaults2[key];
+      return envVar || defaults3[key];
     };
     var readSSLConfigFromEnvironment = function() {
       switch (process.env.PGSSLMODE) {
@@ -60252,7 +70304,7 @@ var require_connection_parameters = __commonJS({
         case "no-verify":
           return { rejectUnauthorized: false };
       }
-      return defaults2.ssl;
+      return defaults3.ssl;
     };
     var quoteParamValue = function(value) {
       return "'" + ("" + value).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
@@ -60457,10 +70509,10 @@ var require_result = __commonJS({
 var require_query = __commonJS({
   "node_modules/pg/lib/query.js"(exports2, module2) {
     "use strict";
-    var { EventEmitter } = require("events");
+    var { EventEmitter: EventEmitter2 } = require("events");
     var Result2 = require_result();
     var utils = require_utils4();
-    var Query2 = class extends EventEmitter {
+    var Query2 = class extends EventEmitter2 {
       constructor(config, values, callback) {
         super();
         config = utils.normalizeQueryConfig(config, values, callback);
@@ -60991,7 +71043,7 @@ var require_serializer = __commonJS({
         }
       }
     };
-    var bind = (config = {}) => {
+    var bind2 = (config = {}) => {
       const portal = config.portal || "";
       const statement = config.statement || "";
       const binary = config.binary || false;
@@ -61097,7 +71149,7 @@ var require_serializer = __commonJS({
       sendSCRAMClientFinalMessage,
       query,
       parse,
-      bind,
+      bind: bind2,
       execute,
       describe,
       close,
@@ -61494,10 +71546,10 @@ var require_dist4 = __commonJS({
       return serializer_1.serialize;
     } });
     var parser_1 = require_parser();
-    function parse(stream, callback) {
+    function parse(stream4, callback) {
       const parser = new parser_1.Parser();
-      stream.on("data", (buffer) => parser.parse(buffer, callback));
-      return new Promise((resolve2) => stream.on("end", () => resolve2()));
+      stream4.on("data", (buffer) => parser.parse(buffer, callback));
+      return new Promise((resolve2) => stream4.on("end", () => resolve2()));
     }
     exports2.parse = parse;
   }
@@ -61582,13 +71634,13 @@ var require_stream3 = __commonJS({
 var require_connection = __commonJS({
   "node_modules/pg/lib/connection.js"(exports2, module2) {
     "use strict";
-    var EventEmitter = require("events").EventEmitter;
+    var EventEmitter2 = require("events").EventEmitter;
     var { parse, serialize } = require_dist4();
     var { getStream, getSecureStream } = require_stream3();
     var flushBuffer = serialize.flush();
     var syncBuffer = serialize.sync();
     var endBuffer = serialize.end();
-    var Connection2 = class extends EventEmitter {
+    var Connection2 = class extends EventEmitter2 {
       constructor(config) {
         super();
         config = config || {};
@@ -61602,33 +71654,33 @@ var require_connection = __commonJS({
         this.ssl = config.ssl || false;
         this._ending = false;
         this._emitMessage = false;
-        const self = this;
+        const self2 = this;
         this.on("newListener", function(eventName) {
           if (eventName === "message") {
-            self._emitMessage = true;
+            self2._emitMessage = true;
           }
         });
       }
       connect(port, host) {
-        const self = this;
+        const self2 = this;
         this._connecting = true;
         this.stream.setNoDelay(true);
         this.stream.connect(port, host);
         this.stream.once("connect", function() {
-          if (self._keepAlive) {
-            self.stream.setKeepAlive(true, self._keepAliveInitialDelayMillis);
+          if (self2._keepAlive) {
+            self2.stream.setKeepAlive(true, self2._keepAliveInitialDelayMillis);
           }
-          self.emit("connect");
+          self2.emit("connect");
         });
         const reportStreamError = function(error) {
-          if (self._ending && (error.code === "ECONNRESET" || error.code === "EPIPE")) {
+          if (self2._ending && (error.code === "ECONNRESET" || error.code === "EPIPE")) {
             return;
           }
-          self.emit("error", error);
+          self2.emit("error", error);
         };
         this.stream.on("error", reportStreamError);
         this.stream.on("close", function() {
-          self.emit("end");
+          self2.emit("end");
         });
         if (!this.ssl) {
           return this.attachListeners(this.stream);
@@ -61639,19 +71691,19 @@ var require_connection = __commonJS({
             case "S":
               break;
             case "N":
-              self.stream.end();
-              return self.emit("error", new Error("The server does not support SSL connections"));
+              self2.stream.end();
+              return self2.emit("error", new Error("The server does not support SSL connections"));
             default:
-              self.stream.end();
-              return self.emit("error", new Error("There was an error establishing an SSL connection"));
+              self2.stream.end();
+              return self2.emit("error", new Error("There was an error establishing an SSL connection"));
           }
           const options = {
-            socket: self.stream
+            socket: self2.stream
           };
-          if (self.ssl !== true) {
-            Object.assign(options, self.ssl);
-            if ("key" in self.ssl) {
-              options.key = self.ssl.key;
+          if (self2.ssl !== true) {
+            Object.assign(options, self2.ssl);
+            if ("key" in self2.ssl) {
+              options.key = self2.ssl.key;
             }
           }
           const net = require("net");
@@ -61659,17 +71711,17 @@ var require_connection = __commonJS({
             options.servername = host;
           }
           try {
-            self.stream = getSecureStream(options);
+            self2.stream = getSecureStream(options);
           } catch (err) {
-            return self.emit("error", err);
+            return self2.emit("error", err);
           }
-          self.attachListeners(self.stream);
-          self.stream.on("error", reportStreamError);
-          self.emit("sslconnect");
+          self2.attachListeners(self2.stream);
+          self2.stream.on("error", reportStreamError);
+          self2.emit("sslconnect");
         });
       }
-      attachListeners(stream) {
-        parse(stream, (msg) => {
+      attachListeners(stream4) {
+        parse(stream4, (msg) => {
           const eventName = msg.name === "error" ? "errorMessage" : msg.name;
           if (this._emitMessage) {
             this.emit("message", msg);
@@ -61807,17 +71859,17 @@ var require_split2 = __commonJS({
       }
       cb();
     }
-    function push(self, val) {
+    function push(self2, val) {
       if (val !== void 0) {
-        self.push(val);
+        self2.push(val);
       }
     }
-    function noop(incoming) {
+    function noop2(incoming) {
       return incoming;
     }
     function split(matcher, mapper, options) {
       matcher = matcher || /\r?\n/;
-      mapper = mapper || noop;
+      mapper = mapper || noop2;
       options = options || {};
       switch (arguments.length) {
         case 1:
@@ -61836,7 +71888,7 @@ var require_split2 = __commonJS({
             matcher = /\r?\n/;
           } else if (typeof mapper === "object") {
             options = mapper;
-            mapper = noop;
+            mapper = noop2;
           }
       }
       options = Object.assign({}, options);
@@ -61844,19 +71896,19 @@ var require_split2 = __commonJS({
       options.transform = transform;
       options.flush = flush;
       options.readableObjectMode = true;
-      const stream = new Transform(options);
-      stream[kLast] = "";
-      stream[kDecoder] = new StringDecoder("utf8");
-      stream.matcher = matcher;
-      stream.mapper = mapper;
-      stream.maxLength = options.maxLength;
-      stream.skipOverflow = options.skipOverflow || false;
-      stream.overflow = false;
-      stream._destroy = function(err, cb) {
+      const stream4 = new Transform(options);
+      stream4[kLast] = "";
+      stream4[kDecoder] = new StringDecoder("utf8");
+      stream4.matcher = matcher;
+      stream4.mapper = mapper;
+      stream4.maxLength = options.maxLength;
+      stream4.skipOverflow = options.skipOverflow || false;
+      stream4.overflow = false;
+      stream4._destroy = function(err, cb) {
         this._writableState.errorEmitted = false;
         cb(err);
       };
-      return stream;
+      return stream4;
     }
     module2.exports = split;
   }
@@ -61869,7 +71921,7 @@ var require_helper = __commonJS({
     var path2 = require("path");
     var Stream = require("stream").Stream;
     var split = require_split2();
-    var util2 = require("util");
+    var util4 = require("util");
     var defaultPort = 5432;
     var isWin = process.platform === "win32";
     var warnStream = process.stderr;
@@ -61887,7 +71939,7 @@ var require_helper = __commonJS({
       var isWritable = warnStream instanceof Stream && true === warnStream.writable;
       if (isWritable) {
         var args = Array.prototype.slice.call(arguments).concat("\n");
-        warnStream.write(util2.format.apply(util2, args));
+        warnStream.write(util4.format.apply(util4, args));
       }
     }
     Object.defineProperty(module2.exports, "isWin", {
@@ -61898,9 +71950,9 @@ var require_helper = __commonJS({
         isWin = val;
       }
     });
-    module2.exports.warnTo = function(stream) {
+    module2.exports.warnTo = function(stream4) {
       var old = warnStream;
-      warnStream = stream;
+      warnStream = stream4;
       return old;
     };
     module2.exports.getFileName = function(rawEnv) {
@@ -61936,9 +71988,9 @@ var require_helper = __commonJS({
         return prev && (entry[field] === "*" || entry[field] === connInfo[field]);
       }, true);
     };
-    module2.exports.getPassword = function(connInfo, stream, cb) {
+    module2.exports.getPassword = function(connInfo, stream4, cb) {
       var pass;
-      var lineStream = stream.pipe(split());
+      var lineStream = stream4.pipe(split());
       function onLine(line2) {
         var entry = parseLine(line2);
         if (entry && isValidEntry(entry) && matcher(connInfo, entry)) {
@@ -61947,15 +71999,15 @@ var require_helper = __commonJS({
         }
       }
       var onEnd = function() {
-        stream.destroy();
+        stream4.destroy();
         cb(pass);
       };
       var onErr = function(err) {
-        stream.destroy();
+        stream4.destroy();
         warn("WARNING: error on reading file: %s", err);
         cb(void 0);
       };
-      stream.on("error", onErr);
+      stream4.on("error", onErr);
       lineStream.on("data", onLine).on("end", onEnd).on("error", onErr);
     };
     var parseLine = module2.exports.parseLine = function(line2) {
@@ -62057,16 +72109,16 @@ var require_lib4 = __commonJS({
 // node_modules/pg/lib/client.js
 var require_client2 = __commonJS({
   "node_modules/pg/lib/client.js"(exports2, module2) {
-    var EventEmitter = require("events").EventEmitter;
+    var EventEmitter2 = require("events").EventEmitter;
     var utils = require_utils4();
     var nodeUtils = require("util");
     var sasl = require_sasl();
     var TypeOverrides2 = require_type_overrides();
     var ConnectionParameters = require_connection_parameters();
     var Query2 = require_query();
-    var defaults2 = require_defaults();
+    var defaults3 = require_defaults();
     var Connection2 = require_connection();
-    var crypto3 = require_utils5();
+    var crypto4 = require_utils5();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -62092,7 +72144,7 @@ var require_client2 = __commonJS({
       },
       "Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead."
     );
-    var Client2 = class extends EventEmitter {
+    var Client2 = class extends EventEmitter2 {
       constructor(config) {
         super();
         this.connectionParameters = new ConnectionParameters(config);
@@ -62129,7 +72181,7 @@ var require_client2 = __commonJS({
           encoding: this.connectionParameters.client_encoding || "utf8"
         });
         this._queryQueue = [];
-        this.binary = c.binary || defaults2.binary;
+        this.binary = c.binary || defaults3.binary;
         this.processID = null;
         this.secretKey = null;
         this.ssl = this.connectionParameters.ssl || false;
@@ -62166,7 +72218,7 @@ var require_client2 = __commonJS({
         this._queryQueue.length = 0;
       }
       _connect(callback) {
-        const self = this;
+        const self2 = this;
         const con = this.connection;
         this._connectionCallback = callback;
         if (this._connecting || this._connected) {
@@ -62192,14 +72244,14 @@ var require_client2 = __commonJS({
           con.connect(this.port, this.host);
         }
         con.on("connect", function() {
-          if (self.ssl) {
+          if (self2.ssl) {
             con.requestSsl();
           } else {
-            con.startup(self.getStartupConf());
+            con.startup(self2.getStartupConf());
           }
         });
         con.on("sslconnect", function() {
-          con.startup(self.getStartupConf());
+          con.startup(self2.getStartupConf());
         });
         this._attachListeners(con);
         con.once("end", () => {
@@ -62301,7 +72353,7 @@ var require_client2 = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto3.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto4.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e) {
             this.emit("error", e);
@@ -62676,7 +72728,7 @@ var require_client2 = __commonJS({
 var require_pg_pool = __commonJS({
   "node_modules/pg-pool/index.js"(exports2, module2) {
     "use strict";
-    var EventEmitter = require("events").EventEmitter;
+    var EventEmitter2 = require("events").EventEmitter;
     var NOOP = function() {
     };
     var removeWhere = (list, predicate) => {
@@ -62727,7 +72779,7 @@ var require_pg_pool = __commonJS({
         pool3.emit("error", err, client);
       };
     }
-    var Pool3 = class extends EventEmitter {
+    var Pool3 = class extends EventEmitter2 {
       constructor(options, Client2) {
         super();
         this.options = Object.assign({}, options);
@@ -63102,11 +73154,11 @@ var require_pg_pool = __commonJS({
 var require_query2 = __commonJS({
   "node_modules/pg/lib/native/query.js"(exports2, module2) {
     "use strict";
-    var EventEmitter = require("events").EventEmitter;
-    var util2 = require("util");
+    var EventEmitter2 = require("events").EventEmitter;
+    var util4 = require("util");
     var utils = require_utils4();
     var NativeQuery = module2.exports = function(config, values, callback) {
-      EventEmitter.call(this);
+      EventEmitter2.call(this);
       config = utils.normalizeQueryConfig(config, values, callback);
       this.text = config.text;
       this.values = config.values;
@@ -63123,7 +73175,7 @@ var require_query2 = __commonJS({
         }.bind(this)
       );
     };
-    util2.inherits(NativeQuery, EventEmitter);
+    util4.inherits(NativeQuery, EventEmitter2);
     var errorFieldMap = {
       sqlState: "code",
       statementPosition: "position",
@@ -63171,34 +73223,34 @@ var require_query2 = __commonJS({
     };
     NativeQuery.prototype.submit = function(client) {
       this.state = "running";
-      const self = this;
+      const self2 = this;
       this.native = client.native;
       client.native.arrayMode = this._arrayMode;
       let after = function(err, rows, results) {
         client.native.arrayMode = false;
         setImmediate(function() {
-          self.emit("_done");
+          self2.emit("_done");
         });
         if (err) {
-          return self.handleError(err);
+          return self2.handleError(err);
         }
-        if (self._emitRowEvents) {
+        if (self2._emitRowEvents) {
           if (results.length > 1) {
             rows.forEach((rowOfRows, i) => {
               rowOfRows.forEach((row) => {
-                self.emit("row", row, results[i]);
+                self2.emit("row", row, results[i]);
               });
             });
           } else {
             rows.forEach(function(row) {
-              self.emit("row", row, results);
+              self2.emit("row", row, results);
             });
           }
         }
-        self.state = "end";
-        self.emit("end", results);
-        if (self.callback) {
-          self.callback(null, results);
+        self2.state = "end";
+        self2.emit("end", results);
+        if (self2.callback) {
+          self2.callback(null, results);
         }
       };
       if (process.domain) {
@@ -63220,8 +73272,8 @@ var require_query2 = __commonJS({
         }
         return client.native.prepare(this.name, this.text, values.length, function(err) {
           if (err) return after(err);
-          client.namedQueries[self.name] = self.text;
-          return self.native.execute(self.name, values, after);
+          client.namedQueries[self2.name] = self2.text;
+          return self2.native.execute(self2.name, values, after);
         });
       } else if (this.values) {
         if (!Array.isArray(this.values)) {
@@ -63250,8 +73302,8 @@ var require_client3 = __commonJS({
       throw e;
     }
     var TypeOverrides2 = require_type_overrides();
-    var EventEmitter = require("events").EventEmitter;
-    var util2 = require("util");
+    var EventEmitter2 = require("events").EventEmitter;
+    var util4 = require("util");
     var ConnectionParameters = require_connection_parameters();
     var NativeQuery = require_query2();
     var queryQueueLengthDeprecationNotice = nodeUtils.deprecate(
@@ -63260,7 +73312,7 @@ var require_client3 = __commonJS({
       "Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead."
     );
     var Client2 = module2.exports = function(config) {
-      EventEmitter.call(this);
+      EventEmitter2.call(this);
       config = config || {};
       this._Promise = config.Promise || global.Promise;
       this._types = new TypeOverrides2(config.types);
@@ -63287,7 +73339,7 @@ var require_client3 = __commonJS({
       this.namedQueries = {};
     };
     Client2.Query = NativeQuery;
-    util2.inherits(Client2, EventEmitter);
+    util4.inherits(Client2, EventEmitter2);
     Client2.prototype._errorAllQueries = function(err) {
       const enqueueError = (query) => {
         process.nextTick(() => {
@@ -63303,34 +73355,34 @@ var require_client3 = __commonJS({
       this._queryQueue.length = 0;
     };
     Client2.prototype._connect = function(cb) {
-      const self = this;
+      const self2 = this;
       if (this._connecting) {
         process.nextTick(() => cb(new Error("Client has already been connected. You cannot reuse a client.")));
         return;
       }
       this._connecting = true;
       this.connectionParameters.getLibpqConnectionString(function(err, conString) {
-        if (self.connectionParameters.nativeConnectionString) conString = self.connectionParameters.nativeConnectionString;
+        if (self2.connectionParameters.nativeConnectionString) conString = self2.connectionParameters.nativeConnectionString;
         if (err) return cb(err);
-        self.native.connect(conString, function(err2) {
+        self2.native.connect(conString, function(err2) {
           if (err2) {
-            self.native.end();
+            self2.native.end();
             return cb(err2);
           }
-          self._connected = true;
-          self.native.on("error", function(err3) {
-            self._queryable = false;
-            self._errorAllQueries(err3);
-            self.emit("error", err3);
+          self2._connected = true;
+          self2.native.on("error", function(err3) {
+            self2._queryable = false;
+            self2._errorAllQueries(err3);
+            self2.emit("error", err3);
           });
-          self.native.on("notification", function(msg) {
-            self.emit("notification", {
+          self2.native.on("notification", function(msg) {
+            self2.emit("notification", {
               channel: msg.relname,
               payload: msg.extra
             });
           });
-          self.emit("connect");
-          self._pulseQueryQueue(true);
+          self2.emit("connect");
+          self2._pulseQueryQueue(true);
           cb(null, this);
         });
       });
@@ -63423,7 +73475,7 @@ var require_client3 = __commonJS({
       return result;
     };
     Client2.prototype.end = function(cb) {
-      const self = this;
+      const self2 = this;
       this._ending = true;
       if (!this._connected) {
         this.once("connect", this.end.bind(this, cb));
@@ -63435,10 +73487,10 @@ var require_client3 = __commonJS({
         });
       }
       this.native.end(function() {
-        self._connected = false;
-        self._errorAllQueries(new Error("Connection terminated"));
+        self2._connected = false;
+        self2._errorAllQueries(new Error("Connection terminated"));
         process.nextTick(() => {
-          self.emit("end");
+          self2.emit("end");
           if (cb) cb();
         });
       });
@@ -63463,9 +73515,9 @@ var require_client3 = __commonJS({
       }
       this._activeQuery = query;
       query.submit(this);
-      const self = this;
+      const self2 = this;
       query.once("_done", function() {
-        self._pulseQueryQueue();
+        self2._pulseQueryQueue();
       });
     };
     Client2.prototype.cancel = function(query) {
@@ -63505,7 +73557,7 @@ var require_lib5 = __commonJS({
   "node_modules/pg/lib/index.js"(exports2, module2) {
     "use strict";
     var Client2 = require_client2();
-    var defaults2 = require_defaults();
+    var defaults3 = require_defaults();
     var Connection2 = require_connection();
     var Result2 = require_result();
     var utils = require_utils4();
@@ -63521,7 +73573,7 @@ var require_lib5 = __commonJS({
       };
     };
     var PG = function(clientConstructor2) {
-      this.defaults = defaults2;
+      this.defaults = defaults3;
       this.Client = clientConstructor2;
       this.Query = this.Client.Query;
       this.Pool = poolFactory(this.Client);
@@ -63629,7 +73681,7 @@ var require_data_stream = __commonJS({
   "node_modules/jws/lib/data-stream.js"(exports2, module2) {
     var Buffer2 = require_safe_buffer().Buffer;
     var Stream = require("stream");
-    var util2 = require("util");
+    var util4 = require("util");
     function DataStream(data) {
       this.buffer = null;
       this.writable = true;
@@ -63655,7 +73707,7 @@ var require_data_stream = __commonJS({
       }
       throw new TypeError("Unexpected data type (" + typeof data + ")");
     }
-    util2.inherits(DataStream, Stream);
+    util4.inherits(DataStream, Stream);
     DataStream.prototype.write = function write(data) {
       this.buffer = Buffer2.concat([this.buffer, Buffer2.from(data)]);
       this.emit("data", data);
@@ -63874,14 +73926,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "node_modules/jwa/index.js"(exports2, module2) {
     var Buffer2 = require_safe_buffer().Buffer;
-    var crypto3 = require("crypto");
+    var crypto4 = require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
-    var util2 = require("util");
+    var util4 = require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto3.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto4.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -63956,7 +74008,7 @@ var require_jwa = __commonJS({
     }
     function typeError(template) {
       var args = [].slice.call(arguments, 1);
-      var errMsg = util2.format.bind(util2, template).apply(null, args);
+      var errMsg = util4.format.bind(util4, template).apply(null, args);
       return new TypeError(errMsg);
     }
     function bufferOrString(obj) {
@@ -63971,17 +74023,17 @@ var require_jwa = __commonJS({
       return function sign(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto3.createHmac("sha" + bits, secret);
+        var hmac = crypto4.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual = "timingSafeEqual" in crypto3 ? function timingSafeEqual2(a, b) {
+    var timingSafeEqual = "timingSafeEqual" in crypto4 ? function timingSafeEqual2(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto3.timingSafeEqual(a, b);
+      return crypto4.timingSafeEqual(a, b);
     } : function timingSafeEqual2(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -63998,7 +74050,7 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto3.createSign("RSA-SHA" + bits);
+        var signer = crypto4.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
       };
@@ -64008,7 +74060,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto3.createVerify("RSA-SHA" + bits);
+        var verifier = crypto4.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
       };
@@ -64017,11 +74069,11 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto3.createSign("RSA-SHA" + bits);
+        var signer = crypto4.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto3.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto3.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto4.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto4.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -64031,12 +74083,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto3.createVerify("RSA-SHA" + bits);
+        var verifier = crypto4.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey,
-          padding: crypto3.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto3.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto4.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto4.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -64098,7 +74150,7 @@ var require_jwa = __commonJS({
 var require_tostring = __commonJS({
   "node_modules/jws/lib/tostring.js"(exports2, module2) {
     var Buffer2 = require("buffer").Buffer;
-    module2.exports = function toString(obj) {
+    module2.exports = function toString3(obj) {
       if (typeof obj === "string")
         return obj;
       if (typeof obj === "number" || Buffer2.isBuffer(obj))
@@ -64115,16 +74167,16 @@ var require_sign_stream = __commonJS({
     var DataStream = require_data_stream();
     var jwa = require_jwa();
     var Stream = require("stream");
-    var toString = require_tostring();
-    var util2 = require("util");
+    var toString3 = require_tostring();
+    var util4 = require("util");
     function base64url(string, encoding) {
       return Buffer2.from(string, encoding).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
     }
     function jwsSecuredInput(header, payload, encoding) {
       encoding = encoding || "utf8";
-      var encodedHeader = base64url(toString(header), "binary");
-      var encodedPayload = base64url(toString(payload), encoding);
-      return util2.format("%s.%s", encodedHeader, encodedPayload);
+      var encodedHeader = base64url(toString3(header), "binary");
+      var encodedPayload = base64url(toString3(payload), encoding);
+      return util4.format("%s.%s", encodedHeader, encodedPayload);
     }
     function jwsSign(opts) {
       var header = opts.header;
@@ -64134,7 +74186,7 @@ var require_sign_stream = __commonJS({
       var algo = jwa(header.alg);
       var securedInput = jwsSecuredInput(header, payload, encoding);
       var signature = algo.sign(securedInput, secretOrKey);
-      return util2.format("%s.%s", securedInput, signature);
+      return util4.format("%s.%s", securedInput, signature);
     }
     function SignStream(opts) {
       var secret = opts.secret;
@@ -64158,7 +74210,7 @@ var require_sign_stream = __commonJS({
           this.sign();
       }.bind(this));
     }
-    util2.inherits(SignStream, Stream);
+    util4.inherits(SignStream, Stream);
     SignStream.prototype.sign = function sign() {
       try {
         var signature = jwsSign({
@@ -64190,14 +74242,14 @@ var require_verify_stream = __commonJS({
     var DataStream = require_data_stream();
     var jwa = require_jwa();
     var Stream = require("stream");
-    var toString = require_tostring();
-    var util2 = require("util");
+    var toString3 = require_tostring();
+    var util4 = require("util");
     var JWS_REGEX = /^[a-zA-Z0-9\-_]+?\.[a-zA-Z0-9\-_]+?\.([a-zA-Z0-9\-_]+)?$/;
-    function isObject(thing) {
+    function isObject2(thing) {
       return Object.prototype.toString.call(thing) === "[object Object]";
     }
     function safeJsonParse(thing) {
-      if (isObject(thing))
+      if (isObject2(thing))
         return thing;
       try {
         return JSON.parse(thing);
@@ -64229,7 +74281,7 @@ var require_verify_stream = __commonJS({
         err.code = "MISSING_ALGORITHM";
         throw err;
       }
-      jwsSig = toString(jwsSig);
+      jwsSig = toString3(jwsSig);
       var signature = signatureFromJWS(jwsSig);
       var securedInput = securedInputFromJWS(jwsSig);
       var algo = jwa(algorithm);
@@ -64237,7 +74289,7 @@ var require_verify_stream = __commonJS({
     }
     function jwsDecode(jwsSig, opts) {
       opts = opts || {};
-      jwsSig = toString(jwsSig);
+      jwsSig = toString3(jwsSig);
       if (!isValidJws(jwsSig))
         return null;
       var header = headerFromJWS(jwsSig);
@@ -64275,7 +74327,7 @@ var require_verify_stream = __commonJS({
           this.verify();
       }.bind(this));
     }
-    util2.inherits(VerifyStream, Stream);
+    util4.inherits(VerifyStream, Stream);
     VerifyStream.prototype.verify = function verify() {
       try {
         var valid = jwsVerify(this.signature.buffer, this.algorithm, this.key.buffer);
@@ -64465,7 +74517,7 @@ var require_constants3 = __commonJS({
 });
 
 // node_modules/jsonwebtoken/node_modules/semver/internal/debug.js
-var require_debug = __commonJS({
+var require_debug2 = __commonJS({
   "node_modules/jsonwebtoken/node_modules/semver/internal/debug.js"(exports2, module2) {
     "use strict";
     var debug = typeof process === "object" && process.env && process.env.NODE_DEBUG && /\bsemver\b/i.test(process.env.NODE_DEBUG) ? (...args) => console.error("SEMVER", ...args) : () => {
@@ -64483,7 +74535,7 @@ var require_re = __commonJS({
       MAX_SAFE_BUILD_LENGTH,
       MAX_LENGTH
     } = require_constants3();
-    var debug = require_debug();
+    var debug = require_debug2();
     exports2 = module2.exports = {};
     var re = exports2.re = [];
     var safeRe = exports2.safeRe = [];
@@ -64610,7 +74662,7 @@ var require_identifiers = __commonJS({
 var require_semver = __commonJS({
   "node_modules/jsonwebtoken/node_modules/semver/classes/semver.js"(exports2, module2) {
     "use strict";
-    var debug = require_debug();
+    var debug = require_debug2();
     var { MAX_LENGTH, MAX_SAFE_INTEGER } = require_constants3();
     var { safeRe: re, t } = require_re();
     var parseOptions = require_parse_options();
@@ -65450,7 +75502,7 @@ var require_range2 = __commonJS({
     var cache = new LRU();
     var parseOptions = require_parse_options();
     var Comparator = require_comparator();
-    var debug = require_debug();
+    var debug = require_debug2();
     var SemVer = require_semver();
     var {
       safeRe: re,
@@ -65786,7 +75838,7 @@ var require_comparator = __commonJS({
     var parseOptions = require_parse_options();
     var { safeRe: re, t } = require_re();
     var cmp = require_cmp();
-    var debug = require_debug();
+    var debug = require_debug2();
     var SemVer = require_semver();
     var Range = require_range2();
   }
@@ -66721,16 +76773,16 @@ var require_lodash = __commonJS({
       };
     }
     var objectProto = Object.prototype;
-    var hasOwnProperty = objectProto.hasOwnProperty;
+    var hasOwnProperty2 = objectProto.hasOwnProperty;
     var objectToString = objectProto.toString;
     var propertyIsEnumerable = objectProto.propertyIsEnumerable;
     var nativeKeys = overArg(Object.keys, Object);
     var nativeMax = Math.max;
     function arrayLikeKeys(value, inherited) {
-      var result = isArray(value) || isArguments(value) ? baseTimes(value.length, String) : [];
+      var result = isArray2(value) || isArguments(value) ? baseTimes(value.length, String) : [];
       var length = result.length, skipIndexes = !!length;
       for (var key in value) {
-        if ((inherited || hasOwnProperty.call(value, key)) && !(skipIndexes && (key == "length" || isIndex(key, length)))) {
+        if ((inherited || hasOwnProperty2.call(value, key)) && !(skipIndexes && (key == "length" || isIndex(key, length)))) {
           result.push(key);
         }
       }
@@ -66742,7 +76794,7 @@ var require_lodash = __commonJS({
       }
       var result = [];
       for (var key in Object(object)) {
-        if (hasOwnProperty.call(object, key) && key != "constructor") {
+        if (hasOwnProperty2.call(object, key) && key != "constructor") {
           result.push(key);
         }
       }
@@ -66763,34 +76815,34 @@ var require_lodash = __commonJS({
       if (fromIndex < 0) {
         fromIndex = nativeMax(length + fromIndex, 0);
       }
-      return isString(collection) ? fromIndex <= length && collection.indexOf(value, fromIndex) > -1 : !!length && baseIndexOf(collection, value, fromIndex) > -1;
+      return isString2(collection) ? fromIndex <= length && collection.indexOf(value, fromIndex) > -1 : !!length && baseIndexOf(collection, value, fromIndex) > -1;
     }
     function isArguments(value) {
-      return isArrayLikeObject(value) && hasOwnProperty.call(value, "callee") && (!propertyIsEnumerable.call(value, "callee") || objectToString.call(value) == argsTag);
+      return isArrayLikeObject(value) && hasOwnProperty2.call(value, "callee") && (!propertyIsEnumerable.call(value, "callee") || objectToString.call(value) == argsTag);
     }
-    var isArray = Array.isArray;
+    var isArray2 = Array.isArray;
     function isArrayLike(value) {
-      return value != null && isLength(value.length) && !isFunction(value);
+      return value != null && isLength(value.length) && !isFunction3(value);
     }
     function isArrayLikeObject(value) {
       return isObjectLike(value) && isArrayLike(value);
     }
-    function isFunction(value) {
-      var tag = isObject(value) ? objectToString.call(value) : "";
+    function isFunction3(value) {
+      var tag = isObject2(value) ? objectToString.call(value) : "";
       return tag == funcTag || tag == genTag;
     }
     function isLength(value) {
       return typeof value == "number" && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
     }
-    function isObject(value) {
+    function isObject2(value) {
       var type = typeof value;
       return !!value && (type == "object" || type == "function");
     }
     function isObjectLike(value) {
       return !!value && typeof value == "object";
     }
-    function isString(value) {
-      return typeof value == "string" || !isArray(value) && isObjectLike(value) && objectToString.call(value) == stringTag;
+    function isString2(value) {
+      return typeof value == "string" || !isArray2(value) && isObjectLike(value) && objectToString.call(value) == stringTag;
     }
     function isSymbol(value) {
       return typeof value == "symbol" || isObjectLike(value) && objectToString.call(value) == symbolTag;
@@ -66817,9 +76869,9 @@ var require_lodash = __commonJS({
       if (isSymbol(value)) {
         return NAN;
       }
-      if (isObject(value)) {
+      if (isObject2(value)) {
         var other = typeof value.valueOf == "function" ? value.valueOf() : value;
-        value = isObject(other) ? other + "" : other;
+        value = isObject2(other) ? other + "" : other;
       }
       if (typeof value != "string") {
         return value === 0 ? value : +value;
@@ -66844,13 +76896,13 @@ var require_lodash2 = __commonJS({
     var boolTag = "[object Boolean]";
     var objectProto = Object.prototype;
     var objectToString = objectProto.toString;
-    function isBoolean(value) {
+    function isBoolean2(value) {
       return value === true || value === false || isObjectLike(value) && objectToString.call(value) == boolTag;
     }
     function isObjectLike(value) {
       return !!value && typeof value == "object";
     }
-    module2.exports = isBoolean;
+    module2.exports = isBoolean2;
   }
 });
 
@@ -66871,7 +76923,7 @@ var require_lodash3 = __commonJS({
     function isInteger(value) {
       return typeof value == "number" && value == toInteger(value);
     }
-    function isObject(value) {
+    function isObject2(value) {
       var type = typeof value;
       return !!value && (type == "object" || type == "function");
     }
@@ -66903,9 +76955,9 @@ var require_lodash3 = __commonJS({
       if (isSymbol(value)) {
         return NAN;
       }
-      if (isObject(value)) {
+      if (isObject2(value)) {
         var other = typeof value.valueOf == "function" ? value.valueOf() : value;
-        value = isObject(other) ? other + "" : other;
+        value = isObject2(other) ? other + "" : other;
       }
       if (typeof value != "string") {
         return value === 0 ? value : +value;
@@ -66927,10 +76979,10 @@ var require_lodash4 = __commonJS({
     function isObjectLike(value) {
       return !!value && typeof value == "object";
     }
-    function isNumber(value) {
+    function isNumber2(value) {
       return typeof value == "number" || isObjectLike(value) && objectToString.call(value) == numberTag;
     }
-    module2.exports = isNumber;
+    module2.exports = isNumber2;
   }
 });
 
@@ -66956,14 +77008,14 @@ var require_lodash5 = __commonJS({
     var funcProto = Function.prototype;
     var objectProto = Object.prototype;
     var funcToString = funcProto.toString;
-    var hasOwnProperty = objectProto.hasOwnProperty;
+    var hasOwnProperty2 = objectProto.hasOwnProperty;
     var objectCtorString = funcToString.call(Object);
     var objectToString = objectProto.toString;
     var getPrototype = overArg(Object.getPrototypeOf, Object);
     function isObjectLike(value) {
       return !!value && typeof value == "object";
     }
-    function isPlainObject(value) {
+    function isPlainObject2(value) {
       if (!isObjectLike(value) || objectToString.call(value) != objectTag || isHostObject(value)) {
         return false;
       }
@@ -66971,10 +77023,10 @@ var require_lodash5 = __commonJS({
       if (proto === null) {
         return true;
       }
-      var Ctor = hasOwnProperty.call(proto, "constructor") && proto.constructor;
+      var Ctor = hasOwnProperty2.call(proto, "constructor") && proto.constructor;
       return typeof Ctor == "function" && Ctor instanceof Ctor && funcToString.call(Ctor) == objectCtorString;
     }
-    module2.exports = isPlainObject;
+    module2.exports = isPlainObject2;
   }
 });
 
@@ -66984,14 +77036,14 @@ var require_lodash6 = __commonJS({
     var stringTag = "[object String]";
     var objectProto = Object.prototype;
     var objectToString = objectProto.toString;
-    var isArray = Array.isArray;
+    var isArray2 = Array.isArray;
     function isObjectLike(value) {
       return !!value && typeof value == "object";
     }
-    function isString(value) {
-      return typeof value == "string" || !isArray(value) && isObjectLike(value) && objectToString.call(value) == stringTag;
+    function isString2(value) {
+      return typeof value == "string" || !isArray2(value) && isObjectLike(value) && objectToString.call(value) == stringTag;
     }
-    module2.exports = isString;
+    module2.exports = isString2;
   }
 });
 
@@ -67029,7 +77081,7 @@ var require_lodash7 = __commonJS({
     function once(func) {
       return before(2, func);
     }
-    function isObject(value) {
+    function isObject2(value) {
       var type = typeof value;
       return !!value && (type == "object" || type == "function");
     }
@@ -67061,9 +77113,9 @@ var require_lodash7 = __commonJS({
       if (isSymbol(value)) {
         return NAN;
       }
-      if (isObject(value)) {
+      if (isObject2(value)) {
         var other = typeof value.valueOf == "function" ? value.valueOf() : value;
-        value = isObject(other) ? other + "" : other;
+        value = isObject2(other) ? other + "" : other;
       }
       if (typeof value != "string") {
         return value === 0 ? value : +value;
@@ -67084,11 +77136,11 @@ var require_sign2 = __commonJS({
     var validateAsymmetricKey = require_validateAsymmetricKey();
     var jws = require_jws();
     var includes = require_lodash();
-    var isBoolean = require_lodash2();
+    var isBoolean2 = require_lodash2();
     var isInteger = require_lodash3();
-    var isNumber = require_lodash4();
-    var isPlainObject = require_lodash5();
-    var isString = require_lodash6();
+    var isNumber2 = require_lodash4();
+    var isPlainObject2 = require_lodash5();
+    var isString2 = require_lodash6();
     var once = require_lodash7();
     var { KeyObject, createSecretKey, createPrivateKey } = require("crypto");
     var SUPPORTED_ALGS = ["RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "HS256", "HS384", "HS512", "none"];
@@ -67097,33 +77149,33 @@ var require_sign2 = __commonJS({
     }
     var sign_options_schema = {
       expiresIn: { isValid: function(value) {
-        return isInteger(value) || isString(value) && value;
+        return isInteger(value) || isString2(value) && value;
       }, message: '"expiresIn" should be a number of seconds or string representing a timespan' },
       notBefore: { isValid: function(value) {
-        return isInteger(value) || isString(value) && value;
+        return isInteger(value) || isString2(value) && value;
       }, message: '"notBefore" should be a number of seconds or string representing a timespan' },
       audience: { isValid: function(value) {
-        return isString(value) || Array.isArray(value);
+        return isString2(value) || Array.isArray(value);
       }, message: '"audience" must be a string or array' },
       algorithm: { isValid: includes.bind(null, SUPPORTED_ALGS), message: '"algorithm" must be a valid string enum value' },
-      header: { isValid: isPlainObject, message: '"header" must be an object' },
-      encoding: { isValid: isString, message: '"encoding" must be a string' },
-      issuer: { isValid: isString, message: '"issuer" must be a string' },
-      subject: { isValid: isString, message: '"subject" must be a string' },
-      jwtid: { isValid: isString, message: '"jwtid" must be a string' },
-      noTimestamp: { isValid: isBoolean, message: '"noTimestamp" must be a boolean' },
-      keyid: { isValid: isString, message: '"keyid" must be a string' },
-      mutatePayload: { isValid: isBoolean, message: '"mutatePayload" must be a boolean' },
-      allowInsecureKeySizes: { isValid: isBoolean, message: '"allowInsecureKeySizes" must be a boolean' },
-      allowInvalidAsymmetricKeyTypes: { isValid: isBoolean, message: '"allowInvalidAsymmetricKeyTypes" must be a boolean' }
+      header: { isValid: isPlainObject2, message: '"header" must be an object' },
+      encoding: { isValid: isString2, message: '"encoding" must be a string' },
+      issuer: { isValid: isString2, message: '"issuer" must be a string' },
+      subject: { isValid: isString2, message: '"subject" must be a string' },
+      jwtid: { isValid: isString2, message: '"jwtid" must be a string' },
+      noTimestamp: { isValid: isBoolean2, message: '"noTimestamp" must be a boolean' },
+      keyid: { isValid: isString2, message: '"keyid" must be a string' },
+      mutatePayload: { isValid: isBoolean2, message: '"mutatePayload" must be a boolean' },
+      allowInsecureKeySizes: { isValid: isBoolean2, message: '"allowInsecureKeySizes" must be a boolean' },
+      allowInvalidAsymmetricKeyTypes: { isValid: isBoolean2, message: '"allowInvalidAsymmetricKeyTypes" must be a boolean' }
     };
     var registered_claims_schema = {
-      iat: { isValid: isNumber, message: '"iat" should be a number of seconds' },
-      exp: { isValid: isNumber, message: '"exp" should be a number of seconds' },
-      nbf: { isValid: isNumber, message: '"nbf" should be a number of seconds' }
+      iat: { isValid: isNumber2, message: '"iat" should be a number of seconds' },
+      exp: { isValid: isNumber2, message: '"exp" should be a number of seconds' },
+      nbf: { isValid: isNumber2, message: '"nbf" should be a number of seconds' }
     };
     function validate(schema, allowUnknown, object, parameterName) {
-      if (!isPlainObject(object)) {
+      if (!isPlainObject2(object)) {
         throw new Error('Expected "' + parameterName + '" to be a plain object.');
       }
       Object.keys(object).forEach(function(key) {
@@ -67318,11 +77370,11 @@ var require_jsonwebtoken = __commonJS({
 // node_modules/cookie-signature/index.js
 var require_cookie_signature2 = __commonJS({
   "node_modules/cookie-signature/index.js"(exports2) {
-    var crypto3 = require("crypto");
+    var crypto4 = require("crypto");
     exports2.sign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if ("string" != typeof secret) throw new TypeError("Secret string must be provided.");
-      return val + "." + crypto3.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto4.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports2.unsign = function(val, secret) {
       if ("string" != typeof val) throw new TypeError("Signed cookie string must be provided.");
@@ -67331,7 +77383,7 @@ var require_cookie_signature2 = __commonJS({
       return sha1(mac) == sha1(val) ? str : false;
     };
     function sha1(str) {
-      return crypto3.createHash("sha1").update(str).digest("hex");
+      return crypto4.createHash("sha1").update(str).digest("hex");
     }
   }
 });
@@ -67428,6 +77480,4721 @@ var require_cookie_parser = __commonJS({
   }
 });
 
+// node_modules/eventemitter3/index.js
+var require_eventemitter3 = __commonJS({
+  "node_modules/eventemitter3/index.js"(exports2, module2) {
+    "use strict";
+    var has = Object.prototype.hasOwnProperty;
+    var prefix = "~";
+    function Events() {
+    }
+    if (Object.create) {
+      Events.prototype = /* @__PURE__ */ Object.create(null);
+      if (!new Events().__proto__) prefix = false;
+    }
+    function EE(fn, context, once) {
+      this.fn = fn;
+      this.context = context;
+      this.once = once || false;
+    }
+    function addListener(emitter, event, fn, context, once) {
+      if (typeof fn !== "function") {
+        throw new TypeError("The listener must be a function");
+      }
+      var listener = new EE(fn, context || emitter, once), evt = prefix ? prefix + event : event;
+      if (!emitter._events[evt]) emitter._events[evt] = listener, emitter._eventsCount++;
+      else if (!emitter._events[evt].fn) emitter._events[evt].push(listener);
+      else emitter._events[evt] = [emitter._events[evt], listener];
+      return emitter;
+    }
+    function clearEvent(emitter, evt) {
+      if (--emitter._eventsCount === 0) emitter._events = new Events();
+      else delete emitter._events[evt];
+    }
+    function EventEmitter2() {
+      this._events = new Events();
+      this._eventsCount = 0;
+    }
+    EventEmitter2.prototype.eventNames = function eventNames() {
+      var names = [], events, name;
+      if (this._eventsCount === 0) return names;
+      for (name in events = this._events) {
+        if (has.call(events, name)) names.push(prefix ? name.slice(1) : name);
+      }
+      if (Object.getOwnPropertySymbols) {
+        return names.concat(Object.getOwnPropertySymbols(events));
+      }
+      return names;
+    };
+    EventEmitter2.prototype.listeners = function listeners(event) {
+      var evt = prefix ? prefix + event : event, handlers = this._events[evt];
+      if (!handlers) return [];
+      if (handlers.fn) return [handlers.fn];
+      for (var i = 0, l = handlers.length, ee = new Array(l); i < l; i++) {
+        ee[i] = handlers[i].fn;
+      }
+      return ee;
+    };
+    EventEmitter2.prototype.listenerCount = function listenerCount(event) {
+      var evt = prefix ? prefix + event : event, listeners = this._events[evt];
+      if (!listeners) return 0;
+      if (listeners.fn) return 1;
+      return listeners.length;
+    };
+    EventEmitter2.prototype.emit = function emit(event, a1, a2, a3, a4, a5) {
+      var evt = prefix ? prefix + event : event;
+      if (!this._events[evt]) return false;
+      var listeners = this._events[evt], len = arguments.length, args, i;
+      if (listeners.fn) {
+        if (listeners.once) this.removeListener(event, listeners.fn, void 0, true);
+        switch (len) {
+          case 1:
+            return listeners.fn.call(listeners.context), true;
+          case 2:
+            return listeners.fn.call(listeners.context, a1), true;
+          case 3:
+            return listeners.fn.call(listeners.context, a1, a2), true;
+          case 4:
+            return listeners.fn.call(listeners.context, a1, a2, a3), true;
+          case 5:
+            return listeners.fn.call(listeners.context, a1, a2, a3, a4), true;
+          case 6:
+            return listeners.fn.call(listeners.context, a1, a2, a3, a4, a5), true;
+        }
+        for (i = 1, args = new Array(len - 1); i < len; i++) {
+          args[i - 1] = arguments[i];
+        }
+        listeners.fn.apply(listeners.context, args);
+      } else {
+        var length = listeners.length, j;
+        for (i = 0; i < length; i++) {
+          if (listeners[i].once) this.removeListener(event, listeners[i].fn, void 0, true);
+          switch (len) {
+            case 1:
+              listeners[i].fn.call(listeners[i].context);
+              break;
+            case 2:
+              listeners[i].fn.call(listeners[i].context, a1);
+              break;
+            case 3:
+              listeners[i].fn.call(listeners[i].context, a1, a2);
+              break;
+            case 4:
+              listeners[i].fn.call(listeners[i].context, a1, a2, a3);
+              break;
+            default:
+              if (!args) for (j = 1, args = new Array(len - 1); j < len; j++) {
+                args[j - 1] = arguments[j];
+              }
+              listeners[i].fn.apply(listeners[i].context, args);
+          }
+        }
+      }
+      return true;
+    };
+    EventEmitter2.prototype.on = function on(event, fn, context) {
+      return addListener(this, event, fn, context, false);
+    };
+    EventEmitter2.prototype.once = function once(event, fn, context) {
+      return addListener(this, event, fn, context, true);
+    };
+    EventEmitter2.prototype.removeListener = function removeListener(event, fn, context, once) {
+      var evt = prefix ? prefix + event : event;
+      if (!this._events[evt]) return this;
+      if (!fn) {
+        clearEvent(this, evt);
+        return this;
+      }
+      var listeners = this._events[evt];
+      if (listeners.fn) {
+        if (listeners.fn === fn && (!once || listeners.once) && (!context || listeners.context === context)) {
+          clearEvent(this, evt);
+        }
+      } else {
+        for (var i = 0, events = [], length = listeners.length; i < length; i++) {
+          if (listeners[i].fn !== fn || once && !listeners[i].once || context && listeners[i].context !== context) {
+            events.push(listeners[i]);
+          }
+        }
+        if (events.length) this._events[evt] = events.length === 1 ? events[0] : events;
+        else clearEvent(this, evt);
+      }
+      return this;
+    };
+    EventEmitter2.prototype.removeAllListeners = function removeAllListeners(event) {
+      var evt;
+      if (event) {
+        evt = prefix ? prefix + event : event;
+        if (this._events[evt]) clearEvent(this, evt);
+      } else {
+        this._events = new Events();
+        this._eventsCount = 0;
+      }
+      return this;
+    };
+    EventEmitter2.prototype.off = EventEmitter2.prototype.removeListener;
+    EventEmitter2.prototype.addListener = EventEmitter2.prototype.on;
+    EventEmitter2.prefixed = prefix;
+    EventEmitter2.EventEmitter = EventEmitter2;
+    if ("undefined" !== typeof module2) {
+      module2.exports = EventEmitter2;
+    }
+  }
+});
+
+// node_modules/requires-port/index.js
+var require_requires_port = __commonJS({
+  "node_modules/requires-port/index.js"(exports2, module2) {
+    "use strict";
+    module2.exports = function required(port, protocol) {
+      protocol = protocol.split(":")[0];
+      port = +port;
+      if (!port) return false;
+      switch (protocol) {
+        case "http":
+        case "ws":
+          return port !== 80;
+        case "https":
+        case "wss":
+          return port !== 443;
+        case "ftp":
+          return port !== 21;
+        case "gopher":
+          return port !== 70;
+        case "file":
+          return false;
+      }
+      return port !== 0;
+    };
+  }
+});
+
+// node_modules/http-proxy/lib/http-proxy/common.js
+var require_common2 = __commonJS({
+  "node_modules/http-proxy/lib/http-proxy/common.js"(exports2) {
+    var common = exports2;
+    var url2 = require("url");
+    var extend2 = require("util")._extend;
+    var required = require_requires_port();
+    var upgradeHeader = /(^|,)\s*upgrade\s*($|,)/i;
+    var isSSL = /^https|wss/;
+    common.isSSL = isSSL;
+    common.setupOutgoing = function(outgoing, options, req, forward) {
+      outgoing.port = options[forward || "target"].port || (isSSL.test(options[forward || "target"].protocol) ? 443 : 80);
+      [
+        "host",
+        "hostname",
+        "socketPath",
+        "pfx",
+        "key",
+        "passphrase",
+        "cert",
+        "ca",
+        "ciphers",
+        "secureProtocol"
+      ].forEach(
+        function(e) {
+          outgoing[e] = options[forward || "target"][e];
+        }
+      );
+      outgoing.method = options.method || req.method;
+      outgoing.headers = extend2({}, req.headers);
+      if (options.headers) {
+        extend2(outgoing.headers, options.headers);
+      }
+      if (options.auth) {
+        outgoing.auth = options.auth;
+      }
+      if (options.ca) {
+        outgoing.ca = options.ca;
+      }
+      if (isSSL.test(options[forward || "target"].protocol)) {
+        outgoing.rejectUnauthorized = typeof options.secure === "undefined" ? true : options.secure;
+      }
+      outgoing.agent = options.agent || false;
+      outgoing.localAddress = options.localAddress;
+      if (!outgoing.agent) {
+        outgoing.headers = outgoing.headers || {};
+        if (typeof outgoing.headers.connection !== "string" || !upgradeHeader.test(outgoing.headers.connection)) {
+          outgoing.headers.connection = "close";
+        }
+      }
+      var target = options[forward || "target"];
+      var targetPath = target && options.prependPath !== false ? target.path || "" : "";
+      var outgoingPath = !options.toProxy ? url2.parse(req.url).path || "" : req.url;
+      outgoingPath = !options.ignorePath ? outgoingPath : "";
+      outgoing.path = common.urlJoin(targetPath, outgoingPath);
+      if (options.changeOrigin) {
+        outgoing.headers.host = required(outgoing.port, options[forward || "target"].protocol) && !hasPort(outgoing.host) ? outgoing.host + ":" + outgoing.port : outgoing.host;
+      }
+      return outgoing;
+    };
+    common.setupSocket = function(socket) {
+      socket.setTimeout(0);
+      socket.setNoDelay(true);
+      socket.setKeepAlive(true, 0);
+      return socket;
+    };
+    common.getPort = function(req) {
+      var res = req.headers.host ? req.headers.host.match(/:(\d+)/) : "";
+      return res ? res[1] : common.hasEncryptedConnection(req) ? "443" : "80";
+    };
+    common.hasEncryptedConnection = function(req) {
+      return Boolean(req.connection.encrypted || req.connection.pair);
+    };
+    common.urlJoin = function() {
+      var args = Array.prototype.slice.call(arguments), lastIndex = args.length - 1, last = args[lastIndex], lastSegs = last.split("?"), retSegs;
+      args[lastIndex] = lastSegs.shift();
+      retSegs = [
+        args.filter(Boolean).join("/").replace(/\/+/g, "/").replace("http:/", "http://").replace("https:/", "https://")
+      ];
+      retSegs.push.apply(retSegs, lastSegs);
+      return retSegs.join("?");
+    };
+    common.rewriteCookieProperty = function rewriteCookieProperty(header, config, property) {
+      if (Array.isArray(header)) {
+        return header.map(function(headerElement) {
+          return rewriteCookieProperty(headerElement, config, property);
+        });
+      }
+      return header.replace(new RegExp("(;\\s*" + property + "=)([^;]+)", "i"), function(match, prefix, previousValue) {
+        var newValue;
+        if (previousValue in config) {
+          newValue = config[previousValue];
+        } else if ("*" in config) {
+          newValue = config["*"];
+        } else {
+          return match;
+        }
+        if (newValue) {
+          return prefix + newValue;
+        } else {
+          return "";
+        }
+      });
+    };
+    function hasPort(host) {
+      return !!~host.indexOf(":");
+    }
+  }
+});
+
+// node_modules/http-proxy/lib/http-proxy/passes/web-outgoing.js
+var require_web_outgoing = __commonJS({
+  "node_modules/http-proxy/lib/http-proxy/passes/web-outgoing.js"(exports2, module2) {
+    var url2 = require("url");
+    var common = require_common2();
+    var redirectRegex = /^201|30(1|2|7|8)$/;
+    module2.exports = {
+      // <--
+      /**
+       * If is a HTTP 1.0 request, remove chunk headers
+       *
+       * @param {ClientRequest} Req Request object
+       * @param {IncomingMessage} Res Response object
+       * @param {proxyResponse} Res Response object from the proxy request
+       *
+       * @api private
+       */
+      removeChunked: function removeChunked(req, res, proxyRes) {
+        if (req.httpVersion === "1.0") {
+          delete proxyRes.headers["transfer-encoding"];
+        }
+      },
+      /**
+       * If is a HTTP 1.0 request, set the correct connection header
+       * or if connection header not present, then use `keep-alive`
+       *
+       * @param {ClientRequest} Req Request object
+       * @param {IncomingMessage} Res Response object
+       * @param {proxyResponse} Res Response object from the proxy request
+       *
+       * @api private
+       */
+      setConnection: function setConnection(req, res, proxyRes) {
+        if (req.httpVersion === "1.0") {
+          proxyRes.headers.connection = req.headers.connection || "close";
+        } else if (req.httpVersion !== "2.0" && !proxyRes.headers.connection) {
+          proxyRes.headers.connection = req.headers.connection || "keep-alive";
+        }
+      },
+      setRedirectHostRewrite: function setRedirectHostRewrite(req, res, proxyRes, options) {
+        if ((options.hostRewrite || options.autoRewrite || options.protocolRewrite) && proxyRes.headers["location"] && redirectRegex.test(proxyRes.statusCode)) {
+          var target = url2.parse(options.target);
+          var u = url2.parse(proxyRes.headers["location"]);
+          if (target.host != u.host) {
+            return;
+          }
+          if (options.hostRewrite) {
+            u.host = options.hostRewrite;
+          } else if (options.autoRewrite) {
+            u.host = req.headers["host"];
+          }
+          if (options.protocolRewrite) {
+            u.protocol = options.protocolRewrite;
+          }
+          proxyRes.headers["location"] = u.format();
+        }
+      },
+      /**
+       * Copy headers from proxyResponse to response
+       * set each header in response object.
+       *
+       * @param {ClientRequest} Req Request object
+       * @param {IncomingMessage} Res Response object
+       * @param {proxyResponse} Res Response object from the proxy request
+       * @param {Object} Options options.cookieDomainRewrite: Config to rewrite cookie domain
+       *
+       * @api private
+       */
+      writeHeaders: function writeHeaders(req, res, proxyRes, options) {
+        var rewriteCookieDomainConfig = options.cookieDomainRewrite, rewriteCookiePathConfig = options.cookiePathRewrite, preserveHeaderKeyCase = options.preserveHeaderKeyCase, rawHeaderKeyMap, setHeader = function(key2, header) {
+          if (header == void 0) return;
+          if (rewriteCookieDomainConfig && key2.toLowerCase() === "set-cookie") {
+            header = common.rewriteCookieProperty(header, rewriteCookieDomainConfig, "domain");
+          }
+          if (rewriteCookiePathConfig && key2.toLowerCase() === "set-cookie") {
+            header = common.rewriteCookieProperty(header, rewriteCookiePathConfig, "path");
+          }
+          res.setHeader(String(key2).trim(), header);
+        };
+        if (typeof rewriteCookieDomainConfig === "string") {
+          rewriteCookieDomainConfig = { "*": rewriteCookieDomainConfig };
+        }
+        if (typeof rewriteCookiePathConfig === "string") {
+          rewriteCookiePathConfig = { "*": rewriteCookiePathConfig };
+        }
+        if (preserveHeaderKeyCase && proxyRes.rawHeaders != void 0) {
+          rawHeaderKeyMap = {};
+          for (var i = 0; i < proxyRes.rawHeaders.length; i += 2) {
+            var key = proxyRes.rawHeaders[i];
+            rawHeaderKeyMap[key.toLowerCase()] = key;
+          }
+        }
+        Object.keys(proxyRes.headers).forEach(function(key2) {
+          var header = proxyRes.headers[key2];
+          if (preserveHeaderKeyCase && rawHeaderKeyMap) {
+            key2 = rawHeaderKeyMap[key2] || key2;
+          }
+          setHeader(key2, header);
+        });
+      },
+      /**
+       * Set the statusCode from the proxyResponse
+       *
+       * @param {ClientRequest} Req Request object
+       * @param {IncomingMessage} Res Response object
+       * @param {proxyResponse} Res Response object from the proxy request
+       *
+       * @api private
+       */
+      writeStatusCode: function writeStatusCode(req, res, proxyRes) {
+        if (proxyRes.statusMessage) {
+          res.statusCode = proxyRes.statusCode;
+          res.statusMessage = proxyRes.statusMessage;
+        } else {
+          res.statusCode = proxyRes.statusCode;
+        }
+      }
+    };
+  }
+});
+
+// node_modules/http-proxy/lib/http-proxy/passes/web-incoming.js
+var require_web_incoming = __commonJS({
+  "node_modules/http-proxy/lib/http-proxy/passes/web-incoming.js"(exports2, module2) {
+    var httpNative = require("http");
+    var httpsNative = require("https");
+    var web_o = require_web_outgoing();
+    var common = require_common2();
+    var followRedirects2 = require_follow_redirects();
+    web_o = Object.keys(web_o).map(function(pass) {
+      return web_o[pass];
+    });
+    var nativeAgents = { http: httpNative, https: httpsNative };
+    module2.exports = {
+      /**
+       * Sets `content-length` to '0' if request is of DELETE type.
+       *
+       * @param {ClientRequest} Req Request object
+       * @param {IncomingMessage} Res Response object
+       * @param {Object} Options Config object passed to the proxy
+       *
+       * @api private
+       */
+      deleteLength: function deleteLength(req, res, options) {
+        if ((req.method === "DELETE" || req.method === "OPTIONS") && !req.headers["content-length"]) {
+          req.headers["content-length"] = "0";
+          delete req.headers["transfer-encoding"];
+        }
+      },
+      /**
+       * Sets timeout in request socket if it was specified in options.
+       *
+       * @param {ClientRequest} Req Request object
+       * @param {IncomingMessage} Res Response object
+       * @param {Object} Options Config object passed to the proxy
+       *
+       * @api private
+       */
+      timeout: function timeout(req, res, options) {
+        if (options.timeout) {
+          req.socket.setTimeout(options.timeout);
+        }
+      },
+      /**
+       * Sets `x-forwarded-*` headers if specified in config.
+       *
+       * @param {ClientRequest} Req Request object
+       * @param {IncomingMessage} Res Response object
+       * @param {Object} Options Config object passed to the proxy
+       *
+       * @api private
+       */
+      XHeaders: function XHeaders(req, res, options) {
+        if (!options.xfwd) return;
+        var encrypted = req.isSpdy || common.hasEncryptedConnection(req);
+        var values = {
+          for: req.connection.remoteAddress || req.socket.remoteAddress,
+          port: common.getPort(req),
+          proto: encrypted ? "https" : "http"
+        };
+        ["for", "port", "proto"].forEach(function(header) {
+          req.headers["x-forwarded-" + header] = (req.headers["x-forwarded-" + header] || "") + (req.headers["x-forwarded-" + header] ? "," : "") + values[header];
+        });
+        req.headers["x-forwarded-host"] = req.headers["x-forwarded-host"] || req.headers["host"] || "";
+      },
+      /**
+       * Does the actual proxying. If `forward` is enabled fires up
+       * a ForwardStream, same happens for ProxyStream. The request
+       * just dies otherwise.
+       *
+       * @param {ClientRequest} Req Request object
+       * @param {IncomingMessage} Res Response object
+       * @param {Object} Options Config object passed to the proxy
+       *
+       * @api private
+       */
+      stream: function stream4(req, res, options, _, server, clb) {
+        server.emit("start", req, res, options.target || options.forward);
+        var agents = options.followRedirects ? followRedirects2 : nativeAgents;
+        var http3 = agents.http;
+        var https2 = agents.https;
+        if (options.forward) {
+          var forwardReq = (options.forward.protocol === "https:" ? https2 : http3).request(
+            common.setupOutgoing(options.ssl || {}, options, req, "forward")
+          );
+          var forwardError = createErrorHandler(forwardReq, options.forward);
+          req.on("error", forwardError);
+          forwardReq.on("error", forwardError);
+          (options.buffer || req).pipe(forwardReq);
+          if (!options.target) {
+            return res.end();
+          }
+        }
+        var proxyReq = (options.target.protocol === "https:" ? https2 : http3).request(
+          common.setupOutgoing(options.ssl || {}, options, req)
+        );
+        proxyReq.on("socket", function(socket) {
+          if (server && !proxyReq.getHeader("expect")) {
+            server.emit("proxyReq", proxyReq, req, res, options);
+          }
+        });
+        if (options.proxyTimeout) {
+          proxyReq.setTimeout(options.proxyTimeout, function() {
+            proxyReq.abort();
+          });
+        }
+        req.on("aborted", function() {
+          proxyReq.abort();
+        });
+        var proxyError = createErrorHandler(proxyReq, options.target);
+        req.on("error", proxyError);
+        proxyReq.on("error", proxyError);
+        function createErrorHandler(proxyReq2, url2) {
+          return function proxyError2(err) {
+            if (req.socket.destroyed && err.code === "ECONNRESET") {
+              server.emit("econnreset", err, req, res, url2);
+              return proxyReq2.abort();
+            }
+            if (clb) {
+              clb(err, req, res, url2);
+            } else {
+              server.emit("error", err, req, res, url2);
+            }
+          };
+        }
+        (options.buffer || req).pipe(proxyReq);
+        proxyReq.on("response", function(proxyRes) {
+          if (server) {
+            server.emit("proxyRes", proxyRes, req, res);
+          }
+          if (!res.headersSent && !options.selfHandleResponse) {
+            for (var i = 0; i < web_o.length; i++) {
+              if (web_o[i](req, res, proxyRes, options)) {
+                break;
+              }
+            }
+          }
+          if (!res.finished) {
+            proxyRes.on("end", function() {
+              if (server) server.emit("end", req, res, proxyRes);
+            });
+            if (!options.selfHandleResponse) proxyRes.pipe(res);
+          } else {
+            if (server) server.emit("end", req, res, proxyRes);
+          }
+        });
+      }
+    };
+  }
+});
+
+// node_modules/http-proxy/lib/http-proxy/passes/ws-incoming.js
+var require_ws_incoming = __commonJS({
+  "node_modules/http-proxy/lib/http-proxy/passes/ws-incoming.js"(exports2, module2) {
+    var http3 = require("http");
+    var https2 = require("https");
+    var common = require_common2();
+    module2.exports = {
+      /**
+       * WebSocket requests must have the `GET` method and
+       * the `upgrade:websocket` header
+       *
+       * @param {ClientRequest} Req Request object
+       * @param {Socket} Websocket
+       *
+       * @api private
+       */
+      checkMethodAndHeader: function checkMethodAndHeader(req, socket) {
+        if (req.method !== "GET" || !req.headers.upgrade) {
+          socket.destroy();
+          return true;
+        }
+        if (req.headers.upgrade.toLowerCase() !== "websocket") {
+          socket.destroy();
+          return true;
+        }
+      },
+      /**
+       * Sets `x-forwarded-*` headers if specified in config.
+       *
+       * @param {ClientRequest} Req Request object
+       * @param {Socket} Websocket
+       * @param {Object} Options Config object passed to the proxy
+       *
+       * @api private
+       */
+      XHeaders: function XHeaders(req, socket, options) {
+        if (!options.xfwd) return;
+        var values = {
+          for: req.connection.remoteAddress || req.socket.remoteAddress,
+          port: common.getPort(req),
+          proto: common.hasEncryptedConnection(req) ? "wss" : "ws"
+        };
+        ["for", "port", "proto"].forEach(function(header) {
+          req.headers["x-forwarded-" + header] = (req.headers["x-forwarded-" + header] || "") + (req.headers["x-forwarded-" + header] ? "," : "") + values[header];
+        });
+      },
+      /**
+       * Does the actual proxying. Make the request and upgrade it
+       * send the Switching Protocols request and pipe the sockets.
+       *
+       * @param {ClientRequest} Req Request object
+       * @param {Socket} Websocket
+       * @param {Object} Options Config object passed to the proxy
+       *
+       * @api private
+       */
+      stream: function stream4(req, socket, options, head, server, clb) {
+        var createHttpHeader = function(line2, headers) {
+          return Object.keys(headers).reduce(function(head2, key) {
+            var value = headers[key];
+            if (!Array.isArray(value)) {
+              head2.push(key + ": " + value);
+              return head2;
+            }
+            for (var i = 0; i < value.length; i++) {
+              head2.push(key + ": " + value[i]);
+            }
+            return head2;
+          }, [line2]).join("\r\n") + "\r\n\r\n";
+        };
+        common.setupSocket(socket);
+        if (head && head.length) socket.unshift(head);
+        var proxyReq = (common.isSSL.test(options.target.protocol) ? https2 : http3).request(
+          common.setupOutgoing(options.ssl || {}, options, req)
+        );
+        if (server) {
+          server.emit("proxyReqWs", proxyReq, req, socket, options, head);
+        }
+        proxyReq.on("error", onOutgoingError);
+        proxyReq.on("response", function(res) {
+          if (!res.upgrade) {
+            socket.write(createHttpHeader("HTTP/" + res.httpVersion + " " + res.statusCode + " " + res.statusMessage, res.headers));
+            res.pipe(socket);
+          }
+        });
+        proxyReq.on("upgrade", function(proxyRes, proxySocket, proxyHead) {
+          proxySocket.on("error", onOutgoingError);
+          proxySocket.on("end", function() {
+            server.emit("close", proxyRes, proxySocket, proxyHead);
+          });
+          socket.on("error", function() {
+            proxySocket.end();
+          });
+          common.setupSocket(proxySocket);
+          if (proxyHead && proxyHead.length) proxySocket.unshift(proxyHead);
+          socket.write(createHttpHeader("HTTP/1.1 101 Switching Protocols", proxyRes.headers));
+          proxySocket.pipe(socket).pipe(proxySocket);
+          server.emit("open", proxySocket);
+          server.emit("proxySocket", proxySocket);
+        });
+        return proxyReq.end();
+        function onOutgoingError(err) {
+          if (clb) {
+            clb(err, req, socket);
+          } else {
+            server.emit("error", err, req, socket);
+          }
+          socket.end();
+        }
+      }
+    };
+  }
+});
+
+// node_modules/http-proxy/lib/http-proxy/index.js
+var require_http_proxy = __commonJS({
+  "node_modules/http-proxy/lib/http-proxy/index.js"(exports2, module2) {
+    var httpProxy = module2.exports;
+    var extend2 = require("util")._extend;
+    var parse_url = require("url").parse;
+    var EE3 = require_eventemitter3();
+    var http3 = require("http");
+    var https2 = require("https");
+    var web = require_web_incoming();
+    var ws = require_ws_incoming();
+    httpProxy.Server = ProxyServer;
+    function createRightProxy(type) {
+      return function(options) {
+        return function(req, res) {
+          var passes = type === "ws" ? this.wsPasses : this.webPasses, args = [].slice.call(arguments), cntr = args.length - 1, head, cbl;
+          if (typeof args[cntr] === "function") {
+            cbl = args[cntr];
+            cntr--;
+          }
+          var requestOptions = options;
+          if (!(args[cntr] instanceof Buffer) && args[cntr] !== res) {
+            requestOptions = extend2({}, options);
+            extend2(requestOptions, args[cntr]);
+            cntr--;
+          }
+          if (args[cntr] instanceof Buffer) {
+            head = args[cntr];
+          }
+          ["target", "forward"].forEach(function(e) {
+            if (typeof requestOptions[e] === "string")
+              requestOptions[e] = parse_url(requestOptions[e]);
+          });
+          if (!requestOptions.target && !requestOptions.forward) {
+            return this.emit("error", new Error("Must provide a proper URL as target"));
+          }
+          for (var i = 0; i < passes.length; i++) {
+            if (passes[i](req, res, requestOptions, head, this, cbl)) {
+              break;
+            }
+          }
+        };
+      };
+    }
+    httpProxy.createRightProxy = createRightProxy;
+    function ProxyServer(options) {
+      EE3.call(this);
+      options = options || {};
+      options.prependPath = options.prependPath === false ? false : true;
+      this.web = this.proxyRequest = createRightProxy("web")(options);
+      this.ws = this.proxyWebsocketRequest = createRightProxy("ws")(options);
+      this.options = options;
+      this.webPasses = Object.keys(web).map(function(pass) {
+        return web[pass];
+      });
+      this.wsPasses = Object.keys(ws).map(function(pass) {
+        return ws[pass];
+      });
+      this.on("error", this.onError, this);
+    }
+    require("util").inherits(ProxyServer, EE3);
+    ProxyServer.prototype.onError = function(err) {
+      if (this.listeners("error").length === 1) {
+        throw err;
+      }
+    };
+    ProxyServer.prototype.listen = function(port, hostname) {
+      var self2 = this, closure = function(req, res) {
+        self2.web(req, res);
+      };
+      this._server = this.options.ssl ? https2.createServer(this.options.ssl, closure) : http3.createServer(closure);
+      if (this.options.ws) {
+        this._server.on("upgrade", function(req, socket, head) {
+          self2.ws(req, socket, head);
+        });
+      }
+      this._server.listen(port, hostname);
+      return this;
+    };
+    ProxyServer.prototype.close = function(callback) {
+      var self2 = this;
+      if (this._server) {
+        this._server.close(done);
+      }
+      function done() {
+        self2._server = null;
+        if (callback) {
+          callback.apply(null, arguments);
+        }
+      }
+      ;
+    };
+    ProxyServer.prototype.before = function(type, passName, callback) {
+      if (type !== "ws" && type !== "web") {
+        throw new Error("type must be `web` or `ws`");
+      }
+      var passes = type === "ws" ? this.wsPasses : this.webPasses, i = false;
+      passes.forEach(function(v, idx) {
+        if (v.name === passName) i = idx;
+      });
+      if (i === false) throw new Error("No such pass");
+      passes.splice(i, 0, callback);
+    };
+    ProxyServer.prototype.after = function(type, passName, callback) {
+      if (type !== "ws" && type !== "web") {
+        throw new Error("type must be `web` or `ws`");
+      }
+      var passes = type === "ws" ? this.wsPasses : this.webPasses, i = false;
+      passes.forEach(function(v, idx) {
+        if (v.name === passName) i = idx;
+      });
+      if (i === false) throw new Error("No such pass");
+      passes.splice(i++, 0, callback);
+    };
+  }
+});
+
+// node_modules/http-proxy/lib/http-proxy.js
+var require_http_proxy2 = __commonJS({
+  "node_modules/http-proxy/lib/http-proxy.js"(exports2, module2) {
+    var ProxyServer = require_http_proxy().Server;
+    function createProxyServer(options) {
+      return new ProxyServer(options);
+    }
+    ProxyServer.createProxyServer = createProxyServer;
+    ProxyServer.createServer = createProxyServer;
+    ProxyServer.createProxy = createProxyServer;
+    module2.exports = ProxyServer;
+  }
+});
+
+// node_modules/http-proxy/index.js
+var require_http_proxy3 = __commonJS({
+  "node_modules/http-proxy/index.js"(exports2, module2) {
+    module2.exports = require_http_proxy2();
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/errors.js
+var require_errors = __commonJS({
+  "node_modules/http-proxy-middleware/dist/errors.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.ERRORS = void 0;
+    var ERRORS;
+    (function(ERRORS2) {
+      ERRORS2["ERR_CONFIG_FACTORY_TARGET_MISSING"] = '[HPM] Missing "target" option. Example: {target: "http://www.example.org"}';
+      ERRORS2["ERR_CONTEXT_MATCHER_GENERIC"] = '[HPM] Invalid pathFilter. Expecting something like: "/api" or ["/api", "/ajax"]';
+      ERRORS2["ERR_CONTEXT_MATCHER_INVALID_ARRAY"] = '[HPM] Invalid pathFilter. Plain paths (e.g. "/api") can not be mixed with globs (e.g. "/api/**"). Expecting something like: ["/api", "/ajax"] or ["/api/**", "!**.html"].';
+      ERRORS2["ERR_PATH_REWRITER_CONFIG"] = "[HPM] Invalid pathRewrite config. Expecting object with pathRewrite config or a rewrite function";
+    })(ERRORS || (exports2.ERRORS = ERRORS = {}));
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/configuration.js
+var require_configuration = __commonJS({
+  "node_modules/http-proxy-middleware/dist/configuration.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.verifyConfig = verifyConfig;
+    var errors_1 = require_errors();
+    function verifyConfig(options) {
+      if (!options.target && !options.router) {
+        throw new Error(errors_1.ERRORS.ERR_CONFIG_FACTORY_TARGET_MISSING);
+      }
+    }
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/debug.js
+var require_debug3 = __commonJS({
+  "node_modules/http-proxy-middleware/dist/debug.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.Debug = void 0;
+    var createDebug = require_src();
+    exports2.Debug = createDebug("http-proxy-middleware");
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/plugins/default/debug-proxy-errors-plugin.js
+var require_debug_proxy_errors_plugin = __commonJS({
+  "node_modules/http-proxy-middleware/dist/plugins/default/debug-proxy-errors-plugin.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.debugProxyErrorsPlugin = void 0;
+    var debug_1 = require_debug3();
+    var debug = debug_1.Debug.extend("debug-proxy-errors-plugin");
+    var debugProxyErrorsPlugin = (proxyServer) => {
+      proxyServer.on("error", (error, req, res, target) => {
+        debug(`http-proxy error event: 
+%O`, error);
+      });
+      proxyServer.on("proxyReq", (proxyReq, req, socket) => {
+        socket.on("error", (error) => {
+          debug("Socket error in proxyReq event: \n%O", error);
+        });
+      });
+      proxyServer.on("proxyRes", (proxyRes, req, res) => {
+        res.on("close", () => {
+          if (!res.writableEnded) {
+            debug("Destroying proxyRes in proxyRes close event");
+            proxyRes.destroy();
+          }
+        });
+      });
+      proxyServer.on("proxyReqWs", (proxyReq, req, socket) => {
+        socket.on("error", (error) => {
+          debug("Socket error in proxyReqWs event: \n%O", error);
+        });
+      });
+      proxyServer.on("open", (proxySocket) => {
+        proxySocket.on("error", (error) => {
+          debug("Socket error in open event: \n%O", error);
+        });
+      });
+      proxyServer.on("close", (req, socket, head) => {
+        socket.on("error", (error) => {
+          debug("Socket error in close event: \n%O", error);
+        });
+      });
+      proxyServer.on("econnreset", (error, req, res, target) => {
+        debug(`http-proxy econnreset event: 
+%O`, error);
+      });
+    };
+    exports2.debugProxyErrorsPlugin = debugProxyErrorsPlugin;
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/status-code.js
+var require_status_code = __commonJS({
+  "node_modules/http-proxy-middleware/dist/status-code.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.getStatusCode = getStatusCode;
+    function getStatusCode(errorCode) {
+      let statusCode;
+      if (/HPE_INVALID/.test(errorCode)) {
+        statusCode = 502;
+      } else {
+        switch (errorCode) {
+          case "ECONNRESET":
+          case "ENOTFOUND":
+          case "ECONNREFUSED":
+          case "ETIMEDOUT":
+            statusCode = 504;
+            break;
+          default:
+            statusCode = 500;
+            break;
+        }
+      }
+      return statusCode;
+    }
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/plugins/default/error-response-plugin.js
+var require_error_response_plugin = __commonJS({
+  "node_modules/http-proxy-middleware/dist/plugins/default/error-response-plugin.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.errorResponsePlugin = void 0;
+    var status_code_1 = require_status_code();
+    function isResponseLike(obj) {
+      return obj && typeof obj.writeHead === "function";
+    }
+    function isSocketLike(obj) {
+      return obj && typeof obj.write === "function" && !("writeHead" in obj);
+    }
+    var errorResponsePlugin = (proxyServer, options) => {
+      proxyServer.on("error", (err, req, res, target) => {
+        if (!req && !res) {
+          throw err;
+        }
+        if (isResponseLike(res)) {
+          if (!res.headersSent) {
+            const statusCode = (0, status_code_1.getStatusCode)(err.code);
+            res.writeHead(statusCode);
+          }
+          const host = req.headers && req.headers.host;
+          res.end(`Error occurred while trying to proxy: ${host}${req.url}`);
+        } else if (isSocketLike(res)) {
+          res.destroy();
+        }
+      });
+    };
+    exports2.errorResponsePlugin = errorResponsePlugin;
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/logger.js
+var require_logger = __commonJS({
+  "node_modules/http-proxy-middleware/dist/logger.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.getLogger = getLogger;
+    var noopLogger = {
+      info: () => {
+      },
+      warn: () => {
+      },
+      error: () => {
+      }
+    };
+    function getLogger(options) {
+      return options.logger || noopLogger;
+    }
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/utils/logger-plugin.js
+var require_logger_plugin = __commonJS({
+  "node_modules/http-proxy-middleware/dist/utils/logger-plugin.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.getPort = getPort;
+    function getPort(sockets) {
+      return Object.keys(sockets || {})?.[0]?.split(":")[1];
+    }
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/plugins/default/logger-plugin.js
+var require_logger_plugin2 = __commonJS({
+  "node_modules/http-proxy-middleware/dist/plugins/default/logger-plugin.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.loggerPlugin = void 0;
+    var url_1 = require("url");
+    var logger_1 = require_logger();
+    var logger_plugin_1 = require_logger_plugin();
+    var loggerPlugin = (proxyServer, options) => {
+      const logger = (0, logger_1.getLogger)(options);
+      proxyServer.on("error", (err, req, res, target) => {
+        const hostname = req?.headers?.host;
+        const requestHref = `${hostname}${req?.url}`;
+        const targetHref = `${target?.href}`;
+        const errorMessage = "[HPM] Error occurred while proxying request %s to %s [%s] (%s)";
+        const errReference = "https://nodejs.org/api/errors.html#errors_common_system_errors";
+        logger.error(errorMessage, requestHref, targetHref, err.code || err, errReference);
+      });
+      proxyServer.on("proxyRes", (proxyRes, req, res) => {
+        const originalUrl = req.originalUrl ?? `${req.baseUrl || ""}${req.url}`;
+        let target;
+        try {
+          const port = (0, logger_plugin_1.getPort)(proxyRes.req?.agent?.sockets);
+          const obj = {
+            protocol: proxyRes.req.protocol,
+            host: proxyRes.req.host,
+            pathname: proxyRes.req.path
+          };
+          target = new url_1.URL(`${obj.protocol}//${obj.host}${obj.pathname}`);
+          if (port) {
+            target.port = port;
+          }
+        } catch (err) {
+          target = new url_1.URL(options.target);
+          target.pathname = proxyRes.req.path;
+        }
+        const targetUrl = target.toString();
+        const exchange = `[HPM] ${req.method} ${originalUrl} -> ${targetUrl} [${proxyRes.statusCode}]`;
+        logger.info(exchange);
+      });
+      proxyServer.on("open", (socket) => {
+        logger.info("[HPM] Client connected: %o", socket.address());
+      });
+      proxyServer.on("close", (req, proxySocket, proxyHead) => {
+        logger.info("[HPM] Client disconnected: %o", proxySocket.address());
+      });
+    };
+    exports2.loggerPlugin = loggerPlugin;
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/utils/function.js
+var require_function = __commonJS({
+  "node_modules/http-proxy-middleware/dist/utils/function.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.getFunctionName = getFunctionName;
+    function getFunctionName(fn) {
+      return fn.name || "[anonymous Function]";
+    }
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/plugins/default/proxy-events.js
+var require_proxy_events = __commonJS({
+  "node_modules/http-proxy-middleware/dist/plugins/default/proxy-events.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.proxyEventsPlugin = void 0;
+    var debug_1 = require_debug3();
+    var function_1 = require_function();
+    var debug = debug_1.Debug.extend("proxy-events-plugin");
+    var proxyEventsPlugin = (proxyServer, options) => {
+      Object.entries(options.on || {}).forEach(([eventName, handler]) => {
+        debug(`register event handler: "${eventName}" -> "${(0, function_1.getFunctionName)(handler)}"`);
+        proxyServer.on(eventName, handler);
+      });
+    };
+    exports2.proxyEventsPlugin = proxyEventsPlugin;
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/plugins/default/index.js
+var require_default = __commonJS({
+  "node_modules/http-proxy-middleware/dist/plugins/default/index.js"(exports2) {
+    "use strict";
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
+      if (k2 === void 0) k2 = k;
+      var desc2 = Object.getOwnPropertyDescriptor(m, k);
+      if (!desc2 || ("get" in desc2 ? !m.__esModule : desc2.writable || desc2.configurable)) {
+        desc2 = { enumerable: true, get: function() {
+          return m[k];
+        } };
+      }
+      Object.defineProperty(o, k2, desc2);
+    }) : (function(o, m, k, k2) {
+      if (k2 === void 0) k2 = k;
+      o[k2] = m[k];
+    }));
+    var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
+      for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
+    };
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    __exportStar(require_debug_proxy_errors_plugin(), exports2);
+    __exportStar(require_error_response_plugin(), exports2);
+    __exportStar(require_logger_plugin2(), exports2);
+    __exportStar(require_proxy_events(), exports2);
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/get-plugins.js
+var require_get_plugins = __commonJS({
+  "node_modules/http-proxy-middleware/dist/get-plugins.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.getPlugins = getPlugins;
+    var default_1 = require_default();
+    function getPlugins(options) {
+      const maybeErrorResponsePlugin = options.on?.error ? [] : [default_1.errorResponsePlugin];
+      const defaultPlugins = options.ejectPlugins ? [] : [default_1.debugProxyErrorsPlugin, default_1.proxyEventsPlugin, default_1.loggerPlugin, ...maybeErrorResponsePlugin];
+      const userPlugins = options.plugins ?? [];
+      return [...defaultPlugins, ...userPlugins];
+    }
+  }
+});
+
+// node_modules/is-extglob/index.js
+var require_is_extglob = __commonJS({
+  "node_modules/is-extglob/index.js"(exports2, module2) {
+    module2.exports = function isExtglob(str) {
+      if (typeof str !== "string" || str === "") {
+        return false;
+      }
+      var match;
+      while (match = /(\\).|([@?!+*]\(.*\))/g.exec(str)) {
+        if (match[2]) return true;
+        str = str.slice(match.index + match[0].length);
+      }
+      return false;
+    };
+  }
+});
+
+// node_modules/is-glob/index.js
+var require_is_glob = __commonJS({
+  "node_modules/is-glob/index.js"(exports2, module2) {
+    var isExtglob = require_is_extglob();
+    var chars = { "{": "}", "(": ")", "[": "]" };
+    var strictCheck = function(str) {
+      if (str[0] === "!") {
+        return true;
+      }
+      var index = 0;
+      var pipeIndex = -2;
+      var closeSquareIndex = -2;
+      var closeCurlyIndex = -2;
+      var closeParenIndex = -2;
+      var backSlashIndex = -2;
+      while (index < str.length) {
+        if (str[index] === "*") {
+          return true;
+        }
+        if (str[index + 1] === "?" && /[\].+)]/.test(str[index])) {
+          return true;
+        }
+        if (closeSquareIndex !== -1 && str[index] === "[" && str[index + 1] !== "]") {
+          if (closeSquareIndex < index) {
+            closeSquareIndex = str.indexOf("]", index);
+          }
+          if (closeSquareIndex > index) {
+            if (backSlashIndex === -1 || backSlashIndex > closeSquareIndex) {
+              return true;
+            }
+            backSlashIndex = str.indexOf("\\", index);
+            if (backSlashIndex === -1 || backSlashIndex > closeSquareIndex) {
+              return true;
+            }
+          }
+        }
+        if (closeCurlyIndex !== -1 && str[index] === "{" && str[index + 1] !== "}") {
+          closeCurlyIndex = str.indexOf("}", index);
+          if (closeCurlyIndex > index) {
+            backSlashIndex = str.indexOf("\\", index);
+            if (backSlashIndex === -1 || backSlashIndex > closeCurlyIndex) {
+              return true;
+            }
+          }
+        }
+        if (closeParenIndex !== -1 && str[index] === "(" && str[index + 1] === "?" && /[:!=]/.test(str[index + 2]) && str[index + 3] !== ")") {
+          closeParenIndex = str.indexOf(")", index);
+          if (closeParenIndex > index) {
+            backSlashIndex = str.indexOf("\\", index);
+            if (backSlashIndex === -1 || backSlashIndex > closeParenIndex) {
+              return true;
+            }
+          }
+        }
+        if (pipeIndex !== -1 && str[index] === "(" && str[index + 1] !== "|") {
+          if (pipeIndex < index) {
+            pipeIndex = str.indexOf("|", index);
+          }
+          if (pipeIndex !== -1 && str[pipeIndex + 1] !== ")") {
+            closeParenIndex = str.indexOf(")", pipeIndex);
+            if (closeParenIndex > pipeIndex) {
+              backSlashIndex = str.indexOf("\\", pipeIndex);
+              if (backSlashIndex === -1 || backSlashIndex > closeParenIndex) {
+                return true;
+              }
+            }
+          }
+        }
+        if (str[index] === "\\") {
+          var open = str[index + 1];
+          index += 2;
+          var close = chars[open];
+          if (close) {
+            var n = str.indexOf(close, index);
+            if (n !== -1) {
+              index = n + 1;
+            }
+          }
+          if (str[index] === "!") {
+            return true;
+          }
+        } else {
+          index++;
+        }
+      }
+      return false;
+    };
+    var relaxedCheck = function(str) {
+      if (str[0] === "!") {
+        return true;
+      }
+      var index = 0;
+      while (index < str.length) {
+        if (/[*?{}()[\]]/.test(str[index])) {
+          return true;
+        }
+        if (str[index] === "\\") {
+          var open = str[index + 1];
+          index += 2;
+          var close = chars[open];
+          if (close) {
+            var n = str.indexOf(close, index);
+            if (n !== -1) {
+              index = n + 1;
+            }
+          }
+          if (str[index] === "!") {
+            return true;
+          }
+        } else {
+          index++;
+        }
+      }
+      return false;
+    };
+    module2.exports = function isGlob(str, options) {
+      if (typeof str !== "string" || str === "") {
+        return false;
+      }
+      if (isExtglob(str)) {
+        return true;
+      }
+      var check = strictCheck;
+      if (options && options.strict === false) {
+        check = relaxedCheck;
+      }
+      return check(str);
+    };
+  }
+});
+
+// node_modules/braces/lib/utils.js
+var require_utils6 = __commonJS({
+  "node_modules/braces/lib/utils.js"(exports2) {
+    "use strict";
+    exports2.isInteger = (num) => {
+      if (typeof num === "number") {
+        return Number.isInteger(num);
+      }
+      if (typeof num === "string" && num.trim() !== "") {
+        return Number.isInteger(Number(num));
+      }
+      return false;
+    };
+    exports2.find = (node, type) => node.nodes.find((node2) => node2.type === type);
+    exports2.exceedsLimit = (min, max, step = 1, limit) => {
+      if (limit === false) return false;
+      if (!exports2.isInteger(min) || !exports2.isInteger(max)) return false;
+      return (Number(max) - Number(min)) / Number(step) >= limit;
+    };
+    exports2.escapeNode = (block, n = 0, type) => {
+      const node = block.nodes[n];
+      if (!node) return;
+      if (type && node.type === type || node.type === "open" || node.type === "close") {
+        if (node.escaped !== true) {
+          node.value = "\\" + node.value;
+          node.escaped = true;
+        }
+      }
+    };
+    exports2.encloseBrace = (node) => {
+      if (node.type !== "brace") return false;
+      if (node.commas >> 0 + node.ranges >> 0 === 0) {
+        node.invalid = true;
+        return true;
+      }
+      return false;
+    };
+    exports2.isInvalidBrace = (block) => {
+      if (block.type !== "brace") return false;
+      if (block.invalid === true || block.dollar) return true;
+      if (block.commas >> 0 + block.ranges >> 0 === 0) {
+        block.invalid = true;
+        return true;
+      }
+      if (block.open !== true || block.close !== true) {
+        block.invalid = true;
+        return true;
+      }
+      return false;
+    };
+    exports2.isOpenOrClose = (node) => {
+      if (node.type === "open" || node.type === "close") {
+        return true;
+      }
+      return node.open === true || node.close === true;
+    };
+    exports2.reduce = (nodes) => nodes.reduce((acc, node) => {
+      if (node.type === "text") acc.push(node.value);
+      if (node.type === "range") node.type = "text";
+      return acc;
+    }, []);
+    exports2.flatten = (...args) => {
+      const result = [];
+      const flat = (arr) => {
+        for (let i = 0; i < arr.length; i++) {
+          const ele = arr[i];
+          if (Array.isArray(ele)) {
+            flat(ele);
+            continue;
+          }
+          if (ele !== void 0) {
+            result.push(ele);
+          }
+        }
+        return result;
+      };
+      flat(args);
+      return result;
+    };
+  }
+});
+
+// node_modules/braces/lib/stringify.js
+var require_stringify2 = __commonJS({
+  "node_modules/braces/lib/stringify.js"(exports2, module2) {
+    "use strict";
+    var utils = require_utils6();
+    module2.exports = (ast, options = {}) => {
+      const stringify = (node, parent = {}) => {
+        const invalidBlock = options.escapeInvalid && utils.isInvalidBrace(parent);
+        const invalidNode = node.invalid === true && options.escapeInvalid === true;
+        let output = "";
+        if (node.value) {
+          if ((invalidBlock || invalidNode) && utils.isOpenOrClose(node)) {
+            return "\\" + node.value;
+          }
+          return node.value;
+        }
+        if (node.value) {
+          return node.value;
+        }
+        if (node.nodes) {
+          for (const child of node.nodes) {
+            output += stringify(child);
+          }
+        }
+        return output;
+      };
+      return stringify(ast);
+    };
+  }
+});
+
+// node_modules/is-number/index.js
+var require_is_number = __commonJS({
+  "node_modules/is-number/index.js"(exports2, module2) {
+    "use strict";
+    module2.exports = function(num) {
+      if (typeof num === "number") {
+        return num - num === 0;
+      }
+      if (typeof num === "string" && num.trim() !== "") {
+        return Number.isFinite ? Number.isFinite(+num) : isFinite(+num);
+      }
+      return false;
+    };
+  }
+});
+
+// node_modules/to-regex-range/index.js
+var require_to_regex_range = __commonJS({
+  "node_modules/to-regex-range/index.js"(exports2, module2) {
+    "use strict";
+    var isNumber2 = require_is_number();
+    var toRegexRange = (min, max, options) => {
+      if (isNumber2(min) === false) {
+        throw new TypeError("toRegexRange: expected the first argument to be a number");
+      }
+      if (max === void 0 || min === max) {
+        return String(min);
+      }
+      if (isNumber2(max) === false) {
+        throw new TypeError("toRegexRange: expected the second argument to be a number.");
+      }
+      let opts = { relaxZeros: true, ...options };
+      if (typeof opts.strictZeros === "boolean") {
+        opts.relaxZeros = opts.strictZeros === false;
+      }
+      let relax = String(opts.relaxZeros);
+      let shorthand = String(opts.shorthand);
+      let capture = String(opts.capture);
+      let wrap = String(opts.wrap);
+      let cacheKey = min + ":" + max + "=" + relax + shorthand + capture + wrap;
+      if (toRegexRange.cache.hasOwnProperty(cacheKey)) {
+        return toRegexRange.cache[cacheKey].result;
+      }
+      let a = Math.min(min, max);
+      let b = Math.max(min, max);
+      if (Math.abs(a - b) === 1) {
+        let result = min + "|" + max;
+        if (opts.capture) {
+          return `(${result})`;
+        }
+        if (opts.wrap === false) {
+          return result;
+        }
+        return `(?:${result})`;
+      }
+      let isPadded = hasPadding(min) || hasPadding(max);
+      let state = { min, max, a, b };
+      let positives = [];
+      let negatives = [];
+      if (isPadded) {
+        state.isPadded = isPadded;
+        state.maxLen = String(state.max).length;
+      }
+      if (a < 0) {
+        let newMin = b < 0 ? Math.abs(b) : 1;
+        negatives = splitToPatterns(newMin, Math.abs(a), state, opts);
+        a = state.a = 0;
+      }
+      if (b >= 0) {
+        positives = splitToPatterns(a, b, state, opts);
+      }
+      state.negatives = negatives;
+      state.positives = positives;
+      state.result = collatePatterns(negatives, positives, opts);
+      if (opts.capture === true) {
+        state.result = `(${state.result})`;
+      } else if (opts.wrap !== false && positives.length + negatives.length > 1) {
+        state.result = `(?:${state.result})`;
+      }
+      toRegexRange.cache[cacheKey] = state;
+      return state.result;
+    };
+    function collatePatterns(neg, pos, options) {
+      let onlyNegative = filterPatterns(neg, pos, "-", false, options) || [];
+      let onlyPositive = filterPatterns(pos, neg, "", false, options) || [];
+      let intersected = filterPatterns(neg, pos, "-?", true, options) || [];
+      let subpatterns = onlyNegative.concat(intersected).concat(onlyPositive);
+      return subpatterns.join("|");
+    }
+    function splitToRanges(min, max) {
+      let nines = 1;
+      let zeros = 1;
+      let stop = countNines(min, nines);
+      let stops = /* @__PURE__ */ new Set([max]);
+      while (min <= stop && stop <= max) {
+        stops.add(stop);
+        nines += 1;
+        stop = countNines(min, nines);
+      }
+      stop = countZeros(max + 1, zeros) - 1;
+      while (min < stop && stop <= max) {
+        stops.add(stop);
+        zeros += 1;
+        stop = countZeros(max + 1, zeros) - 1;
+      }
+      stops = [...stops];
+      stops.sort(compare2);
+      return stops;
+    }
+    function rangeToPattern(start, stop, options) {
+      if (start === stop) {
+        return { pattern: start, count: [], digits: 0 };
+      }
+      let zipped = zip(start, stop);
+      let digits = zipped.length;
+      let pattern = "";
+      let count = 0;
+      for (let i = 0; i < digits; i++) {
+        let [startDigit, stopDigit] = zipped[i];
+        if (startDigit === stopDigit) {
+          pattern += startDigit;
+        } else if (startDigit !== "0" || stopDigit !== "9") {
+          pattern += toCharacterClass(startDigit, stopDigit, options);
+        } else {
+          count++;
+        }
+      }
+      if (count) {
+        pattern += options.shorthand === true ? "\\d" : "[0-9]";
+      }
+      return { pattern, count: [count], digits };
+    }
+    function splitToPatterns(min, max, tok, options) {
+      let ranges = splitToRanges(min, max);
+      let tokens = [];
+      let start = min;
+      let prev;
+      for (let i = 0; i < ranges.length; i++) {
+        let max2 = ranges[i];
+        let obj = rangeToPattern(String(start), String(max2), options);
+        let zeros = "";
+        if (!tok.isPadded && prev && prev.pattern === obj.pattern) {
+          if (prev.count.length > 1) {
+            prev.count.pop();
+          }
+          prev.count.push(obj.count[0]);
+          prev.string = prev.pattern + toQuantifier(prev.count);
+          start = max2 + 1;
+          continue;
+        }
+        if (tok.isPadded) {
+          zeros = padZeros(max2, tok, options);
+        }
+        obj.string = zeros + obj.pattern + toQuantifier(obj.count);
+        tokens.push(obj);
+        start = max2 + 1;
+        prev = obj;
+      }
+      return tokens;
+    }
+    function filterPatterns(arr, comparison, prefix, intersection, options) {
+      let result = [];
+      for (let ele of arr) {
+        let { string } = ele;
+        if (!intersection && !contains(comparison, "string", string)) {
+          result.push(prefix + string);
+        }
+        if (intersection && contains(comparison, "string", string)) {
+          result.push(prefix + string);
+        }
+      }
+      return result;
+    }
+    function zip(a, b) {
+      let arr = [];
+      for (let i = 0; i < a.length; i++) arr.push([a[i], b[i]]);
+      return arr;
+    }
+    function compare2(a, b) {
+      return a > b ? 1 : b > a ? -1 : 0;
+    }
+    function contains(arr, key, val) {
+      return arr.some((ele) => ele[key] === val);
+    }
+    function countNines(min, len) {
+      return Number(String(min).slice(0, -len) + "9".repeat(len));
+    }
+    function countZeros(integer2, zeros) {
+      return integer2 - integer2 % Math.pow(10, zeros);
+    }
+    function toQuantifier(digits) {
+      let [start = 0, stop = ""] = digits;
+      if (stop || start > 1) {
+        return `{${start + (stop ? "," + stop : "")}}`;
+      }
+      return "";
+    }
+    function toCharacterClass(a, b, options) {
+      return `[${a}${b - a === 1 ? "" : "-"}${b}]`;
+    }
+    function hasPadding(str) {
+      return /^-?(0+)\d/.test(str);
+    }
+    function padZeros(value, tok, options) {
+      if (!tok.isPadded) {
+        return value;
+      }
+      let diff = Math.abs(tok.maxLen - String(value).length);
+      let relax = options.relaxZeros !== false;
+      switch (diff) {
+        case 0:
+          return "";
+        case 1:
+          return relax ? "0?" : "0";
+        case 2:
+          return relax ? "0{0,2}" : "00";
+        default: {
+          return relax ? `0{0,${diff}}` : `0{${diff}}`;
+        }
+      }
+    }
+    toRegexRange.cache = {};
+    toRegexRange.clearCache = () => toRegexRange.cache = {};
+    module2.exports = toRegexRange;
+  }
+});
+
+// node_modules/fill-range/index.js
+var require_fill_range = __commonJS({
+  "node_modules/fill-range/index.js"(exports2, module2) {
+    "use strict";
+    var util4 = require("util");
+    var toRegexRange = require_to_regex_range();
+    var isObject2 = (val) => val !== null && typeof val === "object" && !Array.isArray(val);
+    var transform = (toNumber) => {
+      return (value) => toNumber === true ? Number(value) : String(value);
+    };
+    var isValidValue = (value) => {
+      return typeof value === "number" || typeof value === "string" && value !== "";
+    };
+    var isNumber2 = (num) => Number.isInteger(+num);
+    var zeros = (input) => {
+      let value = `${input}`;
+      let index = -1;
+      if (value[0] === "-") value = value.slice(1);
+      if (value === "0") return false;
+      while (value[++index] === "0") ;
+      return index > 0;
+    };
+    var stringify = (start, end, options) => {
+      if (typeof start === "string" || typeof end === "string") {
+        return true;
+      }
+      return options.stringify === true;
+    };
+    var pad = (input, maxLength, toNumber) => {
+      if (maxLength > 0) {
+        let dash = input[0] === "-" ? "-" : "";
+        if (dash) input = input.slice(1);
+        input = dash + input.padStart(dash ? maxLength - 1 : maxLength, "0");
+      }
+      if (toNumber === false) {
+        return String(input);
+      }
+      return input;
+    };
+    var toMaxLen = (input, maxLength) => {
+      let negative = input[0] === "-" ? "-" : "";
+      if (negative) {
+        input = input.slice(1);
+        maxLength--;
+      }
+      while (input.length < maxLength) input = "0" + input;
+      return negative ? "-" + input : input;
+    };
+    var toSequence = (parts, options, maxLen) => {
+      parts.negatives.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+      parts.positives.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+      let prefix = options.capture ? "" : "?:";
+      let positives = "";
+      let negatives = "";
+      let result;
+      if (parts.positives.length) {
+        positives = parts.positives.map((v) => toMaxLen(String(v), maxLen)).join("|");
+      }
+      if (parts.negatives.length) {
+        negatives = `-(${prefix}${parts.negatives.map((v) => toMaxLen(String(v), maxLen)).join("|")})`;
+      }
+      if (positives && negatives) {
+        result = `${positives}|${negatives}`;
+      } else {
+        result = positives || negatives;
+      }
+      if (options.wrap) {
+        return `(${prefix}${result})`;
+      }
+      return result;
+    };
+    var toRange = (a, b, isNumbers, options) => {
+      if (isNumbers) {
+        return toRegexRange(a, b, { wrap: false, ...options });
+      }
+      let start = String.fromCharCode(a);
+      if (a === b) return start;
+      let stop = String.fromCharCode(b);
+      return `[${start}-${stop}]`;
+    };
+    var toRegex = (start, end, options) => {
+      if (Array.isArray(start)) {
+        let wrap = options.wrap === true;
+        let prefix = options.capture ? "" : "?:";
+        return wrap ? `(${prefix}${start.join("|")})` : start.join("|");
+      }
+      return toRegexRange(start, end, options);
+    };
+    var rangeError = (...args) => {
+      return new RangeError("Invalid range arguments: " + util4.inspect(...args));
+    };
+    var invalidRange = (start, end, options) => {
+      if (options.strictRanges === true) throw rangeError([start, end]);
+      return [];
+    };
+    var invalidStep = (step, options) => {
+      if (options.strictRanges === true) {
+        throw new TypeError(`Expected step "${step}" to be a number`);
+      }
+      return [];
+    };
+    var fillNumbers = (start, end, step = 1, options = {}) => {
+      let a = Number(start);
+      let b = Number(end);
+      if (!Number.isInteger(a) || !Number.isInteger(b)) {
+        if (options.strictRanges === true) throw rangeError([start, end]);
+        return [];
+      }
+      if (a === 0) a = 0;
+      if (b === 0) b = 0;
+      let descending = a > b;
+      let startString = String(start);
+      let endString = String(end);
+      let stepString = String(step);
+      step = Math.max(Math.abs(step), 1);
+      let padded = zeros(startString) || zeros(endString) || zeros(stepString);
+      let maxLen = padded ? Math.max(startString.length, endString.length, stepString.length) : 0;
+      let toNumber = padded === false && stringify(start, end, options) === false;
+      let format = options.transform || transform(toNumber);
+      if (options.toRegex && step === 1) {
+        return toRange(toMaxLen(start, maxLen), toMaxLen(end, maxLen), true, options);
+      }
+      let parts = { negatives: [], positives: [] };
+      let push = (num) => parts[num < 0 ? "negatives" : "positives"].push(Math.abs(num));
+      let range = [];
+      let index = 0;
+      while (descending ? a >= b : a <= b) {
+        if (options.toRegex === true && step > 1) {
+          push(a);
+        } else {
+          range.push(pad(format(a, index), maxLen, toNumber));
+        }
+        a = descending ? a - step : a + step;
+        index++;
+      }
+      if (options.toRegex === true) {
+        return step > 1 ? toSequence(parts, options, maxLen) : toRegex(range, null, { wrap: false, ...options });
+      }
+      return range;
+    };
+    var fillLetters = (start, end, step = 1, options = {}) => {
+      if (!isNumber2(start) && start.length > 1 || !isNumber2(end) && end.length > 1) {
+        return invalidRange(start, end, options);
+      }
+      let format = options.transform || ((val) => String.fromCharCode(val));
+      let a = `${start}`.charCodeAt(0);
+      let b = `${end}`.charCodeAt(0);
+      let descending = a > b;
+      let min = Math.min(a, b);
+      let max = Math.max(a, b);
+      if (options.toRegex && step === 1) {
+        return toRange(min, max, false, options);
+      }
+      let range = [];
+      let index = 0;
+      while (descending ? a >= b : a <= b) {
+        range.push(format(a, index));
+        a = descending ? a - step : a + step;
+        index++;
+      }
+      if (options.toRegex === true) {
+        return toRegex(range, null, { wrap: false, options });
+      }
+      return range;
+    };
+    var fill = (start, end, step, options = {}) => {
+      if (end == null && isValidValue(start)) {
+        return [start];
+      }
+      if (!isValidValue(start) || !isValidValue(end)) {
+        return invalidRange(start, end, options);
+      }
+      if (typeof step === "function") {
+        return fill(start, end, 1, { transform: step });
+      }
+      if (isObject2(step)) {
+        return fill(start, end, 0, step);
+      }
+      let opts = { ...options };
+      if (opts.capture === true) opts.wrap = true;
+      step = step || opts.step || 1;
+      if (!isNumber2(step)) {
+        if (step != null && !isObject2(step)) return invalidStep(step, opts);
+        return fill(start, end, 1, step);
+      }
+      if (isNumber2(start) && isNumber2(end)) {
+        return fillNumbers(start, end, step, opts);
+      }
+      return fillLetters(start, end, Math.max(Math.abs(step), 1), opts);
+    };
+    module2.exports = fill;
+  }
+});
+
+// node_modules/braces/lib/compile.js
+var require_compile = __commonJS({
+  "node_modules/braces/lib/compile.js"(exports2, module2) {
+    "use strict";
+    var fill = require_fill_range();
+    var utils = require_utils6();
+    var compile = (ast, options = {}) => {
+      const walk = (node, parent = {}) => {
+        const invalidBlock = utils.isInvalidBrace(parent);
+        const invalidNode = node.invalid === true && options.escapeInvalid === true;
+        const invalid = invalidBlock === true || invalidNode === true;
+        const prefix = options.escapeInvalid === true ? "\\" : "";
+        let output = "";
+        if (node.isOpen === true) {
+          return prefix + node.value;
+        }
+        if (node.isClose === true) {
+          console.log("node.isClose", prefix, node.value);
+          return prefix + node.value;
+        }
+        if (node.type === "open") {
+          return invalid ? prefix + node.value : "(";
+        }
+        if (node.type === "close") {
+          return invalid ? prefix + node.value : ")";
+        }
+        if (node.type === "comma") {
+          return node.prev.type === "comma" ? "" : invalid ? node.value : "|";
+        }
+        if (node.value) {
+          return node.value;
+        }
+        if (node.nodes && node.ranges > 0) {
+          const args = utils.reduce(node.nodes);
+          const range = fill(...args, { ...options, wrap: false, toRegex: true, strictZeros: true });
+          if (range.length !== 0) {
+            return args.length > 1 && range.length > 1 ? `(${range})` : range;
+          }
+        }
+        if (node.nodes) {
+          for (const child of node.nodes) {
+            output += walk(child, node);
+          }
+        }
+        return output;
+      };
+      return walk(ast);
+    };
+    module2.exports = compile;
+  }
+});
+
+// node_modules/braces/lib/expand.js
+var require_expand = __commonJS({
+  "node_modules/braces/lib/expand.js"(exports2, module2) {
+    "use strict";
+    var fill = require_fill_range();
+    var stringify = require_stringify2();
+    var utils = require_utils6();
+    var append2 = (queue = "", stash = "", enclose = false) => {
+      const result = [];
+      queue = [].concat(queue);
+      stash = [].concat(stash);
+      if (!stash.length) return queue;
+      if (!queue.length) {
+        return enclose ? utils.flatten(stash).map((ele) => `{${ele}}`) : stash;
+      }
+      for (const item of queue) {
+        if (Array.isArray(item)) {
+          for (const value of item) {
+            result.push(append2(value, stash, enclose));
+          }
+        } else {
+          for (let ele of stash) {
+            if (enclose === true && typeof ele === "string") ele = `{${ele}}`;
+            result.push(Array.isArray(ele) ? append2(item, ele, enclose) : item + ele);
+          }
+        }
+      }
+      return utils.flatten(result);
+    };
+    var expand = (ast, options = {}) => {
+      const rangeLimit = options.rangeLimit === void 0 ? 1e3 : options.rangeLimit;
+      const walk = (node, parent = {}) => {
+        node.queue = [];
+        let p = parent;
+        let q = parent.queue;
+        while (p.type !== "brace" && p.type !== "root" && p.parent) {
+          p = p.parent;
+          q = p.queue;
+        }
+        if (node.invalid || node.dollar) {
+          q.push(append2(q.pop(), stringify(node, options)));
+          return;
+        }
+        if (node.type === "brace" && node.invalid !== true && node.nodes.length === 2) {
+          q.push(append2(q.pop(), ["{}"]));
+          return;
+        }
+        if (node.nodes && node.ranges > 0) {
+          const args = utils.reduce(node.nodes);
+          if (utils.exceedsLimit(...args, options.step, rangeLimit)) {
+            throw new RangeError("expanded array length exceeds range limit. Use options.rangeLimit to increase or disable the limit.");
+          }
+          let range = fill(...args, options);
+          if (range.length === 0) {
+            range = stringify(node, options);
+          }
+          q.push(append2(q.pop(), range));
+          node.nodes = [];
+          return;
+        }
+        const enclose = utils.encloseBrace(node);
+        let queue = node.queue;
+        let block = node;
+        while (block.type !== "brace" && block.type !== "root" && block.parent) {
+          block = block.parent;
+          queue = block.queue;
+        }
+        for (let i = 0; i < node.nodes.length; i++) {
+          const child = node.nodes[i];
+          if (child.type === "comma" && node.type === "brace") {
+            if (i === 1) queue.push("");
+            queue.push("");
+            continue;
+          }
+          if (child.type === "close") {
+            q.push(append2(q.pop(), queue, enclose));
+            continue;
+          }
+          if (child.value && child.type !== "open") {
+            queue.push(append2(queue.pop(), child.value));
+            continue;
+          }
+          if (child.nodes) {
+            walk(child, node);
+          }
+        }
+        return queue;
+      };
+      return utils.flatten(walk(ast));
+    };
+    module2.exports = expand;
+  }
+});
+
+// node_modules/braces/lib/constants.js
+var require_constants4 = __commonJS({
+  "node_modules/braces/lib/constants.js"(exports2, module2) {
+    "use strict";
+    module2.exports = {
+      MAX_LENGTH: 1e4,
+      // Digits
+      CHAR_0: "0",
+      /* 0 */
+      CHAR_9: "9",
+      /* 9 */
+      // Alphabet chars.
+      CHAR_UPPERCASE_A: "A",
+      /* A */
+      CHAR_LOWERCASE_A: "a",
+      /* a */
+      CHAR_UPPERCASE_Z: "Z",
+      /* Z */
+      CHAR_LOWERCASE_Z: "z",
+      /* z */
+      CHAR_LEFT_PARENTHESES: "(",
+      /* ( */
+      CHAR_RIGHT_PARENTHESES: ")",
+      /* ) */
+      CHAR_ASTERISK: "*",
+      /* * */
+      // Non-alphabetic chars.
+      CHAR_AMPERSAND: "&",
+      /* & */
+      CHAR_AT: "@",
+      /* @ */
+      CHAR_BACKSLASH: "\\",
+      /* \ */
+      CHAR_BACKTICK: "`",
+      /* ` */
+      CHAR_CARRIAGE_RETURN: "\r",
+      /* \r */
+      CHAR_CIRCUMFLEX_ACCENT: "^",
+      /* ^ */
+      CHAR_COLON: ":",
+      /* : */
+      CHAR_COMMA: ",",
+      /* , */
+      CHAR_DOLLAR: "$",
+      /* . */
+      CHAR_DOT: ".",
+      /* . */
+      CHAR_DOUBLE_QUOTE: '"',
+      /* " */
+      CHAR_EQUAL: "=",
+      /* = */
+      CHAR_EXCLAMATION_MARK: "!",
+      /* ! */
+      CHAR_FORM_FEED: "\f",
+      /* \f */
+      CHAR_FORWARD_SLASH: "/",
+      /* / */
+      CHAR_HASH: "#",
+      /* # */
+      CHAR_HYPHEN_MINUS: "-",
+      /* - */
+      CHAR_LEFT_ANGLE_BRACKET: "<",
+      /* < */
+      CHAR_LEFT_CURLY_BRACE: "{",
+      /* { */
+      CHAR_LEFT_SQUARE_BRACKET: "[",
+      /* [ */
+      CHAR_LINE_FEED: "\n",
+      /* \n */
+      CHAR_NO_BREAK_SPACE: "\xA0",
+      /* \u00A0 */
+      CHAR_PERCENT: "%",
+      /* % */
+      CHAR_PLUS: "+",
+      /* + */
+      CHAR_QUESTION_MARK: "?",
+      /* ? */
+      CHAR_RIGHT_ANGLE_BRACKET: ">",
+      /* > */
+      CHAR_RIGHT_CURLY_BRACE: "}",
+      /* } */
+      CHAR_RIGHT_SQUARE_BRACKET: "]",
+      /* ] */
+      CHAR_SEMICOLON: ";",
+      /* ; */
+      CHAR_SINGLE_QUOTE: "'",
+      /* ' */
+      CHAR_SPACE: " ",
+      /*   */
+      CHAR_TAB: "	",
+      /* \t */
+      CHAR_UNDERSCORE: "_",
+      /* _ */
+      CHAR_VERTICAL_LINE: "|",
+      /* | */
+      CHAR_ZERO_WIDTH_NOBREAK_SPACE: "\uFEFF"
+      /* \uFEFF */
+    };
+  }
+});
+
+// node_modules/braces/lib/parse.js
+var require_parse3 = __commonJS({
+  "node_modules/braces/lib/parse.js"(exports2, module2) {
+    "use strict";
+    var stringify = require_stringify2();
+    var {
+      MAX_LENGTH,
+      CHAR_BACKSLASH,
+      /* \ */
+      CHAR_BACKTICK,
+      /* ` */
+      CHAR_COMMA,
+      /* , */
+      CHAR_DOT,
+      /* . */
+      CHAR_LEFT_PARENTHESES,
+      /* ( */
+      CHAR_RIGHT_PARENTHESES,
+      /* ) */
+      CHAR_LEFT_CURLY_BRACE,
+      /* { */
+      CHAR_RIGHT_CURLY_BRACE,
+      /* } */
+      CHAR_LEFT_SQUARE_BRACKET,
+      /* [ */
+      CHAR_RIGHT_SQUARE_BRACKET,
+      /* ] */
+      CHAR_DOUBLE_QUOTE,
+      /* " */
+      CHAR_SINGLE_QUOTE,
+      /* ' */
+      CHAR_NO_BREAK_SPACE,
+      CHAR_ZERO_WIDTH_NOBREAK_SPACE
+    } = require_constants4();
+    var parse = (input, options = {}) => {
+      if (typeof input !== "string") {
+        throw new TypeError("Expected a string");
+      }
+      const opts = options || {};
+      const max = typeof opts.maxLength === "number" ? Math.min(MAX_LENGTH, opts.maxLength) : MAX_LENGTH;
+      if (input.length > max) {
+        throw new SyntaxError(`Input length (${input.length}), exceeds max characters (${max})`);
+      }
+      const ast = { type: "root", input, nodes: [] };
+      const stack = [ast];
+      let block = ast;
+      let prev = ast;
+      let brackets = 0;
+      const length = input.length;
+      let index = 0;
+      let depth = 0;
+      let value;
+      const advance = () => input[index++];
+      const push = (node) => {
+        if (node.type === "text" && prev.type === "dot") {
+          prev.type = "text";
+        }
+        if (prev && prev.type === "text" && node.type === "text") {
+          prev.value += node.value;
+          return;
+        }
+        block.nodes.push(node);
+        node.parent = block;
+        node.prev = prev;
+        prev = node;
+        return node;
+      };
+      push({ type: "bos" });
+      while (index < length) {
+        block = stack[stack.length - 1];
+        value = advance();
+        if (value === CHAR_ZERO_WIDTH_NOBREAK_SPACE || value === CHAR_NO_BREAK_SPACE) {
+          continue;
+        }
+        if (value === CHAR_BACKSLASH) {
+          push({ type: "text", value: (options.keepEscaping ? value : "") + advance() });
+          continue;
+        }
+        if (value === CHAR_RIGHT_SQUARE_BRACKET) {
+          push({ type: "text", value: "\\" + value });
+          continue;
+        }
+        if (value === CHAR_LEFT_SQUARE_BRACKET) {
+          brackets++;
+          let next;
+          while (index < length && (next = advance())) {
+            value += next;
+            if (next === CHAR_LEFT_SQUARE_BRACKET) {
+              brackets++;
+              continue;
+            }
+            if (next === CHAR_BACKSLASH) {
+              value += advance();
+              continue;
+            }
+            if (next === CHAR_RIGHT_SQUARE_BRACKET) {
+              brackets--;
+              if (brackets === 0) {
+                break;
+              }
+            }
+          }
+          push({ type: "text", value });
+          continue;
+        }
+        if (value === CHAR_LEFT_PARENTHESES) {
+          block = push({ type: "paren", nodes: [] });
+          stack.push(block);
+          push({ type: "text", value });
+          continue;
+        }
+        if (value === CHAR_RIGHT_PARENTHESES) {
+          if (block.type !== "paren") {
+            push({ type: "text", value });
+            continue;
+          }
+          block = stack.pop();
+          push({ type: "text", value });
+          block = stack[stack.length - 1];
+          continue;
+        }
+        if (value === CHAR_DOUBLE_QUOTE || value === CHAR_SINGLE_QUOTE || value === CHAR_BACKTICK) {
+          const open = value;
+          let next;
+          if (options.keepQuotes !== true) {
+            value = "";
+          }
+          while (index < length && (next = advance())) {
+            if (next === CHAR_BACKSLASH) {
+              value += next + advance();
+              continue;
+            }
+            if (next === open) {
+              if (options.keepQuotes === true) value += next;
+              break;
+            }
+            value += next;
+          }
+          push({ type: "text", value });
+          continue;
+        }
+        if (value === CHAR_LEFT_CURLY_BRACE) {
+          depth++;
+          const dollar = prev.value && prev.value.slice(-1) === "$" || block.dollar === true;
+          const brace = {
+            type: "brace",
+            open: true,
+            close: false,
+            dollar,
+            depth,
+            commas: 0,
+            ranges: 0,
+            nodes: []
+          };
+          block = push(brace);
+          stack.push(block);
+          push({ type: "open", value });
+          continue;
+        }
+        if (value === CHAR_RIGHT_CURLY_BRACE) {
+          if (block.type !== "brace") {
+            push({ type: "text", value });
+            continue;
+          }
+          const type = "close";
+          block = stack.pop();
+          block.close = true;
+          push({ type, value });
+          depth--;
+          block = stack[stack.length - 1];
+          continue;
+        }
+        if (value === CHAR_COMMA && depth > 0) {
+          if (block.ranges > 0) {
+            block.ranges = 0;
+            const open = block.nodes.shift();
+            block.nodes = [open, { type: "text", value: stringify(block) }];
+          }
+          push({ type: "comma", value });
+          block.commas++;
+          continue;
+        }
+        if (value === CHAR_DOT && depth > 0 && block.commas === 0) {
+          const siblings = block.nodes;
+          if (depth === 0 || siblings.length === 0) {
+            push({ type: "text", value });
+            continue;
+          }
+          if (prev.type === "dot") {
+            block.range = [];
+            prev.value += value;
+            prev.type = "range";
+            if (block.nodes.length !== 3 && block.nodes.length !== 5) {
+              block.invalid = true;
+              block.ranges = 0;
+              prev.type = "text";
+              continue;
+            }
+            block.ranges++;
+            block.args = [];
+            continue;
+          }
+          if (prev.type === "range") {
+            siblings.pop();
+            const before = siblings[siblings.length - 1];
+            before.value += prev.value + value;
+            prev = before;
+            block.ranges--;
+            continue;
+          }
+          push({ type: "dot", value });
+          continue;
+        }
+        push({ type: "text", value });
+      }
+      do {
+        block = stack.pop();
+        if (block.type !== "root") {
+          block.nodes.forEach((node) => {
+            if (!node.nodes) {
+              if (node.type === "open") node.isOpen = true;
+              if (node.type === "close") node.isClose = true;
+              if (!node.nodes) node.type = "text";
+              node.invalid = true;
+            }
+          });
+          const parent = stack[stack.length - 1];
+          const index2 = parent.nodes.indexOf(block);
+          parent.nodes.splice(index2, 1, ...block.nodes);
+        }
+      } while (stack.length > 0);
+      push({ type: "eos" });
+      return ast;
+    };
+    module2.exports = parse;
+  }
+});
+
+// node_modules/braces/index.js
+var require_braces = __commonJS({
+  "node_modules/braces/index.js"(exports2, module2) {
+    "use strict";
+    var stringify = require_stringify2();
+    var compile = require_compile();
+    var expand = require_expand();
+    var parse = require_parse3();
+    var braces = (input, options = {}) => {
+      let output = [];
+      if (Array.isArray(input)) {
+        for (const pattern of input) {
+          const result = braces.create(pattern, options);
+          if (Array.isArray(result)) {
+            output.push(...result);
+          } else {
+            output.push(result);
+          }
+        }
+      } else {
+        output = [].concat(braces.create(input, options));
+      }
+      if (options && options.expand === true && options.nodupes === true) {
+        output = [...new Set(output)];
+      }
+      return output;
+    };
+    braces.parse = (input, options = {}) => parse(input, options);
+    braces.stringify = (input, options = {}) => {
+      if (typeof input === "string") {
+        return stringify(braces.parse(input, options), options);
+      }
+      return stringify(input, options);
+    };
+    braces.compile = (input, options = {}) => {
+      if (typeof input === "string") {
+        input = braces.parse(input, options);
+      }
+      return compile(input, options);
+    };
+    braces.expand = (input, options = {}) => {
+      if (typeof input === "string") {
+        input = braces.parse(input, options);
+      }
+      let result = expand(input, options);
+      if (options.noempty === true) {
+        result = result.filter(Boolean);
+      }
+      if (options.nodupes === true) {
+        result = [...new Set(result)];
+      }
+      return result;
+    };
+    braces.create = (input, options = {}) => {
+      if (input === "" || input.length < 3) {
+        return [input];
+      }
+      return options.expand !== true ? braces.compile(input, options) : braces.expand(input, options);
+    };
+    module2.exports = braces;
+  }
+});
+
+// node_modules/picomatch/lib/constants.js
+var require_constants5 = __commonJS({
+  "node_modules/picomatch/lib/constants.js"(exports2, module2) {
+    "use strict";
+    var path2 = require("path");
+    var WIN_SLASH = "\\\\/";
+    var WIN_NO_SLASH = `[^${WIN_SLASH}]`;
+    var DOT_LITERAL = "\\.";
+    var PLUS_LITERAL = "\\+";
+    var QMARK_LITERAL = "\\?";
+    var SLASH_LITERAL = "\\/";
+    var ONE_CHAR = "(?=.)";
+    var QMARK = "[^/]";
+    var END_ANCHOR = `(?:${SLASH_LITERAL}|$)`;
+    var START_ANCHOR = `(?:^|${SLASH_LITERAL})`;
+    var DOTS_SLASH = `${DOT_LITERAL}{1,2}${END_ANCHOR}`;
+    var NO_DOT = `(?!${DOT_LITERAL})`;
+    var NO_DOTS = `(?!${START_ANCHOR}${DOTS_SLASH})`;
+    var NO_DOT_SLASH = `(?!${DOT_LITERAL}{0,1}${END_ANCHOR})`;
+    var NO_DOTS_SLASH = `(?!${DOTS_SLASH})`;
+    var QMARK_NO_DOT = `[^.${SLASH_LITERAL}]`;
+    var STAR = `${QMARK}*?`;
+    var POSIX_CHARS = {
+      DOT_LITERAL,
+      PLUS_LITERAL,
+      QMARK_LITERAL,
+      SLASH_LITERAL,
+      ONE_CHAR,
+      QMARK,
+      END_ANCHOR,
+      DOTS_SLASH,
+      NO_DOT,
+      NO_DOTS,
+      NO_DOT_SLASH,
+      NO_DOTS_SLASH,
+      QMARK_NO_DOT,
+      STAR,
+      START_ANCHOR
+    };
+    var WINDOWS_CHARS = {
+      ...POSIX_CHARS,
+      SLASH_LITERAL: `[${WIN_SLASH}]`,
+      QMARK: WIN_NO_SLASH,
+      STAR: `${WIN_NO_SLASH}*?`,
+      DOTS_SLASH: `${DOT_LITERAL}{1,2}(?:[${WIN_SLASH}]|$)`,
+      NO_DOT: `(?!${DOT_LITERAL})`,
+      NO_DOTS: `(?!(?:^|[${WIN_SLASH}])${DOT_LITERAL}{1,2}(?:[${WIN_SLASH}]|$))`,
+      NO_DOT_SLASH: `(?!${DOT_LITERAL}{0,1}(?:[${WIN_SLASH}]|$))`,
+      NO_DOTS_SLASH: `(?!${DOT_LITERAL}{1,2}(?:[${WIN_SLASH}]|$))`,
+      QMARK_NO_DOT: `[^.${WIN_SLASH}]`,
+      START_ANCHOR: `(?:^|[${WIN_SLASH}])`,
+      END_ANCHOR: `(?:[${WIN_SLASH}]|$)`
+    };
+    var POSIX_REGEX_SOURCE = {
+      alnum: "a-zA-Z0-9",
+      alpha: "a-zA-Z",
+      ascii: "\\x00-\\x7F",
+      blank: " \\t",
+      cntrl: "\\x00-\\x1F\\x7F",
+      digit: "0-9",
+      graph: "\\x21-\\x7E",
+      lower: "a-z",
+      print: "\\x20-\\x7E ",
+      punct: "\\-!\"#$%&'()\\*+,./:;<=>?@[\\]^_`{|}~",
+      space: " \\t\\r\\n\\v\\f",
+      upper: "A-Z",
+      word: "A-Za-z0-9_",
+      xdigit: "A-Fa-f0-9"
+    };
+    module2.exports = {
+      MAX_LENGTH: 1024 * 64,
+      POSIX_REGEX_SOURCE,
+      // regular expressions
+      REGEX_BACKSLASH: /\\(?![*+?^${}(|)[\]])/g,
+      REGEX_NON_SPECIAL_CHARS: /^[^@![\].,$*+?^{}()|\\/]+/,
+      REGEX_SPECIAL_CHARS: /[-*+?.^${}(|)[\]]/,
+      REGEX_SPECIAL_CHARS_BACKREF: /(\\?)((\W)(\3*))/g,
+      REGEX_SPECIAL_CHARS_GLOBAL: /([-*+?.^${}(|)[\]])/g,
+      REGEX_REMOVE_BACKSLASH: /(?:\[.*?[^\\]\]|\\(?=.))/g,
+      // Replace globs with equivalent patterns to reduce parsing time.
+      REPLACEMENTS: {
+        "***": "*",
+        "**/**": "**",
+        "**/**/**": "**"
+      },
+      // Digits
+      CHAR_0: 48,
+      /* 0 */
+      CHAR_9: 57,
+      /* 9 */
+      // Alphabet chars.
+      CHAR_UPPERCASE_A: 65,
+      /* A */
+      CHAR_LOWERCASE_A: 97,
+      /* a */
+      CHAR_UPPERCASE_Z: 90,
+      /* Z */
+      CHAR_LOWERCASE_Z: 122,
+      /* z */
+      CHAR_LEFT_PARENTHESES: 40,
+      /* ( */
+      CHAR_RIGHT_PARENTHESES: 41,
+      /* ) */
+      CHAR_ASTERISK: 42,
+      /* * */
+      // Non-alphabetic chars.
+      CHAR_AMPERSAND: 38,
+      /* & */
+      CHAR_AT: 64,
+      /* @ */
+      CHAR_BACKWARD_SLASH: 92,
+      /* \ */
+      CHAR_CARRIAGE_RETURN: 13,
+      /* \r */
+      CHAR_CIRCUMFLEX_ACCENT: 94,
+      /* ^ */
+      CHAR_COLON: 58,
+      /* : */
+      CHAR_COMMA: 44,
+      /* , */
+      CHAR_DOT: 46,
+      /* . */
+      CHAR_DOUBLE_QUOTE: 34,
+      /* " */
+      CHAR_EQUAL: 61,
+      /* = */
+      CHAR_EXCLAMATION_MARK: 33,
+      /* ! */
+      CHAR_FORM_FEED: 12,
+      /* \f */
+      CHAR_FORWARD_SLASH: 47,
+      /* / */
+      CHAR_GRAVE_ACCENT: 96,
+      /* ` */
+      CHAR_HASH: 35,
+      /* # */
+      CHAR_HYPHEN_MINUS: 45,
+      /* - */
+      CHAR_LEFT_ANGLE_BRACKET: 60,
+      /* < */
+      CHAR_LEFT_CURLY_BRACE: 123,
+      /* { */
+      CHAR_LEFT_SQUARE_BRACKET: 91,
+      /* [ */
+      CHAR_LINE_FEED: 10,
+      /* \n */
+      CHAR_NO_BREAK_SPACE: 160,
+      /* \u00A0 */
+      CHAR_PERCENT: 37,
+      /* % */
+      CHAR_PLUS: 43,
+      /* + */
+      CHAR_QUESTION_MARK: 63,
+      /* ? */
+      CHAR_RIGHT_ANGLE_BRACKET: 62,
+      /* > */
+      CHAR_RIGHT_CURLY_BRACE: 125,
+      /* } */
+      CHAR_RIGHT_SQUARE_BRACKET: 93,
+      /* ] */
+      CHAR_SEMICOLON: 59,
+      /* ; */
+      CHAR_SINGLE_QUOTE: 39,
+      /* ' */
+      CHAR_SPACE: 32,
+      /*   */
+      CHAR_TAB: 9,
+      /* \t */
+      CHAR_UNDERSCORE: 95,
+      /* _ */
+      CHAR_VERTICAL_LINE: 124,
+      /* | */
+      CHAR_ZERO_WIDTH_NOBREAK_SPACE: 65279,
+      /* \uFEFF */
+      SEP: path2.sep,
+      /**
+       * Create EXTGLOB_CHARS
+       */
+      extglobChars(chars) {
+        return {
+          "!": { type: "negate", open: "(?:(?!(?:", close: `))${chars.STAR})` },
+          "?": { type: "qmark", open: "(?:", close: ")?" },
+          "+": { type: "plus", open: "(?:", close: ")+" },
+          "*": { type: "star", open: "(?:", close: ")*" },
+          "@": { type: "at", open: "(?:", close: ")" }
+        };
+      },
+      /**
+       * Create GLOB_CHARS
+       */
+      globChars(win32) {
+        return win32 === true ? WINDOWS_CHARS : POSIX_CHARS;
+      }
+    };
+  }
+});
+
+// node_modules/picomatch/lib/utils.js
+var require_utils7 = __commonJS({
+  "node_modules/picomatch/lib/utils.js"(exports2) {
+    "use strict";
+    var path2 = require("path");
+    var win32 = process.platform === "win32";
+    var {
+      REGEX_BACKSLASH,
+      REGEX_REMOVE_BACKSLASH,
+      REGEX_SPECIAL_CHARS,
+      REGEX_SPECIAL_CHARS_GLOBAL
+    } = require_constants5();
+    exports2.isObject = (val) => val !== null && typeof val === "object" && !Array.isArray(val);
+    exports2.hasRegexChars = (str) => REGEX_SPECIAL_CHARS.test(str);
+    exports2.isRegexChar = (str) => str.length === 1 && exports2.hasRegexChars(str);
+    exports2.escapeRegex = (str) => str.replace(REGEX_SPECIAL_CHARS_GLOBAL, "\\$1");
+    exports2.toPosixSlashes = (str) => str.replace(REGEX_BACKSLASH, "/");
+    exports2.removeBackslashes = (str) => {
+      return str.replace(REGEX_REMOVE_BACKSLASH, (match) => {
+        return match === "\\" ? "" : match;
+      });
+    };
+    exports2.supportsLookbehinds = () => {
+      const segs = process.version.slice(1).split(".").map(Number);
+      if (segs.length === 3 && segs[0] >= 9 || segs[0] === 8 && segs[1] >= 10) {
+        return true;
+      }
+      return false;
+    };
+    exports2.isWindows = (options) => {
+      if (options && typeof options.windows === "boolean") {
+        return options.windows;
+      }
+      return win32 === true || path2.sep === "\\";
+    };
+    exports2.escapeLast = (input, char2, lastIdx) => {
+      const idx = input.lastIndexOf(char2, lastIdx);
+      if (idx === -1) return input;
+      if (input[idx - 1] === "\\") return exports2.escapeLast(input, char2, idx - 1);
+      return `${input.slice(0, idx)}\\${input.slice(idx)}`;
+    };
+    exports2.removePrefix = (input, state = {}) => {
+      let output = input;
+      if (output.startsWith("./")) {
+        output = output.slice(2);
+        state.prefix = "./";
+      }
+      return output;
+    };
+    exports2.wrapOutput = (input, state = {}, options = {}) => {
+      const prepend = options.contains ? "" : "^";
+      const append2 = options.contains ? "" : "$";
+      let output = `${prepend}(?:${input})${append2}`;
+      if (state.negated === true) {
+        output = `(?:^(?!${output}).*$)`;
+      }
+      return output;
+    };
+  }
+});
+
+// node_modules/picomatch/lib/scan.js
+var require_scan = __commonJS({
+  "node_modules/picomatch/lib/scan.js"(exports2, module2) {
+    "use strict";
+    var utils = require_utils7();
+    var {
+      CHAR_ASTERISK,
+      /* * */
+      CHAR_AT,
+      /* @ */
+      CHAR_BACKWARD_SLASH,
+      /* \ */
+      CHAR_COMMA,
+      /* , */
+      CHAR_DOT,
+      /* . */
+      CHAR_EXCLAMATION_MARK,
+      /* ! */
+      CHAR_FORWARD_SLASH,
+      /* / */
+      CHAR_LEFT_CURLY_BRACE,
+      /* { */
+      CHAR_LEFT_PARENTHESES,
+      /* ( */
+      CHAR_LEFT_SQUARE_BRACKET,
+      /* [ */
+      CHAR_PLUS,
+      /* + */
+      CHAR_QUESTION_MARK,
+      /* ? */
+      CHAR_RIGHT_CURLY_BRACE,
+      /* } */
+      CHAR_RIGHT_PARENTHESES,
+      /* ) */
+      CHAR_RIGHT_SQUARE_BRACKET
+      /* ] */
+    } = require_constants5();
+    var isPathSeparator = (code) => {
+      return code === CHAR_FORWARD_SLASH || code === CHAR_BACKWARD_SLASH;
+    };
+    var depth = (token) => {
+      if (token.isPrefix !== true) {
+        token.depth = token.isGlobstar ? Infinity : 1;
+      }
+    };
+    var scan = (input, options) => {
+      const opts = options || {};
+      const length = input.length - 1;
+      const scanToEnd = opts.parts === true || opts.scanToEnd === true;
+      const slashes = [];
+      const tokens = [];
+      const parts = [];
+      let str = input;
+      let index = -1;
+      let start = 0;
+      let lastIndex = 0;
+      let isBrace = false;
+      let isBracket = false;
+      let isGlob = false;
+      let isExtglob = false;
+      let isGlobstar = false;
+      let braceEscaped = false;
+      let backslashes = false;
+      let negated = false;
+      let negatedExtglob = false;
+      let finished = false;
+      let braces = 0;
+      let prev;
+      let code;
+      let token = { value: "", depth: 0, isGlob: false };
+      const eos = () => index >= length;
+      const peek = () => str.charCodeAt(index + 1);
+      const advance = () => {
+        prev = code;
+        return str.charCodeAt(++index);
+      };
+      while (index < length) {
+        code = advance();
+        let next;
+        if (code === CHAR_BACKWARD_SLASH) {
+          backslashes = token.backslashes = true;
+          code = advance();
+          if (code === CHAR_LEFT_CURLY_BRACE) {
+            braceEscaped = true;
+          }
+          continue;
+        }
+        if (braceEscaped === true || code === CHAR_LEFT_CURLY_BRACE) {
+          braces++;
+          while (eos() !== true && (code = advance())) {
+            if (code === CHAR_BACKWARD_SLASH) {
+              backslashes = token.backslashes = true;
+              advance();
+              continue;
+            }
+            if (code === CHAR_LEFT_CURLY_BRACE) {
+              braces++;
+              continue;
+            }
+            if (braceEscaped !== true && code === CHAR_DOT && (code = advance()) === CHAR_DOT) {
+              isBrace = token.isBrace = true;
+              isGlob = token.isGlob = true;
+              finished = true;
+              if (scanToEnd === true) {
+                continue;
+              }
+              break;
+            }
+            if (braceEscaped !== true && code === CHAR_COMMA) {
+              isBrace = token.isBrace = true;
+              isGlob = token.isGlob = true;
+              finished = true;
+              if (scanToEnd === true) {
+                continue;
+              }
+              break;
+            }
+            if (code === CHAR_RIGHT_CURLY_BRACE) {
+              braces--;
+              if (braces === 0) {
+                braceEscaped = false;
+                isBrace = token.isBrace = true;
+                finished = true;
+                break;
+              }
+            }
+          }
+          if (scanToEnd === true) {
+            continue;
+          }
+          break;
+        }
+        if (code === CHAR_FORWARD_SLASH) {
+          slashes.push(index);
+          tokens.push(token);
+          token = { value: "", depth: 0, isGlob: false };
+          if (finished === true) continue;
+          if (prev === CHAR_DOT && index === start + 1) {
+            start += 2;
+            continue;
+          }
+          lastIndex = index + 1;
+          continue;
+        }
+        if (opts.noext !== true) {
+          const isExtglobChar = code === CHAR_PLUS || code === CHAR_AT || code === CHAR_ASTERISK || code === CHAR_QUESTION_MARK || code === CHAR_EXCLAMATION_MARK;
+          if (isExtglobChar === true && peek() === CHAR_LEFT_PARENTHESES) {
+            isGlob = token.isGlob = true;
+            isExtglob = token.isExtglob = true;
+            finished = true;
+            if (code === CHAR_EXCLAMATION_MARK && index === start) {
+              negatedExtglob = true;
+            }
+            if (scanToEnd === true) {
+              while (eos() !== true && (code = advance())) {
+                if (code === CHAR_BACKWARD_SLASH) {
+                  backslashes = token.backslashes = true;
+                  code = advance();
+                  continue;
+                }
+                if (code === CHAR_RIGHT_PARENTHESES) {
+                  isGlob = token.isGlob = true;
+                  finished = true;
+                  break;
+                }
+              }
+              continue;
+            }
+            break;
+          }
+        }
+        if (code === CHAR_ASTERISK) {
+          if (prev === CHAR_ASTERISK) isGlobstar = token.isGlobstar = true;
+          isGlob = token.isGlob = true;
+          finished = true;
+          if (scanToEnd === true) {
+            continue;
+          }
+          break;
+        }
+        if (code === CHAR_QUESTION_MARK) {
+          isGlob = token.isGlob = true;
+          finished = true;
+          if (scanToEnd === true) {
+            continue;
+          }
+          break;
+        }
+        if (code === CHAR_LEFT_SQUARE_BRACKET) {
+          while (eos() !== true && (next = advance())) {
+            if (next === CHAR_BACKWARD_SLASH) {
+              backslashes = token.backslashes = true;
+              advance();
+              continue;
+            }
+            if (next === CHAR_RIGHT_SQUARE_BRACKET) {
+              isBracket = token.isBracket = true;
+              isGlob = token.isGlob = true;
+              finished = true;
+              break;
+            }
+          }
+          if (scanToEnd === true) {
+            continue;
+          }
+          break;
+        }
+        if (opts.nonegate !== true && code === CHAR_EXCLAMATION_MARK && index === start) {
+          negated = token.negated = true;
+          start++;
+          continue;
+        }
+        if (opts.noparen !== true && code === CHAR_LEFT_PARENTHESES) {
+          isGlob = token.isGlob = true;
+          if (scanToEnd === true) {
+            while (eos() !== true && (code = advance())) {
+              if (code === CHAR_LEFT_PARENTHESES) {
+                backslashes = token.backslashes = true;
+                code = advance();
+                continue;
+              }
+              if (code === CHAR_RIGHT_PARENTHESES) {
+                finished = true;
+                break;
+              }
+            }
+            continue;
+          }
+          break;
+        }
+        if (isGlob === true) {
+          finished = true;
+          if (scanToEnd === true) {
+            continue;
+          }
+          break;
+        }
+      }
+      if (opts.noext === true) {
+        isExtglob = false;
+        isGlob = false;
+      }
+      let base = str;
+      let prefix = "";
+      let glob = "";
+      if (start > 0) {
+        prefix = str.slice(0, start);
+        str = str.slice(start);
+        lastIndex -= start;
+      }
+      if (base && isGlob === true && lastIndex > 0) {
+        base = str.slice(0, lastIndex);
+        glob = str.slice(lastIndex);
+      } else if (isGlob === true) {
+        base = "";
+        glob = str;
+      } else {
+        base = str;
+      }
+      if (base && base !== "" && base !== "/" && base !== str) {
+        if (isPathSeparator(base.charCodeAt(base.length - 1))) {
+          base = base.slice(0, -1);
+        }
+      }
+      if (opts.unescape === true) {
+        if (glob) glob = utils.removeBackslashes(glob);
+        if (base && backslashes === true) {
+          base = utils.removeBackslashes(base);
+        }
+      }
+      const state = {
+        prefix,
+        input,
+        start,
+        base,
+        glob,
+        isBrace,
+        isBracket,
+        isGlob,
+        isExtglob,
+        isGlobstar,
+        negated,
+        negatedExtglob
+      };
+      if (opts.tokens === true) {
+        state.maxDepth = 0;
+        if (!isPathSeparator(code)) {
+          tokens.push(token);
+        }
+        state.tokens = tokens;
+      }
+      if (opts.parts === true || opts.tokens === true) {
+        let prevIndex;
+        for (let idx = 0; idx < slashes.length; idx++) {
+          const n = prevIndex ? prevIndex + 1 : start;
+          const i = slashes[idx];
+          const value = input.slice(n, i);
+          if (opts.tokens) {
+            if (idx === 0 && start !== 0) {
+              tokens[idx].isPrefix = true;
+              tokens[idx].value = prefix;
+            } else {
+              tokens[idx].value = value;
+            }
+            depth(tokens[idx]);
+            state.maxDepth += tokens[idx].depth;
+          }
+          if (idx !== 0 || value !== "") {
+            parts.push(value);
+          }
+          prevIndex = i;
+        }
+        if (prevIndex && prevIndex + 1 < input.length) {
+          const value = input.slice(prevIndex + 1);
+          parts.push(value);
+          if (opts.tokens) {
+            tokens[tokens.length - 1].value = value;
+            depth(tokens[tokens.length - 1]);
+            state.maxDepth += tokens[tokens.length - 1].depth;
+          }
+        }
+        state.slashes = slashes;
+        state.parts = parts;
+      }
+      return state;
+    };
+    module2.exports = scan;
+  }
+});
+
+// node_modules/picomatch/lib/parse.js
+var require_parse4 = __commonJS({
+  "node_modules/picomatch/lib/parse.js"(exports2, module2) {
+    "use strict";
+    var constants = require_constants5();
+    var utils = require_utils7();
+    var {
+      MAX_LENGTH,
+      POSIX_REGEX_SOURCE,
+      REGEX_NON_SPECIAL_CHARS,
+      REGEX_SPECIAL_CHARS_BACKREF,
+      REPLACEMENTS
+    } = constants;
+    var expandRange = (args, options) => {
+      if (typeof options.expandRange === "function") {
+        return options.expandRange(...args, options);
+      }
+      args.sort();
+      const value = `[${args.join("-")}]`;
+      try {
+        new RegExp(value);
+      } catch (ex) {
+        return args.map((v) => utils.escapeRegex(v)).join("..");
+      }
+      return value;
+    };
+    var syntaxError = (type, char2) => {
+      return `Missing ${type}: "${char2}" - use "\\\\${char2}" to match literal characters`;
+    };
+    var parse = (input, options) => {
+      if (typeof input !== "string") {
+        throw new TypeError("Expected a string");
+      }
+      input = REPLACEMENTS[input] || input;
+      const opts = { ...options };
+      const max = typeof opts.maxLength === "number" ? Math.min(MAX_LENGTH, opts.maxLength) : MAX_LENGTH;
+      let len = input.length;
+      if (len > max) {
+        throw new SyntaxError(`Input length: ${len}, exceeds maximum allowed length: ${max}`);
+      }
+      const bos = { type: "bos", value: "", output: opts.prepend || "" };
+      const tokens = [bos];
+      const capture = opts.capture ? "" : "?:";
+      const win32 = utils.isWindows(options);
+      const PLATFORM_CHARS = constants.globChars(win32);
+      const EXTGLOB_CHARS = constants.extglobChars(PLATFORM_CHARS);
+      const {
+        DOT_LITERAL,
+        PLUS_LITERAL,
+        SLASH_LITERAL,
+        ONE_CHAR,
+        DOTS_SLASH,
+        NO_DOT,
+        NO_DOT_SLASH,
+        NO_DOTS_SLASH,
+        QMARK,
+        QMARK_NO_DOT,
+        STAR,
+        START_ANCHOR
+      } = PLATFORM_CHARS;
+      const globstar = (opts2) => {
+        return `(${capture}(?:(?!${START_ANCHOR}${opts2.dot ? DOTS_SLASH : DOT_LITERAL}).)*?)`;
+      };
+      const nodot = opts.dot ? "" : NO_DOT;
+      const qmarkNoDot = opts.dot ? QMARK : QMARK_NO_DOT;
+      let star = opts.bash === true ? globstar(opts) : STAR;
+      if (opts.capture) {
+        star = `(${star})`;
+      }
+      if (typeof opts.noext === "boolean") {
+        opts.noextglob = opts.noext;
+      }
+      const state = {
+        input,
+        index: -1,
+        start: 0,
+        dot: opts.dot === true,
+        consumed: "",
+        output: "",
+        prefix: "",
+        backtrack: false,
+        negated: false,
+        brackets: 0,
+        braces: 0,
+        parens: 0,
+        quotes: 0,
+        globstar: false,
+        tokens
+      };
+      input = utils.removePrefix(input, state);
+      len = input.length;
+      const extglobs = [];
+      const braces = [];
+      const stack = [];
+      let prev = bos;
+      let value;
+      const eos = () => state.index === len - 1;
+      const peek = state.peek = (n = 1) => input[state.index + n];
+      const advance = state.advance = () => input[++state.index] || "";
+      const remaining = () => input.slice(state.index + 1);
+      const consume = (value2 = "", num = 0) => {
+        state.consumed += value2;
+        state.index += num;
+      };
+      const append2 = (token) => {
+        state.output += token.output != null ? token.output : token.value;
+        consume(token.value);
+      };
+      const negate = () => {
+        let count = 1;
+        while (peek() === "!" && (peek(2) !== "(" || peek(3) === "?")) {
+          advance();
+          state.start++;
+          count++;
+        }
+        if (count % 2 === 0) {
+          return false;
+        }
+        state.negated = true;
+        state.start++;
+        return true;
+      };
+      const increment = (type) => {
+        state[type]++;
+        stack.push(type);
+      };
+      const decrement = (type) => {
+        state[type]--;
+        stack.pop();
+      };
+      const push = (tok) => {
+        if (prev.type === "globstar") {
+          const isBrace = state.braces > 0 && (tok.type === "comma" || tok.type === "brace");
+          const isExtglob = tok.extglob === true || extglobs.length && (tok.type === "pipe" || tok.type === "paren");
+          if (tok.type !== "slash" && tok.type !== "paren" && !isBrace && !isExtglob) {
+            state.output = state.output.slice(0, -prev.output.length);
+            prev.type = "star";
+            prev.value = "*";
+            prev.output = star;
+            state.output += prev.output;
+          }
+        }
+        if (extglobs.length && tok.type !== "paren") {
+          extglobs[extglobs.length - 1].inner += tok.value;
+        }
+        if (tok.value || tok.output) append2(tok);
+        if (prev && prev.type === "text" && tok.type === "text") {
+          prev.value += tok.value;
+          prev.output = (prev.output || "") + tok.value;
+          return;
+        }
+        tok.prev = prev;
+        tokens.push(tok);
+        prev = tok;
+      };
+      const extglobOpen = (type, value2) => {
+        const token = { ...EXTGLOB_CHARS[value2], conditions: 1, inner: "" };
+        token.prev = prev;
+        token.parens = state.parens;
+        token.output = state.output;
+        const output = (opts.capture ? "(" : "") + token.open;
+        increment("parens");
+        push({ type, value: value2, output: state.output ? "" : ONE_CHAR });
+        push({ type: "paren", extglob: true, value: advance(), output });
+        extglobs.push(token);
+      };
+      const extglobClose = (token) => {
+        let output = token.close + (opts.capture ? ")" : "");
+        let rest;
+        if (token.type === "negate") {
+          let extglobStar = star;
+          if (token.inner && token.inner.length > 1 && token.inner.includes("/")) {
+            extglobStar = globstar(opts);
+          }
+          if (extglobStar !== star || eos() || /^\)+$/.test(remaining())) {
+            output = token.close = `)$))${extglobStar}`;
+          }
+          if (token.inner.includes("*") && (rest = remaining()) && /^\.[^\\/.]+$/.test(rest)) {
+            const expression = parse(rest, { ...options, fastpaths: false }).output;
+            output = token.close = `)${expression})${extglobStar})`;
+          }
+          if (token.prev.type === "bos") {
+            state.negatedExtglob = true;
+          }
+        }
+        push({ type: "paren", extglob: true, value, output });
+        decrement("parens");
+      };
+      if (opts.fastpaths !== false && !/(^[*!]|[/()[\]{}"])/.test(input)) {
+        let backslashes = false;
+        let output = input.replace(REGEX_SPECIAL_CHARS_BACKREF, (m, esc, chars, first, rest, index) => {
+          if (first === "\\") {
+            backslashes = true;
+            return m;
+          }
+          if (first === "?") {
+            if (esc) {
+              return esc + first + (rest ? QMARK.repeat(rest.length) : "");
+            }
+            if (index === 0) {
+              return qmarkNoDot + (rest ? QMARK.repeat(rest.length) : "");
+            }
+            return QMARK.repeat(chars.length);
+          }
+          if (first === ".") {
+            return DOT_LITERAL.repeat(chars.length);
+          }
+          if (first === "*") {
+            if (esc) {
+              return esc + first + (rest ? star : "");
+            }
+            return star;
+          }
+          return esc ? m : `\\${m}`;
+        });
+        if (backslashes === true) {
+          if (opts.unescape === true) {
+            output = output.replace(/\\/g, "");
+          } else {
+            output = output.replace(/\\+/g, (m) => {
+              return m.length % 2 === 0 ? "\\\\" : m ? "\\" : "";
+            });
+          }
+        }
+        if (output === input && opts.contains === true) {
+          state.output = input;
+          return state;
+        }
+        state.output = utils.wrapOutput(output, state, options);
+        return state;
+      }
+      while (!eos()) {
+        value = advance();
+        if (value === "\0") {
+          continue;
+        }
+        if (value === "\\") {
+          const next = peek();
+          if (next === "/" && opts.bash !== true) {
+            continue;
+          }
+          if (next === "." || next === ";") {
+            continue;
+          }
+          if (!next) {
+            value += "\\";
+            push({ type: "text", value });
+            continue;
+          }
+          const match = /^\\+/.exec(remaining());
+          let slashes = 0;
+          if (match && match[0].length > 2) {
+            slashes = match[0].length;
+            state.index += slashes;
+            if (slashes % 2 !== 0) {
+              value += "\\";
+            }
+          }
+          if (opts.unescape === true) {
+            value = advance();
+          } else {
+            value += advance();
+          }
+          if (state.brackets === 0) {
+            push({ type: "text", value });
+            continue;
+          }
+        }
+        if (state.brackets > 0 && (value !== "]" || prev.value === "[" || prev.value === "[^")) {
+          if (opts.posix !== false && value === ":") {
+            const inner = prev.value.slice(1);
+            if (inner.includes("[")) {
+              prev.posix = true;
+              if (inner.includes(":")) {
+                const idx = prev.value.lastIndexOf("[");
+                const pre = prev.value.slice(0, idx);
+                const rest2 = prev.value.slice(idx + 2);
+                const posix = POSIX_REGEX_SOURCE[rest2];
+                if (posix) {
+                  prev.value = pre + posix;
+                  state.backtrack = true;
+                  advance();
+                  if (!bos.output && tokens.indexOf(prev) === 1) {
+                    bos.output = ONE_CHAR;
+                  }
+                  continue;
+                }
+              }
+            }
+          }
+          if (value === "[" && peek() !== ":" || value === "-" && peek() === "]") {
+            value = `\\${value}`;
+          }
+          if (value === "]" && (prev.value === "[" || prev.value === "[^")) {
+            value = `\\${value}`;
+          }
+          if (opts.posix === true && value === "!" && prev.value === "[") {
+            value = "^";
+          }
+          prev.value += value;
+          append2({ value });
+          continue;
+        }
+        if (state.quotes === 1 && value !== '"') {
+          value = utils.escapeRegex(value);
+          prev.value += value;
+          append2({ value });
+          continue;
+        }
+        if (value === '"') {
+          state.quotes = state.quotes === 1 ? 0 : 1;
+          if (opts.keepQuotes === true) {
+            push({ type: "text", value });
+          }
+          continue;
+        }
+        if (value === "(") {
+          increment("parens");
+          push({ type: "paren", value });
+          continue;
+        }
+        if (value === ")") {
+          if (state.parens === 0 && opts.strictBrackets === true) {
+            throw new SyntaxError(syntaxError("opening", "("));
+          }
+          const extglob = extglobs[extglobs.length - 1];
+          if (extglob && state.parens === extglob.parens + 1) {
+            extglobClose(extglobs.pop());
+            continue;
+          }
+          push({ type: "paren", value, output: state.parens ? ")" : "\\)" });
+          decrement("parens");
+          continue;
+        }
+        if (value === "[") {
+          if (opts.nobracket === true || !remaining().includes("]")) {
+            if (opts.nobracket !== true && opts.strictBrackets === true) {
+              throw new SyntaxError(syntaxError("closing", "]"));
+            }
+            value = `\\${value}`;
+          } else {
+            increment("brackets");
+          }
+          push({ type: "bracket", value });
+          continue;
+        }
+        if (value === "]") {
+          if (opts.nobracket === true || prev && prev.type === "bracket" && prev.value.length === 1) {
+            push({ type: "text", value, output: `\\${value}` });
+            continue;
+          }
+          if (state.brackets === 0) {
+            if (opts.strictBrackets === true) {
+              throw new SyntaxError(syntaxError("opening", "["));
+            }
+            push({ type: "text", value, output: `\\${value}` });
+            continue;
+          }
+          decrement("brackets");
+          const prevValue = prev.value.slice(1);
+          if (prev.posix !== true && prevValue[0] === "^" && !prevValue.includes("/")) {
+            value = `/${value}`;
+          }
+          prev.value += value;
+          append2({ value });
+          if (opts.literalBrackets === false || utils.hasRegexChars(prevValue)) {
+            continue;
+          }
+          const escaped = utils.escapeRegex(prev.value);
+          state.output = state.output.slice(0, -prev.value.length);
+          if (opts.literalBrackets === true) {
+            state.output += escaped;
+            prev.value = escaped;
+            continue;
+          }
+          prev.value = `(${capture}${escaped}|${prev.value})`;
+          state.output += prev.value;
+          continue;
+        }
+        if (value === "{" && opts.nobrace !== true) {
+          increment("braces");
+          const open = {
+            type: "brace",
+            value,
+            output: "(",
+            outputIndex: state.output.length,
+            tokensIndex: state.tokens.length
+          };
+          braces.push(open);
+          push(open);
+          continue;
+        }
+        if (value === "}") {
+          const brace = braces[braces.length - 1];
+          if (opts.nobrace === true || !brace) {
+            push({ type: "text", value, output: value });
+            continue;
+          }
+          let output = ")";
+          if (brace.dots === true) {
+            const arr = tokens.slice();
+            const range = [];
+            for (let i = arr.length - 1; i >= 0; i--) {
+              tokens.pop();
+              if (arr[i].type === "brace") {
+                break;
+              }
+              if (arr[i].type !== "dots") {
+                range.unshift(arr[i].value);
+              }
+            }
+            output = expandRange(range, opts);
+            state.backtrack = true;
+          }
+          if (brace.comma !== true && brace.dots !== true) {
+            const out = state.output.slice(0, brace.outputIndex);
+            const toks = state.tokens.slice(brace.tokensIndex);
+            brace.value = brace.output = "\\{";
+            value = output = "\\}";
+            state.output = out;
+            for (const t of toks) {
+              state.output += t.output || t.value;
+            }
+          }
+          push({ type: "brace", value, output });
+          decrement("braces");
+          braces.pop();
+          continue;
+        }
+        if (value === "|") {
+          if (extglobs.length > 0) {
+            extglobs[extglobs.length - 1].conditions++;
+          }
+          push({ type: "text", value });
+          continue;
+        }
+        if (value === ",") {
+          let output = value;
+          const brace = braces[braces.length - 1];
+          if (brace && stack[stack.length - 1] === "braces") {
+            brace.comma = true;
+            output = "|";
+          }
+          push({ type: "comma", value, output });
+          continue;
+        }
+        if (value === "/") {
+          if (prev.type === "dot" && state.index === state.start + 1) {
+            state.start = state.index + 1;
+            state.consumed = "";
+            state.output = "";
+            tokens.pop();
+            prev = bos;
+            continue;
+          }
+          push({ type: "slash", value, output: SLASH_LITERAL });
+          continue;
+        }
+        if (value === ".") {
+          if (state.braces > 0 && prev.type === "dot") {
+            if (prev.value === ".") prev.output = DOT_LITERAL;
+            const brace = braces[braces.length - 1];
+            prev.type = "dots";
+            prev.output += value;
+            prev.value += value;
+            brace.dots = true;
+            continue;
+          }
+          if (state.braces + state.parens === 0 && prev.type !== "bos" && prev.type !== "slash") {
+            push({ type: "text", value, output: DOT_LITERAL });
+            continue;
+          }
+          push({ type: "dot", value, output: DOT_LITERAL });
+          continue;
+        }
+        if (value === "?") {
+          const isGroup = prev && prev.value === "(";
+          if (!isGroup && opts.noextglob !== true && peek() === "(" && peek(2) !== "?") {
+            extglobOpen("qmark", value);
+            continue;
+          }
+          if (prev && prev.type === "paren") {
+            const next = peek();
+            let output = value;
+            if (next === "<" && !utils.supportsLookbehinds()) {
+              throw new Error("Node.js v10 or higher is required for regex lookbehinds");
+            }
+            if (prev.value === "(" && !/[!=<:]/.test(next) || next === "<" && !/<([!=]|\w+>)/.test(remaining())) {
+              output = `\\${value}`;
+            }
+            push({ type: "text", value, output });
+            continue;
+          }
+          if (opts.dot !== true && (prev.type === "slash" || prev.type === "bos")) {
+            push({ type: "qmark", value, output: QMARK_NO_DOT });
+            continue;
+          }
+          push({ type: "qmark", value, output: QMARK });
+          continue;
+        }
+        if (value === "!") {
+          if (opts.noextglob !== true && peek() === "(") {
+            if (peek(2) !== "?" || !/[!=<:]/.test(peek(3))) {
+              extglobOpen("negate", value);
+              continue;
+            }
+          }
+          if (opts.nonegate !== true && state.index === 0) {
+            negate();
+            continue;
+          }
+        }
+        if (value === "+") {
+          if (opts.noextglob !== true && peek() === "(" && peek(2) !== "?") {
+            extglobOpen("plus", value);
+            continue;
+          }
+          if (prev && prev.value === "(" || opts.regex === false) {
+            push({ type: "plus", value, output: PLUS_LITERAL });
+            continue;
+          }
+          if (prev && (prev.type === "bracket" || prev.type === "paren" || prev.type === "brace") || state.parens > 0) {
+            push({ type: "plus", value });
+            continue;
+          }
+          push({ type: "plus", value: PLUS_LITERAL });
+          continue;
+        }
+        if (value === "@") {
+          if (opts.noextglob !== true && peek() === "(" && peek(2) !== "?") {
+            push({ type: "at", extglob: true, value, output: "" });
+            continue;
+          }
+          push({ type: "text", value });
+          continue;
+        }
+        if (value !== "*") {
+          if (value === "$" || value === "^") {
+            value = `\\${value}`;
+          }
+          const match = REGEX_NON_SPECIAL_CHARS.exec(remaining());
+          if (match) {
+            value += match[0];
+            state.index += match[0].length;
+          }
+          push({ type: "text", value });
+          continue;
+        }
+        if (prev && (prev.type === "globstar" || prev.star === true)) {
+          prev.type = "star";
+          prev.star = true;
+          prev.value += value;
+          prev.output = star;
+          state.backtrack = true;
+          state.globstar = true;
+          consume(value);
+          continue;
+        }
+        let rest = remaining();
+        if (opts.noextglob !== true && /^\([^?]/.test(rest)) {
+          extglobOpen("star", value);
+          continue;
+        }
+        if (prev.type === "star") {
+          if (opts.noglobstar === true) {
+            consume(value);
+            continue;
+          }
+          const prior = prev.prev;
+          const before = prior.prev;
+          const isStart = prior.type === "slash" || prior.type === "bos";
+          const afterStar = before && (before.type === "star" || before.type === "globstar");
+          if (opts.bash === true && (!isStart || rest[0] && rest[0] !== "/")) {
+            push({ type: "star", value, output: "" });
+            continue;
+          }
+          const isBrace = state.braces > 0 && (prior.type === "comma" || prior.type === "brace");
+          const isExtglob = extglobs.length && (prior.type === "pipe" || prior.type === "paren");
+          if (!isStart && prior.type !== "paren" && !isBrace && !isExtglob) {
+            push({ type: "star", value, output: "" });
+            continue;
+          }
+          while (rest.slice(0, 3) === "/**") {
+            const after = input[state.index + 4];
+            if (after && after !== "/") {
+              break;
+            }
+            rest = rest.slice(3);
+            consume("/**", 3);
+          }
+          if (prior.type === "bos" && eos()) {
+            prev.type = "globstar";
+            prev.value += value;
+            prev.output = globstar(opts);
+            state.output = prev.output;
+            state.globstar = true;
+            consume(value);
+            continue;
+          }
+          if (prior.type === "slash" && prior.prev.type !== "bos" && !afterStar && eos()) {
+            state.output = state.output.slice(0, -(prior.output + prev.output).length);
+            prior.output = `(?:${prior.output}`;
+            prev.type = "globstar";
+            prev.output = globstar(opts) + (opts.strictSlashes ? ")" : "|$)");
+            prev.value += value;
+            state.globstar = true;
+            state.output += prior.output + prev.output;
+            consume(value);
+            continue;
+          }
+          if (prior.type === "slash" && prior.prev.type !== "bos" && rest[0] === "/") {
+            const end = rest[1] !== void 0 ? "|$" : "";
+            state.output = state.output.slice(0, -(prior.output + prev.output).length);
+            prior.output = `(?:${prior.output}`;
+            prev.type = "globstar";
+            prev.output = `${globstar(opts)}${SLASH_LITERAL}|${SLASH_LITERAL}${end})`;
+            prev.value += value;
+            state.output += prior.output + prev.output;
+            state.globstar = true;
+            consume(value + advance());
+            push({ type: "slash", value: "/", output: "" });
+            continue;
+          }
+          if (prior.type === "bos" && rest[0] === "/") {
+            prev.type = "globstar";
+            prev.value += value;
+            prev.output = `(?:^|${SLASH_LITERAL}|${globstar(opts)}${SLASH_LITERAL})`;
+            state.output = prev.output;
+            state.globstar = true;
+            consume(value + advance());
+            push({ type: "slash", value: "/", output: "" });
+            continue;
+          }
+          state.output = state.output.slice(0, -prev.output.length);
+          prev.type = "globstar";
+          prev.output = globstar(opts);
+          prev.value += value;
+          state.output += prev.output;
+          state.globstar = true;
+          consume(value);
+          continue;
+        }
+        const token = { type: "star", value, output: star };
+        if (opts.bash === true) {
+          token.output = ".*?";
+          if (prev.type === "bos" || prev.type === "slash") {
+            token.output = nodot + token.output;
+          }
+          push(token);
+          continue;
+        }
+        if (prev && (prev.type === "bracket" || prev.type === "paren") && opts.regex === true) {
+          token.output = value;
+          push(token);
+          continue;
+        }
+        if (state.index === state.start || prev.type === "slash" || prev.type === "dot") {
+          if (prev.type === "dot") {
+            state.output += NO_DOT_SLASH;
+            prev.output += NO_DOT_SLASH;
+          } else if (opts.dot === true) {
+            state.output += NO_DOTS_SLASH;
+            prev.output += NO_DOTS_SLASH;
+          } else {
+            state.output += nodot;
+            prev.output += nodot;
+          }
+          if (peek() !== "*") {
+            state.output += ONE_CHAR;
+            prev.output += ONE_CHAR;
+          }
+        }
+        push(token);
+      }
+      while (state.brackets > 0) {
+        if (opts.strictBrackets === true) throw new SyntaxError(syntaxError("closing", "]"));
+        state.output = utils.escapeLast(state.output, "[");
+        decrement("brackets");
+      }
+      while (state.parens > 0) {
+        if (opts.strictBrackets === true) throw new SyntaxError(syntaxError("closing", ")"));
+        state.output = utils.escapeLast(state.output, "(");
+        decrement("parens");
+      }
+      while (state.braces > 0) {
+        if (opts.strictBrackets === true) throw new SyntaxError(syntaxError("closing", "}"));
+        state.output = utils.escapeLast(state.output, "{");
+        decrement("braces");
+      }
+      if (opts.strictSlashes !== true && (prev.type === "star" || prev.type === "bracket")) {
+        push({ type: "maybe_slash", value: "", output: `${SLASH_LITERAL}?` });
+      }
+      if (state.backtrack === true) {
+        state.output = "";
+        for (const token of state.tokens) {
+          state.output += token.output != null ? token.output : token.value;
+          if (token.suffix) {
+            state.output += token.suffix;
+          }
+        }
+      }
+      return state;
+    };
+    parse.fastpaths = (input, options) => {
+      const opts = { ...options };
+      const max = typeof opts.maxLength === "number" ? Math.min(MAX_LENGTH, opts.maxLength) : MAX_LENGTH;
+      const len = input.length;
+      if (len > max) {
+        throw new SyntaxError(`Input length: ${len}, exceeds maximum allowed length: ${max}`);
+      }
+      input = REPLACEMENTS[input] || input;
+      const win32 = utils.isWindows(options);
+      const {
+        DOT_LITERAL,
+        SLASH_LITERAL,
+        ONE_CHAR,
+        DOTS_SLASH,
+        NO_DOT,
+        NO_DOTS,
+        NO_DOTS_SLASH,
+        STAR,
+        START_ANCHOR
+      } = constants.globChars(win32);
+      const nodot = opts.dot ? NO_DOTS : NO_DOT;
+      const slashDot = opts.dot ? NO_DOTS_SLASH : NO_DOT;
+      const capture = opts.capture ? "" : "?:";
+      const state = { negated: false, prefix: "" };
+      let star = opts.bash === true ? ".*?" : STAR;
+      if (opts.capture) {
+        star = `(${star})`;
+      }
+      const globstar = (opts2) => {
+        if (opts2.noglobstar === true) return star;
+        return `(${capture}(?:(?!${START_ANCHOR}${opts2.dot ? DOTS_SLASH : DOT_LITERAL}).)*?)`;
+      };
+      const create = (str) => {
+        switch (str) {
+          case "*":
+            return `${nodot}${ONE_CHAR}${star}`;
+          case ".*":
+            return `${DOT_LITERAL}${ONE_CHAR}${star}`;
+          case "*.*":
+            return `${nodot}${star}${DOT_LITERAL}${ONE_CHAR}${star}`;
+          case "*/*":
+            return `${nodot}${star}${SLASH_LITERAL}${ONE_CHAR}${slashDot}${star}`;
+          case "**":
+            return nodot + globstar(opts);
+          case "**/*":
+            return `(?:${nodot}${globstar(opts)}${SLASH_LITERAL})?${slashDot}${ONE_CHAR}${star}`;
+          case "**/*.*":
+            return `(?:${nodot}${globstar(opts)}${SLASH_LITERAL})?${slashDot}${star}${DOT_LITERAL}${ONE_CHAR}${star}`;
+          case "**/.*":
+            return `(?:${nodot}${globstar(opts)}${SLASH_LITERAL})?${DOT_LITERAL}${ONE_CHAR}${star}`;
+          default: {
+            const match = /^(.*?)\.(\w+)$/.exec(str);
+            if (!match) return;
+            const source2 = create(match[1]);
+            if (!source2) return;
+            return source2 + DOT_LITERAL + match[2];
+          }
+        }
+      };
+      const output = utils.removePrefix(input, state);
+      let source = create(output);
+      if (source && opts.strictSlashes !== true) {
+        source += `${SLASH_LITERAL}?`;
+      }
+      return source;
+    };
+    module2.exports = parse;
+  }
+});
+
+// node_modules/picomatch/lib/picomatch.js
+var require_picomatch = __commonJS({
+  "node_modules/picomatch/lib/picomatch.js"(exports2, module2) {
+    "use strict";
+    var path2 = require("path");
+    var scan = require_scan();
+    var parse = require_parse4();
+    var utils = require_utils7();
+    var constants = require_constants5();
+    var isObject2 = (val) => val && typeof val === "object" && !Array.isArray(val);
+    var picomatch = (glob, options, returnState = false) => {
+      if (Array.isArray(glob)) {
+        const fns = glob.map((input) => picomatch(input, options, returnState));
+        const arrayMatcher = (str) => {
+          for (const isMatch of fns) {
+            const state2 = isMatch(str);
+            if (state2) return state2;
+          }
+          return false;
+        };
+        return arrayMatcher;
+      }
+      const isState = isObject2(glob) && glob.tokens && glob.input;
+      if (glob === "" || typeof glob !== "string" && !isState) {
+        throw new TypeError("Expected pattern to be a non-empty string");
+      }
+      const opts = options || {};
+      const posix = utils.isWindows(options);
+      const regex = isState ? picomatch.compileRe(glob, options) : picomatch.makeRe(glob, options, false, true);
+      const state = regex.state;
+      delete regex.state;
+      let isIgnored = () => false;
+      if (opts.ignore) {
+        const ignoreOpts = { ...options, ignore: null, onMatch: null, onResult: null };
+        isIgnored = picomatch(opts.ignore, ignoreOpts, returnState);
+      }
+      const matcher = (input, returnObject = false) => {
+        const { isMatch, match, output } = picomatch.test(input, regex, options, { glob, posix });
+        const result = { glob, state, regex, posix, input, output, match, isMatch };
+        if (typeof opts.onResult === "function") {
+          opts.onResult(result);
+        }
+        if (isMatch === false) {
+          result.isMatch = false;
+          return returnObject ? result : false;
+        }
+        if (isIgnored(input)) {
+          if (typeof opts.onIgnore === "function") {
+            opts.onIgnore(result);
+          }
+          result.isMatch = false;
+          return returnObject ? result : false;
+        }
+        if (typeof opts.onMatch === "function") {
+          opts.onMatch(result);
+        }
+        return returnObject ? result : true;
+      };
+      if (returnState) {
+        matcher.state = state;
+      }
+      return matcher;
+    };
+    picomatch.test = (input, regex, options, { glob, posix } = {}) => {
+      if (typeof input !== "string") {
+        throw new TypeError("Expected input to be a string");
+      }
+      if (input === "") {
+        return { isMatch: false, output: "" };
+      }
+      const opts = options || {};
+      const format = opts.format || (posix ? utils.toPosixSlashes : null);
+      let match = input === glob;
+      let output = match && format ? format(input) : input;
+      if (match === false) {
+        output = format ? format(input) : input;
+        match = output === glob;
+      }
+      if (match === false || opts.capture === true) {
+        if (opts.matchBase === true || opts.basename === true) {
+          match = picomatch.matchBase(input, regex, options, posix);
+        } else {
+          match = regex.exec(output);
+        }
+      }
+      return { isMatch: Boolean(match), match, output };
+    };
+    picomatch.matchBase = (input, glob, options, posix = utils.isWindows(options)) => {
+      const regex = glob instanceof RegExp ? glob : picomatch.makeRe(glob, options);
+      return regex.test(path2.basename(input));
+    };
+    picomatch.isMatch = (str, patterns, options) => picomatch(patterns, options)(str);
+    picomatch.parse = (pattern, options) => {
+      if (Array.isArray(pattern)) return pattern.map((p) => picomatch.parse(p, options));
+      return parse(pattern, { ...options, fastpaths: false });
+    };
+    picomatch.scan = (input, options) => scan(input, options);
+    picomatch.compileRe = (state, options, returnOutput = false, returnState = false) => {
+      if (returnOutput === true) {
+        return state.output;
+      }
+      const opts = options || {};
+      const prepend = opts.contains ? "" : "^";
+      const append2 = opts.contains ? "" : "$";
+      let source = `${prepend}(?:${state.output})${append2}`;
+      if (state && state.negated === true) {
+        source = `^(?!${source}).*$`;
+      }
+      const regex = picomatch.toRegex(source, options);
+      if (returnState === true) {
+        regex.state = state;
+      }
+      return regex;
+    };
+    picomatch.makeRe = (input, options = {}, returnOutput = false, returnState = false) => {
+      if (!input || typeof input !== "string") {
+        throw new TypeError("Expected a non-empty string");
+      }
+      let parsed = { negated: false, fastpaths: true };
+      if (options.fastpaths !== false && (input[0] === "." || input[0] === "*")) {
+        parsed.output = parse.fastpaths(input, options);
+      }
+      if (!parsed.output) {
+        parsed = parse(input, options);
+      }
+      return picomatch.compileRe(parsed, options, returnOutput, returnState);
+    };
+    picomatch.toRegex = (source, options) => {
+      try {
+        const opts = options || {};
+        return new RegExp(source, opts.flags || (opts.nocase ? "i" : ""));
+      } catch (err) {
+        if (options && options.debug === true) throw err;
+        return /$^/;
+      }
+    };
+    picomatch.constants = constants;
+    module2.exports = picomatch;
+  }
+});
+
+// node_modules/picomatch/index.js
+var require_picomatch2 = __commonJS({
+  "node_modules/picomatch/index.js"(exports2, module2) {
+    "use strict";
+    module2.exports = require_picomatch();
+  }
+});
+
+// node_modules/micromatch/index.js
+var require_micromatch = __commonJS({
+  "node_modules/micromatch/index.js"(exports2, module2) {
+    "use strict";
+    var util4 = require("util");
+    var braces = require_braces();
+    var picomatch = require_picomatch2();
+    var utils = require_utils7();
+    var isEmptyString = (v) => v === "" || v === "./";
+    var hasBraces = (v) => {
+      const index = v.indexOf("{");
+      return index > -1 && v.indexOf("}", index) > -1;
+    };
+    var micromatch = (list, patterns, options) => {
+      patterns = [].concat(patterns);
+      list = [].concat(list);
+      let omit = /* @__PURE__ */ new Set();
+      let keep = /* @__PURE__ */ new Set();
+      let items = /* @__PURE__ */ new Set();
+      let negatives = 0;
+      let onResult = (state) => {
+        items.add(state.output);
+        if (options && options.onResult) {
+          options.onResult(state);
+        }
+      };
+      for (let i = 0; i < patterns.length; i++) {
+        let isMatch = picomatch(String(patterns[i]), { ...options, onResult }, true);
+        let negated = isMatch.state.negated || isMatch.state.negatedExtglob;
+        if (negated) negatives++;
+        for (let item of list) {
+          let matched = isMatch(item, true);
+          let match = negated ? !matched.isMatch : matched.isMatch;
+          if (!match) continue;
+          if (negated) {
+            omit.add(matched.output);
+          } else {
+            omit.delete(matched.output);
+            keep.add(matched.output);
+          }
+        }
+      }
+      let result = negatives === patterns.length ? [...items] : [...keep];
+      let matches = result.filter((item) => !omit.has(item));
+      if (options && matches.length === 0) {
+        if (options.failglob === true) {
+          throw new Error(`No matches found for "${patterns.join(", ")}"`);
+        }
+        if (options.nonull === true || options.nullglob === true) {
+          return options.unescape ? patterns.map((p) => p.replace(/\\/g, "")) : patterns;
+        }
+      }
+      return matches;
+    };
+    micromatch.match = micromatch;
+    micromatch.matcher = (pattern, options) => picomatch(pattern, options);
+    micromatch.isMatch = (str, patterns, options) => picomatch(patterns, options)(str);
+    micromatch.any = micromatch.isMatch;
+    micromatch.not = (list, patterns, options = {}) => {
+      patterns = [].concat(patterns).map(String);
+      let result = /* @__PURE__ */ new Set();
+      let items = [];
+      let onResult = (state) => {
+        if (options.onResult) options.onResult(state);
+        items.push(state.output);
+      };
+      let matches = new Set(micromatch(list, patterns, { ...options, onResult }));
+      for (let item of items) {
+        if (!matches.has(item)) {
+          result.add(item);
+        }
+      }
+      return [...result];
+    };
+    micromatch.contains = (str, pattern, options) => {
+      if (typeof str !== "string") {
+        throw new TypeError(`Expected a string: "${util4.inspect(str)}"`);
+      }
+      if (Array.isArray(pattern)) {
+        return pattern.some((p) => micromatch.contains(str, p, options));
+      }
+      if (typeof pattern === "string") {
+        if (isEmptyString(str) || isEmptyString(pattern)) {
+          return false;
+        }
+        if (str.includes(pattern) || str.startsWith("./") && str.slice(2).includes(pattern)) {
+          return true;
+        }
+      }
+      return micromatch.isMatch(str, pattern, { ...options, contains: true });
+    };
+    micromatch.matchKeys = (obj, patterns, options) => {
+      if (!utils.isObject(obj)) {
+        throw new TypeError("Expected the first argument to be an object");
+      }
+      let keys = micromatch(Object.keys(obj), patterns, options);
+      let res = {};
+      for (let key of keys) res[key] = obj[key];
+      return res;
+    };
+    micromatch.some = (list, patterns, options) => {
+      let items = [].concat(list);
+      for (let pattern of [].concat(patterns)) {
+        let isMatch = picomatch(String(pattern), options);
+        if (items.some((item) => isMatch(item))) {
+          return true;
+        }
+      }
+      return false;
+    };
+    micromatch.every = (list, patterns, options) => {
+      let items = [].concat(list);
+      for (let pattern of [].concat(patterns)) {
+        let isMatch = picomatch(String(pattern), options);
+        if (!items.every((item) => isMatch(item))) {
+          return false;
+        }
+      }
+      return true;
+    };
+    micromatch.all = (str, patterns, options) => {
+      if (typeof str !== "string") {
+        throw new TypeError(`Expected a string: "${util4.inspect(str)}"`);
+      }
+      return [].concat(patterns).every((p) => picomatch(p, options)(str));
+    };
+    micromatch.capture = (glob, input, options) => {
+      let posix = utils.isWindows(options);
+      let regex = picomatch.makeRe(String(glob), { ...options, capture: true });
+      let match = regex.exec(posix ? utils.toPosixSlashes(input) : input);
+      if (match) {
+        return match.slice(1).map((v) => v === void 0 ? "" : v);
+      }
+    };
+    micromatch.makeRe = (...args) => picomatch.makeRe(...args);
+    micromatch.scan = (...args) => picomatch.scan(...args);
+    micromatch.parse = (patterns, options) => {
+      let res = [];
+      for (let pattern of [].concat(patterns || [])) {
+        for (let str of braces(String(pattern), options)) {
+          res.push(picomatch.parse(str, options));
+        }
+      }
+      return res;
+    };
+    micromatch.braces = (pattern, options) => {
+      if (typeof pattern !== "string") throw new TypeError("Expected a string");
+      if (options && options.nobrace === true || !hasBraces(pattern)) {
+        return [pattern];
+      }
+      return braces(pattern, options);
+    };
+    micromatch.braceExpand = (pattern, options) => {
+      if (typeof pattern !== "string") throw new TypeError("Expected a string");
+      return micromatch.braces(pattern, { ...options, expand: true });
+    };
+    micromatch.hasBraces = hasBraces;
+    module2.exports = micromatch;
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/path-filter.js
+var require_path_filter = __commonJS({
+  "node_modules/http-proxy-middleware/dist/path-filter.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.matchPathFilter = matchPathFilter;
+    var isGlob = require_is_glob();
+    var micromatch = require_micromatch();
+    var url2 = require("url");
+    var errors_1 = require_errors();
+    function matchPathFilter(pathFilter = "/", uri, req) {
+      if (isStringPath(pathFilter)) {
+        return matchSingleStringPath(pathFilter, uri);
+      }
+      if (isGlobPath(pathFilter)) {
+        return matchSingleGlobPath(pathFilter, uri);
+      }
+      if (Array.isArray(pathFilter)) {
+        if (pathFilter.every(isStringPath)) {
+          return matchMultiPath(pathFilter, uri);
+        }
+        if (pathFilter.every(isGlobPath)) {
+          return matchMultiGlobPath(pathFilter, uri);
+        }
+        throw new Error(errors_1.ERRORS.ERR_CONTEXT_MATCHER_INVALID_ARRAY);
+      }
+      if (typeof pathFilter === "function") {
+        const pathname = getUrlPathName(uri);
+        return pathFilter(pathname, req);
+      }
+      throw new Error(errors_1.ERRORS.ERR_CONTEXT_MATCHER_GENERIC);
+    }
+    function matchSingleStringPath(pathFilter, uri) {
+      const pathname = getUrlPathName(uri);
+      return pathname?.indexOf(pathFilter) === 0;
+    }
+    function matchSingleGlobPath(pattern, uri) {
+      const pathname = getUrlPathName(uri);
+      const matches = micromatch([pathname], pattern);
+      return matches && matches.length > 0;
+    }
+    function matchMultiGlobPath(patternList, uri) {
+      return matchSingleGlobPath(patternList, uri);
+    }
+    function matchMultiPath(pathFilterList, uri) {
+      let isMultiPath = false;
+      for (const context of pathFilterList) {
+        if (matchSingleStringPath(context, uri)) {
+          isMultiPath = true;
+          break;
+        }
+      }
+      return isMultiPath;
+    }
+    function getUrlPathName(uri) {
+      return uri && url2.parse(uri).pathname;
+    }
+    function isStringPath(pathFilter) {
+      return typeof pathFilter === "string" && !isGlob(pathFilter);
+    }
+    function isGlobPath(pathFilter) {
+      return isGlob(pathFilter);
+    }
+  }
+});
+
+// node_modules/is-plain-object/dist/is-plain-object.js
+var require_is_plain_object = __commonJS({
+  "node_modules/is-plain-object/dist/is-plain-object.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    function isObject2(o) {
+      return Object.prototype.toString.call(o) === "[object Object]";
+    }
+    function isPlainObject2(o) {
+      var ctor, prot;
+      if (isObject2(o) === false) return false;
+      ctor = o.constructor;
+      if (ctor === void 0) return true;
+      prot = ctor.prototype;
+      if (isObject2(prot) === false) return false;
+      if (prot.hasOwnProperty("isPrototypeOf") === false) {
+        return false;
+      }
+      return true;
+    }
+    exports2.isPlainObject = isPlainObject2;
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/path-rewriter.js
+var require_path_rewriter = __commonJS({
+  "node_modules/http-proxy-middleware/dist/path-rewriter.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.createPathRewriter = createPathRewriter;
+    var is_plain_object_1 = require_is_plain_object();
+    var errors_1 = require_errors();
+    var debug_1 = require_debug3();
+    var debug = debug_1.Debug.extend("path-rewriter");
+    function createPathRewriter(rewriteConfig) {
+      let rulesCache;
+      if (!isValidRewriteConfig(rewriteConfig)) {
+        return;
+      }
+      if (typeof rewriteConfig === "function") {
+        const customRewriteFn = rewriteConfig;
+        return customRewriteFn;
+      } else {
+        rulesCache = parsePathRewriteRules(rewriteConfig);
+        return rewritePath;
+      }
+      function rewritePath(path2) {
+        let result = path2;
+        for (const rule of rulesCache) {
+          if (rule.regex.test(path2)) {
+            result = result.replace(rule.regex, rule.value);
+            debug('rewriting path from "%s" to "%s"', path2, result);
+            break;
+          }
+        }
+        return result;
+      }
+    }
+    function isValidRewriteConfig(rewriteConfig) {
+      if (typeof rewriteConfig === "function") {
+        return true;
+      } else if ((0, is_plain_object_1.isPlainObject)(rewriteConfig)) {
+        return Object.keys(rewriteConfig).length !== 0;
+      } else if (rewriteConfig === void 0 || rewriteConfig === null) {
+        return false;
+      } else {
+        throw new Error(errors_1.ERRORS.ERR_PATH_REWRITER_CONFIG);
+      }
+    }
+    function parsePathRewriteRules(rewriteConfig) {
+      const rules = [];
+      if ((0, is_plain_object_1.isPlainObject)(rewriteConfig)) {
+        for (const [key, value] of Object.entries(rewriteConfig)) {
+          rules.push({
+            regex: new RegExp(key),
+            value
+          });
+          debug('rewrite rule created: "%s" ~> "%s"', key, value);
+        }
+      }
+      return rules;
+    }
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/router.js
+var require_router2 = __commonJS({
+  "node_modules/http-proxy-middleware/dist/router.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.getTarget = getTarget;
+    var is_plain_object_1 = require_is_plain_object();
+    var debug_1 = require_debug3();
+    var debug = debug_1.Debug.extend("router");
+    async function getTarget(req, config) {
+      let newTarget;
+      const router = config.router;
+      if ((0, is_plain_object_1.isPlainObject)(router)) {
+        newTarget = getTargetFromProxyTable(req, router);
+      } else if (typeof router === "function") {
+        newTarget = await router(req);
+      }
+      return newTarget;
+    }
+    function getTargetFromProxyTable(req, table) {
+      let result;
+      const host = req.headers.host;
+      const path2 = req.url;
+      const hostAndPath = host + path2;
+      for (const [key, value] of Object.entries(table)) {
+        if (containsPath(key)) {
+          if (hostAndPath.indexOf(key) > -1) {
+            result = value;
+            debug('match: "%s" -> "%s"', key, result);
+            break;
+          }
+        } else {
+          if (key === host) {
+            result = value;
+            debug('match: "%s" -> "%s"', host, result);
+            break;
+          }
+        }
+      }
+      return result;
+    }
+    function containsPath(v) {
+      return v.indexOf("/") > -1;
+    }
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/http-proxy-middleware.js
+var require_http_proxy_middleware = __commonJS({
+  "node_modules/http-proxy-middleware/dist/http-proxy-middleware.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.HttpProxyMiddleware = void 0;
+    var httpProxy = require_http_proxy3();
+    var configuration_1 = require_configuration();
+    var get_plugins_1 = require_get_plugins();
+    var path_filter_1 = require_path_filter();
+    var PathRewriter = require_path_rewriter();
+    var Router = require_router2();
+    var debug_1 = require_debug3();
+    var function_1 = require_function();
+    var logger_1 = require_logger();
+    var HttpProxyMiddleware = class {
+      constructor(options) {
+        this.wsInternalSubscribed = false;
+        this.serverOnCloseSubscribed = false;
+        this.middleware = (async (req, res, next) => {
+          if (this.shouldProxy(this.proxyOptions.pathFilter, req)) {
+            try {
+              const activeProxyOptions = await this.prepareProxyRequest(req);
+              (0, debug_1.Debug)(`proxy request to target: %O`, activeProxyOptions.target);
+              this.proxy.web(req, res, activeProxyOptions);
+            } catch (err) {
+              next?.(err);
+            }
+          } else {
+            next?.();
+          }
+          const server = (req.socket ?? req.connection)?.server;
+          if (server && !this.serverOnCloseSubscribed) {
+            server.on("close", () => {
+              (0, debug_1.Debug)("server close signal received: closing proxy server");
+              this.proxy.close();
+            });
+            this.serverOnCloseSubscribed = true;
+          }
+          if (this.proxyOptions.ws === true) {
+            this.catchUpgradeRequest(server);
+          }
+        });
+        this.catchUpgradeRequest = (server) => {
+          if (!this.wsInternalSubscribed) {
+            (0, debug_1.Debug)("subscribing to server upgrade event");
+            server.on("upgrade", this.handleUpgrade);
+            this.wsInternalSubscribed = true;
+          }
+        };
+        this.handleUpgrade = async (req, socket, head) => {
+          try {
+            if (this.shouldProxy(this.proxyOptions.pathFilter, req)) {
+              const activeProxyOptions = await this.prepareProxyRequest(req);
+              this.proxy.ws(req, socket, head, activeProxyOptions);
+              (0, debug_1.Debug)("server upgrade event received. Proxying WebSocket");
+            }
+          } catch (err) {
+            this.proxy.emit("error", err, req, socket);
+          }
+        };
+        this.shouldProxy = (pathFilter, req) => {
+          try {
+            return (0, path_filter_1.matchPathFilter)(pathFilter, req.url, req);
+          } catch (err) {
+            (0, debug_1.Debug)("Error: matchPathFilter() called with request url: ", `"${req.url}"`);
+            this.logger.error(err);
+            return false;
+          }
+        };
+        this.prepareProxyRequest = async (req) => {
+          if (this.middleware.__LEGACY_HTTP_PROXY_MIDDLEWARE__) {
+            req.url = req.originalUrl || req.url;
+          }
+          const newProxyOptions = Object.assign({}, this.proxyOptions);
+          await this.applyRouter(req, newProxyOptions);
+          await this.applyPathRewrite(req, this.pathRewriter);
+          return newProxyOptions;
+        };
+        this.applyRouter = async (req, options2) => {
+          let newTarget;
+          if (options2.router) {
+            newTarget = await Router.getTarget(req, options2);
+            if (newTarget) {
+              (0, debug_1.Debug)('router new target: "%s"', newTarget);
+              options2.target = newTarget;
+            }
+          }
+        };
+        this.applyPathRewrite = async (req, pathRewriter) => {
+          if (pathRewriter) {
+            const path2 = await pathRewriter(req.url, req);
+            if (typeof path2 === "string") {
+              (0, debug_1.Debug)("pathRewrite new path: %s", req.url);
+              req.url = path2;
+            } else {
+              (0, debug_1.Debug)("pathRewrite: no rewritten path found: %s", req.url);
+            }
+          }
+        };
+        (0, configuration_1.verifyConfig)(options);
+        this.proxyOptions = options;
+        this.logger = (0, logger_1.getLogger)(options);
+        (0, debug_1.Debug)(`create proxy server`);
+        this.proxy = httpProxy.createProxyServer({});
+        this.registerPlugins(this.proxy, this.proxyOptions);
+        this.pathRewriter = PathRewriter.createPathRewriter(this.proxyOptions.pathRewrite);
+        this.middleware.upgrade = (req, socket, head) => {
+          if (!this.wsInternalSubscribed) {
+            this.handleUpgrade(req, socket, head);
+          }
+        };
+      }
+      registerPlugins(proxy, options) {
+        const plugins = (0, get_plugins_1.getPlugins)(options);
+        plugins.forEach((plugin) => {
+          (0, debug_1.Debug)(`register plugin: "${(0, function_1.getFunctionName)(plugin)}"`);
+          plugin(proxy, options);
+        });
+      }
+    };
+    exports2.HttpProxyMiddleware = HttpProxyMiddleware;
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/factory.js
+var require_factory = __commonJS({
+  "node_modules/http-proxy-middleware/dist/factory.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.createProxyMiddleware = createProxyMiddleware2;
+    var http_proxy_middleware_1 = require_http_proxy_middleware();
+    function createProxyMiddleware2(options) {
+      const { middleware } = new http_proxy_middleware_1.HttpProxyMiddleware(options);
+      return middleware;
+    }
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/handlers/response-interceptor.js
+var require_response_interceptor = __commonJS({
+  "node_modules/http-proxy-middleware/dist/handlers/response-interceptor.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.responseInterceptor = responseInterceptor;
+    var zlib2 = require("zlib");
+    var debug_1 = require_debug3();
+    var function_1 = require_function();
+    var debug = debug_1.Debug.extend("response-interceptor");
+    function responseInterceptor(interceptor) {
+      return async function proxyResResponseInterceptor(proxyRes, req, res) {
+        debug("intercept proxy response");
+        const originalProxyRes = proxyRes;
+        let buffer = Buffer.from("", "utf8");
+        const _proxyRes = decompress(proxyRes, proxyRes.headers["content-encoding"]);
+        _proxyRes.on("data", (chunk) => buffer = Buffer.concat([buffer, chunk]));
+        _proxyRes.on("end", async () => {
+          copyHeaders(proxyRes, res);
+          debug("call interceptor function: %s", (0, function_1.getFunctionName)(interceptor));
+          const interceptedBuffer = Buffer.from(await interceptor(buffer, originalProxyRes, req, res));
+          debug("set content-length: %s", Buffer.byteLength(interceptedBuffer, "utf8"));
+          res.setHeader("content-length", Buffer.byteLength(interceptedBuffer, "utf8"));
+          debug("write intercepted response");
+          res.write(interceptedBuffer);
+          res.end();
+        });
+        _proxyRes.on("error", (error) => {
+          res.end(`Error fetching proxied request: ${error.message}`);
+        });
+      };
+    }
+    function decompress(proxyRes, contentEncoding) {
+      let _proxyRes = proxyRes;
+      let decompress2;
+      switch (contentEncoding) {
+        case "gzip":
+          decompress2 = zlib2.createGunzip();
+          break;
+        case "br":
+          decompress2 = zlib2.createBrotliDecompress();
+          break;
+        case "deflate":
+          decompress2 = zlib2.createInflate();
+          break;
+        default:
+          break;
+      }
+      if (decompress2) {
+        debug(`decompress proxy response with 'content-encoding': %s`, contentEncoding);
+        _proxyRes.pipe(decompress2);
+        _proxyRes = decompress2;
+      }
+      return _proxyRes;
+    }
+    function copyHeaders(originalResponse, response) {
+      debug("copy original response headers");
+      response.statusCode = originalResponse.statusCode;
+      response.statusMessage = originalResponse.statusMessage;
+      if (response.setHeader) {
+        let keys = Object.keys(originalResponse.headers);
+        keys = keys.filter((key) => !["content-encoding", "transfer-encoding"].includes(key));
+        keys.forEach((key) => {
+          let value = originalResponse.headers[key];
+          if (key === "set-cookie") {
+            value = Array.isArray(value) ? value : [value];
+            value = value.map((x) => x.replace(/Domain=[^;]+?/i, ""));
+          }
+          response.setHeader(key, value);
+        });
+      } else {
+        response.headers = originalResponse.headers;
+      }
+    }
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/handlers/fix-request-body.js
+var require_fix_request_body = __commonJS({
+  "node_modules/http-proxy-middleware/dist/handlers/fix-request-body.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.fixRequestBody = fixRequestBody;
+    var querystring = require("querystring");
+    function fixRequestBody(proxyReq, req) {
+      if (req.readableLength !== 0) {
+        return;
+      }
+      const requestBody = req.body;
+      if (!requestBody) {
+        return;
+      }
+      const contentType = proxyReq.getHeader("Content-Type");
+      if (!contentType) {
+        return;
+      }
+      const writeBody = (bodyData) => {
+        proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
+        proxyReq.write(bodyData);
+      };
+      if (contentType.includes("application/json") || contentType.includes("+json")) {
+        writeBody(JSON.stringify(requestBody));
+      } else if (contentType.includes("application/x-www-form-urlencoded")) {
+        writeBody(querystring.stringify(requestBody));
+      } else if (contentType.includes("multipart/form-data")) {
+        writeBody(handlerFormDataBodyData(contentType, requestBody));
+      }
+    }
+    function handlerFormDataBodyData(contentType, data) {
+      const boundary = contentType.replace(/^.*boundary=(.*)$/, "$1");
+      let str = "";
+      for (const [key, value] of Object.entries(data)) {
+        str += `--${boundary}\r
+Content-Disposition: form-data; name="${key}"\r
+\r
+${value}\r
+`;
+      }
+      return str;
+    }
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/handlers/public.js
+var require_public = __commonJS({
+  "node_modules/http-proxy-middleware/dist/handlers/public.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.fixRequestBody = exports2.responseInterceptor = void 0;
+    var response_interceptor_1 = require_response_interceptor();
+    Object.defineProperty(exports2, "responseInterceptor", { enumerable: true, get: function() {
+      return response_interceptor_1.responseInterceptor;
+    } });
+    var fix_request_body_1 = require_fix_request_body();
+    Object.defineProperty(exports2, "fixRequestBody", { enumerable: true, get: function() {
+      return fix_request_body_1.fixRequestBody;
+    } });
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/handlers/index.js
+var require_handlers = __commonJS({
+  "node_modules/http-proxy-middleware/dist/handlers/index.js"(exports2) {
+    "use strict";
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
+      if (k2 === void 0) k2 = k;
+      var desc2 = Object.getOwnPropertyDescriptor(m, k);
+      if (!desc2 || ("get" in desc2 ? !m.__esModule : desc2.writable || desc2.configurable)) {
+        desc2 = { enumerable: true, get: function() {
+          return m[k];
+        } };
+      }
+      Object.defineProperty(o, k2, desc2);
+    }) : (function(o, m, k, k2) {
+      if (k2 === void 0) k2 = k;
+      o[k2] = m[k];
+    }));
+    var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
+      for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
+    };
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    __exportStar(require_public(), exports2);
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/legacy/options-adapter.js
+var require_options_adapter = __commonJS({
+  "node_modules/http-proxy-middleware/dist/legacy/options-adapter.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.legacyOptionsAdapter = legacyOptionsAdapter;
+    var url2 = require("url");
+    var debug_1 = require_debug3();
+    var logger_1 = require_logger();
+    var debug = debug_1.Debug.extend("legacy-options-adapter");
+    var proxyEventMap = {
+      onError: "error",
+      onProxyReq: "proxyReq",
+      onProxyRes: "proxyRes",
+      onProxyReqWs: "proxyReqWs",
+      onOpen: "open",
+      onClose: "close"
+    };
+    function legacyOptionsAdapter(legacyContext, legacyOptions) {
+      let options = {};
+      let logger;
+      if (typeof legacyContext === "string" && !!url2.parse(legacyContext).host) {
+        throw new Error(`Shorthand syntax is removed from legacyCreateProxyMiddleware().
+      Please use "legacyCreateProxyMiddleware({ target: 'http://www.example.org' })" instead.
+
+      More details: https://github.com/chimurai/http-proxy-middleware/blob/master/MIGRATION.md#removed-shorthand-usage
+      `);
+      }
+      if (legacyContext && legacyOptions) {
+        debug("map legacy context/filter to options.pathFilter");
+        options = { ...legacyOptions, pathFilter: legacyContext };
+        logger = getLegacyLogger(options);
+        logger.warn(`[http-proxy-middleware] Legacy "context" argument is deprecated. Migrate your "context" to "options.pathFilter":
+
+      const options = {
+        pathFilter: '${legacyContext}',
+      }
+
+      More details: https://github.com/chimurai/http-proxy-middleware/blob/master/MIGRATION.md#removed-context-argument
+      `);
+      } else if (legacyContext && !legacyOptions) {
+        options = { ...legacyContext };
+        logger = getLegacyLogger(options);
+      } else {
+        logger = getLegacyLogger({});
+      }
+      Object.entries(proxyEventMap).forEach(([legacyEventName, proxyEventName]) => {
+        if (options[legacyEventName]) {
+          options.on = { ...options.on };
+          options.on[proxyEventName] = options[legacyEventName];
+          debug('map legacy event "%s" to "on.%s"', legacyEventName, proxyEventName);
+          logger.warn(`[http-proxy-middleware] Legacy "${legacyEventName}" is deprecated. Migrate to "options.on.${proxyEventName}":
+
+        const options = {
+          on: {
+            ${proxyEventName}: () => {},
+          },
+        }
+
+        More details: https://github.com/chimurai/http-proxy-middleware/blob/master/MIGRATION.md#refactored-proxy-events
+        `);
+        }
+      });
+      const logProvider = options.logProvider && options.logProvider();
+      const logLevel = options.logLevel;
+      debug("legacy logLevel", logLevel);
+      debug("legacy logProvider: %O", logProvider);
+      if (typeof logLevel === "string" && logLevel !== "silent") {
+        debug('map "logProvider" to "logger"');
+        logger.warn(`[http-proxy-middleware] Legacy "logLevel" and "logProvider" are deprecated. Migrate to "options.logger":
+
+      const options = {
+        logger: console,
+      }
+
+      More details: https://github.com/chimurai/http-proxy-middleware/blob/master/MIGRATION.md#removed-logprovider-and-loglevel-options
+      `);
+      }
+      return options;
+    }
+    function getLegacyLogger(options) {
+      const legacyLogger = options.logProvider && options.logProvider();
+      if (legacyLogger) {
+        options.logger = legacyLogger;
+      }
+      return (0, logger_1.getLogger)(options);
+    }
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/legacy/create-proxy-middleware.js
+var require_create_proxy_middleware = __commonJS({
+  "node_modules/http-proxy-middleware/dist/legacy/create-proxy-middleware.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.legacyCreateProxyMiddleware = legacyCreateProxyMiddleware;
+    var factory_1 = require_factory();
+    var debug_1 = require_debug3();
+    var options_adapter_1 = require_options_adapter();
+    var debug = debug_1.Debug.extend("legacy-create-proxy-middleware");
+    function legacyCreateProxyMiddleware(legacyContext, legacyOptions) {
+      debug("init");
+      const options = (0, options_adapter_1.legacyOptionsAdapter)(legacyContext, legacyOptions);
+      const proxyMiddleware = (0, factory_1.createProxyMiddleware)(options);
+      debug("add marker for patching req.url (old behavior)");
+      proxyMiddleware.__LEGACY_HTTP_PROXY_MIDDLEWARE__ = true;
+      return proxyMiddleware;
+    }
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/legacy/public.js
+var require_public2 = __commonJS({
+  "node_modules/http-proxy-middleware/dist/legacy/public.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.legacyCreateProxyMiddleware = void 0;
+    var create_proxy_middleware_1 = require_create_proxy_middleware();
+    Object.defineProperty(exports2, "legacyCreateProxyMiddleware", { enumerable: true, get: function() {
+      return create_proxy_middleware_1.legacyCreateProxyMiddleware;
+    } });
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/legacy/index.js
+var require_legacy = __commonJS({
+  "node_modules/http-proxy-middleware/dist/legacy/index.js"(exports2) {
+    "use strict";
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
+      if (k2 === void 0) k2 = k;
+      var desc2 = Object.getOwnPropertyDescriptor(m, k);
+      if (!desc2 || ("get" in desc2 ? !m.__esModule : desc2.writable || desc2.configurable)) {
+        desc2 = { enumerable: true, get: function() {
+          return m[k];
+        } };
+      }
+      Object.defineProperty(o, k2, desc2);
+    }) : (function(o, m, k, k2) {
+      if (k2 === void 0) k2 = k;
+      o[k2] = m[k];
+    }));
+    var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
+      for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
+    };
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    __exportStar(require_public2(), exports2);
+  }
+});
+
+// node_modules/http-proxy-middleware/dist/index.js
+var require_dist5 = __commonJS({
+  "node_modules/http-proxy-middleware/dist/index.js"(exports2) {
+    "use strict";
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
+      if (k2 === void 0) k2 = k;
+      var desc2 = Object.getOwnPropertyDescriptor(m, k);
+      if (!desc2 || ("get" in desc2 ? !m.__esModule : desc2.writable || desc2.configurable)) {
+        desc2 = { enumerable: true, get: function() {
+          return m[k];
+        } };
+      }
+      Object.defineProperty(o, k2, desc2);
+    }) : (function(o, m, k, k2) {
+      if (k2 === void 0) k2 = k;
+      o[k2] = m[k];
+    }));
+    var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
+      for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
+    };
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    __exportStar(require_factory(), exports2);
+    __exportStar(require_handlers(), exports2);
+    __exportStar(require_default(), exports2);
+    __exportStar(require_legacy(), exports2);
+  }
+});
+
 // node_modules/dotenv/config.js
 (function() {
   require_main().config(
@@ -67449,8 +82216,3785 @@ var import_node_http = require("node:http");
 var import_dist = __toESM(require_dist3(), 1);
 var { Server, Namespace, Socket } = import_dist.default;
 
-// node_modules/bcryptjs/index.js
+// node_modules/axios/lib/helpers/bind.js
+function bind(fn, thisArg) {
+  return function wrap() {
+    return fn.apply(thisArg, arguments);
+  };
+}
+
+// node_modules/axios/lib/utils.js
+var { toString } = Object.prototype;
+var { getPrototypeOf } = Object;
+var { iterator, toStringTag } = Symbol;
+var kindOf = /* @__PURE__ */ ((cache) => (thing) => {
+  const str = toString.call(thing);
+  return cache[str] || (cache[str] = str.slice(8, -1).toLowerCase());
+})(/* @__PURE__ */ Object.create(null));
+var kindOfTest = (type) => {
+  type = type.toLowerCase();
+  return (thing) => kindOf(thing) === type;
+};
+var typeOfTest = (type) => (thing) => typeof thing === type;
+var { isArray } = Array;
+var isUndefined = typeOfTest("undefined");
+function isBuffer(val) {
+  return val !== null && !isUndefined(val) && val.constructor !== null && !isUndefined(val.constructor) && isFunction(val.constructor.isBuffer) && val.constructor.isBuffer(val);
+}
+var isArrayBuffer = kindOfTest("ArrayBuffer");
+function isArrayBufferView(val) {
+  let result;
+  if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView) {
+    result = ArrayBuffer.isView(val);
+  } else {
+    result = val && val.buffer && isArrayBuffer(val.buffer);
+  }
+  return result;
+}
+var isString = typeOfTest("string");
+var isFunction = typeOfTest("function");
+var isNumber = typeOfTest("number");
+var isObject = (thing) => thing !== null && typeof thing === "object";
+var isBoolean = (thing) => thing === true || thing === false;
+var isPlainObject = (val) => {
+  if (kindOf(val) !== "object") {
+    return false;
+  }
+  const prototype2 = getPrototypeOf(val);
+  return (prototype2 === null || prototype2 === Object.prototype || Object.getPrototypeOf(prototype2) === null) && !(toStringTag in val) && !(iterator in val);
+};
+var isEmptyObject = (val) => {
+  if (!isObject(val) || isBuffer(val)) {
+    return false;
+  }
+  try {
+    return Object.keys(val).length === 0 && Object.getPrototypeOf(val) === Object.prototype;
+  } catch (e) {
+    return false;
+  }
+};
+var isDate = kindOfTest("Date");
+var isFile = kindOfTest("File");
+var isReactNativeBlob = (value) => {
+  return !!(value && typeof value.uri !== "undefined");
+};
+var isReactNative = (formData) => formData && typeof formData.getParts !== "undefined";
+var isBlob = kindOfTest("Blob");
+var isFileList = kindOfTest("FileList");
+var isStream = (val) => isObject(val) && isFunction(val.pipe);
+function getGlobal() {
+  if (typeof globalThis !== "undefined") return globalThis;
+  if (typeof self !== "undefined") return self;
+  if (typeof window !== "undefined") return window;
+  if (typeof global !== "undefined") return global;
+  return {};
+}
+var G = getGlobal();
+var FormDataCtor = typeof G.FormData !== "undefined" ? G.FormData : void 0;
+var isFormData = (thing) => {
+  let kind;
+  return thing && (FormDataCtor && thing instanceof FormDataCtor || isFunction(thing.append) && ((kind = kindOf(thing)) === "formdata" || // detect form-data instance
+  kind === "object" && isFunction(thing.toString) && thing.toString() === "[object FormData]"));
+};
+var isURLSearchParams = kindOfTest("URLSearchParams");
+var [isReadableStream, isRequest, isResponse, isHeaders] = [
+  "ReadableStream",
+  "Request",
+  "Response",
+  "Headers"
+].map(kindOfTest);
+var trim = (str) => {
+  return str.trim ? str.trim() : str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, "");
+};
+function forEach(obj, fn, { allOwnKeys = false } = {}) {
+  if (obj === null || typeof obj === "undefined") {
+    return;
+  }
+  let i;
+  let l;
+  if (typeof obj !== "object") {
+    obj = [obj];
+  }
+  if (isArray(obj)) {
+    for (i = 0, l = obj.length; i < l; i++) {
+      fn.call(null, obj[i], i, obj);
+    }
+  } else {
+    if (isBuffer(obj)) {
+      return;
+    }
+    const keys = allOwnKeys ? Object.getOwnPropertyNames(obj) : Object.keys(obj);
+    const len = keys.length;
+    let key;
+    for (i = 0; i < len; i++) {
+      key = keys[i];
+      fn.call(null, obj[key], key, obj);
+    }
+  }
+}
+function findKey(obj, key) {
+  if (isBuffer(obj)) {
+    return null;
+  }
+  key = key.toLowerCase();
+  const keys = Object.keys(obj);
+  let i = keys.length;
+  let _key2;
+  while (i-- > 0) {
+    _key2 = keys[i];
+    if (key === _key2.toLowerCase()) {
+      return _key2;
+    }
+  }
+  return null;
+}
+var _global = (() => {
+  if (typeof globalThis !== "undefined") return globalThis;
+  return typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : global;
+})();
+var isContextDefined = (context) => !isUndefined(context) && context !== _global;
+function merge() {
+  const { caseless, skipUndefined } = isContextDefined(this) && this || {};
+  const result = {};
+  const assignValue = (val, key) => {
+    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+      return;
+    }
+    const targetKey = caseless && findKey(result, key) || key;
+    if (isPlainObject(result[targetKey]) && isPlainObject(val)) {
+      result[targetKey] = merge(result[targetKey], val);
+    } else if (isPlainObject(val)) {
+      result[targetKey] = merge({}, val);
+    } else if (isArray(val)) {
+      result[targetKey] = val.slice();
+    } else if (!skipUndefined || !isUndefined(val)) {
+      result[targetKey] = val;
+    }
+  };
+  for (let i = 0, l = arguments.length; i < l; i++) {
+    arguments[i] && forEach(arguments[i], assignValue);
+  }
+  return result;
+}
+var extend = (a, b, thisArg, { allOwnKeys } = {}) => {
+  forEach(
+    b,
+    (val, key) => {
+      if (thisArg && isFunction(val)) {
+        Object.defineProperty(a, key, {
+          value: bind(val, thisArg),
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+      } else {
+        Object.defineProperty(a, key, {
+          value: val,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+      }
+    },
+    { allOwnKeys }
+  );
+  return a;
+};
+var stripBOM = (content) => {
+  if (content.charCodeAt(0) === 65279) {
+    content = content.slice(1);
+  }
+  return content;
+};
+var inherits = (constructor, superConstructor, props, descriptors) => {
+  constructor.prototype = Object.create(superConstructor.prototype, descriptors);
+  Object.defineProperty(constructor.prototype, "constructor", {
+    value: constructor,
+    writable: true,
+    enumerable: false,
+    configurable: true
+  });
+  Object.defineProperty(constructor, "super", {
+    value: superConstructor.prototype
+  });
+  props && Object.assign(constructor.prototype, props);
+};
+var toFlatObject = (sourceObj, destObj, filter2, propFilter) => {
+  let props;
+  let i;
+  let prop;
+  const merged = {};
+  destObj = destObj || {};
+  if (sourceObj == null) return destObj;
+  do {
+    props = Object.getOwnPropertyNames(sourceObj);
+    i = props.length;
+    while (i-- > 0) {
+      prop = props[i];
+      if ((!propFilter || propFilter(prop, sourceObj, destObj)) && !merged[prop]) {
+        destObj[prop] = sourceObj[prop];
+        merged[prop] = true;
+      }
+    }
+    sourceObj = filter2 !== false && getPrototypeOf(sourceObj);
+  } while (sourceObj && (!filter2 || filter2(sourceObj, destObj)) && sourceObj !== Object.prototype);
+  return destObj;
+};
+var endsWith = (str, searchString, position) => {
+  str = String(str);
+  if (position === void 0 || position > str.length) {
+    position = str.length;
+  }
+  position -= searchString.length;
+  const lastIndex = str.indexOf(searchString, position);
+  return lastIndex !== -1 && lastIndex === position;
+};
+var toArray = (thing) => {
+  if (!thing) return null;
+  if (isArray(thing)) return thing;
+  let i = thing.length;
+  if (!isNumber(i)) return null;
+  const arr = new Array(i);
+  while (i-- > 0) {
+    arr[i] = thing[i];
+  }
+  return arr;
+};
+var isTypedArray = /* @__PURE__ */ ((TypedArray) => {
+  return (thing) => {
+    return TypedArray && thing instanceof TypedArray;
+  };
+})(typeof Uint8Array !== "undefined" && getPrototypeOf(Uint8Array));
+var forEachEntry = (obj, fn) => {
+  const generator = obj && obj[iterator];
+  const _iterator = generator.call(obj);
+  let result;
+  while ((result = _iterator.next()) && !result.done) {
+    const pair = result.value;
+    fn.call(obj, pair[0], pair[1]);
+  }
+};
+var matchAll = (regExp, str) => {
+  let matches;
+  const arr = [];
+  while ((matches = regExp.exec(str)) !== null) {
+    arr.push(matches);
+  }
+  return arr;
+};
+var isHTMLForm = kindOfTest("HTMLFormElement");
+var toCamelCase = (str) => {
+  return str.toLowerCase().replace(/[-_\s]([a-z\d])(\w*)/g, function replacer(m, p1, p2) {
+    return p1.toUpperCase() + p2;
+  });
+};
+var hasOwnProperty = (({ hasOwnProperty: hasOwnProperty2 }) => (obj, prop) => hasOwnProperty2.call(obj, prop))(Object.prototype);
+var isRegExp = kindOfTest("RegExp");
+var reduceDescriptors = (obj, reducer) => {
+  const descriptors = Object.getOwnPropertyDescriptors(obj);
+  const reducedDescriptors = {};
+  forEach(descriptors, (descriptor, name) => {
+    let ret;
+    if ((ret = reducer(descriptor, name, obj)) !== false) {
+      reducedDescriptors[name] = ret || descriptor;
+    }
+  });
+  Object.defineProperties(obj, reducedDescriptors);
+};
+var freezeMethods = (obj) => {
+  reduceDescriptors(obj, (descriptor, name) => {
+    if (isFunction(obj) && ["arguments", "caller", "callee"].indexOf(name) !== -1) {
+      return false;
+    }
+    const value = obj[name];
+    if (!isFunction(value)) return;
+    descriptor.enumerable = false;
+    if ("writable" in descriptor) {
+      descriptor.writable = false;
+      return;
+    }
+    if (!descriptor.set) {
+      descriptor.set = () => {
+        throw Error("Can not rewrite read-only method '" + name + "'");
+      };
+    }
+  });
+};
+var toObjectSet = (arrayOrString, delimiter) => {
+  const obj = {};
+  const define = (arr) => {
+    arr.forEach((value) => {
+      obj[value] = true;
+    });
+  };
+  isArray(arrayOrString) ? define(arrayOrString) : define(String(arrayOrString).split(delimiter));
+  return obj;
+};
+var noop = () => {
+};
+var toFiniteNumber = (value, defaultValue) => {
+  return value != null && Number.isFinite(value = +value) ? value : defaultValue;
+};
+function isSpecCompliantForm(thing) {
+  return !!(thing && isFunction(thing.append) && thing[toStringTag] === "FormData" && thing[iterator]);
+}
+var toJSONObject = (obj) => {
+  const stack = new Array(10);
+  const visit = (source, i) => {
+    if (isObject(source)) {
+      if (stack.indexOf(source) >= 0) {
+        return;
+      }
+      if (isBuffer(source)) {
+        return source;
+      }
+      if (!("toJSON" in source)) {
+        stack[i] = source;
+        const target = isArray(source) ? [] : {};
+        forEach(source, (value, key) => {
+          const reducedValue = visit(value, i + 1);
+          !isUndefined(reducedValue) && (target[key] = reducedValue);
+        });
+        stack[i] = void 0;
+        return target;
+      }
+    }
+    return source;
+  };
+  return visit(obj, 0);
+};
+var isAsyncFn = kindOfTest("AsyncFunction");
+var isThenable = (thing) => thing && (isObject(thing) || isFunction(thing)) && isFunction(thing.then) && isFunction(thing.catch);
+var _setImmediate = ((setImmediateSupported, postMessageSupported) => {
+  if (setImmediateSupported) {
+    return setImmediate;
+  }
+  return postMessageSupported ? ((token, callbacks) => {
+    _global.addEventListener(
+      "message",
+      ({ source, data }) => {
+        if (source === _global && data === token) {
+          callbacks.length && callbacks.shift()();
+        }
+      },
+      false
+    );
+    return (cb) => {
+      callbacks.push(cb);
+      _global.postMessage(token, "*");
+    };
+  })(`axios@${Math.random()}`, []) : (cb) => setTimeout(cb);
+})(typeof setImmediate === "function", isFunction(_global.postMessage));
+var asap = typeof queueMicrotask !== "undefined" ? queueMicrotask.bind(_global) : typeof process !== "undefined" && process.nextTick || _setImmediate;
+var isIterable = (thing) => thing != null && isFunction(thing[iterator]);
+var utils_default = {
+  isArray,
+  isArrayBuffer,
+  isBuffer,
+  isFormData,
+  isArrayBufferView,
+  isString,
+  isNumber,
+  isBoolean,
+  isObject,
+  isPlainObject,
+  isEmptyObject,
+  isReadableStream,
+  isRequest,
+  isResponse,
+  isHeaders,
+  isUndefined,
+  isDate,
+  isFile,
+  isReactNativeBlob,
+  isReactNative,
+  isBlob,
+  isRegExp,
+  isFunction,
+  isStream,
+  isURLSearchParams,
+  isTypedArray,
+  isFileList,
+  forEach,
+  merge,
+  extend,
+  trim,
+  stripBOM,
+  inherits,
+  toFlatObject,
+  kindOf,
+  kindOfTest,
+  endsWith,
+  toArray,
+  forEachEntry,
+  matchAll,
+  isHTMLForm,
+  hasOwnProperty,
+  hasOwnProp: hasOwnProperty,
+  // an alias to avoid ESLint no-prototype-builtins detection
+  reduceDescriptors,
+  freezeMethods,
+  toObjectSet,
+  toCamelCase,
+  noop,
+  toFiniteNumber,
+  findKey,
+  global: _global,
+  isContextDefined,
+  isSpecCompliantForm,
+  toJSONObject,
+  isAsyncFn,
+  isThenable,
+  setImmediate: _setImmediate,
+  asap,
+  isIterable
+};
+
+// node_modules/axios/lib/core/AxiosError.js
+var AxiosError = class _AxiosError extends Error {
+  static from(error, code, config, request, response, customProps) {
+    const axiosError = new _AxiosError(error.message, code || error.code, config, request, response);
+    axiosError.cause = error;
+    axiosError.name = error.name;
+    if (error.status != null && axiosError.status == null) {
+      axiosError.status = error.status;
+    }
+    customProps && Object.assign(axiosError, customProps);
+    return axiosError;
+  }
+  /**
+   * Create an Error with the specified message, config, error code, request and response.
+   *
+   * @param {string} message The error message.
+   * @param {string} [code] The error code (for example, 'ECONNABORTED').
+   * @param {Object} [config] The config.
+   * @param {Object} [request] The request.
+   * @param {Object} [response] The response.
+   *
+   * @returns {Error} The created error.
+   */
+  constructor(message, code, config, request, response) {
+    super(message);
+    Object.defineProperty(this, "message", {
+      value: message,
+      enumerable: true,
+      writable: true,
+      configurable: true
+    });
+    this.name = "AxiosError";
+    this.isAxiosError = true;
+    code && (this.code = code);
+    config && (this.config = config);
+    request && (this.request = request);
+    if (response) {
+      this.response = response;
+      this.status = response.status;
+    }
+  }
+  toJSON() {
+    return {
+      // Standard
+      message: this.message,
+      name: this.name,
+      // Microsoft
+      description: this.description,
+      number: this.number,
+      // Mozilla
+      fileName: this.fileName,
+      lineNumber: this.lineNumber,
+      columnNumber: this.columnNumber,
+      stack: this.stack,
+      // Axios
+      config: utils_default.toJSONObject(this.config),
+      code: this.code,
+      status: this.status
+    };
+  }
+};
+AxiosError.ERR_BAD_OPTION_VALUE = "ERR_BAD_OPTION_VALUE";
+AxiosError.ERR_BAD_OPTION = "ERR_BAD_OPTION";
+AxiosError.ECONNABORTED = "ECONNABORTED";
+AxiosError.ETIMEDOUT = "ETIMEDOUT";
+AxiosError.ERR_NETWORK = "ERR_NETWORK";
+AxiosError.ERR_FR_TOO_MANY_REDIRECTS = "ERR_FR_TOO_MANY_REDIRECTS";
+AxiosError.ERR_DEPRECATED = "ERR_DEPRECATED";
+AxiosError.ERR_BAD_RESPONSE = "ERR_BAD_RESPONSE";
+AxiosError.ERR_BAD_REQUEST = "ERR_BAD_REQUEST";
+AxiosError.ERR_CANCELED = "ERR_CANCELED";
+AxiosError.ERR_NOT_SUPPORT = "ERR_NOT_SUPPORT";
+AxiosError.ERR_INVALID_URL = "ERR_INVALID_URL";
+var AxiosError_default = AxiosError;
+
+// node_modules/axios/lib/platform/node/classes/FormData.js
+var import_form_data = __toESM(require_form_data(), 1);
+var FormData_default = import_form_data.default;
+
+// node_modules/axios/lib/helpers/toFormData.js
+function isVisitable(thing) {
+  return utils_default.isPlainObject(thing) || utils_default.isArray(thing);
+}
+function removeBrackets(key) {
+  return utils_default.endsWith(key, "[]") ? key.slice(0, -2) : key;
+}
+function renderKey(path2, key, dots) {
+  if (!path2) return key;
+  return path2.concat(key).map(function each(token, i) {
+    token = removeBrackets(token);
+    return !dots && i ? "[" + token + "]" : token;
+  }).join(dots ? "." : "");
+}
+function isFlatArray(arr) {
+  return utils_default.isArray(arr) && !arr.some(isVisitable);
+}
+var predicates = utils_default.toFlatObject(utils_default, {}, null, function filter(prop) {
+  return /^is[A-Z]/.test(prop);
+});
+function toFormData(obj, formData, options) {
+  if (!utils_default.isObject(obj)) {
+    throw new TypeError("target must be an object");
+  }
+  formData = formData || new (FormData_default || FormData)();
+  options = utils_default.toFlatObject(
+    options,
+    {
+      metaTokens: true,
+      dots: false,
+      indexes: false
+    },
+    false,
+    function defined(option, source) {
+      return !utils_default.isUndefined(source[option]);
+    }
+  );
+  const metaTokens = options.metaTokens;
+  const visitor = options.visitor || defaultVisitor;
+  const dots = options.dots;
+  const indexes = options.indexes;
+  const _Blob = options.Blob || typeof Blob !== "undefined" && Blob;
+  const useBlob = _Blob && utils_default.isSpecCompliantForm(formData);
+  if (!utils_default.isFunction(visitor)) {
+    throw new TypeError("visitor must be a function");
+  }
+  function convertValue(value) {
+    if (value === null) return "";
+    if (utils_default.isDate(value)) {
+      return value.toISOString();
+    }
+    if (utils_default.isBoolean(value)) {
+      return value.toString();
+    }
+    if (!useBlob && utils_default.isBlob(value)) {
+      throw new AxiosError_default("Blob is not supported. Use a Buffer instead.");
+    }
+    if (utils_default.isArrayBuffer(value) || utils_default.isTypedArray(value)) {
+      return useBlob && typeof Blob === "function" ? new Blob([value]) : Buffer.from(value);
+    }
+    return value;
+  }
+  function defaultVisitor(value, key, path2) {
+    let arr = value;
+    if (utils_default.isReactNative(formData) && utils_default.isReactNativeBlob(value)) {
+      formData.append(renderKey(path2, key, dots), convertValue(value));
+      return false;
+    }
+    if (value && !path2 && typeof value === "object") {
+      if (utils_default.endsWith(key, "{}")) {
+        key = metaTokens ? key : key.slice(0, -2);
+        value = JSON.stringify(value);
+      } else if (utils_default.isArray(value) && isFlatArray(value) || (utils_default.isFileList(value) || utils_default.endsWith(key, "[]")) && (arr = utils_default.toArray(value))) {
+        key = removeBrackets(key);
+        arr.forEach(function each(el, index) {
+          !(utils_default.isUndefined(el) || el === null) && formData.append(
+            // eslint-disable-next-line no-nested-ternary
+            indexes === true ? renderKey([key], index, dots) : indexes === null ? key : key + "[]",
+            convertValue(el)
+          );
+        });
+        return false;
+      }
+    }
+    if (isVisitable(value)) {
+      return true;
+    }
+    formData.append(renderKey(path2, key, dots), convertValue(value));
+    return false;
+  }
+  const stack = [];
+  const exposedHelpers = Object.assign(predicates, {
+    defaultVisitor,
+    convertValue,
+    isVisitable
+  });
+  function build(value, path2) {
+    if (utils_default.isUndefined(value)) return;
+    if (stack.indexOf(value) !== -1) {
+      throw Error("Circular reference detected in " + path2.join("."));
+    }
+    stack.push(value);
+    utils_default.forEach(value, function each(el, key) {
+      const result = !(utils_default.isUndefined(el) || el === null) && visitor.call(formData, el, utils_default.isString(key) ? key.trim() : key, path2, exposedHelpers);
+      if (result === true) {
+        build(el, path2 ? path2.concat(key) : [key]);
+      }
+    });
+    stack.pop();
+  }
+  if (!utils_default.isObject(obj)) {
+    throw new TypeError("data must be an object");
+  }
+  build(obj);
+  return formData;
+}
+var toFormData_default = toFormData;
+
+// node_modules/axios/lib/helpers/AxiosURLSearchParams.js
+function encode(str) {
+  const charMap = {
+    "!": "%21",
+    "'": "%27",
+    "(": "%28",
+    ")": "%29",
+    "~": "%7E",
+    "%20": "+",
+    "%00": "\0"
+  };
+  return encodeURIComponent(str).replace(/[!'()~]|%20|%00/g, function replacer(match) {
+    return charMap[match];
+  });
+}
+function AxiosURLSearchParams(params, options) {
+  this._pairs = [];
+  params && toFormData_default(params, this, options);
+}
+var prototype = AxiosURLSearchParams.prototype;
+prototype.append = function append(name, value) {
+  this._pairs.push([name, value]);
+};
+prototype.toString = function toString2(encoder) {
+  const _encode = encoder ? function(value) {
+    return encoder.call(this, value, encode);
+  } : encode;
+  return this._pairs.map(function each(pair) {
+    return _encode(pair[0]) + "=" + _encode(pair[1]);
+  }, "").join("&");
+};
+var AxiosURLSearchParams_default = AxiosURLSearchParams;
+
+// node_modules/axios/lib/helpers/buildURL.js
+function encode2(val) {
+  return encodeURIComponent(val).replace(/%3A/gi, ":").replace(/%24/g, "$").replace(/%2C/gi, ",").replace(/%20/g, "+");
+}
+function buildURL(url2, params, options) {
+  if (!params) {
+    return url2;
+  }
+  const _encode = options && options.encode || encode2;
+  const _options = utils_default.isFunction(options) ? {
+    serialize: options
+  } : options;
+  const serializeFn = _options && _options.serialize;
+  let serializedParams;
+  if (serializeFn) {
+    serializedParams = serializeFn(params, _options);
+  } else {
+    serializedParams = utils_default.isURLSearchParams(params) ? params.toString() : new AxiosURLSearchParams_default(params, _options).toString(_encode);
+  }
+  if (serializedParams) {
+    const hashmarkIndex = url2.indexOf("#");
+    if (hashmarkIndex !== -1) {
+      url2 = url2.slice(0, hashmarkIndex);
+    }
+    url2 += (url2.indexOf("?") === -1 ? "?" : "&") + serializedParams;
+  }
+  return url2;
+}
+
+// node_modules/axios/lib/core/InterceptorManager.js
+var InterceptorManager = class {
+  constructor() {
+    this.handlers = [];
+  }
+  /**
+   * Add a new interceptor to the stack
+   *
+   * @param {Function} fulfilled The function to handle `then` for a `Promise`
+   * @param {Function} rejected The function to handle `reject` for a `Promise`
+   * @param {Object} options The options for the interceptor, synchronous and runWhen
+   *
+   * @return {Number} An ID used to remove interceptor later
+   */
+  use(fulfilled, rejected, options) {
+    this.handlers.push({
+      fulfilled,
+      rejected,
+      synchronous: options ? options.synchronous : false,
+      runWhen: options ? options.runWhen : null
+    });
+    return this.handlers.length - 1;
+  }
+  /**
+   * Remove an interceptor from the stack
+   *
+   * @param {Number} id The ID that was returned by `use`
+   *
+   * @returns {void}
+   */
+  eject(id) {
+    if (this.handlers[id]) {
+      this.handlers[id] = null;
+    }
+  }
+  /**
+   * Clear all interceptors from the stack
+   *
+   * @returns {void}
+   */
+  clear() {
+    if (this.handlers) {
+      this.handlers = [];
+    }
+  }
+  /**
+   * Iterate over all the registered interceptors
+   *
+   * This method is particularly useful for skipping over any
+   * interceptors that may have become `null` calling `eject`.
+   *
+   * @param {Function} fn The function to call for each interceptor
+   *
+   * @returns {void}
+   */
+  forEach(fn) {
+    utils_default.forEach(this.handlers, function forEachHandler(h) {
+      if (h !== null) {
+        fn(h);
+      }
+    });
+  }
+};
+var InterceptorManager_default = InterceptorManager;
+
+// node_modules/axios/lib/defaults/transitional.js
+var transitional_default = {
+  silentJSONParsing: true,
+  forcedJSONParsing: true,
+  clarifyTimeoutError: false,
+  legacyInterceptorReqResOrdering: true
+};
+
+// node_modules/axios/lib/platform/node/index.js
 var import_crypto = __toESM(require("crypto"), 1);
+
+// node_modules/axios/lib/platform/node/classes/URLSearchParams.js
+var import_url = __toESM(require("url"), 1);
+var URLSearchParams_default = import_url.default.URLSearchParams;
+
+// node_modules/axios/lib/platform/node/index.js
+var ALPHA = "abcdefghijklmnopqrstuvwxyz";
+var DIGIT = "0123456789";
+var ALPHABET = {
+  DIGIT,
+  ALPHA,
+  ALPHA_DIGIT: ALPHA + ALPHA.toUpperCase() + DIGIT
+};
+var generateString = (size = 16, alphabet = ALPHABET.ALPHA_DIGIT) => {
+  let str = "";
+  const { length } = alphabet;
+  const randomValues = new Uint32Array(size);
+  import_crypto.default.randomFillSync(randomValues);
+  for (let i = 0; i < size; i++) {
+    str += alphabet[randomValues[i] % length];
+  }
+  return str;
+};
+var node_default = {
+  isNode: true,
+  classes: {
+    URLSearchParams: URLSearchParams_default,
+    FormData: FormData_default,
+    Blob: typeof Blob !== "undefined" && Blob || null
+  },
+  ALPHABET,
+  generateString,
+  protocols: ["http", "https", "file", "data"]
+};
+
+// node_modules/axios/lib/platform/common/utils.js
+var utils_exports = {};
+__export(utils_exports, {
+  hasBrowserEnv: () => hasBrowserEnv,
+  hasStandardBrowserEnv: () => hasStandardBrowserEnv,
+  hasStandardBrowserWebWorkerEnv: () => hasStandardBrowserWebWorkerEnv,
+  navigator: () => _navigator,
+  origin: () => origin
+});
+var hasBrowserEnv = typeof window !== "undefined" && typeof document !== "undefined";
+var _navigator = typeof navigator === "object" && navigator || void 0;
+var hasStandardBrowserEnv = hasBrowserEnv && (!_navigator || ["ReactNative", "NativeScript", "NS"].indexOf(_navigator.product) < 0);
+var hasStandardBrowserWebWorkerEnv = (() => {
+  return typeof WorkerGlobalScope !== "undefined" && // eslint-disable-next-line no-undef
+  self instanceof WorkerGlobalScope && typeof self.importScripts === "function";
+})();
+var origin = hasBrowserEnv && window.location.href || "http://localhost";
+
+// node_modules/axios/lib/platform/index.js
+var platform_default = {
+  ...utils_exports,
+  ...node_default
+};
+
+// node_modules/axios/lib/helpers/toURLEncodedForm.js
+function toURLEncodedForm(data, options) {
+  return toFormData_default(data, new platform_default.classes.URLSearchParams(), {
+    visitor: function(value, key, path2, helpers) {
+      if (platform_default.isNode && utils_default.isBuffer(value)) {
+        this.append(key, value.toString("base64"));
+        return false;
+      }
+      return helpers.defaultVisitor.apply(this, arguments);
+    },
+    ...options
+  });
+}
+
+// node_modules/axios/lib/helpers/formDataToJSON.js
+function parsePropPath(name) {
+  return utils_default.matchAll(/\w+|\[(\w*)]/g, name).map((match) => {
+    return match[0] === "[]" ? "" : match[1] || match[0];
+  });
+}
+function arrayToObject(arr) {
+  const obj = {};
+  const keys = Object.keys(arr);
+  let i;
+  const len = keys.length;
+  let key;
+  for (i = 0; i < len; i++) {
+    key = keys[i];
+    obj[key] = arr[key];
+  }
+  return obj;
+}
+function formDataToJSON(formData) {
+  function buildPath(path2, value, target, index) {
+    let name = path2[index++];
+    if (name === "__proto__") return true;
+    const isNumericKey = Number.isFinite(+name);
+    const isLast = index >= path2.length;
+    name = !name && utils_default.isArray(target) ? target.length : name;
+    if (isLast) {
+      if (utils_default.hasOwnProp(target, name)) {
+        target[name] = [target[name], value];
+      } else {
+        target[name] = value;
+      }
+      return !isNumericKey;
+    }
+    if (!target[name] || !utils_default.isObject(target[name])) {
+      target[name] = [];
+    }
+    const result = buildPath(path2, value, target[name], index);
+    if (result && utils_default.isArray(target[name])) {
+      target[name] = arrayToObject(target[name]);
+    }
+    return !isNumericKey;
+  }
+  if (utils_default.isFormData(formData) && utils_default.isFunction(formData.entries)) {
+    const obj = {};
+    utils_default.forEachEntry(formData, (name, value) => {
+      buildPath(parsePropPath(name), value, obj, 0);
+    });
+    return obj;
+  }
+  return null;
+}
+var formDataToJSON_default = formDataToJSON;
+
+// node_modules/axios/lib/defaults/index.js
+function stringifySafely(rawValue, parser, encoder) {
+  if (utils_default.isString(rawValue)) {
+    try {
+      (parser || JSON.parse)(rawValue);
+      return utils_default.trim(rawValue);
+    } catch (e) {
+      if (e.name !== "SyntaxError") {
+        throw e;
+      }
+    }
+  }
+  return (encoder || JSON.stringify)(rawValue);
+}
+var defaults = {
+  transitional: transitional_default,
+  adapter: ["xhr", "http", "fetch"],
+  transformRequest: [
+    function transformRequest(data, headers) {
+      const contentType = headers.getContentType() || "";
+      const hasJSONContentType = contentType.indexOf("application/json") > -1;
+      const isObjectPayload = utils_default.isObject(data);
+      if (isObjectPayload && utils_default.isHTMLForm(data)) {
+        data = new FormData(data);
+      }
+      const isFormData2 = utils_default.isFormData(data);
+      if (isFormData2) {
+        return hasJSONContentType ? JSON.stringify(formDataToJSON_default(data)) : data;
+      }
+      if (utils_default.isArrayBuffer(data) || utils_default.isBuffer(data) || utils_default.isStream(data) || utils_default.isFile(data) || utils_default.isBlob(data) || utils_default.isReadableStream(data)) {
+        return data;
+      }
+      if (utils_default.isArrayBufferView(data)) {
+        return data.buffer;
+      }
+      if (utils_default.isURLSearchParams(data)) {
+        headers.setContentType("application/x-www-form-urlencoded;charset=utf-8", false);
+        return data.toString();
+      }
+      let isFileList2;
+      if (isObjectPayload) {
+        if (contentType.indexOf("application/x-www-form-urlencoded") > -1) {
+          return toURLEncodedForm(data, this.formSerializer).toString();
+        }
+        if ((isFileList2 = utils_default.isFileList(data)) || contentType.indexOf("multipart/form-data") > -1) {
+          const _FormData = this.env && this.env.FormData;
+          return toFormData_default(
+            isFileList2 ? { "files[]": data } : data,
+            _FormData && new _FormData(),
+            this.formSerializer
+          );
+        }
+      }
+      if (isObjectPayload || hasJSONContentType) {
+        headers.setContentType("application/json", false);
+        return stringifySafely(data);
+      }
+      return data;
+    }
+  ],
+  transformResponse: [
+    function transformResponse(data) {
+      const transitional2 = this.transitional || defaults.transitional;
+      const forcedJSONParsing = transitional2 && transitional2.forcedJSONParsing;
+      const JSONRequested = this.responseType === "json";
+      if (utils_default.isResponse(data) || utils_default.isReadableStream(data)) {
+        return data;
+      }
+      if (data && utils_default.isString(data) && (forcedJSONParsing && !this.responseType || JSONRequested)) {
+        const silentJSONParsing = transitional2 && transitional2.silentJSONParsing;
+        const strictJSONParsing = !silentJSONParsing && JSONRequested;
+        try {
+          return JSON.parse(data, this.parseReviver);
+        } catch (e) {
+          if (strictJSONParsing) {
+            if (e.name === "SyntaxError") {
+              throw AxiosError_default.from(e, AxiosError_default.ERR_BAD_RESPONSE, this, null, this.response);
+            }
+            throw e;
+          }
+        }
+      }
+      return data;
+    }
+  ],
+  /**
+   * A timeout in milliseconds to abort a request. If set to 0 (default) a
+   * timeout is not created.
+   */
+  timeout: 0,
+  xsrfCookieName: "XSRF-TOKEN",
+  xsrfHeaderName: "X-XSRF-TOKEN",
+  maxContentLength: -1,
+  maxBodyLength: -1,
+  env: {
+    FormData: platform_default.classes.FormData,
+    Blob: platform_default.classes.Blob
+  },
+  validateStatus: function validateStatus(status) {
+    return status >= 200 && status < 300;
+  },
+  headers: {
+    common: {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": void 0
+    }
+  }
+};
+utils_default.forEach(["delete", "get", "head", "post", "put", "patch"], (method) => {
+  defaults.headers[method] = {};
+});
+var defaults_default = defaults;
+
+// node_modules/axios/lib/helpers/parseHeaders.js
+var ignoreDuplicateOf = utils_default.toObjectSet([
+  "age",
+  "authorization",
+  "content-length",
+  "content-type",
+  "etag",
+  "expires",
+  "from",
+  "host",
+  "if-modified-since",
+  "if-unmodified-since",
+  "last-modified",
+  "location",
+  "max-forwards",
+  "proxy-authorization",
+  "referer",
+  "retry-after",
+  "user-agent"
+]);
+var parseHeaders_default = (rawHeaders) => {
+  const parsed = {};
+  let key;
+  let val;
+  let i;
+  rawHeaders && rawHeaders.split("\n").forEach(function parser(line2) {
+    i = line2.indexOf(":");
+    key = line2.substring(0, i).trim().toLowerCase();
+    val = line2.substring(i + 1).trim();
+    if (!key || parsed[key] && ignoreDuplicateOf[key]) {
+      return;
+    }
+    if (key === "set-cookie") {
+      if (parsed[key]) {
+        parsed[key].push(val);
+      } else {
+        parsed[key] = [val];
+      }
+    } else {
+      parsed[key] = parsed[key] ? parsed[key] + ", " + val : val;
+    }
+  });
+  return parsed;
+};
+
+// node_modules/axios/lib/core/AxiosHeaders.js
+var $internals = Symbol("internals");
+function normalizeHeader(header) {
+  return header && String(header).trim().toLowerCase();
+}
+function normalizeValue(value) {
+  if (value === false || value == null) {
+    return value;
+  }
+  return utils_default.isArray(value) ? value.map(normalizeValue) : String(value);
+}
+function parseTokens(str) {
+  const tokens = /* @__PURE__ */ Object.create(null);
+  const tokensRE = /([^\s,;=]+)\s*(?:=\s*([^,;]+))?/g;
+  let match;
+  while (match = tokensRE.exec(str)) {
+    tokens[match[1]] = match[2];
+  }
+  return tokens;
+}
+var isValidHeaderName = (str) => /^[-_a-zA-Z0-9^`|~,!#$%&'*+.]+$/.test(str.trim());
+function matchHeaderValue(context, value, header, filter2, isHeaderNameFilter) {
+  if (utils_default.isFunction(filter2)) {
+    return filter2.call(this, value, header);
+  }
+  if (isHeaderNameFilter) {
+    value = header;
+  }
+  if (!utils_default.isString(value)) return;
+  if (utils_default.isString(filter2)) {
+    return value.indexOf(filter2) !== -1;
+  }
+  if (utils_default.isRegExp(filter2)) {
+    return filter2.test(value);
+  }
+}
+function formatHeader(header) {
+  return header.trim().toLowerCase().replace(/([a-z\d])(\w*)/g, (w, char2, str) => {
+    return char2.toUpperCase() + str;
+  });
+}
+function buildAccessors(obj, header) {
+  const accessorName = utils_default.toCamelCase(" " + header);
+  ["get", "set", "has"].forEach((methodName) => {
+    Object.defineProperty(obj, methodName + accessorName, {
+      value: function(arg1, arg2, arg3) {
+        return this[methodName].call(this, header, arg1, arg2, arg3);
+      },
+      configurable: true
+    });
+  });
+}
+var AxiosHeaders = class {
+  constructor(headers) {
+    headers && this.set(headers);
+  }
+  set(header, valueOrRewrite, rewrite) {
+    const self2 = this;
+    function setHeader(_value, _header, _rewrite) {
+      const lHeader = normalizeHeader(_header);
+      if (!lHeader) {
+        throw new Error("header name must be a non-empty string");
+      }
+      const key = utils_default.findKey(self2, lHeader);
+      if (!key || self2[key] === void 0 || _rewrite === true || _rewrite === void 0 && self2[key] !== false) {
+        self2[key || _header] = normalizeValue(_value);
+      }
+    }
+    const setHeaders = (headers, _rewrite) => utils_default.forEach(headers, (_value, _header) => setHeader(_value, _header, _rewrite));
+    if (utils_default.isPlainObject(header) || header instanceof this.constructor) {
+      setHeaders(header, valueOrRewrite);
+    } else if (utils_default.isString(header) && (header = header.trim()) && !isValidHeaderName(header)) {
+      setHeaders(parseHeaders_default(header), valueOrRewrite);
+    } else if (utils_default.isObject(header) && utils_default.isIterable(header)) {
+      let obj = {}, dest, key;
+      for (const entry of header) {
+        if (!utils_default.isArray(entry)) {
+          throw TypeError("Object iterator must return a key-value pair");
+        }
+        obj[key = entry[0]] = (dest = obj[key]) ? utils_default.isArray(dest) ? [...dest, entry[1]] : [dest, entry[1]] : entry[1];
+      }
+      setHeaders(obj, valueOrRewrite);
+    } else {
+      header != null && setHeader(valueOrRewrite, header, rewrite);
+    }
+    return this;
+  }
+  get(header, parser) {
+    header = normalizeHeader(header);
+    if (header) {
+      const key = utils_default.findKey(this, header);
+      if (key) {
+        const value = this[key];
+        if (!parser) {
+          return value;
+        }
+        if (parser === true) {
+          return parseTokens(value);
+        }
+        if (utils_default.isFunction(parser)) {
+          return parser.call(this, value, key);
+        }
+        if (utils_default.isRegExp(parser)) {
+          return parser.exec(value);
+        }
+        throw new TypeError("parser must be boolean|regexp|function");
+      }
+    }
+  }
+  has(header, matcher) {
+    header = normalizeHeader(header);
+    if (header) {
+      const key = utils_default.findKey(this, header);
+      return !!(key && this[key] !== void 0 && (!matcher || matchHeaderValue(this, this[key], key, matcher)));
+    }
+    return false;
+  }
+  delete(header, matcher) {
+    const self2 = this;
+    let deleted = false;
+    function deleteHeader(_header) {
+      _header = normalizeHeader(_header);
+      if (_header) {
+        const key = utils_default.findKey(self2, _header);
+        if (key && (!matcher || matchHeaderValue(self2, self2[key], key, matcher))) {
+          delete self2[key];
+          deleted = true;
+        }
+      }
+    }
+    if (utils_default.isArray(header)) {
+      header.forEach(deleteHeader);
+    } else {
+      deleteHeader(header);
+    }
+    return deleted;
+  }
+  clear(matcher) {
+    const keys = Object.keys(this);
+    let i = keys.length;
+    let deleted = false;
+    while (i--) {
+      const key = keys[i];
+      if (!matcher || matchHeaderValue(this, this[key], key, matcher, true)) {
+        delete this[key];
+        deleted = true;
+      }
+    }
+    return deleted;
+  }
+  normalize(format) {
+    const self2 = this;
+    const headers = {};
+    utils_default.forEach(this, (value, header) => {
+      const key = utils_default.findKey(headers, header);
+      if (key) {
+        self2[key] = normalizeValue(value);
+        delete self2[header];
+        return;
+      }
+      const normalized = format ? formatHeader(header) : String(header).trim();
+      if (normalized !== header) {
+        delete self2[header];
+      }
+      self2[normalized] = normalizeValue(value);
+      headers[normalized] = true;
+    });
+    return this;
+  }
+  concat(...targets) {
+    return this.constructor.concat(this, ...targets);
+  }
+  toJSON(asStrings) {
+    const obj = /* @__PURE__ */ Object.create(null);
+    utils_default.forEach(this, (value, header) => {
+      value != null && value !== false && (obj[header] = asStrings && utils_default.isArray(value) ? value.join(", ") : value);
+    });
+    return obj;
+  }
+  [Symbol.iterator]() {
+    return Object.entries(this.toJSON())[Symbol.iterator]();
+  }
+  toString() {
+    return Object.entries(this.toJSON()).map(([header, value]) => header + ": " + value).join("\n");
+  }
+  getSetCookie() {
+    return this.get("set-cookie") || [];
+  }
+  get [Symbol.toStringTag]() {
+    return "AxiosHeaders";
+  }
+  static from(thing) {
+    return thing instanceof this ? thing : new this(thing);
+  }
+  static concat(first, ...targets) {
+    const computed = new this(first);
+    targets.forEach((target) => computed.set(target));
+    return computed;
+  }
+  static accessor(header) {
+    const internals = this[$internals] = this[$internals] = {
+      accessors: {}
+    };
+    const accessors = internals.accessors;
+    const prototype2 = this.prototype;
+    function defineAccessor(_header) {
+      const lHeader = normalizeHeader(_header);
+      if (!accessors[lHeader]) {
+        buildAccessors(prototype2, _header);
+        accessors[lHeader] = true;
+      }
+    }
+    utils_default.isArray(header) ? header.forEach(defineAccessor) : defineAccessor(header);
+    return this;
+  }
+};
+AxiosHeaders.accessor([
+  "Content-Type",
+  "Content-Length",
+  "Accept",
+  "Accept-Encoding",
+  "User-Agent",
+  "Authorization"
+]);
+utils_default.reduceDescriptors(AxiosHeaders.prototype, ({ value }, key) => {
+  let mapped = key[0].toUpperCase() + key.slice(1);
+  return {
+    get: () => value,
+    set(headerValue) {
+      this[mapped] = headerValue;
+    }
+  };
+});
+utils_default.freezeMethods(AxiosHeaders);
+var AxiosHeaders_default = AxiosHeaders;
+
+// node_modules/axios/lib/core/transformData.js
+function transformData(fns, response) {
+  const config = this || defaults_default;
+  const context = response || config;
+  const headers = AxiosHeaders_default.from(context.headers);
+  let data = context.data;
+  utils_default.forEach(fns, function transform(fn) {
+    data = fn.call(config, data, headers.normalize(), response ? response.status : void 0);
+  });
+  headers.normalize();
+  return data;
+}
+
+// node_modules/axios/lib/cancel/isCancel.js
+function isCancel(value) {
+  return !!(value && value.__CANCEL__);
+}
+
+// node_modules/axios/lib/cancel/CanceledError.js
+var CanceledError = class extends AxiosError_default {
+  /**
+   * A `CanceledError` is an object that is thrown when an operation is canceled.
+   *
+   * @param {string=} message The message.
+   * @param {Object=} config The config.
+   * @param {Object=} request The request.
+   *
+   * @returns {CanceledError} The created error.
+   */
+  constructor(message, config, request) {
+    super(message == null ? "canceled" : message, AxiosError_default.ERR_CANCELED, config, request);
+    this.name = "CanceledError";
+    this.__CANCEL__ = true;
+  }
+};
+var CanceledError_default = CanceledError;
+
+// node_modules/axios/lib/core/settle.js
+function settle(resolve2, reject, response) {
+  const validateStatus2 = response.config.validateStatus;
+  if (!response.status || !validateStatus2 || validateStatus2(response.status)) {
+    resolve2(response);
+  } else {
+    reject(
+      new AxiosError_default(
+        "Request failed with status code " + response.status,
+        [AxiosError_default.ERR_BAD_REQUEST, AxiosError_default.ERR_BAD_RESPONSE][Math.floor(response.status / 100) - 4],
+        response.config,
+        response.request,
+        response
+      )
+    );
+  }
+}
+
+// node_modules/axios/lib/helpers/isAbsoluteURL.js
+function isAbsoluteURL(url2) {
+  if (typeof url2 !== "string") {
+    return false;
+  }
+  return /^([a-z][a-z\d+\-.]*:)?\/\//i.test(url2);
+}
+
+// node_modules/axios/lib/helpers/combineURLs.js
+function combineURLs(baseURL, relativeURL) {
+  return relativeURL ? baseURL.replace(/\/?\/$/, "") + "/" + relativeURL.replace(/^\/+/, "") : baseURL;
+}
+
+// node_modules/axios/lib/core/buildFullPath.js
+function buildFullPath(baseURL, requestedURL, allowAbsoluteUrls) {
+  let isRelativeUrl = !isAbsoluteURL(requestedURL);
+  if (baseURL && (isRelativeUrl || allowAbsoluteUrls == false)) {
+    return combineURLs(baseURL, requestedURL);
+  }
+  return requestedURL;
+}
+
+// node_modules/axios/lib/adapters/http.js
+var import_proxy_from_env = __toESM(require_proxy_from_env(), 1);
+var import_http = __toESM(require("http"), 1);
+var import_https = __toESM(require("https"), 1);
+var import_http2 = __toESM(require("http2"), 1);
+var import_util2 = __toESM(require("util"), 1);
+var import_follow_redirects = __toESM(require_follow_redirects(), 1);
+var import_zlib = __toESM(require("zlib"), 1);
+
+// node_modules/axios/lib/env/data.js
+var VERSION = "1.13.6";
+
+// node_modules/axios/lib/helpers/parseProtocol.js
+function parseProtocol(url2) {
+  const match = /^([-+\w]{1,25})(:?\/\/|:)/.exec(url2);
+  return match && match[1] || "";
+}
+
+// node_modules/axios/lib/helpers/fromDataURI.js
+var DATA_URL_PATTERN = /^(?:([^;]+);)?(?:[^;]+;)?(base64|),([\s\S]*)$/;
+function fromDataURI(uri, asBlob, options) {
+  const _Blob = options && options.Blob || platform_default.classes.Blob;
+  const protocol = parseProtocol(uri);
+  if (asBlob === void 0 && _Blob) {
+    asBlob = true;
+  }
+  if (protocol === "data") {
+    uri = protocol.length ? uri.slice(protocol.length + 1) : uri;
+    const match = DATA_URL_PATTERN.exec(uri);
+    if (!match) {
+      throw new AxiosError_default("Invalid URL", AxiosError_default.ERR_INVALID_URL);
+    }
+    const mime = match[1];
+    const isBase64 = match[2];
+    const body = match[3];
+    const buffer = Buffer.from(decodeURIComponent(body), isBase64 ? "base64" : "utf8");
+    if (asBlob) {
+      if (!_Blob) {
+        throw new AxiosError_default("Blob is not supported", AxiosError_default.ERR_NOT_SUPPORT);
+      }
+      return new _Blob([buffer], { type: mime });
+    }
+    return buffer;
+  }
+  throw new AxiosError_default("Unsupported protocol " + protocol, AxiosError_default.ERR_NOT_SUPPORT);
+}
+
+// node_modules/axios/lib/adapters/http.js
+var import_stream4 = __toESM(require("stream"), 1);
+
+// node_modules/axios/lib/helpers/AxiosTransformStream.js
+var import_stream = __toESM(require("stream"), 1);
+var kInternals = Symbol("internals");
+var AxiosTransformStream = class extends import_stream.default.Transform {
+  constructor(options) {
+    options = utils_default.toFlatObject(
+      options,
+      {
+        maxRate: 0,
+        chunkSize: 64 * 1024,
+        minChunkSize: 100,
+        timeWindow: 500,
+        ticksRate: 2,
+        samplesCount: 15
+      },
+      null,
+      (prop, source) => {
+        return !utils_default.isUndefined(source[prop]);
+      }
+    );
+    super({
+      readableHighWaterMark: options.chunkSize
+    });
+    const internals = this[kInternals] = {
+      timeWindow: options.timeWindow,
+      chunkSize: options.chunkSize,
+      maxRate: options.maxRate,
+      minChunkSize: options.minChunkSize,
+      bytesSeen: 0,
+      isCaptured: false,
+      notifiedBytesLoaded: 0,
+      ts: Date.now(),
+      bytes: 0,
+      onReadCallback: null
+    };
+    this.on("newListener", (event) => {
+      if (event === "progress") {
+        if (!internals.isCaptured) {
+          internals.isCaptured = true;
+        }
+      }
+    });
+  }
+  _read(size) {
+    const internals = this[kInternals];
+    if (internals.onReadCallback) {
+      internals.onReadCallback();
+    }
+    return super._read(size);
+  }
+  _transform(chunk, encoding, callback) {
+    const internals = this[kInternals];
+    const maxRate = internals.maxRate;
+    const readableHighWaterMark = this.readableHighWaterMark;
+    const timeWindow = internals.timeWindow;
+    const divider = 1e3 / timeWindow;
+    const bytesThreshold = maxRate / divider;
+    const minChunkSize = internals.minChunkSize !== false ? Math.max(internals.minChunkSize, bytesThreshold * 0.01) : 0;
+    const pushChunk = (_chunk, _callback) => {
+      const bytes = Buffer.byteLength(_chunk);
+      internals.bytesSeen += bytes;
+      internals.bytes += bytes;
+      internals.isCaptured && this.emit("progress", internals.bytesSeen);
+      if (this.push(_chunk)) {
+        process.nextTick(_callback);
+      } else {
+        internals.onReadCallback = () => {
+          internals.onReadCallback = null;
+          process.nextTick(_callback);
+        };
+      }
+    };
+    const transformChunk = (_chunk, _callback) => {
+      const chunkSize = Buffer.byteLength(_chunk);
+      let chunkRemainder = null;
+      let maxChunkSize = readableHighWaterMark;
+      let bytesLeft;
+      let passed = 0;
+      if (maxRate) {
+        const now = Date.now();
+        if (!internals.ts || (passed = now - internals.ts) >= timeWindow) {
+          internals.ts = now;
+          bytesLeft = bytesThreshold - internals.bytes;
+          internals.bytes = bytesLeft < 0 ? -bytesLeft : 0;
+          passed = 0;
+        }
+        bytesLeft = bytesThreshold - internals.bytes;
+      }
+      if (maxRate) {
+        if (bytesLeft <= 0) {
+          return setTimeout(() => {
+            _callback(null, _chunk);
+          }, timeWindow - passed);
+        }
+        if (bytesLeft < maxChunkSize) {
+          maxChunkSize = bytesLeft;
+        }
+      }
+      if (maxChunkSize && chunkSize > maxChunkSize && chunkSize - maxChunkSize > minChunkSize) {
+        chunkRemainder = _chunk.subarray(maxChunkSize);
+        _chunk = _chunk.subarray(0, maxChunkSize);
+      }
+      pushChunk(
+        _chunk,
+        chunkRemainder ? () => {
+          process.nextTick(_callback, null, chunkRemainder);
+        } : _callback
+      );
+    };
+    transformChunk(chunk, function transformNextChunk(err, _chunk) {
+      if (err) {
+        return callback(err);
+      }
+      if (_chunk) {
+        transformChunk(_chunk, transformNextChunk);
+      } else {
+        callback(null);
+      }
+    });
+  }
+};
+var AxiosTransformStream_default = AxiosTransformStream;
+
+// node_modules/axios/lib/adapters/http.js
+var import_events = require("events");
+
+// node_modules/axios/lib/helpers/formDataToStream.js
+var import_util = __toESM(require("util"), 1);
+var import_stream2 = require("stream");
+
+// node_modules/axios/lib/helpers/readBlob.js
+var { asyncIterator } = Symbol;
+var readBlob = async function* (blob) {
+  if (blob.stream) {
+    yield* blob.stream();
+  } else if (blob.arrayBuffer) {
+    yield await blob.arrayBuffer();
+  } else if (blob[asyncIterator]) {
+    yield* blob[asyncIterator]();
+  } else {
+    yield blob;
+  }
+};
+var readBlob_default = readBlob;
+
+// node_modules/axios/lib/helpers/formDataToStream.js
+var BOUNDARY_ALPHABET = platform_default.ALPHABET.ALPHA_DIGIT + "-_";
+var textEncoder = typeof TextEncoder === "function" ? new TextEncoder() : new import_util.default.TextEncoder();
+var CRLF = "\r\n";
+var CRLF_BYTES = textEncoder.encode(CRLF);
+var CRLF_BYTES_COUNT = 2;
+var FormDataPart = class {
+  constructor(name, value) {
+    const { escapeName } = this.constructor;
+    const isStringValue = utils_default.isString(value);
+    let headers = `Content-Disposition: form-data; name="${escapeName(name)}"${!isStringValue && value.name ? `; filename="${escapeName(value.name)}"` : ""}${CRLF}`;
+    if (isStringValue) {
+      value = textEncoder.encode(String(value).replace(/\r?\n|\r\n?/g, CRLF));
+    } else {
+      headers += `Content-Type: ${value.type || "application/octet-stream"}${CRLF}`;
+    }
+    this.headers = textEncoder.encode(headers + CRLF);
+    this.contentLength = isStringValue ? value.byteLength : value.size;
+    this.size = this.headers.byteLength + this.contentLength + CRLF_BYTES_COUNT;
+    this.name = name;
+    this.value = value;
+  }
+  async *encode() {
+    yield this.headers;
+    const { value } = this;
+    if (utils_default.isTypedArray(value)) {
+      yield value;
+    } else {
+      yield* readBlob_default(value);
+    }
+    yield CRLF_BYTES;
+  }
+  static escapeName(name) {
+    return String(name).replace(
+      /[\r\n"]/g,
+      (match) => ({
+        "\r": "%0D",
+        "\n": "%0A",
+        '"': "%22"
+      })[match]
+    );
+  }
+};
+var formDataToStream = (form, headersHandler, options) => {
+  const {
+    tag = "form-data-boundary",
+    size = 25,
+    boundary = tag + "-" + platform_default.generateString(size, BOUNDARY_ALPHABET)
+  } = options || {};
+  if (!utils_default.isFormData(form)) {
+    throw TypeError("FormData instance required");
+  }
+  if (boundary.length < 1 || boundary.length > 70) {
+    throw Error("boundary must be 10-70 characters long");
+  }
+  const boundaryBytes = textEncoder.encode("--" + boundary + CRLF);
+  const footerBytes = textEncoder.encode("--" + boundary + "--" + CRLF);
+  let contentLength = footerBytes.byteLength;
+  const parts = Array.from(form.entries()).map(([name, value]) => {
+    const part = new FormDataPart(name, value);
+    contentLength += part.size;
+    return part;
+  });
+  contentLength += boundaryBytes.byteLength * parts.length;
+  contentLength = utils_default.toFiniteNumber(contentLength);
+  const computedHeaders = {
+    "Content-Type": `multipart/form-data; boundary=${boundary}`
+  };
+  if (Number.isFinite(contentLength)) {
+    computedHeaders["Content-Length"] = contentLength;
+  }
+  headersHandler && headersHandler(computedHeaders);
+  return import_stream2.Readable.from(
+    (async function* () {
+      for (const part of parts) {
+        yield boundaryBytes;
+        yield* part.encode();
+      }
+      yield footerBytes;
+    })()
+  );
+};
+var formDataToStream_default = formDataToStream;
+
+// node_modules/axios/lib/helpers/ZlibHeaderTransformStream.js
+var import_stream3 = __toESM(require("stream"), 1);
+var ZlibHeaderTransformStream = class extends import_stream3.default.Transform {
+  __transform(chunk, encoding, callback) {
+    this.push(chunk);
+    callback();
+  }
+  _transform(chunk, encoding, callback) {
+    if (chunk.length !== 0) {
+      this._transform = this.__transform;
+      if (chunk[0] !== 120) {
+        const header = Buffer.alloc(2);
+        header[0] = 120;
+        header[1] = 156;
+        this.push(header, encoding);
+      }
+    }
+    this.__transform(chunk, encoding, callback);
+  }
+};
+var ZlibHeaderTransformStream_default = ZlibHeaderTransformStream;
+
+// node_modules/axios/lib/helpers/callbackify.js
+var callbackify = (fn, reducer) => {
+  return utils_default.isAsyncFn(fn) ? function(...args) {
+    const cb = args.pop();
+    fn.apply(this, args).then((value) => {
+      try {
+        reducer ? cb(null, ...reducer(value)) : cb(null, value);
+      } catch (err) {
+        cb(err);
+      }
+    }, cb);
+  } : fn;
+};
+var callbackify_default = callbackify;
+
+// node_modules/axios/lib/helpers/speedometer.js
+function speedometer(samplesCount, min) {
+  samplesCount = samplesCount || 10;
+  const bytes = new Array(samplesCount);
+  const timestamps = new Array(samplesCount);
+  let head = 0;
+  let tail = 0;
+  let firstSampleTS;
+  min = min !== void 0 ? min : 1e3;
+  return function push(chunkLength) {
+    const now = Date.now();
+    const startedAt = timestamps[tail];
+    if (!firstSampleTS) {
+      firstSampleTS = now;
+    }
+    bytes[head] = chunkLength;
+    timestamps[head] = now;
+    let i = tail;
+    let bytesCount = 0;
+    while (i !== head) {
+      bytesCount += bytes[i++];
+      i = i % samplesCount;
+    }
+    head = (head + 1) % samplesCount;
+    if (head === tail) {
+      tail = (tail + 1) % samplesCount;
+    }
+    if (now - firstSampleTS < min) {
+      return;
+    }
+    const passed = startedAt && now - startedAt;
+    return passed ? Math.round(bytesCount * 1e3 / passed) : void 0;
+  };
+}
+var speedometer_default = speedometer;
+
+// node_modules/axios/lib/helpers/throttle.js
+function throttle(fn, freq) {
+  let timestamp2 = 0;
+  let threshold = 1e3 / freq;
+  let lastArgs;
+  let timer;
+  const invoke = (args, now = Date.now()) => {
+    timestamp2 = now;
+    lastArgs = null;
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    fn(...args);
+  };
+  const throttled = (...args) => {
+    const now = Date.now();
+    const passed = now - timestamp2;
+    if (passed >= threshold) {
+      invoke(args, now);
+    } else {
+      lastArgs = args;
+      if (!timer) {
+        timer = setTimeout(() => {
+          timer = null;
+          invoke(lastArgs);
+        }, threshold - passed);
+      }
+    }
+  };
+  const flush = () => lastArgs && invoke(lastArgs);
+  return [throttled, flush];
+}
+var throttle_default = throttle;
+
+// node_modules/axios/lib/helpers/progressEventReducer.js
+var progressEventReducer = (listener, isDownloadStream, freq = 3) => {
+  let bytesNotified = 0;
+  const _speedometer = speedometer_default(50, 250);
+  return throttle_default((e) => {
+    const loaded = e.loaded;
+    const total = e.lengthComputable ? e.total : void 0;
+    const progressBytes = loaded - bytesNotified;
+    const rate = _speedometer(progressBytes);
+    const inRange = loaded <= total;
+    bytesNotified = loaded;
+    const data = {
+      loaded,
+      total,
+      progress: total ? loaded / total : void 0,
+      bytes: progressBytes,
+      rate: rate ? rate : void 0,
+      estimated: rate && total && inRange ? (total - loaded) / rate : void 0,
+      event: e,
+      lengthComputable: total != null,
+      [isDownloadStream ? "download" : "upload"]: true
+    };
+    listener(data);
+  }, freq);
+};
+var progressEventDecorator = (total, throttled) => {
+  const lengthComputable = total != null;
+  return [
+    (loaded) => throttled[0]({
+      lengthComputable,
+      total,
+      loaded
+    }),
+    throttled[1]
+  ];
+};
+var asyncDecorator = (fn) => (...args) => utils_default.asap(() => fn(...args));
+
+// node_modules/axios/lib/helpers/estimateDataURLDecodedBytes.js
+function estimateDataURLDecodedBytes(url2) {
+  if (!url2 || typeof url2 !== "string") return 0;
+  if (!url2.startsWith("data:")) return 0;
+  const comma = url2.indexOf(",");
+  if (comma < 0) return 0;
+  const meta = url2.slice(5, comma);
+  const body = url2.slice(comma + 1);
+  const isBase64 = /;base64/i.test(meta);
+  if (isBase64) {
+    let effectiveLen = body.length;
+    const len = body.length;
+    for (let i = 0; i < len; i++) {
+      if (body.charCodeAt(i) === 37 && i + 2 < len) {
+        const a = body.charCodeAt(i + 1);
+        const b = body.charCodeAt(i + 2);
+        const isHex = (a >= 48 && a <= 57 || a >= 65 && a <= 70 || a >= 97 && a <= 102) && (b >= 48 && b <= 57 || b >= 65 && b <= 70 || b >= 97 && b <= 102);
+        if (isHex) {
+          effectiveLen -= 2;
+          i += 2;
+        }
+      }
+    }
+    let pad = 0;
+    let idx = len - 1;
+    const tailIsPct3D = (j) => j >= 2 && body.charCodeAt(j - 2) === 37 && // '%'
+    body.charCodeAt(j - 1) === 51 && // '3'
+    (body.charCodeAt(j) === 68 || body.charCodeAt(j) === 100);
+    if (idx >= 0) {
+      if (body.charCodeAt(idx) === 61) {
+        pad++;
+        idx--;
+      } else if (tailIsPct3D(idx)) {
+        pad++;
+        idx -= 3;
+      }
+    }
+    if (pad === 1 && idx >= 0) {
+      if (body.charCodeAt(idx) === 61) {
+        pad++;
+      } else if (tailIsPct3D(idx)) {
+        pad++;
+      }
+    }
+    const groups = Math.floor(effectiveLen / 4);
+    const bytes = groups * 3 - (pad || 0);
+    return bytes > 0 ? bytes : 0;
+  }
+  return Buffer.byteLength(body, "utf8");
+}
+
+// node_modules/axios/lib/adapters/http.js
+var zlibOptions = {
+  flush: import_zlib.default.constants.Z_SYNC_FLUSH,
+  finishFlush: import_zlib.default.constants.Z_SYNC_FLUSH
+};
+var brotliOptions = {
+  flush: import_zlib.default.constants.BROTLI_OPERATION_FLUSH,
+  finishFlush: import_zlib.default.constants.BROTLI_OPERATION_FLUSH
+};
+var isBrotliSupported = utils_default.isFunction(import_zlib.default.createBrotliDecompress);
+var { http: httpFollow, https: httpsFollow } = import_follow_redirects.default;
+var isHttps = /https:?/;
+var supportedProtocols = platform_default.protocols.map((protocol) => {
+  return protocol + ":";
+});
+var flushOnFinish = (stream4, [throttled, flush]) => {
+  stream4.on("end", flush).on("error", flush);
+  return throttled;
+};
+var Http2Sessions = class {
+  constructor() {
+    this.sessions = /* @__PURE__ */ Object.create(null);
+  }
+  getSession(authority, options) {
+    options = Object.assign(
+      {
+        sessionTimeout: 1e3
+      },
+      options
+    );
+    let authoritySessions = this.sessions[authority];
+    if (authoritySessions) {
+      let len = authoritySessions.length;
+      for (let i = 0; i < len; i++) {
+        const [sessionHandle, sessionOptions] = authoritySessions[i];
+        if (!sessionHandle.destroyed && !sessionHandle.closed && import_util2.default.isDeepStrictEqual(sessionOptions, options)) {
+          return sessionHandle;
+        }
+      }
+    }
+    const session = import_http2.default.connect(authority, options);
+    let removed;
+    const removeSession = () => {
+      if (removed) {
+        return;
+      }
+      removed = true;
+      let entries = authoritySessions, len = entries.length, i = len;
+      while (i--) {
+        if (entries[i][0] === session) {
+          if (len === 1) {
+            delete this.sessions[authority];
+          } else {
+            entries.splice(i, 1);
+          }
+          return;
+        }
+      }
+    };
+    const originalRequestFn = session.request;
+    const { sessionTimeout } = options;
+    if (sessionTimeout != null) {
+      let timer;
+      let streamsCount = 0;
+      session.request = function() {
+        const stream4 = originalRequestFn.apply(this, arguments);
+        streamsCount++;
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        stream4.once("close", () => {
+          if (!--streamsCount) {
+            timer = setTimeout(() => {
+              timer = null;
+              removeSession();
+            }, sessionTimeout);
+          }
+        });
+        return stream4;
+      };
+    }
+    session.once("close", removeSession);
+    let entry = [session, options];
+    authoritySessions ? authoritySessions.push(entry) : authoritySessions = this.sessions[authority] = [entry];
+    return session;
+  }
+};
+var http2Sessions = new Http2Sessions();
+function dispatchBeforeRedirect(options, responseDetails) {
+  if (options.beforeRedirects.proxy) {
+    options.beforeRedirects.proxy(options);
+  }
+  if (options.beforeRedirects.config) {
+    options.beforeRedirects.config(options, responseDetails);
+  }
+}
+function setProxy(options, configProxy, location) {
+  let proxy = configProxy;
+  if (!proxy && proxy !== false) {
+    const proxyUrl = import_proxy_from_env.default.getProxyForUrl(location);
+    if (proxyUrl) {
+      proxy = new URL(proxyUrl);
+    }
+  }
+  if (proxy) {
+    if (proxy.username) {
+      proxy.auth = (proxy.username || "") + ":" + (proxy.password || "");
+    }
+    if (proxy.auth) {
+      const validProxyAuth = Boolean(proxy.auth.username || proxy.auth.password);
+      if (validProxyAuth) {
+        proxy.auth = (proxy.auth.username || "") + ":" + (proxy.auth.password || "");
+      } else if (typeof proxy.auth === "object") {
+        throw new AxiosError_default("Invalid proxy authorization", AxiosError_default.ERR_BAD_OPTION, { proxy });
+      }
+      const base64 = Buffer.from(proxy.auth, "utf8").toString("base64");
+      options.headers["Proxy-Authorization"] = "Basic " + base64;
+    }
+    options.headers.host = options.hostname + (options.port ? ":" + options.port : "");
+    const proxyHost = proxy.hostname || proxy.host;
+    options.hostname = proxyHost;
+    options.host = proxyHost;
+    options.port = proxy.port;
+    options.path = location;
+    if (proxy.protocol) {
+      options.protocol = proxy.protocol.includes(":") ? proxy.protocol : `${proxy.protocol}:`;
+    }
+  }
+  options.beforeRedirects.proxy = function beforeRedirect(redirectOptions) {
+    setProxy(redirectOptions, configProxy, redirectOptions.href);
+  };
+}
+var isHttpAdapterSupported = typeof process !== "undefined" && utils_default.kindOf(process) === "process";
+var wrapAsync = (asyncExecutor) => {
+  return new Promise((resolve2, reject) => {
+    let onDone;
+    let isDone;
+    const done = (value, isRejected) => {
+      if (isDone) return;
+      isDone = true;
+      onDone && onDone(value, isRejected);
+    };
+    const _resolve = (value) => {
+      done(value);
+      resolve2(value);
+    };
+    const _reject = (reason) => {
+      done(reason, true);
+      reject(reason);
+    };
+    asyncExecutor(_resolve, _reject, (onDoneHandler) => onDone = onDoneHandler).catch(_reject);
+  });
+};
+var resolveFamily = ({ address, family }) => {
+  if (!utils_default.isString(address)) {
+    throw TypeError("address must be a string");
+  }
+  return {
+    address,
+    family: family || (address.indexOf(".") < 0 ? 6 : 4)
+  };
+};
+var buildAddressEntry = (address, family) => resolveFamily(utils_default.isObject(address) ? address : { address, family });
+var http2Transport = {
+  request(options, cb) {
+    const authority = options.protocol + "//" + options.hostname + ":" + (options.port || (options.protocol === "https:" ? 443 : 80));
+    const { http2Options, headers } = options;
+    const session = http2Sessions.getSession(authority, http2Options);
+    const { HTTP2_HEADER_SCHEME, HTTP2_HEADER_METHOD, HTTP2_HEADER_PATH, HTTP2_HEADER_STATUS } = import_http2.default.constants;
+    const http2Headers = {
+      [HTTP2_HEADER_SCHEME]: options.protocol.replace(":", ""),
+      [HTTP2_HEADER_METHOD]: options.method,
+      [HTTP2_HEADER_PATH]: options.path
+    };
+    utils_default.forEach(headers, (header, name) => {
+      name.charAt(0) !== ":" && (http2Headers[name] = header);
+    });
+    const req = session.request(http2Headers);
+    req.once("response", (responseHeaders) => {
+      const response = req;
+      responseHeaders = Object.assign({}, responseHeaders);
+      const status = responseHeaders[HTTP2_HEADER_STATUS];
+      delete responseHeaders[HTTP2_HEADER_STATUS];
+      response.headers = responseHeaders;
+      response.statusCode = +status;
+      cb(response);
+    });
+    return req;
+  }
+};
+var http_default = isHttpAdapterSupported && function httpAdapter(config) {
+  return wrapAsync(async function dispatchHttpRequest(resolve2, reject, onDone) {
+    let { data, lookup, family, httpVersion = 1, http2Options } = config;
+    const { responseType, responseEncoding } = config;
+    const method = config.method.toUpperCase();
+    let isDone;
+    let rejected = false;
+    let req;
+    httpVersion = +httpVersion;
+    if (Number.isNaN(httpVersion)) {
+      throw TypeError(`Invalid protocol version: '${config.httpVersion}' is not a number`);
+    }
+    if (httpVersion !== 1 && httpVersion !== 2) {
+      throw TypeError(`Unsupported protocol version '${httpVersion}'`);
+    }
+    const isHttp2 = httpVersion === 2;
+    if (lookup) {
+      const _lookup = callbackify_default(lookup, (value) => utils_default.isArray(value) ? value : [value]);
+      lookup = (hostname, opt, cb) => {
+        _lookup(hostname, opt, (err, arg0, arg1) => {
+          if (err) {
+            return cb(err);
+          }
+          const addresses = utils_default.isArray(arg0) ? arg0.map((addr) => buildAddressEntry(addr)) : [buildAddressEntry(arg0, arg1)];
+          opt.all ? cb(err, addresses) : cb(err, addresses[0].address, addresses[0].family);
+        });
+      };
+    }
+    const abortEmitter = new import_events.EventEmitter();
+    function abort(reason) {
+      try {
+        abortEmitter.emit(
+          "abort",
+          !reason || reason.type ? new CanceledError_default(null, config, req) : reason
+        );
+      } catch (err) {
+        console.warn("emit error", err);
+      }
+    }
+    abortEmitter.once("abort", reject);
+    const onFinished = () => {
+      if (config.cancelToken) {
+        config.cancelToken.unsubscribe(abort);
+      }
+      if (config.signal) {
+        config.signal.removeEventListener("abort", abort);
+      }
+      abortEmitter.removeAllListeners();
+    };
+    if (config.cancelToken || config.signal) {
+      config.cancelToken && config.cancelToken.subscribe(abort);
+      if (config.signal) {
+        config.signal.aborted ? abort() : config.signal.addEventListener("abort", abort);
+      }
+    }
+    onDone((response, isRejected) => {
+      isDone = true;
+      if (isRejected) {
+        rejected = true;
+        onFinished();
+        return;
+      }
+      const { data: data2 } = response;
+      if (data2 instanceof import_stream4.default.Readable || data2 instanceof import_stream4.default.Duplex) {
+        const offListeners = import_stream4.default.finished(data2, () => {
+          offListeners();
+          onFinished();
+        });
+      } else {
+        onFinished();
+      }
+    });
+    const fullPath = buildFullPath(config.baseURL, config.url, config.allowAbsoluteUrls);
+    const parsed = new URL(fullPath, platform_default.hasBrowserEnv ? platform_default.origin : void 0);
+    const protocol = parsed.protocol || supportedProtocols[0];
+    if (protocol === "data:") {
+      if (config.maxContentLength > -1) {
+        const dataUrl = String(config.url || fullPath || "");
+        const estimated = estimateDataURLDecodedBytes(dataUrl);
+        if (estimated > config.maxContentLength) {
+          return reject(
+            new AxiosError_default(
+              "maxContentLength size of " + config.maxContentLength + " exceeded",
+              AxiosError_default.ERR_BAD_RESPONSE,
+              config
+            )
+          );
+        }
+      }
+      let convertedData;
+      if (method !== "GET") {
+        return settle(resolve2, reject, {
+          status: 405,
+          statusText: "method not allowed",
+          headers: {},
+          config
+        });
+      }
+      try {
+        convertedData = fromDataURI(config.url, responseType === "blob", {
+          Blob: config.env && config.env.Blob
+        });
+      } catch (err) {
+        throw AxiosError_default.from(err, AxiosError_default.ERR_BAD_REQUEST, config);
+      }
+      if (responseType === "text") {
+        convertedData = convertedData.toString(responseEncoding);
+        if (!responseEncoding || responseEncoding === "utf8") {
+          convertedData = utils_default.stripBOM(convertedData);
+        }
+      } else if (responseType === "stream") {
+        convertedData = import_stream4.default.Readable.from(convertedData);
+      }
+      return settle(resolve2, reject, {
+        data: convertedData,
+        status: 200,
+        statusText: "OK",
+        headers: new AxiosHeaders_default(),
+        config
+      });
+    }
+    if (supportedProtocols.indexOf(protocol) === -1) {
+      return reject(
+        new AxiosError_default("Unsupported protocol " + protocol, AxiosError_default.ERR_BAD_REQUEST, config)
+      );
+    }
+    const headers = AxiosHeaders_default.from(config.headers).normalize();
+    headers.set("User-Agent", "axios/" + VERSION, false);
+    const { onUploadProgress, onDownloadProgress } = config;
+    const maxRate = config.maxRate;
+    let maxUploadRate = void 0;
+    let maxDownloadRate = void 0;
+    if (utils_default.isSpecCompliantForm(data)) {
+      const userBoundary = headers.getContentType(/boundary=([-_\w\d]{10,70})/i);
+      data = formDataToStream_default(
+        data,
+        (formHeaders) => {
+          headers.set(formHeaders);
+        },
+        {
+          tag: `axios-${VERSION}-boundary`,
+          boundary: userBoundary && userBoundary[1] || void 0
+        }
+      );
+    } else if (utils_default.isFormData(data) && utils_default.isFunction(data.getHeaders)) {
+      headers.set(data.getHeaders());
+      if (!headers.hasContentLength()) {
+        try {
+          const knownLength = await import_util2.default.promisify(data.getLength).call(data);
+          Number.isFinite(knownLength) && knownLength >= 0 && headers.setContentLength(knownLength);
+        } catch (e) {
+        }
+      }
+    } else if (utils_default.isBlob(data) || utils_default.isFile(data)) {
+      data.size && headers.setContentType(data.type || "application/octet-stream");
+      headers.setContentLength(data.size || 0);
+      data = import_stream4.default.Readable.from(readBlob_default(data));
+    } else if (data && !utils_default.isStream(data)) {
+      if (Buffer.isBuffer(data)) {
+      } else if (utils_default.isArrayBuffer(data)) {
+        data = Buffer.from(new Uint8Array(data));
+      } else if (utils_default.isString(data)) {
+        data = Buffer.from(data, "utf-8");
+      } else {
+        return reject(
+          new AxiosError_default(
+            "Data after transformation must be a string, an ArrayBuffer, a Buffer, or a Stream",
+            AxiosError_default.ERR_BAD_REQUEST,
+            config
+          )
+        );
+      }
+      headers.setContentLength(data.length, false);
+      if (config.maxBodyLength > -1 && data.length > config.maxBodyLength) {
+        return reject(
+          new AxiosError_default(
+            "Request body larger than maxBodyLength limit",
+            AxiosError_default.ERR_BAD_REQUEST,
+            config
+          )
+        );
+      }
+    }
+    const contentLength = utils_default.toFiniteNumber(headers.getContentLength());
+    if (utils_default.isArray(maxRate)) {
+      maxUploadRate = maxRate[0];
+      maxDownloadRate = maxRate[1];
+    } else {
+      maxUploadRate = maxDownloadRate = maxRate;
+    }
+    if (data && (onUploadProgress || maxUploadRate)) {
+      if (!utils_default.isStream(data)) {
+        data = import_stream4.default.Readable.from(data, { objectMode: false });
+      }
+      data = import_stream4.default.pipeline(
+        [
+          data,
+          new AxiosTransformStream_default({
+            maxRate: utils_default.toFiniteNumber(maxUploadRate)
+          })
+        ],
+        utils_default.noop
+      );
+      onUploadProgress && data.on(
+        "progress",
+        flushOnFinish(
+          data,
+          progressEventDecorator(
+            contentLength,
+            progressEventReducer(asyncDecorator(onUploadProgress), false, 3)
+          )
+        )
+      );
+    }
+    let auth = void 0;
+    if (config.auth) {
+      const username = config.auth.username || "";
+      const password = config.auth.password || "";
+      auth = username + ":" + password;
+    }
+    if (!auth && parsed.username) {
+      const urlUsername = parsed.username;
+      const urlPassword = parsed.password;
+      auth = urlUsername + ":" + urlPassword;
+    }
+    auth && headers.delete("authorization");
+    let path2;
+    try {
+      path2 = buildURL(
+        parsed.pathname + parsed.search,
+        config.params,
+        config.paramsSerializer
+      ).replace(/^\?/, "");
+    } catch (err) {
+      const customErr = new Error(err.message);
+      customErr.config = config;
+      customErr.url = config.url;
+      customErr.exists = true;
+      return reject(customErr);
+    }
+    headers.set(
+      "Accept-Encoding",
+      "gzip, compress, deflate" + (isBrotliSupported ? ", br" : ""),
+      false
+    );
+    const options = {
+      path: path2,
+      method,
+      headers: headers.toJSON(),
+      agents: { http: config.httpAgent, https: config.httpsAgent },
+      auth,
+      protocol,
+      family,
+      beforeRedirect: dispatchBeforeRedirect,
+      beforeRedirects: {},
+      http2Options
+    };
+    !utils_default.isUndefined(lookup) && (options.lookup = lookup);
+    if (config.socketPath) {
+      options.socketPath = config.socketPath;
+    } else {
+      options.hostname = parsed.hostname.startsWith("[") ? parsed.hostname.slice(1, -1) : parsed.hostname;
+      options.port = parsed.port;
+      setProxy(
+        options,
+        config.proxy,
+        protocol + "//" + parsed.hostname + (parsed.port ? ":" + parsed.port : "") + options.path
+      );
+    }
+    let transport;
+    const isHttpsRequest = isHttps.test(options.protocol);
+    options.agent = isHttpsRequest ? config.httpsAgent : config.httpAgent;
+    if (isHttp2) {
+      transport = http2Transport;
+    } else {
+      if (config.transport) {
+        transport = config.transport;
+      } else if (config.maxRedirects === 0) {
+        transport = isHttpsRequest ? import_https.default : import_http.default;
+      } else {
+        if (config.maxRedirects) {
+          options.maxRedirects = config.maxRedirects;
+        }
+        if (config.beforeRedirect) {
+          options.beforeRedirects.config = config.beforeRedirect;
+        }
+        transport = isHttpsRequest ? httpsFollow : httpFollow;
+      }
+    }
+    if (config.maxBodyLength > -1) {
+      options.maxBodyLength = config.maxBodyLength;
+    } else {
+      options.maxBodyLength = Infinity;
+    }
+    if (config.insecureHTTPParser) {
+      options.insecureHTTPParser = config.insecureHTTPParser;
+    }
+    req = transport.request(options, function handleResponse(res) {
+      if (req.destroyed) return;
+      const streams = [res];
+      const responseLength = utils_default.toFiniteNumber(res.headers["content-length"]);
+      if (onDownloadProgress || maxDownloadRate) {
+        const transformStream = new AxiosTransformStream_default({
+          maxRate: utils_default.toFiniteNumber(maxDownloadRate)
+        });
+        onDownloadProgress && transformStream.on(
+          "progress",
+          flushOnFinish(
+            transformStream,
+            progressEventDecorator(
+              responseLength,
+              progressEventReducer(asyncDecorator(onDownloadProgress), true, 3)
+            )
+          )
+        );
+        streams.push(transformStream);
+      }
+      let responseStream = res;
+      const lastRequest = res.req || req;
+      if (config.decompress !== false && res.headers["content-encoding"]) {
+        if (method === "HEAD" || res.statusCode === 204) {
+          delete res.headers["content-encoding"];
+        }
+        switch ((res.headers["content-encoding"] || "").toLowerCase()) {
+          /*eslint default-case:0*/
+          case "gzip":
+          case "x-gzip":
+          case "compress":
+          case "x-compress":
+            streams.push(import_zlib.default.createUnzip(zlibOptions));
+            delete res.headers["content-encoding"];
+            break;
+          case "deflate":
+            streams.push(new ZlibHeaderTransformStream_default());
+            streams.push(import_zlib.default.createUnzip(zlibOptions));
+            delete res.headers["content-encoding"];
+            break;
+          case "br":
+            if (isBrotliSupported) {
+              streams.push(import_zlib.default.createBrotliDecompress(brotliOptions));
+              delete res.headers["content-encoding"];
+            }
+        }
+      }
+      responseStream = streams.length > 1 ? import_stream4.default.pipeline(streams, utils_default.noop) : streams[0];
+      const response = {
+        status: res.statusCode,
+        statusText: res.statusMessage,
+        headers: new AxiosHeaders_default(res.headers),
+        config,
+        request: lastRequest
+      };
+      if (responseType === "stream") {
+        response.data = responseStream;
+        settle(resolve2, reject, response);
+      } else {
+        const responseBuffer = [];
+        let totalResponseBytes = 0;
+        responseStream.on("data", function handleStreamData(chunk) {
+          responseBuffer.push(chunk);
+          totalResponseBytes += chunk.length;
+          if (config.maxContentLength > -1 && totalResponseBytes > config.maxContentLength) {
+            rejected = true;
+            responseStream.destroy();
+            abort(
+              new AxiosError_default(
+                "maxContentLength size of " + config.maxContentLength + " exceeded",
+                AxiosError_default.ERR_BAD_RESPONSE,
+                config,
+                lastRequest
+              )
+            );
+          }
+        });
+        responseStream.on("aborted", function handlerStreamAborted() {
+          if (rejected) {
+            return;
+          }
+          const err = new AxiosError_default(
+            "stream has been aborted",
+            AxiosError_default.ERR_BAD_RESPONSE,
+            config,
+            lastRequest
+          );
+          responseStream.destroy(err);
+          reject(err);
+        });
+        responseStream.on("error", function handleStreamError(err) {
+          if (req.destroyed) return;
+          reject(AxiosError_default.from(err, null, config, lastRequest));
+        });
+        responseStream.on("end", function handleStreamEnd() {
+          try {
+            let responseData = responseBuffer.length === 1 ? responseBuffer[0] : Buffer.concat(responseBuffer);
+            if (responseType !== "arraybuffer") {
+              responseData = responseData.toString(responseEncoding);
+              if (!responseEncoding || responseEncoding === "utf8") {
+                responseData = utils_default.stripBOM(responseData);
+              }
+            }
+            response.data = responseData;
+          } catch (err) {
+            return reject(AxiosError_default.from(err, null, config, response.request, response));
+          }
+          settle(resolve2, reject, response);
+        });
+      }
+      abortEmitter.once("abort", (err) => {
+        if (!responseStream.destroyed) {
+          responseStream.emit("error", err);
+          responseStream.destroy();
+        }
+      });
+    });
+    abortEmitter.once("abort", (err) => {
+      if (req.close) {
+        req.close();
+      } else {
+        req.destroy(err);
+      }
+    });
+    req.on("error", function handleRequestError(err) {
+      reject(AxiosError_default.from(err, null, config, req));
+    });
+    req.on("socket", function handleRequestSocket(socket) {
+      socket.setKeepAlive(true, 1e3 * 60);
+    });
+    if (config.timeout) {
+      const timeout = parseInt(config.timeout, 10);
+      if (Number.isNaN(timeout)) {
+        abort(
+          new AxiosError_default(
+            "error trying to parse `config.timeout` to int",
+            AxiosError_default.ERR_BAD_OPTION_VALUE,
+            config,
+            req
+          )
+        );
+        return;
+      }
+      req.setTimeout(timeout, function handleRequestTimeout() {
+        if (isDone) return;
+        let timeoutErrorMessage = config.timeout ? "timeout of " + config.timeout + "ms exceeded" : "timeout exceeded";
+        const transitional2 = config.transitional || transitional_default;
+        if (config.timeoutErrorMessage) {
+          timeoutErrorMessage = config.timeoutErrorMessage;
+        }
+        abort(
+          new AxiosError_default(
+            timeoutErrorMessage,
+            transitional2.clarifyTimeoutError ? AxiosError_default.ETIMEDOUT : AxiosError_default.ECONNABORTED,
+            config,
+            req
+          )
+        );
+      });
+    } else {
+      req.setTimeout(0);
+    }
+    if (utils_default.isStream(data)) {
+      let ended = false;
+      let errored = false;
+      data.on("end", () => {
+        ended = true;
+      });
+      data.once("error", (err) => {
+        errored = true;
+        req.destroy(err);
+      });
+      data.on("close", () => {
+        if (!ended && !errored) {
+          abort(new CanceledError_default("Request stream has been aborted", config, req));
+        }
+      });
+      data.pipe(req);
+    } else {
+      data && req.write(data);
+      req.end();
+    }
+  });
+};
+
+// node_modules/axios/lib/helpers/isURLSameOrigin.js
+var isURLSameOrigin_default = platform_default.hasStandardBrowserEnv ? /* @__PURE__ */ ((origin2, isMSIE) => (url2) => {
+  url2 = new URL(url2, platform_default.origin);
+  return origin2.protocol === url2.protocol && origin2.host === url2.host && (isMSIE || origin2.port === url2.port);
+})(
+  new URL(platform_default.origin),
+  platform_default.navigator && /(msie|trident)/i.test(platform_default.navigator.userAgent)
+) : () => true;
+
+// node_modules/axios/lib/helpers/cookies.js
+var cookies_default = platform_default.hasStandardBrowserEnv ? (
+  // Standard browser envs support document.cookie
+  {
+    write(name, value, expires, path2, domain, secure, sameSite) {
+      if (typeof document === "undefined") return;
+      const cookie = [`${name}=${encodeURIComponent(value)}`];
+      if (utils_default.isNumber(expires)) {
+        cookie.push(`expires=${new Date(expires).toUTCString()}`);
+      }
+      if (utils_default.isString(path2)) {
+        cookie.push(`path=${path2}`);
+      }
+      if (utils_default.isString(domain)) {
+        cookie.push(`domain=${domain}`);
+      }
+      if (secure === true) {
+        cookie.push("secure");
+      }
+      if (utils_default.isString(sameSite)) {
+        cookie.push(`SameSite=${sameSite}`);
+      }
+      document.cookie = cookie.join("; ");
+    },
+    read(name) {
+      if (typeof document === "undefined") return null;
+      const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+      return match ? decodeURIComponent(match[1]) : null;
+    },
+    remove(name) {
+      this.write(name, "", Date.now() - 864e5, "/");
+    }
+  }
+) : (
+  // Non-standard browser env (web workers, react-native) lack needed support.
+  {
+    write() {
+    },
+    read() {
+      return null;
+    },
+    remove() {
+    }
+  }
+);
+
+// node_modules/axios/lib/core/mergeConfig.js
+var headersToObject = (thing) => thing instanceof AxiosHeaders_default ? { ...thing } : thing;
+function mergeConfig(config1, config2) {
+  config2 = config2 || {};
+  const config = {};
+  function getMergedValue(target, source, prop, caseless) {
+    if (utils_default.isPlainObject(target) && utils_default.isPlainObject(source)) {
+      return utils_default.merge.call({ caseless }, target, source);
+    } else if (utils_default.isPlainObject(source)) {
+      return utils_default.merge({}, source);
+    } else if (utils_default.isArray(source)) {
+      return source.slice();
+    }
+    return source;
+  }
+  function mergeDeepProperties(a, b, prop, caseless) {
+    if (!utils_default.isUndefined(b)) {
+      return getMergedValue(a, b, prop, caseless);
+    } else if (!utils_default.isUndefined(a)) {
+      return getMergedValue(void 0, a, prop, caseless);
+    }
+  }
+  function valueFromConfig2(a, b) {
+    if (!utils_default.isUndefined(b)) {
+      return getMergedValue(void 0, b);
+    }
+  }
+  function defaultToConfig2(a, b) {
+    if (!utils_default.isUndefined(b)) {
+      return getMergedValue(void 0, b);
+    } else if (!utils_default.isUndefined(a)) {
+      return getMergedValue(void 0, a);
+    }
+  }
+  function mergeDirectKeys(a, b, prop) {
+    if (prop in config2) {
+      return getMergedValue(a, b);
+    } else if (prop in config1) {
+      return getMergedValue(void 0, a);
+    }
+  }
+  const mergeMap = {
+    url: valueFromConfig2,
+    method: valueFromConfig2,
+    data: valueFromConfig2,
+    baseURL: defaultToConfig2,
+    transformRequest: defaultToConfig2,
+    transformResponse: defaultToConfig2,
+    paramsSerializer: defaultToConfig2,
+    timeout: defaultToConfig2,
+    timeoutMessage: defaultToConfig2,
+    withCredentials: defaultToConfig2,
+    withXSRFToken: defaultToConfig2,
+    adapter: defaultToConfig2,
+    responseType: defaultToConfig2,
+    xsrfCookieName: defaultToConfig2,
+    xsrfHeaderName: defaultToConfig2,
+    onUploadProgress: defaultToConfig2,
+    onDownloadProgress: defaultToConfig2,
+    decompress: defaultToConfig2,
+    maxContentLength: defaultToConfig2,
+    maxBodyLength: defaultToConfig2,
+    beforeRedirect: defaultToConfig2,
+    transport: defaultToConfig2,
+    httpAgent: defaultToConfig2,
+    httpsAgent: defaultToConfig2,
+    cancelToken: defaultToConfig2,
+    socketPath: defaultToConfig2,
+    responseEncoding: defaultToConfig2,
+    validateStatus: mergeDirectKeys,
+    headers: (a, b, prop) => mergeDeepProperties(headersToObject(a), headersToObject(b), prop, true)
+  };
+  utils_default.forEach(Object.keys({ ...config1, ...config2 }), function computeConfigValue(prop) {
+    if (prop === "__proto__" || prop === "constructor" || prop === "prototype") return;
+    const merge2 = utils_default.hasOwnProp(mergeMap, prop) ? mergeMap[prop] : mergeDeepProperties;
+    const configValue = merge2(config1[prop], config2[prop], prop);
+    utils_default.isUndefined(configValue) && merge2 !== mergeDirectKeys || (config[prop] = configValue);
+  });
+  return config;
+}
+
+// node_modules/axios/lib/helpers/resolveConfig.js
+var resolveConfig_default = (config) => {
+  const newConfig = mergeConfig({}, config);
+  let { data, withXSRFToken, xsrfHeaderName, xsrfCookieName, headers, auth } = newConfig;
+  newConfig.headers = headers = AxiosHeaders_default.from(headers);
+  newConfig.url = buildURL(
+    buildFullPath(newConfig.baseURL, newConfig.url, newConfig.allowAbsoluteUrls),
+    config.params,
+    config.paramsSerializer
+  );
+  if (auth) {
+    headers.set(
+      "Authorization",
+      "Basic " + btoa(
+        (auth.username || "") + ":" + (auth.password ? unescape(encodeURIComponent(auth.password)) : "")
+      )
+    );
+  }
+  if (utils_default.isFormData(data)) {
+    if (platform_default.hasStandardBrowserEnv || platform_default.hasStandardBrowserWebWorkerEnv) {
+      headers.setContentType(void 0);
+    } else if (utils_default.isFunction(data.getHeaders)) {
+      const formHeaders = data.getHeaders();
+      const allowedHeaders = ["content-type", "content-length"];
+      Object.entries(formHeaders).forEach(([key, val]) => {
+        if (allowedHeaders.includes(key.toLowerCase())) {
+          headers.set(key, val);
+        }
+      });
+    }
+  }
+  if (platform_default.hasStandardBrowserEnv) {
+    withXSRFToken && utils_default.isFunction(withXSRFToken) && (withXSRFToken = withXSRFToken(newConfig));
+    if (withXSRFToken || withXSRFToken !== false && isURLSameOrigin_default(newConfig.url)) {
+      const xsrfValue = xsrfHeaderName && xsrfCookieName && cookies_default.read(xsrfCookieName);
+      if (xsrfValue) {
+        headers.set(xsrfHeaderName, xsrfValue);
+      }
+    }
+  }
+  return newConfig;
+};
+
+// node_modules/axios/lib/adapters/xhr.js
+var isXHRAdapterSupported = typeof XMLHttpRequest !== "undefined";
+var xhr_default = isXHRAdapterSupported && function(config) {
+  return new Promise(function dispatchXhrRequest(resolve2, reject) {
+    const _config = resolveConfig_default(config);
+    let requestData = _config.data;
+    const requestHeaders = AxiosHeaders_default.from(_config.headers).normalize();
+    let { responseType, onUploadProgress, onDownloadProgress } = _config;
+    let onCanceled;
+    let uploadThrottled, downloadThrottled;
+    let flushUpload, flushDownload;
+    function done() {
+      flushUpload && flushUpload();
+      flushDownload && flushDownload();
+      _config.cancelToken && _config.cancelToken.unsubscribe(onCanceled);
+      _config.signal && _config.signal.removeEventListener("abort", onCanceled);
+    }
+    let request = new XMLHttpRequest();
+    request.open(_config.method.toUpperCase(), _config.url, true);
+    request.timeout = _config.timeout;
+    function onloadend() {
+      if (!request) {
+        return;
+      }
+      const responseHeaders = AxiosHeaders_default.from(
+        "getAllResponseHeaders" in request && request.getAllResponseHeaders()
+      );
+      const responseData = !responseType || responseType === "text" || responseType === "json" ? request.responseText : request.response;
+      const response = {
+        data: responseData,
+        status: request.status,
+        statusText: request.statusText,
+        headers: responseHeaders,
+        config,
+        request
+      };
+      settle(
+        function _resolve(value) {
+          resolve2(value);
+          done();
+        },
+        function _reject(err) {
+          reject(err);
+          done();
+        },
+        response
+      );
+      request = null;
+    }
+    if ("onloadend" in request) {
+      request.onloadend = onloadend;
+    } else {
+      request.onreadystatechange = function handleLoad() {
+        if (!request || request.readyState !== 4) {
+          return;
+        }
+        if (request.status === 0 && !(request.responseURL && request.responseURL.indexOf("file:") === 0)) {
+          return;
+        }
+        setTimeout(onloadend);
+      };
+    }
+    request.onabort = function handleAbort() {
+      if (!request) {
+        return;
+      }
+      reject(new AxiosError_default("Request aborted", AxiosError_default.ECONNABORTED, config, request));
+      request = null;
+    };
+    request.onerror = function handleError(event) {
+      const msg = event && event.message ? event.message : "Network Error";
+      const err = new AxiosError_default(msg, AxiosError_default.ERR_NETWORK, config, request);
+      err.event = event || null;
+      reject(err);
+      request = null;
+    };
+    request.ontimeout = function handleTimeout() {
+      let timeoutErrorMessage = _config.timeout ? "timeout of " + _config.timeout + "ms exceeded" : "timeout exceeded";
+      const transitional2 = _config.transitional || transitional_default;
+      if (_config.timeoutErrorMessage) {
+        timeoutErrorMessage = _config.timeoutErrorMessage;
+      }
+      reject(
+        new AxiosError_default(
+          timeoutErrorMessage,
+          transitional2.clarifyTimeoutError ? AxiosError_default.ETIMEDOUT : AxiosError_default.ECONNABORTED,
+          config,
+          request
+        )
+      );
+      request = null;
+    };
+    requestData === void 0 && requestHeaders.setContentType(null);
+    if ("setRequestHeader" in request) {
+      utils_default.forEach(requestHeaders.toJSON(), function setRequestHeader(val, key) {
+        request.setRequestHeader(key, val);
+      });
+    }
+    if (!utils_default.isUndefined(_config.withCredentials)) {
+      request.withCredentials = !!_config.withCredentials;
+    }
+    if (responseType && responseType !== "json") {
+      request.responseType = _config.responseType;
+    }
+    if (onDownloadProgress) {
+      [downloadThrottled, flushDownload] = progressEventReducer(onDownloadProgress, true);
+      request.addEventListener("progress", downloadThrottled);
+    }
+    if (onUploadProgress && request.upload) {
+      [uploadThrottled, flushUpload] = progressEventReducer(onUploadProgress);
+      request.upload.addEventListener("progress", uploadThrottled);
+      request.upload.addEventListener("loadend", flushUpload);
+    }
+    if (_config.cancelToken || _config.signal) {
+      onCanceled = (cancel) => {
+        if (!request) {
+          return;
+        }
+        reject(!cancel || cancel.type ? new CanceledError_default(null, config, request) : cancel);
+        request.abort();
+        request = null;
+      };
+      _config.cancelToken && _config.cancelToken.subscribe(onCanceled);
+      if (_config.signal) {
+        _config.signal.aborted ? onCanceled() : _config.signal.addEventListener("abort", onCanceled);
+      }
+    }
+    const protocol = parseProtocol(_config.url);
+    if (protocol && platform_default.protocols.indexOf(protocol) === -1) {
+      reject(
+        new AxiosError_default(
+          "Unsupported protocol " + protocol + ":",
+          AxiosError_default.ERR_BAD_REQUEST,
+          config
+        )
+      );
+      return;
+    }
+    request.send(requestData || null);
+  });
+};
+
+// node_modules/axios/lib/helpers/composeSignals.js
+var composeSignals = (signals, timeout) => {
+  const { length } = signals = signals ? signals.filter(Boolean) : [];
+  if (timeout || length) {
+    let controller = new AbortController();
+    let aborted;
+    const onabort = function(reason) {
+      if (!aborted) {
+        aborted = true;
+        unsubscribe();
+        const err = reason instanceof Error ? reason : this.reason;
+        controller.abort(
+          err instanceof AxiosError_default ? err : new CanceledError_default(err instanceof Error ? err.message : err)
+        );
+      }
+    };
+    let timer = timeout && setTimeout(() => {
+      timer = null;
+      onabort(new AxiosError_default(`timeout of ${timeout}ms exceeded`, AxiosError_default.ETIMEDOUT));
+    }, timeout);
+    const unsubscribe = () => {
+      if (signals) {
+        timer && clearTimeout(timer);
+        timer = null;
+        signals.forEach((signal2) => {
+          signal2.unsubscribe ? signal2.unsubscribe(onabort) : signal2.removeEventListener("abort", onabort);
+        });
+        signals = null;
+      }
+    };
+    signals.forEach((signal2) => signal2.addEventListener("abort", onabort));
+    const { signal } = controller;
+    signal.unsubscribe = () => utils_default.asap(unsubscribe);
+    return signal;
+  }
+};
+var composeSignals_default = composeSignals;
+
+// node_modules/axios/lib/helpers/trackStream.js
+var streamChunk = function* (chunk, chunkSize) {
+  let len = chunk.byteLength;
+  if (!chunkSize || len < chunkSize) {
+    yield chunk;
+    return;
+  }
+  let pos = 0;
+  let end;
+  while (pos < len) {
+    end = pos + chunkSize;
+    yield chunk.slice(pos, end);
+    pos = end;
+  }
+};
+var readBytes = async function* (iterable, chunkSize) {
+  for await (const chunk of readStream(iterable)) {
+    yield* streamChunk(chunk, chunkSize);
+  }
+};
+var readStream = async function* (stream4) {
+  if (stream4[Symbol.asyncIterator]) {
+    yield* stream4;
+    return;
+  }
+  const reader = stream4.getReader();
+  try {
+    for (; ; ) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      yield value;
+    }
+  } finally {
+    await reader.cancel();
+  }
+};
+var trackStream = (stream4, chunkSize, onProgress, onFinish) => {
+  const iterator2 = readBytes(stream4, chunkSize);
+  let bytes = 0;
+  let done;
+  let _onFinish = (e) => {
+    if (!done) {
+      done = true;
+      onFinish && onFinish(e);
+    }
+  };
+  return new ReadableStream(
+    {
+      async pull(controller) {
+        try {
+          const { done: done2, value } = await iterator2.next();
+          if (done2) {
+            _onFinish();
+            controller.close();
+            return;
+          }
+          let len = value.byteLength;
+          if (onProgress) {
+            let loadedBytes = bytes += len;
+            onProgress(loadedBytes);
+          }
+          controller.enqueue(new Uint8Array(value));
+        } catch (err) {
+          _onFinish(err);
+          throw err;
+        }
+      },
+      cancel(reason) {
+        _onFinish(reason);
+        return iterator2.return();
+      }
+    },
+    {
+      highWaterMark: 2
+    }
+  );
+};
+
+// node_modules/axios/lib/adapters/fetch.js
+var DEFAULT_CHUNK_SIZE = 64 * 1024;
+var { isFunction: isFunction2 } = utils_default;
+var globalFetchAPI = (({ Request, Response: Response2 }) => ({
+  Request,
+  Response: Response2
+}))(utils_default.global);
+var { ReadableStream: ReadableStream2, TextEncoder: TextEncoder2 } = utils_default.global;
+var test = (fn, ...args) => {
+  try {
+    return !!fn(...args);
+  } catch (e) {
+    return false;
+  }
+};
+var factory = (env) => {
+  env = utils_default.merge.call(
+    {
+      skipUndefined: true
+    },
+    globalFetchAPI,
+    env
+  );
+  const { fetch: envFetch, Request, Response: Response2 } = env;
+  const isFetchSupported = envFetch ? isFunction2(envFetch) : typeof fetch === "function";
+  const isRequestSupported = isFunction2(Request);
+  const isResponseSupported = isFunction2(Response2);
+  if (!isFetchSupported) {
+    return false;
+  }
+  const isReadableStreamSupported = isFetchSupported && isFunction2(ReadableStream2);
+  const encodeText = isFetchSupported && (typeof TextEncoder2 === "function" ? /* @__PURE__ */ ((encoder) => (str) => encoder.encode(str))(new TextEncoder2()) : async (str) => new Uint8Array(await new Request(str).arrayBuffer()));
+  const supportsRequestStream = isRequestSupported && isReadableStreamSupported && test(() => {
+    let duplexAccessed = false;
+    const hasContentType = new Request(platform_default.origin, {
+      body: new ReadableStream2(),
+      method: "POST",
+      get duplex() {
+        duplexAccessed = true;
+        return "half";
+      }
+    }).headers.has("Content-Type");
+    return duplexAccessed && !hasContentType;
+  });
+  const supportsResponseStream = isResponseSupported && isReadableStreamSupported && test(() => utils_default.isReadableStream(new Response2("").body));
+  const resolvers = {
+    stream: supportsResponseStream && ((res) => res.body)
+  };
+  isFetchSupported && (() => {
+    ["text", "arrayBuffer", "blob", "formData", "stream"].forEach((type) => {
+      !resolvers[type] && (resolvers[type] = (res, config) => {
+        let method = res && res[type];
+        if (method) {
+          return method.call(res);
+        }
+        throw new AxiosError_default(
+          `Response type '${type}' is not supported`,
+          AxiosError_default.ERR_NOT_SUPPORT,
+          config
+        );
+      });
+    });
+  })();
+  const getBodyLength = async (body) => {
+    if (body == null) {
+      return 0;
+    }
+    if (utils_default.isBlob(body)) {
+      return body.size;
+    }
+    if (utils_default.isSpecCompliantForm(body)) {
+      const _request = new Request(platform_default.origin, {
+        method: "POST",
+        body
+      });
+      return (await _request.arrayBuffer()).byteLength;
+    }
+    if (utils_default.isArrayBufferView(body) || utils_default.isArrayBuffer(body)) {
+      return body.byteLength;
+    }
+    if (utils_default.isURLSearchParams(body)) {
+      body = body + "";
+    }
+    if (utils_default.isString(body)) {
+      return (await encodeText(body)).byteLength;
+    }
+  };
+  const resolveBodyLength = async (headers, body) => {
+    const length = utils_default.toFiniteNumber(headers.getContentLength());
+    return length == null ? getBodyLength(body) : length;
+  };
+  return async (config) => {
+    let {
+      url: url2,
+      method,
+      data,
+      signal,
+      cancelToken,
+      timeout,
+      onDownloadProgress,
+      onUploadProgress,
+      responseType,
+      headers,
+      withCredentials = "same-origin",
+      fetchOptions
+    } = resolveConfig_default(config);
+    let _fetch = envFetch || fetch;
+    responseType = responseType ? (responseType + "").toLowerCase() : "text";
+    let composedSignal = composeSignals_default(
+      [signal, cancelToken && cancelToken.toAbortSignal()],
+      timeout
+    );
+    let request = null;
+    const unsubscribe = composedSignal && composedSignal.unsubscribe && (() => {
+      composedSignal.unsubscribe();
+    });
+    let requestContentLength;
+    try {
+      if (onUploadProgress && supportsRequestStream && method !== "get" && method !== "head" && (requestContentLength = await resolveBodyLength(headers, data)) !== 0) {
+        let _request = new Request(url2, {
+          method: "POST",
+          body: data,
+          duplex: "half"
+        });
+        let contentTypeHeader;
+        if (utils_default.isFormData(data) && (contentTypeHeader = _request.headers.get("content-type"))) {
+          headers.setContentType(contentTypeHeader);
+        }
+        if (_request.body) {
+          const [onProgress, flush] = progressEventDecorator(
+            requestContentLength,
+            progressEventReducer(asyncDecorator(onUploadProgress))
+          );
+          data = trackStream(_request.body, DEFAULT_CHUNK_SIZE, onProgress, flush);
+        }
+      }
+      if (!utils_default.isString(withCredentials)) {
+        withCredentials = withCredentials ? "include" : "omit";
+      }
+      const isCredentialsSupported = isRequestSupported && "credentials" in Request.prototype;
+      const resolvedOptions = {
+        ...fetchOptions,
+        signal: composedSignal,
+        method: method.toUpperCase(),
+        headers: headers.normalize().toJSON(),
+        body: data,
+        duplex: "half",
+        credentials: isCredentialsSupported ? withCredentials : void 0
+      };
+      request = isRequestSupported && new Request(url2, resolvedOptions);
+      let response = await (isRequestSupported ? _fetch(request, fetchOptions) : _fetch(url2, resolvedOptions));
+      const isStreamResponse = supportsResponseStream && (responseType === "stream" || responseType === "response");
+      if (supportsResponseStream && (onDownloadProgress || isStreamResponse && unsubscribe)) {
+        const options = {};
+        ["status", "statusText", "headers"].forEach((prop) => {
+          options[prop] = response[prop];
+        });
+        const responseContentLength = utils_default.toFiniteNumber(response.headers.get("content-length"));
+        const [onProgress, flush] = onDownloadProgress && progressEventDecorator(
+          responseContentLength,
+          progressEventReducer(asyncDecorator(onDownloadProgress), true)
+        ) || [];
+        response = new Response2(
+          trackStream(response.body, DEFAULT_CHUNK_SIZE, onProgress, () => {
+            flush && flush();
+            unsubscribe && unsubscribe();
+          }),
+          options
+        );
+      }
+      responseType = responseType || "text";
+      let responseData = await resolvers[utils_default.findKey(resolvers, responseType) || "text"](
+        response,
+        config
+      );
+      !isStreamResponse && unsubscribe && unsubscribe();
+      return await new Promise((resolve2, reject) => {
+        settle(resolve2, reject, {
+          data: responseData,
+          headers: AxiosHeaders_default.from(response.headers),
+          status: response.status,
+          statusText: response.statusText,
+          config,
+          request
+        });
+      });
+    } catch (err) {
+      unsubscribe && unsubscribe();
+      if (err && err.name === "TypeError" && /Load failed|fetch/i.test(err.message)) {
+        throw Object.assign(
+          new AxiosError_default(
+            "Network Error",
+            AxiosError_default.ERR_NETWORK,
+            config,
+            request,
+            err && err.response
+          ),
+          {
+            cause: err.cause || err
+          }
+        );
+      }
+      throw AxiosError_default.from(err, err && err.code, config, request, err && err.response);
+    }
+  };
+};
+var seedCache = /* @__PURE__ */ new Map();
+var getFetch = (config) => {
+  let env = config && config.env || {};
+  const { fetch: fetch2, Request, Response: Response2 } = env;
+  const seeds = [Request, Response2, fetch2];
+  let len = seeds.length, i = len, seed, target, map = seedCache;
+  while (i--) {
+    seed = seeds[i];
+    target = map.get(seed);
+    target === void 0 && map.set(seed, target = i ? /* @__PURE__ */ new Map() : factory(env));
+    map = target;
+  }
+  return target;
+};
+var adapter = getFetch();
+
+// node_modules/axios/lib/adapters/adapters.js
+var knownAdapters = {
+  http: http_default,
+  xhr: xhr_default,
+  fetch: {
+    get: getFetch
+  }
+};
+utils_default.forEach(knownAdapters, (fn, value) => {
+  if (fn) {
+    try {
+      Object.defineProperty(fn, "name", { value });
+    } catch (e) {
+    }
+    Object.defineProperty(fn, "adapterName", { value });
+  }
+});
+var renderReason = (reason) => `- ${reason}`;
+var isResolvedHandle = (adapter2) => utils_default.isFunction(adapter2) || adapter2 === null || adapter2 === false;
+function getAdapter(adapters, config) {
+  adapters = utils_default.isArray(adapters) ? adapters : [adapters];
+  const { length } = adapters;
+  let nameOrAdapter;
+  let adapter2;
+  const rejectedReasons = {};
+  for (let i = 0; i < length; i++) {
+    nameOrAdapter = adapters[i];
+    let id;
+    adapter2 = nameOrAdapter;
+    if (!isResolvedHandle(nameOrAdapter)) {
+      adapter2 = knownAdapters[(id = String(nameOrAdapter)).toLowerCase()];
+      if (adapter2 === void 0) {
+        throw new AxiosError_default(`Unknown adapter '${id}'`);
+      }
+    }
+    if (adapter2 && (utils_default.isFunction(adapter2) || (adapter2 = adapter2.get(config)))) {
+      break;
+    }
+    rejectedReasons[id || "#" + i] = adapter2;
+  }
+  if (!adapter2) {
+    const reasons = Object.entries(rejectedReasons).map(
+      ([id, state]) => `adapter ${id} ` + (state === false ? "is not supported by the environment" : "is not available in the build")
+    );
+    let s = length ? reasons.length > 1 ? "since :\n" + reasons.map(renderReason).join("\n") : " " + renderReason(reasons[0]) : "as no adapter specified";
+    throw new AxiosError_default(
+      `There is no suitable adapter to dispatch the request ` + s,
+      "ERR_NOT_SUPPORT"
+    );
+  }
+  return adapter2;
+}
+var adapters_default = {
+  /**
+   * Resolve an adapter from a list of adapter names or functions.
+   * @type {Function}
+   */
+  getAdapter,
+  /**
+   * Exposes all known adapters
+   * @type {Object<string, Function|Object>}
+   */
+  adapters: knownAdapters
+};
+
+// node_modules/axios/lib/core/dispatchRequest.js
+function throwIfCancellationRequested(config) {
+  if (config.cancelToken) {
+    config.cancelToken.throwIfRequested();
+  }
+  if (config.signal && config.signal.aborted) {
+    throw new CanceledError_default(null, config);
+  }
+}
+function dispatchRequest(config) {
+  throwIfCancellationRequested(config);
+  config.headers = AxiosHeaders_default.from(config.headers);
+  config.data = transformData.call(config, config.transformRequest);
+  if (["post", "put", "patch"].indexOf(config.method) !== -1) {
+    config.headers.setContentType("application/x-www-form-urlencoded", false);
+  }
+  const adapter2 = adapters_default.getAdapter(config.adapter || defaults_default.adapter, config);
+  return adapter2(config).then(
+    function onAdapterResolution(response) {
+      throwIfCancellationRequested(config);
+      response.data = transformData.call(config, config.transformResponse, response);
+      response.headers = AxiosHeaders_default.from(response.headers);
+      return response;
+    },
+    function onAdapterRejection(reason) {
+      if (!isCancel(reason)) {
+        throwIfCancellationRequested(config);
+        if (reason && reason.response) {
+          reason.response.data = transformData.call(
+            config,
+            config.transformResponse,
+            reason.response
+          );
+          reason.response.headers = AxiosHeaders_default.from(reason.response.headers);
+        }
+      }
+      return Promise.reject(reason);
+    }
+  );
+}
+
+// node_modules/axios/lib/helpers/validator.js
+var validators = {};
+["object", "boolean", "number", "function", "string", "symbol"].forEach((type, i) => {
+  validators[type] = function validator(thing) {
+    return typeof thing === type || "a" + (i < 1 ? "n " : " ") + type;
+  };
+});
+var deprecatedWarnings = {};
+validators.transitional = function transitional(validator, version2, message) {
+  function formatMessage(opt, desc2) {
+    return "[Axios v" + VERSION + "] Transitional option '" + opt + "'" + desc2 + (message ? ". " + message : "");
+  }
+  return (value, opt, opts) => {
+    if (validator === false) {
+      throw new AxiosError_default(
+        formatMessage(opt, " has been removed" + (version2 ? " in " + version2 : "")),
+        AxiosError_default.ERR_DEPRECATED
+      );
+    }
+    if (version2 && !deprecatedWarnings[opt]) {
+      deprecatedWarnings[opt] = true;
+      console.warn(
+        formatMessage(
+          opt,
+          " has been deprecated since v" + version2 + " and will be removed in the near future"
+        )
+      );
+    }
+    return validator ? validator(value, opt, opts) : true;
+  };
+};
+validators.spelling = function spelling(correctSpelling) {
+  return (value, opt) => {
+    console.warn(`${opt} is likely a misspelling of ${correctSpelling}`);
+    return true;
+  };
+};
+function assertOptions(options, schema, allowUnknown) {
+  if (typeof options !== "object") {
+    throw new AxiosError_default("options must be an object", AxiosError_default.ERR_BAD_OPTION_VALUE);
+  }
+  const keys = Object.keys(options);
+  let i = keys.length;
+  while (i-- > 0) {
+    const opt = keys[i];
+    const validator = schema[opt];
+    if (validator) {
+      const value = options[opt];
+      const result = value === void 0 || validator(value, opt, options);
+      if (result !== true) {
+        throw new AxiosError_default(
+          "option " + opt + " must be " + result,
+          AxiosError_default.ERR_BAD_OPTION_VALUE
+        );
+      }
+      continue;
+    }
+    if (allowUnknown !== true) {
+      throw new AxiosError_default("Unknown option " + opt, AxiosError_default.ERR_BAD_OPTION);
+    }
+  }
+}
+var validator_default = {
+  assertOptions,
+  validators
+};
+
+// node_modules/axios/lib/core/Axios.js
+var validators2 = validator_default.validators;
+var Axios = class {
+  constructor(instanceConfig) {
+    this.defaults = instanceConfig || {};
+    this.interceptors = {
+      request: new InterceptorManager_default(),
+      response: new InterceptorManager_default()
+    };
+  }
+  /**
+   * Dispatch a request
+   *
+   * @param {String|Object} configOrUrl The config specific for this request (merged with this.defaults)
+   * @param {?Object} config
+   *
+   * @returns {Promise} The Promise to be fulfilled
+   */
+  async request(configOrUrl, config) {
+    try {
+      return await this._request(configOrUrl, config);
+    } catch (err) {
+      if (err instanceof Error) {
+        let dummy = {};
+        Error.captureStackTrace ? Error.captureStackTrace(dummy) : dummy = new Error();
+        const stack = dummy.stack ? dummy.stack.replace(/^.+\n/, "") : "";
+        try {
+          if (!err.stack) {
+            err.stack = stack;
+          } else if (stack && !String(err.stack).endsWith(stack.replace(/^.+\n.+\n/, ""))) {
+            err.stack += "\n" + stack;
+          }
+        } catch (e) {
+        }
+      }
+      throw err;
+    }
+  }
+  _request(configOrUrl, config) {
+    if (typeof configOrUrl === "string") {
+      config = config || {};
+      config.url = configOrUrl;
+    } else {
+      config = configOrUrl || {};
+    }
+    config = mergeConfig(this.defaults, config);
+    const { transitional: transitional2, paramsSerializer, headers } = config;
+    if (transitional2 !== void 0) {
+      validator_default.assertOptions(
+        transitional2,
+        {
+          silentJSONParsing: validators2.transitional(validators2.boolean),
+          forcedJSONParsing: validators2.transitional(validators2.boolean),
+          clarifyTimeoutError: validators2.transitional(validators2.boolean),
+          legacyInterceptorReqResOrdering: validators2.transitional(validators2.boolean)
+        },
+        false
+      );
+    }
+    if (paramsSerializer != null) {
+      if (utils_default.isFunction(paramsSerializer)) {
+        config.paramsSerializer = {
+          serialize: paramsSerializer
+        };
+      } else {
+        validator_default.assertOptions(
+          paramsSerializer,
+          {
+            encode: validators2.function,
+            serialize: validators2.function
+          },
+          true
+        );
+      }
+    }
+    if (config.allowAbsoluteUrls !== void 0) {
+    } else if (this.defaults.allowAbsoluteUrls !== void 0) {
+      config.allowAbsoluteUrls = this.defaults.allowAbsoluteUrls;
+    } else {
+      config.allowAbsoluteUrls = true;
+    }
+    validator_default.assertOptions(
+      config,
+      {
+        baseUrl: validators2.spelling("baseURL"),
+        withXsrfToken: validators2.spelling("withXSRFToken")
+      },
+      true
+    );
+    config.method = (config.method || this.defaults.method || "get").toLowerCase();
+    let contextHeaders = headers && utils_default.merge(headers.common, headers[config.method]);
+    headers && utils_default.forEach(["delete", "get", "head", "post", "put", "patch", "common"], (method) => {
+      delete headers[method];
+    });
+    config.headers = AxiosHeaders_default.concat(contextHeaders, headers);
+    const requestInterceptorChain = [];
+    let synchronousRequestInterceptors = true;
+    this.interceptors.request.forEach(function unshiftRequestInterceptors(interceptor) {
+      if (typeof interceptor.runWhen === "function" && interceptor.runWhen(config) === false) {
+        return;
+      }
+      synchronousRequestInterceptors = synchronousRequestInterceptors && interceptor.synchronous;
+      const transitional3 = config.transitional || transitional_default;
+      const legacyInterceptorReqResOrdering = transitional3 && transitional3.legacyInterceptorReqResOrdering;
+      if (legacyInterceptorReqResOrdering) {
+        requestInterceptorChain.unshift(interceptor.fulfilled, interceptor.rejected);
+      } else {
+        requestInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);
+      }
+    });
+    const responseInterceptorChain = [];
+    this.interceptors.response.forEach(function pushResponseInterceptors(interceptor) {
+      responseInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);
+    });
+    let promise;
+    let i = 0;
+    let len;
+    if (!synchronousRequestInterceptors) {
+      const chain = [dispatchRequest.bind(this), void 0];
+      chain.unshift(...requestInterceptorChain);
+      chain.push(...responseInterceptorChain);
+      len = chain.length;
+      promise = Promise.resolve(config);
+      while (i < len) {
+        promise = promise.then(chain[i++], chain[i++]);
+      }
+      return promise;
+    }
+    len = requestInterceptorChain.length;
+    let newConfig = config;
+    while (i < len) {
+      const onFulfilled = requestInterceptorChain[i++];
+      const onRejected = requestInterceptorChain[i++];
+      try {
+        newConfig = onFulfilled(newConfig);
+      } catch (error) {
+        onRejected.call(this, error);
+        break;
+      }
+    }
+    try {
+      promise = dispatchRequest.call(this, newConfig);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+    i = 0;
+    len = responseInterceptorChain.length;
+    while (i < len) {
+      promise = promise.then(responseInterceptorChain[i++], responseInterceptorChain[i++]);
+    }
+    return promise;
+  }
+  getUri(config) {
+    config = mergeConfig(this.defaults, config);
+    const fullPath = buildFullPath(config.baseURL, config.url, config.allowAbsoluteUrls);
+    return buildURL(fullPath, config.params, config.paramsSerializer);
+  }
+};
+utils_default.forEach(["delete", "get", "head", "options"], function forEachMethodNoData(method) {
+  Axios.prototype[method] = function(url2, config) {
+    return this.request(
+      mergeConfig(config || {}, {
+        method,
+        url: url2,
+        data: (config || {}).data
+      })
+    );
+  };
+});
+utils_default.forEach(["post", "put", "patch"], function forEachMethodWithData(method) {
+  function generateHTTPMethod(isForm) {
+    return function httpMethod(url2, data, config) {
+      return this.request(
+        mergeConfig(config || {}, {
+          method,
+          headers: isForm ? {
+            "Content-Type": "multipart/form-data"
+          } : {},
+          url: url2,
+          data
+        })
+      );
+    };
+  }
+  Axios.prototype[method] = generateHTTPMethod();
+  Axios.prototype[method + "Form"] = generateHTTPMethod(true);
+});
+var Axios_default = Axios;
+
+// node_modules/axios/lib/cancel/CancelToken.js
+var CancelToken = class _CancelToken {
+  constructor(executor) {
+    if (typeof executor !== "function") {
+      throw new TypeError("executor must be a function.");
+    }
+    let resolvePromise;
+    this.promise = new Promise(function promiseExecutor(resolve2) {
+      resolvePromise = resolve2;
+    });
+    const token = this;
+    this.promise.then((cancel) => {
+      if (!token._listeners) return;
+      let i = token._listeners.length;
+      while (i-- > 0) {
+        token._listeners[i](cancel);
+      }
+      token._listeners = null;
+    });
+    this.promise.then = (onfulfilled) => {
+      let _resolve;
+      const promise = new Promise((resolve2) => {
+        token.subscribe(resolve2);
+        _resolve = resolve2;
+      }).then(onfulfilled);
+      promise.cancel = function reject() {
+        token.unsubscribe(_resolve);
+      };
+      return promise;
+    };
+    executor(function cancel(message, config, request) {
+      if (token.reason) {
+        return;
+      }
+      token.reason = new CanceledError_default(message, config, request);
+      resolvePromise(token.reason);
+    });
+  }
+  /**
+   * Throws a `CanceledError` if cancellation has been requested.
+   */
+  throwIfRequested() {
+    if (this.reason) {
+      throw this.reason;
+    }
+  }
+  /**
+   * Subscribe to the cancel signal
+   */
+  subscribe(listener) {
+    if (this.reason) {
+      listener(this.reason);
+      return;
+    }
+    if (this._listeners) {
+      this._listeners.push(listener);
+    } else {
+      this._listeners = [listener];
+    }
+  }
+  /**
+   * Unsubscribe from the cancel signal
+   */
+  unsubscribe(listener) {
+    if (!this._listeners) {
+      return;
+    }
+    const index = this._listeners.indexOf(listener);
+    if (index !== -1) {
+      this._listeners.splice(index, 1);
+    }
+  }
+  toAbortSignal() {
+    const controller = new AbortController();
+    const abort = (err) => {
+      controller.abort(err);
+    };
+    this.subscribe(abort);
+    controller.signal.unsubscribe = () => this.unsubscribe(abort);
+    return controller.signal;
+  }
+  /**
+   * Returns an object that contains a new `CancelToken` and a function that, when called,
+   * cancels the `CancelToken`.
+   */
+  static source() {
+    let cancel;
+    const token = new _CancelToken(function executor(c) {
+      cancel = c;
+    });
+    return {
+      token,
+      cancel
+    };
+  }
+};
+var CancelToken_default = CancelToken;
+
+// node_modules/axios/lib/helpers/spread.js
+function spread(callback) {
+  return function wrap(arr) {
+    return callback.apply(null, arr);
+  };
+}
+
+// node_modules/axios/lib/helpers/isAxiosError.js
+function isAxiosError(payload) {
+  return utils_default.isObject(payload) && payload.isAxiosError === true;
+}
+
+// node_modules/axios/lib/helpers/HttpStatusCode.js
+var HttpStatusCode = {
+  Continue: 100,
+  SwitchingProtocols: 101,
+  Processing: 102,
+  EarlyHints: 103,
+  Ok: 200,
+  Created: 201,
+  Accepted: 202,
+  NonAuthoritativeInformation: 203,
+  NoContent: 204,
+  ResetContent: 205,
+  PartialContent: 206,
+  MultiStatus: 207,
+  AlreadyReported: 208,
+  ImUsed: 226,
+  MultipleChoices: 300,
+  MovedPermanently: 301,
+  Found: 302,
+  SeeOther: 303,
+  NotModified: 304,
+  UseProxy: 305,
+  Unused: 306,
+  TemporaryRedirect: 307,
+  PermanentRedirect: 308,
+  BadRequest: 400,
+  Unauthorized: 401,
+  PaymentRequired: 402,
+  Forbidden: 403,
+  NotFound: 404,
+  MethodNotAllowed: 405,
+  NotAcceptable: 406,
+  ProxyAuthenticationRequired: 407,
+  RequestTimeout: 408,
+  Conflict: 409,
+  Gone: 410,
+  LengthRequired: 411,
+  PreconditionFailed: 412,
+  PayloadTooLarge: 413,
+  UriTooLong: 414,
+  UnsupportedMediaType: 415,
+  RangeNotSatisfiable: 416,
+  ExpectationFailed: 417,
+  ImATeapot: 418,
+  MisdirectedRequest: 421,
+  UnprocessableEntity: 422,
+  Locked: 423,
+  FailedDependency: 424,
+  TooEarly: 425,
+  UpgradeRequired: 426,
+  PreconditionRequired: 428,
+  TooManyRequests: 429,
+  RequestHeaderFieldsTooLarge: 431,
+  UnavailableForLegalReasons: 451,
+  InternalServerError: 500,
+  NotImplemented: 501,
+  BadGateway: 502,
+  ServiceUnavailable: 503,
+  GatewayTimeout: 504,
+  HttpVersionNotSupported: 505,
+  VariantAlsoNegotiates: 506,
+  InsufficientStorage: 507,
+  LoopDetected: 508,
+  NotExtended: 510,
+  NetworkAuthenticationRequired: 511,
+  WebServerIsDown: 521,
+  ConnectionTimedOut: 522,
+  OriginIsUnreachable: 523,
+  TimeoutOccurred: 524,
+  SslHandshakeFailed: 525,
+  InvalidSslCertificate: 526
+};
+Object.entries(HttpStatusCode).forEach(([key, value]) => {
+  HttpStatusCode[value] = key;
+});
+var HttpStatusCode_default = HttpStatusCode;
+
+// node_modules/axios/lib/axios.js
+function createInstance(defaultConfig) {
+  const context = new Axios_default(defaultConfig);
+  const instance = bind(Axios_default.prototype.request, context);
+  utils_default.extend(instance, Axios_default.prototype, context, { allOwnKeys: true });
+  utils_default.extend(instance, context, null, { allOwnKeys: true });
+  instance.create = function create(instanceConfig) {
+    return createInstance(mergeConfig(defaultConfig, instanceConfig));
+  };
+  return instance;
+}
+var axios = createInstance(defaults_default);
+axios.Axios = Axios_default;
+axios.CanceledError = CanceledError_default;
+axios.CancelToken = CancelToken_default;
+axios.isCancel = isCancel;
+axios.VERSION = VERSION;
+axios.toFormData = toFormData_default;
+axios.AxiosError = AxiosError_default;
+axios.Cancel = axios.CanceledError;
+axios.all = function all(promises) {
+  return Promise.all(promises);
+};
+axios.spread = spread;
+axios.isAxiosError = isAxiosError;
+axios.mergeConfig = mergeConfig;
+axios.AxiosHeaders = AxiosHeaders_default;
+axios.formToJSON = (thing) => formDataToJSON_default(utils_default.isHTMLForm(thing) ? new FormData(thing) : thing);
+axios.getAdapter = adapters_default.getAdapter;
+axios.HttpStatusCode = HttpStatusCode_default;
+axios.default = axios;
+var axios_default = axios;
+
+// node_modules/axios/index.js
+var {
+  Axios: Axios2,
+  AxiosError: AxiosError2,
+  CanceledError: CanceledError2,
+  isCancel: isCancel2,
+  CancelToken: CancelToken2,
+  VERSION: VERSION2,
+  all: all2,
+  Cancel,
+  isAxiosError: isAxiosError2,
+  spread: spread2,
+  toFormData: toFormData2,
+  AxiosHeaders: AxiosHeaders2,
+  HttpStatusCode: HttpStatusCode2,
+  formToJSON,
+  getAdapter: getAdapter2,
+  mergeConfig: mergeConfig2
+} = axios_default;
+
+// node_modules/bcryptjs/index.js
+var import_crypto2 = __toESM(require("crypto"), 1);
 var randomFallback = null;
 function randomBytes(len) {
   try {
@@ -67458,7 +86002,7 @@ function randomBytes(len) {
   } catch {
   }
   try {
-    return import_crypto.default.randomBytes(len);
+    return import_crypto2.default.randomBytes(len);
   } catch {
   }
   if (!randomFallback) {
@@ -69187,7 +87731,7 @@ var escapeIdentifier = import_lib.default.escapeIdentifier;
 var escapeLiteral = import_lib.default.escapeLiteral;
 var Result = import_lib.default.Result;
 var TypeOverrides = import_lib.default.TypeOverrides;
-var defaults = import_lib.default.defaults;
+var defaults2 = import_lib.default.defaults;
 var esm_default = import_lib.default;
 
 // node_modules/drizzle-orm/entity.js
@@ -70770,7 +89314,7 @@ function toSnakeCase(input) {
   const words = input.replace(/['\u2019]/g, "").match(/[\da-z]+|[A-Z]+(?![a-z])|[A-Z][\da-z]+/g) ?? [];
   return words.map((word) => word.toLowerCase()).join("_");
 }
-function toCamelCase(input) {
+function toCamelCase2(input) {
   const words = input.replace(/['\u2019]/g, "").match(/[\da-z]+|[A-Z]+(?![a-z])|[A-Z][\da-z]+/g) ?? [];
   return words.reduce((acc, word, i) => {
     const formattedWord = i === 0 ? word.toLowerCase() : `${word[0].toUpperCase()}${word.slice(1)}`;
@@ -70787,7 +89331,7 @@ var CasingCache = class {
   cachedTables = {};
   convert;
   constructor(casing) {
-    this.convert = casing === "snake_case" ? toSnakeCase : casing === "camelCase" ? toCamelCase : noopCase;
+    this.convert = casing === "snake_case" ? toSnakeCase : casing === "camelCase" ? toCamelCase2 : noopCase;
   }
   getColumnCasing(column) {
     if (!column.keyAsName)
@@ -74431,12 +92975,12 @@ var QueryBuilder = class {
     return { as };
   };
   with(...queries) {
-    const self = this;
+    const self2 = this;
     function select(fields) {
       return new PgSelectBuilder({
         fields: fields ?? void 0,
         session: void 0,
-        dialect: self.getDialect(),
+        dialect: self2.getDialect(),
         withList: queries
       });
     }
@@ -74444,7 +92988,7 @@ var QueryBuilder = class {
       return new PgSelectBuilder({
         fields: fields ?? void 0,
         session: void 0,
-        dialect: self.getDialect(),
+        dialect: self2.getDialect(),
         distinct: true
       });
     }
@@ -74452,7 +92996,7 @@ var QueryBuilder = class {
       return new PgSelectBuilder({
         fields: fields ?? void 0,
         session: void 0,
-        dialect: self.getDialect(),
+        dialect: self2.getDialect(),
         distinct: { on }
       });
     }
@@ -75200,10 +93744,10 @@ var PgDatabase = class {
    * ```
    */
   $with = (alias, selection) => {
-    const self = this;
+    const self2 = this;
     const as = (qb) => {
       if (typeof qb === "function") {
-        qb = qb(new QueryBuilder(self.dialect));
+        qb = qb(new QueryBuilder(self2.dialect));
       }
       return new Proxy(
         new WithSubquery(
@@ -75240,20 +93784,20 @@ var PgDatabase = class {
    * ```
    */
   with(...queries) {
-    const self = this;
+    const self2 = this;
     function select(fields) {
       return new PgSelectBuilder({
         fields: fields ?? void 0,
-        session: self.session,
-        dialect: self.dialect,
+        session: self2.session,
+        dialect: self2.dialect,
         withList: queries
       });
     }
     function selectDistinct(fields) {
       return new PgSelectBuilder({
         fields: fields ?? void 0,
-        session: self.session,
-        dialect: self.dialect,
+        session: self2.session,
+        dialect: self2.dialect,
         withList: queries,
         distinct: true
       });
@@ -75261,20 +93805,20 @@ var PgDatabase = class {
     function selectDistinctOn(on, fields) {
       return new PgSelectBuilder({
         fields: fields ?? void 0,
-        session: self.session,
-        dialect: self.dialect,
+        session: self2.session,
+        dialect: self2.dialect,
         withList: queries,
         distinct: { on }
       });
     }
     function update(table) {
-      return new PgUpdateBuilder(table, self.session, self.dialect, queries);
+      return new PgUpdateBuilder(table, self2.session, self2.dialect, queries);
     }
     function insert(table) {
-      return new PgInsertBuilder(table, self.session, self.dialect, queries);
+      return new PgInsertBuilder(table, self2.session, self2.dialect, queries);
     }
     function delete_(table) {
-      return new PgDeleteBase(table, self.session, self.dialect, queries);
+      return new PgDeleteBase(table, self2.session, self2.dialect, queries);
     }
     return { select, selectDistinct, selectDistinctOn, update, insert, delete: delete_ };
   }
@@ -75752,8 +94296,10 @@ __export(schema_exports, {
   rideRatings: () => rideRatings,
   rides: () => rides,
   safetyReports: () => safetyReports,
+  savedCards: () => savedCards,
   tripEnquiries: () => tripEnquiries,
   users: () => users,
+  walletTransactions: () => walletTransactions,
   withdrawals: () => withdrawals
 });
 
@@ -75865,43 +94411,43 @@ __export(external_exports, {
   undefined: () => undefinedType,
   union: () => unionType,
   unknown: () => unknownType,
-  util: () => util,
+  util: () => util3,
   void: () => voidType
 });
 
 // node_modules/zod/v3/helpers/util.js
-var util;
-(function(util2) {
-  util2.assertEqual = (_) => {
+var util3;
+(function(util4) {
+  util4.assertEqual = (_) => {
   };
   function assertIs(_arg) {
   }
-  util2.assertIs = assertIs;
+  util4.assertIs = assertIs;
   function assertNever(_x) {
     throw new Error();
   }
-  util2.assertNever = assertNever;
-  util2.arrayToEnum = (items) => {
+  util4.assertNever = assertNever;
+  util4.arrayToEnum = (items) => {
     const obj = {};
     for (const item of items) {
       obj[item] = item;
     }
     return obj;
   };
-  util2.getValidEnumValues = (obj) => {
-    const validKeys = util2.objectKeys(obj).filter((k) => typeof obj[obj[k]] !== "number");
+  util4.getValidEnumValues = (obj) => {
+    const validKeys = util4.objectKeys(obj).filter((k) => typeof obj[obj[k]] !== "number");
     const filtered = {};
     for (const k of validKeys) {
       filtered[k] = obj[k];
     }
-    return util2.objectValues(filtered);
+    return util4.objectValues(filtered);
   };
-  util2.objectValues = (obj) => {
-    return util2.objectKeys(obj).map(function(e) {
+  util4.objectValues = (obj) => {
+    return util4.objectKeys(obj).map(function(e) {
       return obj[e];
     });
   };
-  util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object) => {
+  util4.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object) => {
     const keys = [];
     for (const key in object) {
       if (Object.prototype.hasOwnProperty.call(object, key)) {
@@ -75910,25 +94456,25 @@ var util;
     }
     return keys;
   };
-  util2.find = (arr, checker) => {
+  util4.find = (arr, checker) => {
     for (const item of arr) {
       if (checker(item))
         return item;
     }
     return void 0;
   };
-  util2.isInteger = typeof Number.isInteger === "function" ? (val) => Number.isInteger(val) : (val) => typeof val === "number" && Number.isFinite(val) && Math.floor(val) === val;
+  util4.isInteger = typeof Number.isInteger === "function" ? (val) => Number.isInteger(val) : (val) => typeof val === "number" && Number.isFinite(val) && Math.floor(val) === val;
   function joinValues(array, separator = " | ") {
     return array.map((val) => typeof val === "string" ? `'${val}'` : val).join(separator);
   }
-  util2.joinValues = joinValues;
-  util2.jsonStringifyReplacer = (_, value) => {
+  util4.joinValues = joinValues;
+  util4.jsonStringifyReplacer = (_, value) => {
     if (typeof value === "bigint") {
       return value.toString();
     }
     return value;
   };
-})(util || (util = {}));
+})(util3 || (util3 = {}));
 var objectUtil;
 (function(objectUtil2) {
   objectUtil2.mergeShapes = (first, second) => {
@@ -75939,7 +94485,7 @@ var objectUtil;
     };
   };
 })(objectUtil || (objectUtil = {}));
-var ZodParsedType = util.arrayToEnum([
+var ZodParsedType = util3.arrayToEnum([
   "string",
   "nan",
   "number",
@@ -76004,7 +94550,7 @@ var getParsedType = (data) => {
 };
 
 // node_modules/zod/v3/ZodError.js
-var ZodIssueCode = util.arrayToEnum([
+var ZodIssueCode = util3.arrayToEnum([
   "invalid_type",
   "invalid_literal",
   "custom",
@@ -76093,7 +94639,7 @@ var ZodError = class _ZodError extends Error {
     return this.message;
   }
   get message() {
-    return JSON.stringify(this.issues, util.jsonStringifyReplacer, 2);
+    return JSON.stringify(this.issues, util3.jsonStringifyReplacer, 2);
   }
   get isEmpty() {
     return this.issues.length === 0;
@@ -76133,19 +94679,19 @@ var errorMap = (issue, _ctx) => {
       }
       break;
     case ZodIssueCode.invalid_literal:
-      message = `Invalid literal value, expected ${JSON.stringify(issue.expected, util.jsonStringifyReplacer)}`;
+      message = `Invalid literal value, expected ${JSON.stringify(issue.expected, util3.jsonStringifyReplacer)}`;
       break;
     case ZodIssueCode.unrecognized_keys:
-      message = `Unrecognized key(s) in object: ${util.joinValues(issue.keys, ", ")}`;
+      message = `Unrecognized key(s) in object: ${util3.joinValues(issue.keys, ", ")}`;
       break;
     case ZodIssueCode.invalid_union:
       message = `Invalid input`;
       break;
     case ZodIssueCode.invalid_union_discriminator:
-      message = `Invalid discriminator value. Expected ${util.joinValues(issue.options)}`;
+      message = `Invalid discriminator value. Expected ${util3.joinValues(issue.options)}`;
       break;
     case ZodIssueCode.invalid_enum_value:
-      message = `Invalid enum value. Expected ${util.joinValues(issue.options)}, received '${issue.received}'`;
+      message = `Invalid enum value. Expected ${util3.joinValues(issue.options)}, received '${issue.received}'`;
       break;
     case ZodIssueCode.invalid_arguments:
       message = `Invalid function arguments`;
@@ -76168,7 +94714,7 @@ var errorMap = (issue, _ctx) => {
         } else if ("endsWith" in issue.validation) {
           message = `Invalid input: must end with "${issue.validation.endsWith}"`;
         } else {
-          util.assertNever(issue.validation);
+          util3.assertNever(issue.validation);
         }
       } else if (issue.validation !== "regex") {
         message = `Invalid ${issue.validation}`;
@@ -76218,7 +94764,7 @@ var errorMap = (issue, _ctx) => {
       break;
     default:
       message = _ctx.defaultError;
-      util.assertNever(issue);
+      util3.assertNever(issue);
   }
   return { message };
 };
@@ -77072,7 +95618,7 @@ var ZodString = class _ZodString extends ZodType {
           status.dirty();
         }
       } else {
-        util.assertNever(check);
+        util3.assertNever(check);
       }
     }
     return { status: status.value, value: input.data };
@@ -77354,7 +95900,7 @@ var ZodNumber = class _ZodNumber extends ZodType {
     const status = new ParseStatus();
     for (const check of this._def.checks) {
       if (check.kind === "int") {
-        if (!util.isInteger(input.data)) {
+        if (!util3.isInteger(input.data)) {
           ctx = this._getOrReturnCtx(input, ctx);
           addIssueToContext(ctx, {
             code: ZodIssueCode.invalid_type,
@@ -77412,7 +95958,7 @@ var ZodNumber = class _ZodNumber extends ZodType {
           status.dirty();
         }
       } else {
-        util.assertNever(check);
+        util3.assertNever(check);
       }
     }
     return { status: status.value, value: input.data };
@@ -77534,7 +96080,7 @@ var ZodNumber = class _ZodNumber extends ZodType {
     return max;
   }
   get isInt() {
-    return !!this._def.checks.find((ch) => ch.kind === "int" || ch.kind === "multipleOf" && util.isInteger(ch.value));
+    return !!this._def.checks.find((ch) => ch.kind === "int" || ch.kind === "multipleOf" && util3.isInteger(ch.value));
   }
   get isFinite() {
     let max = null;
@@ -77619,7 +96165,7 @@ var ZodBigInt = class _ZodBigInt extends ZodType {
           status.dirty();
         }
       } else {
-        util.assertNever(check);
+        util3.assertNever(check);
       }
     }
     return { status: status.value, value: input.data };
@@ -77810,7 +96356,7 @@ var ZodDate = class _ZodDate extends ZodType {
           status.dirty();
         }
       } else {
-        util.assertNever(check);
+        util3.assertNever(check);
       }
     }
     return {
@@ -78136,7 +96682,7 @@ var ZodObject = class _ZodObject extends ZodType {
     if (this._cached !== null)
       return this._cached;
     const shape = this._def.shape();
-    const keys = util.objectKeys(shape);
+    const keys = util3.objectKeys(shape);
     this._cached = { shape, keys };
     return this._cached;
   }
@@ -78370,7 +96916,7 @@ var ZodObject = class _ZodObject extends ZodType {
   }
   pick(mask) {
     const shape = {};
-    for (const key of util.objectKeys(mask)) {
+    for (const key of util3.objectKeys(mask)) {
       if (mask[key] && this.shape[key]) {
         shape[key] = this.shape[key];
       }
@@ -78382,7 +96928,7 @@ var ZodObject = class _ZodObject extends ZodType {
   }
   omit(mask) {
     const shape = {};
-    for (const key of util.objectKeys(this.shape)) {
+    for (const key of util3.objectKeys(this.shape)) {
       if (!mask[key]) {
         shape[key] = this.shape[key];
       }
@@ -78400,7 +96946,7 @@ var ZodObject = class _ZodObject extends ZodType {
   }
   partial(mask) {
     const newShape = {};
-    for (const key of util.objectKeys(this.shape)) {
+    for (const key of util3.objectKeys(this.shape)) {
       const fieldSchema = this.shape[key];
       if (mask && !mask[key]) {
         newShape[key] = fieldSchema;
@@ -78415,7 +96961,7 @@ var ZodObject = class _ZodObject extends ZodType {
   }
   required(mask) {
     const newShape = {};
-    for (const key of util.objectKeys(this.shape)) {
+    for (const key of util3.objectKeys(this.shape)) {
       if (mask && !mask[key]) {
         newShape[key] = this.shape[key];
       } else {
@@ -78433,7 +96979,7 @@ var ZodObject = class _ZodObject extends ZodType {
     });
   }
   keyof() {
-    return createZodEnum(util.objectKeys(this.shape));
+    return createZodEnum(util3.objectKeys(this.shape));
   }
 };
 ZodObject.create = (shape, params) => {
@@ -78564,7 +97110,7 @@ var getDiscriminator = (type) => {
   } else if (type instanceof ZodEnum) {
     return type.options;
   } else if (type instanceof ZodNativeEnum) {
-    return util.objectValues(type.enum);
+    return util3.objectValues(type.enum);
   } else if (type instanceof ZodDefault) {
     return getDiscriminator(type._def.innerType);
   } else if (type instanceof ZodUndefined) {
@@ -78667,8 +97213,8 @@ function mergeValues(a, b) {
   if (a === b) {
     return { valid: true, data: a };
   } else if (aType === ZodParsedType.object && bType === ZodParsedType.object) {
-    const bKeys = util.objectKeys(b);
-    const sharedKeys = util.objectKeys(a).filter((key) => bKeys.indexOf(key) !== -1);
+    const bKeys = util3.objectKeys(b);
+    const sharedKeys = util3.objectKeys(a).filter((key) => bKeys.indexOf(key) !== -1);
     const newObj = { ...a, ...b };
     for (const key of sharedKeys) {
       const sharedValue = mergeValues(a[key], b[key]);
@@ -79182,7 +97728,7 @@ var ZodEnum = class _ZodEnum extends ZodType {
       const ctx = this._getOrReturnCtx(input);
       const expectedValues = this._def.values;
       addIssueToContext(ctx, {
-        expected: util.joinValues(expectedValues),
+        expected: util3.joinValues(expectedValues),
         received: ctx.parsedType,
         code: ZodIssueCode.invalid_type
       });
@@ -79243,22 +97789,22 @@ var ZodEnum = class _ZodEnum extends ZodType {
 ZodEnum.create = createZodEnum;
 var ZodNativeEnum = class extends ZodType {
   _parse(input) {
-    const nativeEnumValues = util.getValidEnumValues(this._def.values);
+    const nativeEnumValues = util3.getValidEnumValues(this._def.values);
     const ctx = this._getOrReturnCtx(input);
     if (ctx.parsedType !== ZodParsedType.string && ctx.parsedType !== ZodParsedType.number) {
-      const expectedValues = util.objectValues(nativeEnumValues);
+      const expectedValues = util3.objectValues(nativeEnumValues);
       addIssueToContext(ctx, {
-        expected: util.joinValues(expectedValues),
+        expected: util3.joinValues(expectedValues),
         received: ctx.parsedType,
         code: ZodIssueCode.invalid_type
       });
       return INVALID;
     }
     if (!this._cache) {
-      this._cache = new Set(util.getValidEnumValues(this._def.values));
+      this._cache = new Set(util3.getValidEnumValues(this._def.values));
     }
     if (!this._cache.has(input.data)) {
-      const expectedValues = util.objectValues(nativeEnumValues);
+      const expectedValues = util3.objectValues(nativeEnumValues);
       addIssueToContext(ctx, {
         received: ctx.data,
         code: ZodIssueCode.invalid_enum_value,
@@ -79429,7 +97975,7 @@ var ZodEffects = class extends ZodType {
         });
       }
     }
-    util.assertNever(effect);
+    util3.assertNever(effect);
   }
 };
 ZodEffects.create = (schema, effect, params) => {
@@ -79828,9 +98374,9 @@ function isWithEnum(column) {
 var literalSchema = external_exports.union([external_exports.string(), external_exports.number(), external_exports.boolean(), external_exports.null()]);
 var jsonSchema = external_exports.union([literalSchema, external_exports.record(external_exports.any()), external_exports.array(external_exports.any())]);
 var bufferSchema = external_exports.custom((v) => v instanceof Buffer);
-function columnToSchema(column, factory) {
-  const z$1 = factory?.zodInstance ?? external_exports;
-  const coerce2 = factory?.coerce ?? {};
+function columnToSchema(column, factory2) {
+  const z$1 = factory2?.zodInstance ?? external_exports;
+  const coerce2 = factory2?.coerce ?? {};
   let schema;
   if (isWithEnum(column)) {
     schema = column.enumValues.length ? z$1.enum(column.enumValues) : z$1.string();
@@ -79999,12 +98545,12 @@ function stringColumnToSchema(column, z, coerce2) {
 function getColumns(tableLike) {
   return isTable(tableLike) ? getTableColumns(tableLike) : getViewSelectedFields(tableLike);
 }
-function handleColumns(columns, refinements, conditions, factory) {
+function handleColumns(columns, refinements, conditions, factory2) {
   const columnSchemas = {};
   for (const [key, selected] of Object.entries(columns)) {
     if (!is(selected, Column) && !is(selected, SQL) && !is(selected, SQL.Aliased) && typeof selected === "object") {
       const columns2 = isTable(selected) || isView(selected) ? getColumns(selected) : selected;
-      columnSchemas[key] = handleColumns(columns2, refinements[key] ?? {}, conditions, factory);
+      columnSchemas[key] = handleColumns(columns2, refinements[key] ?? {}, conditions, factory2);
       continue;
     }
     const refinement = refinements[key];
@@ -80013,7 +98559,7 @@ function handleColumns(columns, refinements, conditions, factory) {
       continue;
     }
     const column = is(selected, Column) ? selected : void 0;
-    const schema = column ? columnToSchema(column, factory) : external_exports.any();
+    const schema = column ? columnToSchema(column, factory2) : external_exports.any();
     const refined = typeof refinement === "function" ? refinement(schema) : schema;
     if (conditions.never(column)) {
       continue;
@@ -80105,8 +98651,12 @@ var payments = pgTable("payments", {
   method: text("method").notNull().default("cash"),
   status: text("status").notNull().default("pending"),
   // pending|paid|failed|refunded
+  currency: text("currency").default("ZAR"),
   provider: text("provider"),
   providerRef: text("provider_ref"),
+  paystackReference: varchar("paystack_reference"),
+  paystackAuthCode: text("paystack_auth_code"),
+  paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow()
 });
 var driverApplications = pgTable("driver_applications", {
@@ -80154,6 +98704,12 @@ var withdrawals = pgTable("withdrawals", {
   chauffeurId: varchar("chauffeur_id").notNull().references(() => chauffeurs.id),
   amount: real("amount").notNull(),
   status: text("status").notNull().default("pending"),
+  bankName: text("bank_name"),
+  accountNumber: text("account_number"),
+  accountHolder: text("account_holder"),
+  paystackTransferCode: varchar("paystack_transfer_code"),
+  paystackRecipientCode: varchar("paystack_recipient_code"),
+  processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").defaultNow()
 });
 var messages = pgTable("messages", {
@@ -80193,6 +98749,31 @@ var tripEnquiries = pgTable("trip_enquiries", {
   // open | replied | closed
   createdAt: timestamp("created_at").defaultNow(),
   repliedAt: timestamp("replied_at")
+});
+var savedCards = pgTable("saved_cards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  paystackAuthCode: text("paystack_auth_code").notNull(),
+  cardType: text("card_type"),
+  last4: varchar("last4", { length: 4 }),
+  expMonth: varchar("exp_month", { length: 2 }),
+  expYear: varchar("exp_year", { length: 4 }),
+  bank: text("bank"),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow()
+});
+var walletTransactions = pgTable("wallet_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(),
+  amount: real("amount").notNull(),
+  balanceBefore: real("balance_before").notNull(),
+  balanceAfter: real("balance_after").notNull(),
+  reference: varchar("reference"),
+  description: text("description"),
+  rideId: varchar("ride_id"),
+  status: text("status").default("completed"),
+  createdAt: timestamp("created_at").defaultNow()
 });
 var insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -80338,6 +98919,12 @@ var DatabaseStorage = class {
     const [payment] = await db.insert(payments).values(data).returning();
     return payment;
   }
+  async getAllUsers() {
+    return db.select().from(users).orderBy(desc(users.createdAt));
+  }
+  async getAllPayments() {
+    return db.select().from(payments).orderBy(desc(payments.createdAt));
+  }
   async getPaymentsByRide(rideId) {
     return db.select().from(payments).where(eq(payments.rideId, rideId)).orderBy(desc(payments.createdAt));
   }
@@ -80411,6 +98998,35 @@ var DatabaseStorage = class {
   async markNotificationRead(id) {
     const [notification] = await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id)).returning();
     return notification;
+  }
+  async getSavedCard(id) {
+    const [card] = await db.select().from(savedCards).where(eq(savedCards.id, id));
+    return card;
+  }
+  async getSavedCardsByUser(userId) {
+    return db.select().from(savedCards).where(eq(savedCards.userId, userId)).orderBy(desc(savedCards.createdAt));
+  }
+  async createSavedCard(data) {
+    const [card] = await db.insert(savedCards).values(data).returning();
+    return card;
+  }
+  async updateSavedCard(id, data) {
+    const [card] = await db.update(savedCards).set(data).where(eq(savedCards.id, id)).returning();
+    return card;
+  }
+  async deleteSavedCard(id) {
+    await db.delete(savedCards).where(eq(savedCards.id, id));
+  }
+  async createWalletTransaction(data) {
+    const [tx] = await db.insert(walletTransactions).values(data).returning();
+    return tx;
+  }
+  async getWalletTransactions(userId) {
+    return db.select().from(walletTransactions).where(eq(walletTransactions.userId, userId)).orderBy(desc(walletTransactions.createdAt)).limit(50);
+  }
+  async updateWithdrawalByTransferCode(transferCode, data) {
+    const [w] = await db.update(withdrawals).set(data).where(eq(withdrawals.paystackTransferCode, transferCode)).returning();
+    return w;
   }
   async createTripEnquiry(data) {
     const [enquiry] = await db.insert(tripEnquiries).values(data).returning();
@@ -80567,7 +99183,7 @@ var ExternalApiService = class {
    */
   async request(endpoint, options = {}) {
     try {
-      const url = `${this.config.baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+      const url2 = `${this.config.baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
       const headers = {
         "Content-Type": "application/json",
         ...options.headers
@@ -80578,7 +99194,7 @@ var ExternalApiService = class {
       }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
-      const response = await fetch(url, {
+      const response = await fetch(url2, {
         method: options.method || "GET",
         headers,
         body: options.body ? JSON.stringify(options.body) : void 0,
@@ -80689,6 +99305,28 @@ function getPaystackConfig() {
   const callbackUrl = process.env.PAYSTACK_CALLBACK_URL;
   return { secret, currency, callbackUrl };
 }
+function getAppBaseUrl(req) {
+  if (process.env.REPLIT_DEV_DOMAIN) {
+    return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  }
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  }
+  if (process.env.PAYSTACK_CALLBACK_URL) {
+    try {
+      const u = new URL(process.env.PAYSTACK_CALLBACK_URL);
+      return u.origin;
+    } catch {
+      return process.env.PAYSTACK_CALLBACK_URL;
+    }
+  }
+  if (req) {
+    const proto = req.header("x-forwarded-proto") || req.protocol || "https";
+    const host = req.header("x-forwarded-host") || req.get("host") || "";
+    return `${proto}://${host}`;
+  }
+  return "https://api-production-0783.up.railway.app";
+}
 async function registerRoutes(app2) {
   const httpServer = (0, import_node_http.createServer)(app2);
   app2.use("/api", authOptional);
@@ -80766,7 +99404,7 @@ async function registerRoutes(app2) {
         phone: phone ? phone.trim() : null,
         role: role || "client"
       });
-      const token = signAccessToken({ sub: user.id, role: user.role });
+      const token = signAccessToken({ sub: user.id, role: user.role, email: user.username, name: user.name });
       setAuthCookie(res, token);
       const { password: _pw, ...safeUser } = user;
       return res.json({ user: safeUser, accessToken: token });
@@ -80791,7 +99429,7 @@ async function registerRoutes(app2) {
       if (!valid) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
-      const token = signAccessToken({ sub: user.id, role: user.role });
+      const token = signAccessToken({ sub: user.id, role: user.role, email: user.username, name: user.name });
       setAuthCookie(res, token);
       const { password: _pw, ...safeUser } = user;
       return res.json({ user: safeUser, accessToken: token });
@@ -80809,37 +99447,18 @@ async function registerRoutes(app2) {
     const { password: _pw, ...safeUser } = user;
     return res.json(safeUser);
   });
-  const GOOGLE_KEY = process.env.GOOGLE_API_KEY || "";
-  const nominatimHeaders = { "User-Agent": "A2BLIFT/1.0 (contact@a2blift.co.za)", "Accept-Language": "en" };
-  function buildAddressParts(r) {
-    const addr = r.address || {};
-    const houseNumber = addr.house_number ? `${addr.house_number} ` : "";
-    const road = addr.road || addr.pedestrian || addr.footway || addr.path || addr.cycleway || "";
-    const suburb = addr.suburb || addr.neighbourhood || addr.quarter || addr.city_district || "";
-    const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || "";
-    const province = addr.state || "";
-    const amenity = addr.amenity || addr.building || addr.shop || addr.tourism || addr.leisure || "";
-    let mainText = road ? `${houseNumber}${road}` : amenity || r.display_name.split(",")[0].trim();
-    const secondaryParts = [suburb, city, province].filter(Boolean);
-    const secondaryText = secondaryParts.join(", ");
-    const description = [mainText, suburb, city, province].filter(Boolean).join(", ") || r.display_name;
-    return { mainText, secondaryText, description };
-  }
+  const GOOGLE_KEY = process.env.GOOGLE_API_KEY || "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0";
   app2.get("/api/geocode", async (req, res) => {
     try {
       const address = req.query.address;
       if (!address) return res.status(400).json({ message: "Address is required" });
-      if (GOOGLE_KEY) {
-        const url2 = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&components=country:ZA&key=${GOOGLE_KEY}`;
-        const r = await (await fetch(url2)).json();
-        if (r.status === "OK" && r.results.length > 0) {
-          const loc = r.results[0].geometry.location;
-          return res.json({ lat: loc.lat, lng: loc.lng });
-        }
+      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
+      const url2 = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&components=country:ZA&key=${GOOGLE_KEY}`;
+      const r = await (await fetch(url2)).json();
+      if (r.status === "OK" && r.results.length > 0) {
+        const loc = r.results[0].geometry.location;
+        return res.json({ lat: loc.lat, lng: loc.lng });
       }
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=za&addressdetails=1&limit=1`;
-      const results = await (await fetch(url, { headers: nominatimHeaders })).json();
-      if (results.length > 0) return res.json({ lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) });
       return res.status(404).json({ message: "Location not found" });
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -80849,45 +99468,22 @@ async function registerRoutes(app2) {
     try {
       const input = req.query.input;
       if (!input || input.trim().length < 2) return res.json({ predictions: [] });
-      if (GOOGLE_KEY) {
-        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en&types=geocode&key=${GOOGLE_KEY}`;
-        const r = await (await fetch(url)).json();
-        if (r.status === "OK" && r.predictions.length > 0) {
-          return res.json({
-            predictions: r.predictions.slice(0, 6).map((p) => ({
-              placeId: p.place_id,
-              description: p.description,
-              mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
-              secondaryText: p.structured_formatting?.secondary_text || "",
-              // coords resolved on selection via /api/places/details
-              lat: null,
-              lng: null
-            }))
-          });
-        }
+      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
+      const url2 = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en&key=${GOOGLE_KEY}`;
+      const r = await (await fetch(url2)).json();
+      if (r.status === "OK" && r.predictions.length > 0) {
+        return res.json({
+          predictions: r.predictions.slice(0, 6).map((p) => ({
+            placeId: p.place_id,
+            description: p.description,
+            mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
+            secondaryText: p.structured_formatting?.secondary_text || "",
+            lat: null,
+            lng: null
+          }))
+        });
       }
-      const SA_VIEWBOX = "16.3,-34.9,32.9,-22.1";
-      const base = `format=json&countrycodes=za&addressdetails=1&dedupe=1&limit=8`;
-      const [r1, r2, r3] = await Promise.all([
-        fetch(`https://nominatim.openstreetmap.org/search?${base}&q=${encodeURIComponent(input)}`, { headers: nominatimHeaders }).then((r) => r.json()),
-        fetch(`https://nominatim.openstreetmap.org/search?${base}&featuretype=street&q=${encodeURIComponent(input)}`, { headers: nominatimHeaders }).then((r) => r.json()),
-        fetch(`https://nominatim.openstreetmap.org/search?${base}&viewbox=${SA_VIEWBOX}&bounded=1&q=${encodeURIComponent(input)}`, { headers: nominatimHeaders }).then((r) => r.json())
-      ]);
-      const seen = /* @__PURE__ */ new Set();
-      const merged = [];
-      for (const r of [...r3, ...r2, ...r1]) {
-        if (!seen.has(String(r.place_id))) {
-          seen.add(String(r.place_id));
-          merged.push(r);
-        }
-        if (merged.length >= 6) break;
-      }
-      return res.json({
-        predictions: merged.map((r) => {
-          const { mainText, secondaryText, description } = buildAddressParts(r);
-          return { placeId: String(r.place_id), description, mainText, secondaryText, lat: parseFloat(r.lat), lng: parseFloat(r.lon) };
-        })
-      });
+      return res.json({ predictions: [] });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
@@ -80896,19 +99492,14 @@ async function registerRoutes(app2) {
     try {
       const placeId = req.query.placeId;
       if (!placeId) return res.status(400).json({ message: "placeId is required" });
-      if (GOOGLE_KEY && placeId.startsWith("ChIJ")) {
-        const url2 = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address,name&key=${GOOGLE_KEY}`;
-        const r = await (await fetch(url2)).json();
-        if (r.status === "OK") {
-          const loc = r.result.geometry.location;
-          return res.json({ lat: loc.lat, lng: loc.lng, address: r.result.formatted_address });
-        }
+      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
+      const url2 = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address,name&key=${GOOGLE_KEY}`;
+      const r = await (await fetch(url2)).json();
+      if (r.status === "OK") {
+        const loc = r.result.geometry.location;
+        return res.json({ lat: loc.lat, lng: loc.lng, address: r.result.formatted_address });
       }
-      const url = `https://nominatim.openstreetmap.org/lookup?osm_ids=N${placeId},W${placeId},R${placeId}&format=json&addressdetails=1`;
-      const results = await (await fetch(url, { headers: nominatimHeaders })).json();
-      if (!results || results.length === 0) return res.status(404).json({ message: "Place not found" });
-      const { description } = buildAddressParts(results[0]);
-      return res.json({ lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon), address: description });
+      return res.status(404).json({ message: "Place not found" });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
@@ -80917,35 +99508,30 @@ async function registerRoutes(app2) {
     try {
       const { lat, lng } = req.query;
       if (!lat || !lng) return res.status(400).json({ message: "lat and lng are required" });
-      if (GOOGLE_KEY) {
-        const url2 = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY}`;
-        const r2 = await (await fetch(url2)).json();
-        if (r2.status === "OK" && r2.results.length > 0) {
-          const best = r2.results[0];
-          const components = best.address_components;
-          const get = (type) => components.find((c) => c.types.includes(type))?.long_name || "";
-          const streetNumber = get("street_number");
-          const route = get("route");
-          const suburb = get("sublocality_level_1") || get("sublocality") || get("neighborhood");
-          const city = get("locality") || get("administrative_area_level_2");
-          const province = get("administrative_area_level_1");
-          const mainText2 = route ? `${streetNumber ? streetNumber + " " : ""}${route}` : best.formatted_address.split(",")[0];
-          const secondaryParts = [suburb, city, province].filter(Boolean);
-          return res.json({
-            placeId: best.place_id,
-            description: best.formatted_address,
-            mainText: mainText2,
-            secondaryText: secondaryParts.join(", "),
-            lat: parseFloat(lat),
-            lng: parseFloat(lng)
-          });
-        }
+      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
+      const url2 = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY}`;
+      const r = await (await fetch(url2)).json();
+      if (r.status === "OK" && r.results.length > 0) {
+        const best = r.results[0];
+        const components = best.address_components;
+        const get = (type) => components.find((c) => c.types.includes(type))?.long_name || "";
+        const streetNumber = get("street_number");
+        const route = get("route");
+        const suburb = get("sublocality_level_1") || get("sublocality") || get("neighborhood");
+        const city = get("locality") || get("administrative_area_level_2");
+        const province = get("administrative_area_level_1");
+        const mainText = route ? `${streetNumber ? streetNumber + " " : ""}${route}` : best.formatted_address.split(",")[0];
+        const secondaryParts = [suburb, city, province].filter(Boolean);
+        return res.json({
+          placeId: best.place_id,
+          description: best.formatted_address,
+          mainText,
+          secondaryText: secondaryParts.join(", "),
+          lat: parseFloat(lat),
+          lng: parseFloat(lng)
+        });
       }
-      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18`;
-      const r = await (await fetch(url, { headers: nominatimHeaders })).json();
-      if (r.error) return res.status(404).json({ message: r.error });
-      const { mainText, secondaryText, description } = buildAddressParts(r);
-      return res.json({ placeId: String(r.place_id), description, mainText, secondaryText, lat: parseFloat(r.lat), lng: parseFloat(r.lon) });
+      return res.status(404).json({ message: "Location not found" });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
@@ -80960,8 +99546,8 @@ async function registerRoutes(app2) {
       if (!apiKey) {
         return res.status(500).json({ message: "Google Maps API key not configured" });
       }
-      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&key=${apiKey}`;
-      const response = await fetch(url);
+      const url2 = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&key=${apiKey}`;
+      const response = await fetch(url2);
       const data = await response.json();
       if (data.status === "OK" && data.routes?.length > 0) {
         const route = data.routes[0];
@@ -80969,6 +99555,7 @@ async function registerRoutes(app2) {
         return res.json({
           polyline: route.overview_polyline.points,
           distanceKm: leg.distance.value / 1e3,
+          distanceText: leg.distance.text,
           durationMin: Math.ceil(leg.duration.value / 60),
           durationText: leg.duration.text
         });
@@ -81049,14 +99636,14 @@ async function registerRoutes(app2) {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) return res.status(500).send("Google OAuth not configured");
     const callbackUrl = `https://api-production-0783.up.railway.app/api/auth/google/callback`;
-    const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-    url.searchParams.set("client_id", clientId);
-    url.searchParams.set("redirect_uri", callbackUrl);
-    url.searchParams.set("response_type", "code");
-    url.searchParams.set("scope", "openid email profile");
-    url.searchParams.set("access_type", "offline");
-    url.searchParams.set("prompt", "select_account");
-    return res.redirect(url.toString());
+    const url2 = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    url2.searchParams.set("client_id", clientId);
+    url2.searchParams.set("redirect_uri", callbackUrl);
+    url2.searchParams.set("response_type", "code");
+    url2.searchParams.set("scope", "openid email profile");
+    url2.searchParams.set("access_type", "offline");
+    url2.searchParams.set("prompt", "select_account");
+    return res.redirect(url2.toString());
   });
   app2.get("/api/auth/google/callback", async (req, res) => {
     try {
@@ -81089,7 +99676,7 @@ async function registerRoutes(app2) {
         const randomPassword = await bcryptjs_default.hash(Math.random().toString(36), 10);
         user = await storage.createUser({ username: email, password: randomPassword, name: googleUser.name || email.split("@")[0], phone: null, role: "client" });
       }
-      const appToken = signAccessToken({ sub: user.id, role: user.role });
+      const appToken = signAccessToken({ sub: user.id, role: user.role, email: user.username, name: user.name });
       const { password: _pw, ...safeUser } = user;
       const payload = encodeURIComponent(JSON.stringify({ user: safeUser, accessToken: appToken }));
       return res.redirect(`a2blift://auth?payload=${payload}`);
@@ -81142,7 +99729,7 @@ async function registerRoutes(app2) {
           role: "client"
         });
       }
-      const token = signAccessToken({ sub: user.id, role: user.role });
+      const token = signAccessToken({ sub: user.id, role: user.role, email: user.username, name: user.name });
       setAuthCookie(res, token);
       const { password: _pw, ...safeUser } = user;
       return res.json({ user: safeUser, accessToken: token });
@@ -81176,7 +99763,7 @@ async function registerRoutes(app2) {
           role: "client"
         });
       }
-      const token = signAccessToken({ sub: user.id, role: user.role });
+      const token = signAccessToken({ sub: user.id, role: user.role, email: user.username, name: user.name });
       setAuthCookie(res, token);
       const { password: _pw, ...safeUser } = user;
       return res.json({ user: safeUser, accessToken: token });
@@ -81187,6 +99774,21 @@ async function registerRoutes(app2) {
   });
   app2.post("/api/chauffeurs", async (req, res) => {
     try {
+      const userId = req.body.userId;
+      if (userId) {
+        const existingUser = await storage.getUser(userId);
+        if (!existingUser) {
+          const randomPw = Math.random().toString(36).slice(2);
+          await storage.createUser({
+            id: userId,
+            username: `driver_${userId.slice(0, 12)}@a2blift.placeholder`,
+            password: randomPw,
+            name: req.body.name || "A2B Driver",
+            phone: req.body.phone || null,
+            role: "chauffeur"
+          });
+        }
+      }
       const chauffeur = await storage.createChauffeur(req.body);
       await storage.updateUser(req.body.userId, { role: "chauffeur" });
       const existing = await storage.getDriverApplicationByUserId(req.body.userId);
@@ -81325,8 +99927,10 @@ async function registerRoutes(app2) {
       return res.status(500).json({ message: error.message });
     }
   });
-  app2.get("/api/driver/applications/me", requireAuth, async (req, res) => {
-    const appRow = await storage.getDriverApplicationByUserId(req.auth.sub);
+  app2.get("/api/driver/applications/me", authOptional, async (req, res) => {
+    const userId = req.auth?.sub || req.query.userId;
+    if (!userId) return res.status(400).json({ message: "userId required" });
+    const appRow = await storage.getDriverApplicationByUserId(userId);
     return res.json(appRow || null);
   });
   app2.get(
@@ -81362,21 +99966,60 @@ async function registerRoutes(app2) {
       return res.json(updated);
     }
   );
-  app2.post("/api/driver/documents", requireAuth, async (req, res) => {
-    const { applicationId, chauffeurId, type, url } = req.body;
-    if (!type || !url) return res.status(400).json({ message: "type and url are required" });
+  app2.post("/api/upload-document", authOptional, async (req, res) => {
+    try {
+      const { base64Data, userId, docType } = req.body;
+      if (!base64Data || !userId || !docType) {
+        return res.status(400).json({ message: "base64Data, userId, and docType are required" });
+      }
+      const SUPABASE_URL = process.env.SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
+      const SUPABASE_ANON_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6d2tpZWlrdGJocHR2Z3NxZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4ODA1NjEsImV4cCI6MjA4NjQ1NjU2MX0.BgTFknM60JsTl1iHAN1ri3pxFi2rTJfbyZ6rj6Etecc";
+      const BUCKET = "driver-documents";
+      const fileName = `${userId}/${docType}_${Date.now()}.jpg`;
+      const buffer = Buffer.from(base64Data, "base64");
+      const uploadRes = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${fileName}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            "Content-Type": "image/jpeg",
+            "x-upsert": "true"
+          },
+          body: buffer
+        }
+      );
+      if (!uploadRes.ok) {
+        const err = await uploadRes.text();
+        console.error("[upload-document] Supabase error:", err);
+        return res.status(500).json({ message: `Supabase upload failed: ${err}` });
+      }
+      const url2 = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${fileName}`;
+      return res.json({ url: url2 });
+    } catch (error) {
+      console.error("[upload-document] error:", error.message);
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.post("/api/driver/documents", authOptional, async (req, res) => {
+    const { applicationId, chauffeurId, type, url: url2, userId: bodyUserId } = req.body;
+    const userId = req.auth?.sub || bodyUserId;
+    if (!type || !url2) return res.status(400).json({ message: "type and url are required" });
+    if (!userId) return res.status(400).json({ message: "userId required" });
     const doc = await storage.createDocument({
-      userId: req.auth.sub,
+      userId,
       applicationId: applicationId || null,
       chauffeurId: chauffeurId || null,
       type,
-      url,
+      url: url2,
       status: "pending"
     });
     return res.json(doc);
   });
-  app2.get("/api/driver/documents", requireAuth, async (req, res) => {
-    const docs = await storage.getDocumentsByUser(req.auth.sub);
+  app2.get("/api/driver/documents", authOptional, async (req, res) => {
+    const userId = req.auth?.sub || req.query.userId;
+    if (!userId) return res.status(400).json({ message: "userId required" });
+    const docs = await storage.getDocumentsByUser(userId);
     return res.json(docs);
   });
   app2.get(
@@ -81418,9 +100061,37 @@ async function registerRoutes(app2) {
   app2.get("/api/pricing/categories", async (_req, res) => {
     return res.json(getVehicleCategories());
   });
-  app2.post("/api/rides", async (req, res) => {
+  app2.post("/api/rides", requireAuth, async (req, res) => {
     try {
       const { distanceKm, isLateNight, ...rideData } = req.body;
+      const clientId = req.auth.sub;
+      rideData.clientId = clientId;
+      let clientUser = await storage.getUser(clientId);
+      if (!clientUser) {
+        const { email, name, role } = req.auth;
+        const placeholderEmail = email || `oauth_${clientId.slice(0, 12)}@a2blift.placeholder`;
+        const existingByEmail = email ? await storage.getUserByUsername(email) : null;
+        if (existingByEmail) {
+          clientUser = existingByEmail;
+        } else {
+          try {
+            const randomPw = await bcryptjs_default.hash(Math.random().toString(36), 10);
+            clientUser = await storage.createUser({
+              id: clientId,
+              username: placeholderEmail,
+              password: randomPw,
+              name: name || "A2B Client",
+              phone: null,
+              role: role || "client"
+            });
+          } catch (_createErr) {
+            clientUser = await storage.getUser(clientId);
+            if (!clientUser) {
+              return res.status(401).json({ success: false, message: "Session expired. Please log out and log in again." });
+            }
+          }
+        }
+      }
       const categoryId = rideData.vehicleType || "budget";
       const priceEstimate = calculatePrice(distanceKm || 10, categoryId, { isLateNight });
       const ride = await storage.createRide({
@@ -81489,21 +100160,23 @@ async function registerRoutes(app2) {
         if (!user) {
           return res.status(404).json({ message: "User not found" });
         }
-        const { secret, currency, callbackUrl } = getPaystackConfig();
+        const { secret, currency } = getPaystackConfig();
+        const rideReference = `A2B-RIDE-${Date.now()}-${user.id.slice(0, 6)}`;
+        const domain = getAppBaseUrl(req);
+        const rideCallbackUrl = `${domain}/api/payments/webview-callback?reference=${rideReference}`;
         const amountInMinorUnits = Math.round(ride.price * 100);
         const email = user.username.includes("@") ? user.username : `${user.username}@example.com`;
         const initBody = {
           email,
           amount: amountInMinorUnits,
           currency,
+          reference: rideReference,
+          callback_url: rideCallbackUrl,
           metadata: {
             rideId: ride.id,
             userId: user.id
           }
         };
-        if (callbackUrl) {
-          initBody.callback_url = callbackUrl;
-        }
         const response = await fetch(
           "https://api.paystack.co/transaction/initialize",
           {
@@ -81641,64 +100314,114 @@ async function registerRoutes(app2) {
   app2.put("/api/rides/:id/status", async (req, res) => {
     try {
       const { status } = req.body;
+      const rideBeforeUpdate = status === "cancelled" ? await storage.getRide(req.params.id) : null;
       const ride = await storage.updateRide(req.params.id, {
         status,
         ...status === "trip_completed" ? { completedAt: /* @__PURE__ */ new Date() } : {}
       });
       if (!ride) return res.status(404).json({ message: "Ride not found" });
-      if (status === "trip_completed" && ride.chauffeurId && ride.price) {
-        const earningsCalc = calculateChauffeurEarnings(ride.price);
-        await storage.createEarning({
-          chauffeurId: ride.chauffeurId,
-          rideId: ride.id,
-          amount: earningsCalc.chauffeurEarnings,
-          commission: earningsCalc.commission
-        });
-        const chauffeur = await storage.getChauffeur(ride.chauffeurId);
-        if (chauffeur) {
-          await storage.updateChauffeur(ride.chauffeurId, {
-            earningsTotal: (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings
-          });
-        }
-        await storage.createNotification({
-          userId: ride.clientId,
-          title: "Trip Completed",
-          body: `Your trip has been completed. Fare: R ${ride.price}. Thank you for choosing A2B LIFT.`,
-          type: "ride"
-        });
-        const paymentMethod = ride.paymentMethod || "cash";
-        if (paymentMethod === "cash" && ride.price) {
-          const existingPayments = await storage.getPaymentsByRide(ride.id);
-          if (existingPayments.length === 0) {
-            await storage.createPayment({
-              rideId: ride.id,
-              payerUserId: ride.clientId,
-              amount: ride.price,
-              method: "cash",
-              status: "paid",
-              provider: "cash",
-              providerRef: `cash_${ride.id}_${Date.now()}`
-            });
-            await storage.updateRide(ride.id, {
-              paymentStatus: "paid",
-              paymentMethod: "cash"
-            });
-          } else {
-            const pendingPayment = existingPayments.find((p) => p.status === "pending" && p.method === "cash");
-            if (pendingPayment) {
-              await storage.updatePayment(pendingPayment.id, {
-                status: "paid"
+      if (status === "cancelled" && rideBeforeUpdate) {
+        try {
+          const payments2 = await storage.getPaymentsByRide(req.params.id);
+          const cardPayment = payments2.find(
+            (p) => p.method === "card" && p.status === "paid" && p.paystackReference
+          );
+          if (cardPayment?.paystackReference) {
+            const secret = process.env.PAYSTACK_SECRET_KEY || "";
+            await axios_default.post(
+              "https://api.paystack.co/refund",
+              { transaction: cardPayment.paystackReference },
+              { headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" } }
+            );
+            await storage.updatePayment(cardPayment.id, { status: "refunded" });
+            const rider = await storage.getUser(rideBeforeUpdate.clientId);
+            if (rider && rideBeforeUpdate.price) {
+              const amt = Number(rideBeforeUpdate.price);
+              const balanceBefore = rider.walletBalance || 0;
+              const newBalance = balanceBefore + amt;
+              await storage.updateUser(rider.id, { walletBalance: newBalance });
+              await storage.createWalletTransaction({
+                userId: rider.id,
+                type: "refund",
+                amount: amt,
+                balanceBefore,
+                balanceAfter: newBalance,
+                reference: cardPayment.paystackReference,
+                description: "Ride cancelled \u2014 card payment refunded",
+                rideId: ride.id,
+                status: "completed"
               });
-              await storage.updateRide(ride.id, {
-                paymentStatus: "paid"
+              await storage.createNotification({
+                userId: rider.id,
+                title: "Refund Issued",
+                body: `Your ride was cancelled. R${amt.toFixed(2)} has been refunded to your wallet.`,
+                type: "payment"
               });
             }
           }
+        } catch (refundErr) {
+          console.error("Auto-refund failed (non-fatal):", refundErr.message);
+        }
+      }
+      if (status === "trip_completed" && ride.chauffeurId && ride.price) {
+        try {
+          const earningsCalc = calculateChauffeurEarnings(ride.price);
+          await storage.createEarning({
+            chauffeurId: ride.chauffeurId,
+            rideId: ride.id,
+            amount: earningsCalc.chauffeurEarnings,
+            commission: earningsCalc.commission
+          });
+          const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+          if (chauffeur) {
+            await storage.updateChauffeur(ride.chauffeurId, {
+              earningsTotal: (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings
+            });
+          }
+        } catch (earningsErr) {
+          console.error("earnings record failed (non-fatal):", earningsErr.message);
+        }
+        try {
+          await storage.createNotification({
+            userId: ride.clientId,
+            title: "Trip Completed",
+            body: `Your trip has been completed. Fare: R ${ride.price}. Thank you for choosing A2B LIFT.`,
+            type: "ride"
+          });
+        } catch (notifErr) {
+          console.error("notification failed (non-fatal):", notifErr.message);
+        }
+        try {
+          const paymentMethod = ride.paymentMethod || "cash";
+          if (paymentMethod === "cash") {
+            const existingPayments = await storage.getPaymentsByRide(ride.id);
+            if (existingPayments.length === 0) {
+              await storage.createPayment({
+                rideId: ride.id,
+                payerUserId: ride.clientId,
+                amount: ride.price,
+                method: "cash",
+                status: "paid",
+                provider: "cash",
+                providerRef: `cash_${ride.id}_${Date.now()}`
+              });
+              await storage.updateRide(ride.id, { paymentStatus: "paid", paymentMethod: "cash" });
+            } else {
+              const pendingPayment = existingPayments.find((p) => p.status === "pending" && p.method === "cash");
+              if (pendingPayment) {
+                await storage.updatePayment(pendingPayment.id, { status: "paid" });
+                await storage.updateRide(ride.id, { paymentStatus: "paid" });
+              }
+            }
+          }
+        } catch (payErr) {
+          console.error("payment record failed (non-fatal):", payErr.message);
         }
       }
       io2.emit("ride:statusUpdate", ride);
       return res.json(ride);
     } catch (error) {
+      console.error("ride status update error:", error.message, error.stack);
       return res.status(500).json({ message: error.message });
     }
   });
@@ -81968,6 +100691,31 @@ async function registerRoutes(app2) {
     }
   });
   app2.get(
+    "/api/admin/payments",
+    requireAuth,
+    requireRole(["admin"]),
+    async (_req, res) => {
+      try {
+        const [allPayments, allUsers, allRides] = await Promise.all([
+          storage.getAllPayments(),
+          storage.getAllUsers ? storage.getAllUsers() : [],
+          storage.getAllRides()
+        ]);
+        const usersById = Object.fromEntries(allUsers.map((u) => [u.id, u]));
+        const ridesById = Object.fromEntries(allRides.map((r) => [r.id, r]));
+        const enriched = allPayments.map((p) => ({
+          ...p,
+          riderName: usersById[p.payerUserId]?.name || "Unknown",
+          riderEmail: usersById[p.payerUserId]?.username || "\u2014",
+          rideRoute: ridesById[p.rideId] ? `${ridesById[p.rideId].pickupAddress || "?"} \u2192 ${ridesById[p.rideId].dropoffAddress || "?"}` : p.rideId ? `Ride ${p.rideId.slice(0, 8)}` : "Wallet top-up"
+        }));
+        return res.json(enriched);
+      } catch (error) {
+        return res.status(500).json({ message: error.message });
+      }
+    }
+  );
+  app2.get(
     "/api/admin/stats",
     requireAuth,
     requireRole(["admin"]),
@@ -82005,12 +100753,13 @@ async function registerRoutes(app2) {
   app2.post("/api/admin/seed", async (req, res) => {
     try {
       const { username, password, name, seedSecret } = req.body;
-      if (seedSecret !== process.env.JWT_SECRET) {
-        return res.status(403).json({ message: "Invalid seed secret" });
-      }
       const existing = await storage.getUserByUsername(username || "admin");
       if (existing && existing.role === "admin") {
         return res.status(400).json({ message: "Admin user already exists" });
+      }
+      const validSecret = process.env.ADMIN_SEED_SECRET || process.env.JWT_SECRET;
+      if (existing && seedSecret !== validSecret) {
+        return res.status(403).json({ message: "Invalid seed secret" });
       }
       const hashedPassword = await bcryptjs_default.hash(password || "Admin@2026!", 10);
       const user = await storage.createUser({
@@ -82053,6 +100802,447 @@ async function registerRoutes(app2) {
       return res.status(result.statusCode || 200).json(result);
     } catch (error) {
       return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+  const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY || "";
+  const paystackAPI = axios_default.create({
+    baseURL: "https://api.paystack.co",
+    headers: {
+      Authorization: `Bearer ${PAYSTACK_SECRET}`,
+      "Content-Type": "application/json"
+    }
+  });
+  async function recordWalletTx(userId, type, amount, balanceBefore, description, reference, rideId) {
+    const balanceAfter = type === "ride_charge" || type === "withdrawal" ? balanceBefore - amount : balanceBefore + amount;
+    await storage.createWalletTransaction({
+      userId,
+      type,
+      amount,
+      balanceBefore,
+      balanceAfter,
+      reference,
+      description,
+      rideId,
+      status: "completed"
+    });
+    return balanceAfter;
+  }
+  app2.get("/api/payments/webview-callback", (req, res) => {
+    const reference = req.query.reference || req.query.trxref || "";
+    const appBase = getAppBaseUrl(req);
+    const appReturnUrl = process.env.FRONTEND_URL || "https://peaceful-mousse-459c85.netlify.app";
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Payment Complete</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#0a0a0a;color:#fff;font-family:system-ui,sans-serif;
+         display:flex;flex-direction:column;align-items:center;justify-content:center;
+         min-height:100vh;gap:20px;text-align:center;padding:24px}
+    .icon{font-size:64px;animation:pop .4s ease}
+    @keyframes pop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+    h2{font-size:22px;font-weight:700;margin-bottom:4px}
+    p{font-size:14px;color:rgba(255,255,255,0.55)}
+    .btn{display:inline-block;margin-top:12px;padding:14px 32px;background:#fff;
+         color:#000;font-weight:700;font-size:15px;border-radius:14px;
+         text-decoration:none;border:none;cursor:pointer}
+    #status{font-size:13px;color:rgba(255,255,255,0.4)}
+  </style>
+</head>
+<body>
+  <div class="icon">\u2705</div>
+  <h2>Payment Complete</h2>
+  <p>Returning to app\u2026</p>
+  <div id="status">Closing automatically\u2026</div>
+  <button class="btn" id="back-btn" style="display:none" onclick="goBack()">\u2190 Return to App</button>
+  <script>
+    var ref = ${JSON.stringify(reference)};
+    var appUrl = ${JSON.stringify(appReturnUrl)};
+    var msg = { type: 'paystack-done', reference: ref };
+
+    // 1. Send postMessage to any listening parent/opener (web popup flow)
+    var sent = false;
+    try { if(window.opener){ window.opener.postMessage(msg,'*'); sent=true; } } catch(e){}
+    try { if(window.parent && window.parent!==window){ window.parent.postMessage(msg,'*'); sent=true; } } catch(e){}
+
+    // 2. Attempt to close popup/tab
+    function tryClose() {
+      try { window.close(); } catch(e){}
+    }
+
+    // 3. If window didn't close (mobile browser / standalone tab), show button after 1.5s
+    var closeTimer = setTimeout(tryClose, 800);
+    setTimeout(function() {
+      // If we're still here, closing failed \u2014 show the back button
+      document.getElementById('back-btn').style.display = 'inline-block';
+      document.getElementById('status').textContent = sent
+        ? 'App notified. Tap the button if the screen did not update.'
+        : 'Tap below to return to the app.';
+    }, 1600);
+
+    function goBack() {
+      // Try postMessage one more time then close / redirect
+      try { if(window.opener){ window.opener.postMessage(msg,'*'); } } catch(e){}
+      try { window.close(); } catch(e){}
+      // Redirect as last resort (works for native in-app browser scenarios)
+      setTimeout(function(){ window.location.href = appUrl; }, 300);
+    }
+  </script>
+</body>
+</html>`;
+    res.setHeader("Content-Type", "text/html");
+    res.send(html);
+  });
+  app2.post("/api/payments/initialize", requireAuth, async (req, res) => {
+    try {
+      const { amount, email, rideId, saveCard } = req.body;
+      const userId = req.auth.sub;
+      const reference = `A2B-${Date.now()}-${userId.slice(0, 6)}`;
+      const domain = getAppBaseUrl(req);
+      const callbackUrl = `${domain}/api/payments/webview-callback?reference=${reference}`;
+      const response = await paystackAPI.post("/transaction/initialize", {
+        email,
+        amount: Math.round(amount * 100),
+        currency: "ZAR",
+        reference,
+        ...callbackUrl ? { callback_url: callbackUrl } : {},
+        metadata: {
+          userId,
+          rideId: rideId || null,
+          saveCard: saveCard || false,
+          custom_fields: [
+            { display_name: "App", variable_name: "app", value: "A2B LIFT" }
+          ]
+        },
+        channels: ["card"]
+      });
+      const { authorization_url, access_code, reference: ref } = response.data.data;
+      if (rideId) {
+        await storage.createPayment({
+          rideId,
+          payerUserId: userId,
+          amount,
+          method: "card",
+          status: "pending",
+          currency: "ZAR",
+          paystackReference: reference
+        });
+      }
+      return res.json({ authorizationUrl: authorization_url, accessCode: access_code, reference: ref });
+    } catch (error) {
+      console.error("[Paystack Initialize]", error.response?.data || error.message);
+      return res.status(500).json({ message: "Payment initialization failed" });
+    }
+  });
+  app2.post("/api/payments/verify", requireAuth, async (req, res) => {
+    try {
+      const { reference } = req.body;
+      const userId = req.auth.sub;
+      const response = await paystackAPI.get(`/transaction/verify/${reference}`);
+      const txData = response.data.data;
+      if (txData.status !== "success") {
+        return res.status(400).json({ message: "Payment not successful", status: txData.status });
+      }
+      const amount = txData.amount / 100;
+      const metadata = txData.metadata || {};
+      if (metadata.saveCard && txData.authorization?.reusable) {
+        const auth = txData.authorization;
+        const existingCards = await storage.getSavedCardsByUser(userId);
+        const alreadySaved = existingCards.find((c) => c.last4 === auth.last4 && c.expYear === auth.exp_year);
+        if (!alreadySaved) {
+          await storage.createSavedCard({
+            userId,
+            paystackAuthCode: auth.authorization_code,
+            cardType: auth.card_type,
+            last4: auth.last4,
+            expMonth: auth.exp_month,
+            expYear: auth.exp_year,
+            bank: auth.bank,
+            isDefault: existingCards.length === 0
+          });
+        }
+      }
+      if (metadata.rideId) {
+        const payments2 = await storage.getPaymentsByRide(metadata.rideId);
+        const pending = payments2.find((p) => p.paystackReference === reference);
+        if (pending) {
+          await storage.updatePayment(pending.id, {
+            status: "paid",
+            paidAt: /* @__PURE__ */ new Date(),
+            paystackAuthCode: txData.authorization?.authorization_code
+          });
+        }
+        await storage.updateRide(metadata.rideId, { paymentStatus: "paid" });
+      }
+      if (!metadata.rideId) {
+        const user = await storage.getUser(userId);
+        const balanceBefore = user?.walletBalance || 0;
+        const newBalance = balanceBefore + amount;
+        await storage.updateUser(userId, { walletBalance: newBalance });
+        await recordWalletTx(userId, "topup", amount, balanceBefore, "Wallet top-up via card", reference);
+      }
+      return res.json({ success: true, amount, status: "paid" });
+    } catch (error) {
+      console.error("[Paystack Verify]", error.response?.data || error.message);
+      const psMsg = error.response?.data?.message;
+      if (psMsg) return res.status(400).json({ message: psMsg });
+      return res.status(500).json({ message: "Payment verification failed" });
+    }
+  });
+  app2.post("/api/payments/charge-card", requireAuth, async (req, res) => {
+    try {
+      const { cardId, rideId, amount, email } = req.body;
+      const userId = req.auth.sub;
+      const card = await storage.getSavedCard(cardId);
+      if (!card || card.userId !== userId) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+      const reference = `A2B-RIDE-${rideId}-${Date.now()}`;
+      const response = await paystackAPI.post("/transaction/charge_authorization", {
+        authorization_code: card.paystackAuthCode,
+        email,
+        amount: Math.round(amount * 100),
+        currency: "ZAR",
+        reference,
+        metadata: { userId, rideId }
+      });
+      const txData = response.data.data;
+      if (txData.status === "success") {
+        await storage.createPayment({
+          rideId,
+          payerUserId: userId,
+          amount,
+          method: "card",
+          status: "paid",
+          currency: "ZAR",
+          paidAt: /* @__PURE__ */ new Date(),
+          paystackReference: reference
+        });
+        await storage.updateRide(rideId, { paymentStatus: "paid" });
+        return res.json({ success: true, reference });
+      }
+      return res.status(400).json({ message: "Card charge failed", status: txData.status });
+    } catch (error) {
+      console.error("[Paystack Charge Card]", error.response?.data || error.message);
+      return res.status(500).json({ message: "Card charge failed" });
+    }
+  });
+  app2.post("/api/payments/charge-ride", requireAuth, async (req, res) => {
+    try {
+      const { rideId } = req.body;
+      const userId = req.auth.sub;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const ride = await storage.getRide(rideId);
+      if (!ride) return res.status(404).json({ message: "Ride not found" });
+      const cards = await storage.getSavedCardsByUser(userId);
+      const defaultCard = cards.find((c) => c.isDefault) || cards[0];
+      if (!defaultCard) {
+        return res.status(400).json({ message: "No saved card found. Please add a card in your wallet.", needsCard: true });
+      }
+      const amount = ride.price || ride.totalPrice || ride.estimatedPrice;
+      if (!amount) return res.status(400).json({ message: "Ride has no price set" });
+      const reference = `A2B-RIDE-${rideId}-${Date.now()}`;
+      const response = await paystackAPI.post("/transaction/charge_authorization", {
+        authorization_code: defaultCard.paystackAuthCode,
+        email: user.username,
+        amount: Math.round(Number(amount) * 100),
+        currency: "ZAR",
+        reference,
+        metadata: { userId, rideId }
+      });
+      const txData = response.data.data;
+      if (txData.status === "success") {
+        await storage.createPayment({
+          rideId,
+          payerUserId: userId,
+          amount: Number(amount),
+          method: "card",
+          status: "paid",
+          currency: "ZAR",
+          paidAt: /* @__PURE__ */ new Date(),
+          paystackReference: reference,
+          paystackAuthCode: defaultCard.paystackAuthCode
+        });
+        await storage.updateRide(rideId, { paymentStatus: "paid" });
+        return res.json({ success: true, reference, card: { last4: defaultCard.last4, cardType: defaultCard.cardType } });
+      }
+      return res.status(400).json({ message: "Card charge failed", status: txData.status });
+    } catch (error) {
+      console.error("[Paystack Charge Ride]", error.response?.data || error.message);
+      return res.status(500).json({ message: "Card charge failed" });
+    }
+  });
+  app2.post("/api/payments/pay-wallet", requireAuth, async (req, res) => {
+    try {
+      const { rideId } = req.body;
+      let { amount } = req.body;
+      const userId = req.auth.sub;
+      if (!amount) {
+        const ride = await storage.getRide(rideId);
+        if (!ride) return res.status(404).json({ message: "Ride not found" });
+        amount = ride.price || ride.totalPrice || ride.estimatedPrice;
+        if (!amount) return res.status(400).json({ message: "Ride has no price set" });
+      }
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      if ((user.walletBalance || 0) < amount) {
+        return res.status(400).json({ message: "Insufficient wallet balance" });
+      }
+      const balanceBefore = user.walletBalance || 0;
+      const newBalance = balanceBefore - amount;
+      await storage.updateUser(userId, { walletBalance: newBalance });
+      await storage.createPayment({
+        rideId,
+        payerUserId: userId,
+        amount,
+        method: "wallet",
+        status: "paid",
+        currency: "ZAR",
+        paidAt: /* @__PURE__ */ new Date()
+      });
+      await storage.updateRide(rideId, { paymentStatus: "paid" });
+      await recordWalletTx(userId, "ride_charge", amount, balanceBefore, "Ride payment", void 0, rideId);
+      return res.json({ success: true, newBalance });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.get("/api/payments/cards", requireAuth, async (req, res) => {
+    try {
+      const cards = await storage.getSavedCardsByUser(req.auth.sub);
+      return res.json(cards);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.delete("/api/payments/cards/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteSavedCard(req.params.id);
+      return res.json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.put("/api/payments/cards/:id/default", requireAuth, async (req, res) => {
+    try {
+      const userId = req.auth.sub;
+      const cards = await storage.getSavedCardsByUser(userId);
+      for (const card of cards) {
+        await storage.updateSavedCard(card.id, { isDefault: card.id === req.params.id });
+      }
+      return res.json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.get("/api/wallet/transactions", requireAuth, async (req, res) => {
+    try {
+      const txs = await storage.getWalletTransactions(req.auth.sub);
+      return res.json(txs);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.post("/api/wallet/withdraw", requireAuth, async (req, res) => {
+    try {
+      const { amount, bankCode, accountNumber, accountName } = req.body;
+      const userId = req.auth.sub;
+      if (!amount || !bankCode || !accountNumber || !accountName) {
+        return res.status(400).json({ message: "amount, bankCode, accountNumber and accountName are required" });
+      }
+      const chauffeur = await storage.getChauffeurByUserId(userId);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
+      if ((chauffeur.earningsTotal || 0) < amount) {
+        return res.status(400).json({ message: "Insufficient earnings balance" });
+      }
+      const recipientRes = await paystackAPI.post("/transferrecipient", {
+        type: "nuban",
+        name: accountName,
+        account_number: accountNumber,
+        bank_code: bankCode,
+        currency: "ZAR"
+      });
+      const recipientCode = recipientRes.data.data.recipient_code;
+      const transferRef = `A2B-WITHDRAW-${Date.now()}`;
+      const transferRes = await paystackAPI.post("/transfer", {
+        source: "balance",
+        amount: Math.round(amount * 100),
+        recipient: recipientCode,
+        reason: "A2B LIFT earnings withdrawal",
+        reference: transferRef,
+        currency: "ZAR"
+      });
+      const transferCode = transferRes.data.data.transfer_code;
+      const status = transferRes.data.data.status;
+      await storage.createWithdrawal({
+        chauffeurId: chauffeur.id,
+        amount,
+        status: status === "success" ? "completed" : "pending",
+        bankName: bankCode,
+        accountNumber,
+        accountHolder: accountName,
+        paystackTransferCode: transferCode,
+        paystackRecipientCode: recipientCode
+      });
+      await storage.updateChauffeur(chauffeur.id, {
+        earningsTotal: (chauffeur.earningsTotal || 0) - amount
+      });
+      return res.json({
+        success: true,
+        message: status === "success" ? "Transfer successful" : "Transfer initiated \u2014 funds arrive within 24hrs",
+        transferCode,
+        status
+      });
+    } catch (error) {
+      console.error("[Paystack Withdraw]", error.response?.data || error.message);
+      return res.status(500).json({ message: error.response?.data?.message || error.message });
+    }
+  });
+  app2.get("/api/wallet/banks", async (_req, res) => {
+    try {
+      const response = await paystackAPI.get("/bank?currency=ZAR&country=south+africa");
+      const banks = response.data.data.map((b) => ({ name: b.name, code: b.code, id: b.id }));
+      return res.json(banks);
+    } catch (error) {
+      return res.json([
+        { name: "Absa Bank", code: "632005" },
+        { name: "Capitec Bank", code: "470010" },
+        { name: "First National Bank (FNB)", code: "250655" },
+        { name: "Nedbank", code: "198765" },
+        { name: "Standard Bank", code: "051001" },
+        { name: "African Bank", code: "430000" },
+        { name: "Discovery Bank", code: "679000" },
+        { name: "TymeBank", code: "678910" }
+      ]);
+    }
+  });
+  app2.post("/api/payments/webhook", async (req, res) => {
+    try {
+      const hash2 = import_node_crypto.default.createHmac("sha512", PAYSTACK_SECRET).update(JSON.stringify(req.body)).digest("hex");
+      if (hash2 !== req.headers["x-paystack-signature"]) {
+        return res.status(401).json({ message: "Invalid signature" });
+      }
+      const { event, data } = req.body;
+      if (event === "charge.success") {
+        console.log("[Webhook] Payment successful:", data.reference);
+      }
+      if (event === "transfer.success") {
+        await storage.updateWithdrawalByTransferCode(data.transfer_code, {
+          status: "completed",
+          processedAt: /* @__PURE__ */ new Date()
+        });
+      }
+      if (event === "transfer.failed") {
+        await storage.updateWithdrawalByTransferCode(data.transfer_code, { status: "failed" });
+      }
+      return res.sendStatus(200);
+    } catch (error) {
+      console.error("[Webhook Error]", error.message);
+      return res.sendStatus(200);
     }
   });
   return httpServer;
@@ -82606,6 +101796,7 @@ var helmet = Object.assign(
 // server/index.ts
 var fs = __toESM(require("fs"));
 var path = __toESM(require("path"));
+var import_http_proxy_middleware = __toESM(require_dist5());
 var app = (0, import_express.default)();
 var log = console.log;
 function setupCors(app2) {
@@ -82624,10 +101815,10 @@ function setupCors(app2) {
         origins.add(`https://${d.trim()}`);
       });
     }
-    const origin = req.header("origin");
-    const isLocalhost = origin?.startsWith("http://localhost:") || origin?.startsWith("http://127.0.0.1:") || origin?.startsWith("http://192.168.") || origin?.startsWith("http://10.") || origin?.includes(".exp.direct") || origin?.includes(".trycloudflare.com") || origin?.includes(".serveousercontent.com") || origin?.includes(".gitpod.dev") || origin?.includes(".up.railway.app") || origin?.match(/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./) !== null;
-    if (origin && (origins.has(origin) || isLocalhost)) {
-      res.header("Access-Control-Allow-Origin", origin);
+    const origin2 = req.header("origin");
+    const isLocalhost = origin2?.startsWith("http://localhost:") || origin2?.startsWith("http://127.0.0.1:") || origin2?.startsWith("http://192.168.") || origin2?.startsWith("http://10.") || origin2?.includes(".exp.direct") || origin2?.includes(".trycloudflare.com") || origin2?.includes(".serveousercontent.com") || origin2?.includes(".gitpod.dev") || origin2?.includes(".up.railway.app") || origin2?.includes(".netlify.app") || origin2?.match(/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./) !== null;
+    if (origin2 && (origins.has(origin2) || isLocalhost)) {
+      res.header("Access-Control-Allow-Origin", origin2);
       res.header(
         "Access-Control-Allow-Methods",
         "GET, POST, PUT, DELETE, OPTIONS"
@@ -82642,12 +101833,30 @@ function setupCors(app2) {
   });
 }
 function setupSecurity(app2) {
-  app2.use(helmet());
+  app2.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com", "https://cdn.jsdelivr.net"],
+          scriptSrcElem: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com", "https://cdn.jsdelivr.net"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'", "https:", "wss:"],
+          frameAncestors: ["'self'", "https://*.replit.dev", "https://*.repl.co", "https://*.replit.com", "https://*.replit.app"]
+        }
+      },
+      frameguard: false
+    })
+  );
   app2.use((0, import_cookie_parser.default)());
 }
 function setupBodyParsing(app2) {
   app2.use(
     import_express.default.json({
+      limit: "20mb",
       verify: (req, _res, buf) => {
         req.rawBody = buf;
       }
@@ -82680,60 +101889,48 @@ function setupRequestLogging(app2) {
     next();
   });
 }
-function getAppName() {
-  try {
-    const appJsonPath = path.resolve(process.cwd(), "app.json");
-    const appJsonContent = fs.readFileSync(appJsonPath, "utf-8");
-    const appJson = JSON.parse(appJsonContent);
-    return appJson.expo?.name || "App Landing Page";
-  } catch {
-    return "App Landing Page";
+var METRO_PORTS = [8080, 8081];
+var resolvedMetroPort = 8080;
+async function detectMetroPort() {
+  const net = await import("net");
+  for (const port of METRO_PORTS) {
+    const open = await new Promise((resolve2) => {
+      const s = net.createConnection({ port, host: "127.0.0.1" });
+      s.once("connect", () => {
+        s.destroy();
+        resolve2(true);
+      });
+      s.once("error", () => resolve2(false));
+    });
+    if (open) {
+      resolvedMetroPort = port;
+      return port;
+    }
   }
+  return resolvedMetroPort;
 }
-function serveExpoManifest(platform, res) {
-  const manifestPath = path.resolve(
-    process.cwd(),
-    "static-build",
-    platform,
-    "manifest.json"
-  );
-  if (!fs.existsSync(manifestPath)) {
-    return res.status(404).json({ error: `Manifest not found for platform: ${platform}` });
-  }
-  res.setHeader("expo-protocol-version", "1");
-  res.setHeader("expo-sfv-version", "0");
-  res.setHeader("content-type", "application/json");
-  const manifest = fs.readFileSync(manifestPath, "utf-8");
-  res.send(manifest);
+function hasStaticBuild() {
+  return fs.existsSync(path.resolve(process.cwd(), "static-build", "index.html"));
 }
-function serveLandingPage({
-  req,
-  res,
-  landingPageTemplate,
-  appName
-}) {
-  const forwardedProto = req.header("x-forwarded-proto");
-  const protocol = forwardedProto || req.protocol || "https";
-  const forwardedHost = req.header("x-forwarded-host");
-  const host = forwardedHost || req.get("host");
-  const baseUrl = `${protocol}://${host}`;
-  const expsUrl = `${host}`;
-  log(`baseUrl`, baseUrl);
-  log(`expsUrl`, expsUrl);
-  const html = landingPageTemplate.replace(/BASE_URL_PLACEHOLDER/g, baseUrl).replace(/EXPS_URL_PLACEHOLDER/g, expsUrl).replace(/APP_NAME_PLACEHOLDER/g, appName);
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.status(200).send(html);
+function makeMetroProxy(port) {
+  return (0, import_http_proxy_middleware.createProxyMiddleware)({
+    target: `http://localhost:${port}`,
+    changeOrigin: true,
+    on: {
+      proxyReq: (proxyReq) => {
+        proxyReq.setHeader("Origin", `http://localhost:${port}`);
+        proxyReq.setHeader("Host", `localhost:${port}`);
+      },
+      error: (_err, _req, res) => {
+        if (res && typeof res.status === "function") {
+          res.status(502).json({ error: "Metro bundler not reachable \u2014 is Start Frontend running?" });
+        }
+      }
+    }
+  });
 }
-function configureExpoAndLanding(app2) {
-  const templatePath = path.resolve(
-    process.cwd(),
-    "server",
-    "templates",
-    "landing-page.html"
-  );
-  const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
-  const appName = getAppName();
-  log("Serving static Expo files with dynamic manifest routing");
+var metroProxy = makeMetroProxy(8080);
+async function configureExpoAndLanding(app2) {
   const adminTemplatePath = path.resolve(
     process.cwd(),
     "server",
@@ -82741,34 +101938,39 @@ function configureExpoAndLanding(app2) {
     "admin.html"
   );
   const adminTemplate = fs.readFileSync(adminTemplatePath, "utf-8");
-  app2.use((req, res, next) => {
-    if (req.path.startsWith("/api")) {
-      return next();
-    }
-    if (req.path === "/admin") {
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      return res.status(200).send(adminTemplate);
-    }
-    if (req.path !== "/" && req.path !== "/manifest") {
-      return next();
-    }
-    const platform = req.header("expo-platform");
-    if (platform && (platform === "ios" || platform === "android")) {
-      return serveExpoManifest(platform, res);
-    }
-    if (req.path === "/") {
-      return serveLandingPage({
-        req,
-        res,
-        landingPageTemplate,
-        appName
-      });
-    }
-    next();
+  const metroPort = await detectMetroPort();
+  metroProxy = makeMetroProxy(metroPort);
+  log(`Metro bundler detected on port ${metroPort}`);
+  const staticBuildExists = hasStaticBuild();
+  log(`Static build: ${staticBuildExists ? "found" : "not found"} \u2014 routing non-API traffic to Metro:${metroPort}`);
+  app2.get("/admin", (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(adminTemplate);
   });
   app2.use("/assets", import_express.default.static(path.resolve(process.cwd(), "assets")));
-  app2.use(import_express.default.static(path.resolve(process.cwd(), "static-build")));
-  log("Expo routing: Checking expo-platform header on / and /manifest");
+  if (staticBuildExists) {
+    app2.use(import_express.default.static(path.resolve(process.cwd(), "static-build")));
+    app2.use((req, res, next) => {
+      if (req.path.startsWith("/api")) return next();
+      const platform = req.header("expo-platform");
+      if (platform === "ios" || platform === "android") {
+        log(`[Metro proxy] ${platform} manifest \u2192 Metro:${metroPort}`);
+        return metroProxy(req, res, next);
+      }
+      const staticIndex = path.resolve(process.cwd(), "static-build", "index.html");
+      res.sendFile(staticIndex);
+    });
+  } else {
+    app2.use((req, res, next) => {
+      if (req.path.startsWith("/api")) return next();
+      if (req.path === "/admin") return next();
+      if (req.path.startsWith("/socket.io")) return next();
+      const platform = req.header("expo-platform") || "web";
+      log(`[Metro proxy] ${platform} ${req.path} \u2192 Metro:${metroPort}`);
+      return metroProxy(req, res, next);
+    });
+  }
+  log("Expo routing configured");
 }
 function setupErrorHandler(app2) {
   app2.use((err, _req, res, next) => {
@@ -82787,7 +101989,7 @@ function setupErrorHandler(app2) {
   setupSecurity(app);
   setupBodyParsing(app);
   setupRequestLogging(app);
-  configureExpoAndLanding(app);
+  await configureExpoAndLanding(app);
   const server = await registerRoutes(app);
   setupErrorHandler(app);
   const port = parseInt(process.env.PORT || "5000", 10);
@@ -82884,6 +102086,7 @@ content-type/index.js:
 mime-db/index.js:
 mime-db/index.js:
 mime-db/index.js:
+mime-db/index.js:
   (*!
    * mime-db
    * Copyright(c) 2014 Jonathan Ong
@@ -82891,6 +102094,7 @@ mime-db/index.js:
    * MIT Licensed
    *)
 
+mime-types/index.js:
 mime-types/index.js:
 mime-types/index.js:
 mime-types/index.js:
@@ -83119,5 +102323,85 @@ cookie-parser/index.js:
    * Copyright(c) 2014 TJ Holowaychuk
    * Copyright(c) 2015 Douglas Christopher Wilson
    * MIT Licensed
+   *)
+
+http-proxy/lib/http-proxy/passes/web-outgoing.js:
+http-proxy/lib/http-proxy/passes/web-incoming.js:
+  (*!
+   * Array of passes.
+   *
+   * A `pass` is just a function that is executed on `req, res, options`
+   * so that you can easily add new checks while still keeping the base
+   * flexible.
+   *)
+
+http-proxy/lib/http-proxy/passes/ws-incoming.js:
+  (*!
+   * Array of passes.
+   *
+   * A `pass` is just a function that is executed on `req, socket, options`
+   * so that you can easily add new checks while still keeping the base
+   * flexible.
+   *)
+
+http-proxy/index.js:
+  (*!
+   * Caron dimonio, con occhi di bragia
+   * loro accennando, tutte le raccoglie;
+   * batte col remo qualunque s’adagia 
+   *
+   * Charon the demon, with the eyes of glede,
+   * Beckoning to them, collects them all together,
+   * Beats with his oar whoever lags behind
+   *          
+   *          Dante - The Divine Comedy (Canto III)
+   *)
+
+is-extglob/index.js:
+  (*!
+   * is-extglob <https://github.com/jonschlinkert/is-extglob>
+   *
+   * Copyright (c) 2014-2016, Jon Schlinkert.
+   * Licensed under the MIT License.
+   *)
+
+is-glob/index.js:
+  (*!
+   * is-glob <https://github.com/jonschlinkert/is-glob>
+   *
+   * Copyright (c) 2014-2017, Jon Schlinkert.
+   * Released under the MIT License.
+   *)
+
+is-number/index.js:
+  (*!
+   * is-number <https://github.com/jonschlinkert/is-number>
+   *
+   * Copyright (c) 2014-present, Jon Schlinkert.
+   * Released under the MIT License.
+   *)
+
+to-regex-range/index.js:
+  (*!
+   * to-regex-range <https://github.com/micromatch/to-regex-range>
+   *
+   * Copyright (c) 2015-present, Jon Schlinkert.
+   * Released under the MIT License.
+   *)
+
+fill-range/index.js:
+  (*!
+   * fill-range <https://github.com/jonschlinkert/fill-range>
+   *
+   * Copyright (c) 2014-present, Jon Schlinkert.
+   * Licensed under the MIT License.
+   *)
+
+is-plain-object/dist/is-plain-object.js:
+  (*!
+   * is-plain-object <https://github.com/jonschlinkert/is-plain-object>
+   *
+   * Copyright (c) 2014-2017, Jon Schlinkert.
+   * Released under the MIT License.
    *)
 */
