@@ -623,7 +623,9 @@ function renderChauffeurTable(tableId, data, showActions) {
       <td><span class="badge ${c.isApproved ? 'b-approved' : 'b-pending'}">${c.isApproved ? 'Yes' : 'No'}</span></td>
       <td><div class="action-cell">
         ${!c.isApproved ? `<button class="btn-sm btn-approve" onclick="approveChauf('${c.id}')">✓ Approve</button>` : ''}
+        ${!c.isApproved ? `<button class="btn-sm btn-reject" onclick="rejectChauf('${c.id}')">✕ Reject</button>` : ''}
         <button class="btn-sm btn-detail" onclick="chaufDetail('${c.id}')">Details</button>
+        <button class="btn-sm btn-detail" onclick="editChauf('${c.id}')">✏ Edit</button>
         <button class="btn-sm btn-detail" onclick="viewDocs('${c.id}','${(c.userName||'Driver').replace(/'/g,"\\'")}')">📄 Docs</button>
       </div></td>
     </tr>`).join('')}
@@ -631,14 +633,90 @@ function renderChauffeurTable(tableId, data, showActions) {
 }
 
 async function approveChauf(id) {
+  if (!confirm('Approve this chauffeur? They will be notified and can start accepting rides.')) return;
+  try {
+    const res = await apiFetch('/api/chauffeurs/' + id + '/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast('✅ Chauffeur approved! Notification sent.', 'ok');
+    loadChauf();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+async function rejectChauf(id) {
+  const reason = prompt('Please enter the rejection reason:');
+  if (!reason || !reason.trim()) return;
+  try {
+    const res = await apiFetch('/api/chauffeurs/' + id + '/reject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: reason.trim() }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast('🚫 Chauffeur rejected. Notification sent.', 'err');
+    loadChauf();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+function editChauf(id) {
+  const c = allChauf.find(x => x.id === id); if (!c) return;
+  document.getElementById('m-title').textContent = 'Edit Driver: ' + (c.userName || 'Chauffeur');
+  document.getElementById('m-sub').textContent = 'Update driver and vehicle information';
+  document.getElementById('m-body').innerHTML = `<div class="info-grid" style="gap:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Car Make</label>
+        <input id="edit-carMake" class="f-input" value="${(c.carMake||'').replace(/"/g,'&quot;')}" /></div>
+      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Vehicle Model</label>
+        <input id="edit-vehicleModel" class="f-input" value="${(c.vehicleModel||'').replace(/"/g,'&quot;')}" /></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Plate Number</label>
+        <input id="edit-plateNumber" class="f-input" value="${(c.plateNumber||'').replace(/"/g,'&quot;')}" /></div>
+      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Car Color</label>
+        <input id="edit-carColor" class="f-input" value="${(c.carColor||'').replace(/"/g,'&quot;')}" /></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Vehicle Type</label>
+        <select id="edit-vehicleType" class="f-input">
+          <option ${c.vehicleType==='sedan'?'selected':''}>sedan</option>
+          <option ${c.vehicleType==='suv'?'selected':''}>suv</option>
+          <option ${c.vehicleType==='luxury'?'selected':''}>luxury</option>
+          <option ${c.vehicleType==='van'?'selected':''}>van</option>
+        </select></div>
+      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Passengers</label>
+        <input id="edit-passengerCapacity" class="f-input" type="number" value="${c.passengerCapacity||4}" /></div>
+      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Luggage</label>
+        <input id="edit-luggageCapacity" class="f-input" type="number" value="${c.luggageCapacity||2}" /></div>
+    </div>
+  </div>`;
+  document.getElementById('m-foot').innerHTML = `
+    <button class="btn-lg btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn-lg btn-green" onclick="saveChaufEdit('${c.id}')">💾 Save Changes</button>
+  `;
+  openModal();
+}
+
+async function saveChaufEdit(id) {
+  const updates = {
+    carMake: document.getElementById('edit-carMake').value.trim(),
+    vehicleModel: document.getElementById('edit-vehicleModel').value.trim(),
+    plateNumber: document.getElementById('edit-plateNumber').value.trim(),
+    carColor: document.getElementById('edit-carColor').value.trim(),
+    vehicleType: document.getElementById('edit-vehicleType').value,
+    passengerCapacity: parseInt(document.getElementById('edit-passengerCapacity').value) || 4,
+    luggageCapacity: parseInt(document.getElementById('edit-luggageCapacity').value) || 2,
+  };
   try {
     const res = await apiFetch('/api/chauffeurs/' + id, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isApproved: true }),
+      body: JSON.stringify(updates),
     });
     if (!res.ok) throw new Error(await res.text());
-    toast('✅ Chauffeur approved!', 'ok');
+    toast('✅ Driver info updated!', 'ok');
+    closeModal();
     loadChauf();
   } catch(e) { toast('❌ ' + e.message, 'err'); }
 }
@@ -664,7 +742,9 @@ function chaufDetail(id) {
   document.getElementById('m-foot').innerHTML = `
     <button class="btn-lg btn-outline" onclick="closeModal()">Close</button>
     <button class="btn-lg btn-outline" onclick="closeModal();viewDocs('${c.id}','${(c.userName||'Driver').replace(/'/g,"\\'")}')">📄 View Docs</button>
+    <button class="btn-lg btn-outline" onclick="closeModal();editChauf('${c.id}')">✏ Edit</button>
     ${!c.isApproved ? `<button class="btn-lg btn-green" onclick="approveChauf('${c.id}');closeModal()">✓ Approve</button>` : ''}
+    ${!c.isApproved ? `<button class="btn-lg" style="background:var(--red);color:#fff;border:none" onclick="closeModal();rejectChauf('${c.id}')">✕ Reject</button>` : ''}
   `;
   openModal();
 }

@@ -723,7 +723,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Approve chauffeur — sends in-app congratulations notification
   app.post("/api/chauffeurs/:id/approve", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
     try {
       const chauffeur = await storage.getChauffeur(req.params.id);
@@ -732,11 +731,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (chauffeur.userId) {
         await storage.createNotification({
           userId: chauffeur.userId,
-          type: "general",
+          type: "approval",
           title: "🎉 Application Approved!",
           body: "Congratulations! Your driver application has been approved. You can now go online and start accepting rides.",
           isRead: false,
         });
+        try {
+          const app = await storage.getDriverApplicationByUserId(chauffeur.userId);
+          if (app) {
+            await storage.updateDriverApplication(app.id, {
+              status: "approved",
+              reviewedAt: new Date(),
+              reviewerAdminId: req.auth!.sub,
+            });
+          }
+        } catch {}
       }
       return res.json({ success: true });
     } catch (error: any) {
@@ -744,7 +753,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Reject chauffeur — sends in-app rejection notification with reason
   app.post("/api/chauffeurs/:id/reject", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
     try {
       const { reason } = req.body;
@@ -755,11 +763,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (chauffeur.userId) {
         await storage.createNotification({
           userId: chauffeur.userId,
-          type: "general",
-          title: "😔 Application Not Approved",
+          type: "rejection",
+          title: "Application Not Approved",
           body: `Your driver application was not approved. Reason: ${reason.trim()}. Please contact support if you have questions.`,
           isRead: false,
         });
+        try {
+          const app = await storage.getDriverApplicationByUserId(chauffeur.userId);
+          if (app) {
+            await storage.updateDriverApplication(app.id, {
+              status: "rejected",
+              notes: reason.trim(),
+              reviewedAt: new Date(),
+              reviewerAdminId: req.auth!.sub,
+            });
+          }
+        } catch {}
       }
       return res.json({ success: true });
     } catch (error: any) {

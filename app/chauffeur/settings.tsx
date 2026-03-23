@@ -78,12 +78,13 @@ export default function ChauffeurSettingsScreen() {
       setUploadingDoc(type);
       const asset = result.assets[0];
 
-      // Upload to Supabase Storage and get a public URL
-      let publicUrl = asset.uri;
+      let publicUrl: string;
       try {
         publicUrl = await uploadDocument(asset.uri, user!.id, type);
-      } catch (uploadErr) {
-        console.warn("Supabase upload failed, using local URI:", uploadErr);
+      } catch (uploadErr: any) {
+        Alert.alert("Upload Failed", "Could not upload to cloud storage. Please try again.");
+        setUploadingDoc(null);
+        return;
       }
 
       // Save the public URL to the database
@@ -107,7 +108,7 @@ export default function ChauffeurSettingsScreen() {
 
   function getDocumentStatus(type: string): "pending" | "approved" | "rejected" | "missing" {
     if (!userDocuments || !Array.isArray(userDocuments)) return "missing";
-    const doc = userDocuments.find((d: any) => d.type === type);
+    const doc = userDocuments.find((d: any) => d.type === type || d.documentType === type);
     if (!doc) return "missing";
     return doc.status as "pending" | "approved" | "rejected";
   }
@@ -135,9 +136,14 @@ export default function ChauffeurSettingsScreen() {
 
       <View style={styles.profileCard}>
         <View style={styles.avatar}>
-          <Ionicons name="person" size={28} color={Colors.white} />
+          {user?.profilePhoto ? (
+            <Image source={{ uri: user.profilePhoto }} style={styles.avatarImg} />
+          ) : (
+            <Ionicons name="person" size={28} color={Colors.white} />
+          )}
         </View>
         <Text style={styles.profileName}>{user?.name || "Driver"}</Text>
+        {user?.email && <Text style={styles.profileEmail}>{user.email}</Text>}
         <Text style={styles.profileRole}>Professional Driver</Text>
       </View>
 
@@ -268,38 +274,61 @@ export default function ChauffeurSettingsScreen() {
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Documents</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
-              {["driver_license", "vehicle_registration", "insurance"].map((type) => {
+              {["driver_license", "vehicle_registration", "insurance", "pdrp_certificate", "criminal_background_check", "driver_photo"].map((type) => {
                 const status = getDocumentStatus(type);
                 const badge = getStatusBadge(status);
-                const typeName = type === "driver_license" ? "Driver's License" : type === "vehicle_registration" ? "Vehicle Registration" : "Insurance";
-                const icon = type === "driver_license" ? "id-card" : type === "vehicle_registration" ? "car" : "shield-checkmark";
+                const DOC_NAMES: Record<string, string> = {
+                  driver_license: "Driver's License",
+                  vehicle_registration: "Vehicle Registration",
+                  insurance: "Liability Insurance",
+                  pdrp_certificate: "PrDP Certificate",
+                  criminal_background_check: "Background Check",
+                  driver_photo: "Driver Photo",
+                };
+                const DOC_ICONS: Record<string, string> = {
+                  driver_license: "id-card",
+                  vehicle_registration: "car",
+                  insurance: "shield-checkmark",
+                  pdrp_certificate: "ribbon",
+                  criminal_background_check: "finger-print",
+                  driver_photo: "camera",
+                };
+                const typeName = DOC_NAMES[type] || type.replace(/_/g, " ");
+                const icon = DOC_ICONS[type] || "document";
                 const isUploading = uploadingDoc === type;
-                
+                const docData = Array.isArray(userDocuments) ? userDocuments.find((d: any) => d.type === type || d.documentType === type) : null;
+
                 return (
-                  <Pressable
-                    key={type}
-                    style={[styles.docItem, isUploading && { opacity: 0.6 }]}
-                    onPress={() => !isUploading && pickAndUploadDocument(type)}
-                    disabled={isUploading}
-                  >
-                    <View style={styles.docIconCircle}>
-                      <Ionicons name={icon as any} size={20} color={Colors.white} />
-                    </View>
-                    <View style={styles.docInfo}>
-                      <Text style={styles.docName}>{typeName}</Text>
-                      <Text style={styles.docStatus}>Required for verification</Text>
-                    </View>
-                    {isUploading ? (
-                      <ActivityIndicator size="small" color={Colors.white} />
-                    ) : (
-                      <View style={[styles.docBadge, badge.bg]}>
-                        <Text style={styles.docBadgeText}>{badge.text}</Text>
+                  <View key={type} style={styles.docItem}>
+                    <Pressable
+                      style={[styles.docItemInner, isUploading && { opacity: 0.6 }]}
+                      onPress={() => !isUploading && pickAndUploadDocument(type)}
+                      disabled={isUploading}
+                    >
+                      <View style={styles.docIconCircle}>
+                        <Ionicons name={icon as any} size={20} color={Colors.white} />
+                      </View>
+                      <View style={styles.docInfo}>
+                        <Text style={styles.docName}>{typeName}</Text>
+                        <Text style={styles.docStatus}>{status === "missing" ? "Tap to upload" : "Tap to re-upload"}</Text>
+                      </View>
+                      {isUploading ? (
+                        <ActivityIndicator size="small" color={Colors.white} />
+                      ) : (
+                        <View style={[styles.docBadge, badge.bg]}>
+                          <Text style={styles.docBadgeText}>{badge.text}</Text>
+                        </View>
+                      )}
+                      {status === "missing" && (
+                        <Ionicons name="cloud-upload-outline" size={18} color={Colors.textMuted} style={{ marginLeft: 8 }} />
+                      )}
+                    </Pressable>
+                    {docData?.url && (
+                      <View style={styles.docPreview}>
+                        <Image source={{ uri: docData.url }} style={styles.docPreviewImage} resizeMode="cover" />
                       </View>
                     )}
-                    {status === "missing" && (
-                      <Ionicons name="cloud-upload-outline" size={18} color={Colors.textMuted} style={{ marginLeft: 8 }} />
-                    )}
-                  </Pressable>
+                  </View>
                 );
               })}
             </ScrollView>
@@ -444,8 +473,10 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 40 },
   title: { fontSize: 24, fontFamily: "Inter_700Bold", color: Colors.white, marginBottom: 20 },
   profileCard: { alignItems: "center", backgroundColor: Colors.card, borderRadius: 20, padding: 28, gap: 6, borderWidth: 1, borderColor: Colors.border, marginBottom: 24 },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center", marginBottom: 6 },
+  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center", marginBottom: 6, overflow: "hidden" as const },
+  avatarImg: { width: 64, height: 64, borderRadius: 32 },
   profileName: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white },
+  profileEmail: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   profileRole: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   menuGroup: { backgroundColor: Colors.card, borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: Colors.border, marginBottom: 16 },
   menuItem: { flexDirection: "row", alignItems: "center", padding: 16, gap: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
@@ -468,7 +499,10 @@ const styles = StyleSheet.create({
   statusPending: { backgroundColor: "rgba(255,183,77,0.2)" },
   statusChipText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.white },
   noDataText: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", padding: 20 },
-  docItem: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: Colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.border },
+  docItem: { backgroundColor: Colors.surface, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, marginBottom: 8, overflow: "hidden" as const },
+  docItemInner: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  docPreview: { paddingHorizontal: 14, paddingBottom: 12 },
+  docPreviewImage: { width: "100%", height: 120, borderRadius: 8, backgroundColor: Colors.accent },
   docIconCircle: { width: 40, height: 40, borderRadius: 10, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center" },
   docInfo: { flex: 1, gap: 2 },
   docName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },

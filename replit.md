@@ -6,7 +6,7 @@ A luxury ride-hailing platform built with Expo (React Native) frontend and Expre
 ## Tech Stack
 - **Frontend**: Expo Router (file-based routing), TypeScript, React Native
 - **Backend**: Express.js + Socket.io (WebSocket), TypeScript
-- **Database**: Replit PostgreSQL with Drizzle ORM (migrated from Supabase)
+- **Database**: Supabase PostgreSQL with Drizzle ORM (SUPABASE_DB_URL)
 - **Styling**: React Native StyleSheet, Inter font family
 - **Real-time**: Socket.io for GPS updates and ride events
 
@@ -31,10 +31,12 @@ app/                    # Expo Router screens
     chat.tsx            # In-ride chat
   chauffeur/            # Driver tab screens
     _layout.tsx         # Tab layout with liquid glass
-    index.tsx           # Dashboard with online toggle
+    index.tsx           # Dashboard with online toggle, notification bell badge, ETA/distance
+    notifications.tsx   # Notifications inbox (hidden tab, accessed via bell icon)
     rides.tsx           # Ride history
     earnings.tsx        # Earnings & withdrawals
-    settings.tsx        # Settings with vehicle/docs/notifications/help modals
+    wallet.tsx          # Wallet with Paystack bank withdrawals (SA banks)
+    settings.tsx        # Settings with vehicle/docs/notifications/help modals, profile photo, email
 server/
   index.ts              # Express server entry
   routes.ts             # API routes + Socket.io

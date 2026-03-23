@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,6 +30,8 @@ export default function ChauffeurDashboard() {
   const { on, off, emit } = useSocket();
 
   const [chauffeur, setChauffeur] = useState<any>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [rideEta, setRideEta] = useState<{ distanceText: string; durationText: string; distanceKm: number; durationMin: number } | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   // Track the last seen searching ride ID so polling doesn't re-alert the same ride
   const seenRideIdRef = useRef<string | null>(null);
@@ -51,10 +54,25 @@ export default function ChauffeurDashboard() {
     } catch {}
   }
 
-  // Cleanup sound on unmount
   useEffect(() => {
     return () => { soundRef.current?.unloadAsync(); };
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    async function fetchUnread() {
+      try {
+        const res = await apiRequest("GET", `/api/notifications/user/${user!.id}`);
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setUnreadCount(data.filter((n: any) => !n.isRead).length);
+        }
+      } catch {}
+    }
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
   const [incomingRide, setIncomingRide] = useState<any>(null);
@@ -222,6 +240,9 @@ export default function ChauffeurDashboard() {
       );
       const data = await res.json();
       if (data.polyline) setRoutePolyline(data.polyline);
+      if (data.distanceText && data.durationText) {
+        setRideEta({ distanceText: data.distanceText, durationText: data.durationText, distanceKm: data.distanceKm, durationMin: data.durationMin });
+      }
     } catch {}
   }
 
@@ -253,6 +274,7 @@ export default function ChauffeurDashboard() {
 
   function declineRide() {
     setIncomingRide(null);
+    setRideEta(null);
   }
 
   async function updateRideStatus(status: string) {
@@ -263,6 +285,7 @@ export default function ChauffeurDashboard() {
       if (status === "trip_completed") {
         setCurrentRide(null);
         setRoutePolyline(null);
+        setRideEta(null);
         if (chauffeur) refreshChauffeur(chauffeur.id);
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
@@ -304,10 +327,27 @@ export default function ChauffeurDashboard() {
           <Text style={styles.brandName}>A2B LIFT</Text>
           <Text style={styles.brandSlogan}>Premium Ride Experience</Text>
         </View>
-        <Pressable style={styles.avatarCircle} onPress={() => router.push("/chauffeur/settings")}>
-          <Ionicons name="person" size={18} color={Colors.white} />
-        </Pressable>
+        <View style={styles.headerRight}>
+          <Pressable style={styles.bellBtn} onPress={() => router.push("/chauffeur/notifications")}>
+            <Ionicons name="notifications-outline" size={20} color={Colors.white} />
+            {unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+              </View>
+            )}
+          </Pressable>
+          <Pressable style={styles.avatarCircle} onPress={() => router.push("/chauffeur/settings")}>
+            {user?.profilePhoto ? (
+              <Image source={{ uri: user.profilePhoto }} style={styles.avatarImage} />
+            ) : (
+              <Ionicons name="person" size={18} color={Colors.white} />
+            )}
+          </Pressable>
+        </View>
       </View>
+      {user?.email && (
+        <Text style={styles.welcomeEmail}>Welcome, {user.name || user.email}</Text>
+      )}
 
       {!chauffeur.isApproved && (
         <View style={styles.pendingCard}>
@@ -403,6 +443,19 @@ export default function ChauffeurDashboard() {
               <Text style={styles.incomingAddress} numberOfLines={1}>{currentRide.dropoffAddress || "Dropoff"}</Text>
             </View>
           </View>
+          {rideEta && (
+            <View style={styles.etaRow}>
+              <View style={styles.etaItem}>
+                <Ionicons name="time-outline" size={16} color={Colors.white} />
+                <Text style={styles.etaValue}>{rideEta.durationText}</Text>
+              </View>
+              <View style={styles.etaDivider} />
+              <View style={styles.etaItem}>
+                <Ionicons name="navigate-outline" size={16} color={Colors.white} />
+                <Text style={styles.etaValue}>{rideEta.distanceText}</Text>
+              </View>
+            </View>
+          )}
           {currentRide.price && (
             <Text style={styles.currentRidePrice}>R {currentRide.price}</Text>
           )}
@@ -457,9 +510,19 @@ const styles = StyleSheet.create({
   center: { alignItems: "center", justifyContent: "center" },
   scrollContent: { paddingBottom: 40 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 16 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
+  bellBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center", position: "relative" as const },
+  bellBadge: { position: "absolute" as const, top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.error, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
+  bellBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: Colors.white },
   brandName: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.white, letterSpacing: 2 },
   brandSlogan: { fontSize: 10, fontFamily: "Inter_400Regular", color: Colors.textMuted, letterSpacing: 1 },
-  avatarCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center" },
+  welcomeEmail: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginBottom: 8, marginTop: -8 },
+  avatarCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center", overflow: "hidden" as const },
+  avatarImage: { width: 36, height: 36, borderRadius: 18 },
+  etaRow: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.surface, borderRadius: 10, padding: 12, gap: 0 },
+  etaItem: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  etaValue: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  etaDivider: { width: 1, height: 20, backgroundColor: Colors.border },
   pendingCard: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: "rgba(255,183,77,0.1)", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "rgba(255,183,77,0.2)", marginBottom: 16 },
   pendingInfo: { flex: 1, gap: 2 },
   pendingTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.warning },
