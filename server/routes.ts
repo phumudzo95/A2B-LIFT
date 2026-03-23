@@ -1985,7 +1985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No saved card found. Please add a card in your wallet.", needsCard: true });
       }
 
-      const amount = ride.totalPrice || ride.estimatedPrice;
+      const amount = (ride as any).price || (ride as any).totalPrice || (ride as any).estimatedPrice;
       if (!amount) return res.status(400).json({ message: "Ride has no price set" });
 
       const reference = `A2B-RIDE-${rideId}-${Date.now()}`;
@@ -2020,8 +2020,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/payments/pay-wallet
   app.post("/api/payments/pay-wallet", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
-      const { rideId, amount } = req.body;
+      const { rideId } = req.body;
+      let { amount } = req.body;
       const userId = req.auth!.sub;
+
+      if (!amount) {
+        const ride = await storage.getRide(rideId);
+        if (!ride) return res.status(404).json({ message: "Ride not found" });
+        amount = (ride as any).price || (ride as any).totalPrice || (ride as any).estimatedPrice;
+        if (!amount) return res.status(400).json({ message: "Ride has no price set" });
+      }
 
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ message: "User not found" });
