@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import * as fs from "fs";
 import * as path from "path";
+import { createProxyMiddleware } from "http-proxy-middleware";
 
 const app = express();
 const log = console.log;
@@ -148,6 +149,13 @@ function getAppName(): string {
   }
 }
 
+const METRO_PORT = 8080;
+const METRO_TARGET = `http://localhost:${METRO_PORT}`;
+
+function hasStaticBuild(): boolean {
+  return fs.existsSync(path.resolve(process.cwd(), "static-build", "index.html"));
+}
+
 function serveExpoManifest(platform: string, res: Response) {
   const manifestPath = path.resolve(
     process.cwd(),
@@ -169,6 +177,20 @@ function serveExpoManifest(platform: string, res: Response) {
   const manifest = fs.readFileSync(manifestPath, "utf-8");
   res.send(manifest);
 }
+
+// Proxy all Expo/Metro dev-server traffic to the Metro bundler on port 8080
+const metroProxy = createProxyMiddleware({
+  target: METRO_TARGET,
+  changeOrigin: true,
+  ws: true,
+  on: {
+    error: (_err: any, _req: any, res: any) => {
+      if (res && typeof res.status === "function") {
+        res.status(502).json({ error: "Metro bundler not reachable. Is `Start Frontend` running?" });
+      }
+    },
+  },
+});
 
 function serveLandingPage({
   req,
@@ -220,6 +242,9 @@ function configureExpoAndLanding(app: express.Application) {
   );
   const adminTemplate = fs.readFileSync(adminTemplatePath, "utf-8");
 
+  const staticBuildExists = hasStaticBuild();
+  log(`Static build: ${staticBuildExists ? "found (web)" : "not found"} — native requests always proxied to Metro:${METRO_PORT}`);
+
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith("/api")) {
       return next();
@@ -230,26 +255,31 @@ function configureExpoAndLanding(app: express.Application) {
       return res.status(200).send(adminTemplate);
     }
 
-    if (req.path !== "/" && req.path !== "/manifest") {
-      return next();
-    }
-
     const platform = req.header("expo-platform");
-    if (platform && (platform === "ios" || platform === "android")) {
-      return serveExpoManifest(platform, res);
+    const isNativePlatform = platform === "ios" || platform === "android";
+
+    // Native Expo Go requests (manifest + bundles) — ALWAYS proxy to Metro
+    if (isNativePlatform && (req.path === "/" || req.path === "/manifest")) {
+      log(`[Metro proxy] ${platform} manifest → Metro:${METRO_PORT}`);
+      return (metroProxy as any)(req, res, next);
     }
 
+    // Bundle files, source maps, HMR — always proxy to Metro
+    if (req.path.endsWith(".bundle") ||
+        req.path.endsWith(".map") ||
+        req.path.startsWith("/__metro") ||
+        req.path.startsWith("/_expo") ||
+        req.path.startsWith("/debugger-ui")) {
+      return (metroProxy as any)(req, res, next);
+    }
+
+    // Root "/" — serve web static build or landing page
     if (req.path === "/") {
-      const staticIndex = path.resolve(process.cwd(), "static-build", "index.html");
-      if (fs.existsSync(staticIndex)) {
+      if (staticBuildExists) {
+        const staticIndex = path.resolve(process.cwd(), "static-build", "index.html");
         return res.sendFile(staticIndex);
       }
-      return serveLandingPage({
-        req,
-        res,
-        landingPageTemplate,
-        appName,
-      });
+      return serveLandingPage({ req, res, landingPageTemplate, appName });
     }
 
     next();
