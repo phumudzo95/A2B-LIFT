@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A2B LIFT - Admin Panel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #000; color: #fff; min-height: 100vh; }
+    .header { background: #111; border-bottom: 1px solid #2a2a2a; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+    .header span { font-size: 11px; color: #6b6b6b; letter-spacing: 1px; }
+    .nav { display: flex; gap: 8px; background: #111; padding: 12px 24px; border-bottom: 1px solid #2a2a2a; overflow-x: auto; }
+    .nav button { background: #1a1a1a; border: 1px solid #2a2a2a; color: #bdbdbd; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+    .nav button.active { background: #fff; color: #000; border-color: #fff; }
+    .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .stat-card { background: #121212; border: 1px solid #2a2a2a; border-radius: 14px; padding: 24px; text-align: center; }
+    .stat-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+    .stat-label { font-size: 12px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-alert { color: #ff4d4d; }
+    .section { margin-bottom: 32px; }
+    .section-title { font-size: 14px; font-weight: 600; color: #bdbdbd; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 12px 16px; font-size: 11px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #2a2a2a; }
+    td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid #1a1a1a; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+    .badge-pending { background: rgba(255,183,77,0.15); color: #ffb74d; }
+    .badge-approved { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-paid { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-rejected { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+    .badge-online { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-offline { background: rgba(107,107,107,0.15); color: #6b6b6b; }
+    .badge-high { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+    .badge-medium { background: rgba(255,183,77,0.15); color: #ffb74d; }
+    .badge-low { background: rgba(107,107,107,0.15); color: #bdbdbd; }
+    .badge-open { background: rgba(255,183,77,0.15); color: #ffb74d; }
+    .badge-resolved { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-card { background: rgba(99,102,241,0.15); color: #818cf8; }
+    .badge-wallet { background: rgba(16,185,129,0.15); color: #34d399; }
+    .badge-cash { background: rgba(107,107,107,0.15); color: #bdbdbd; }
+    .badge-completed { background: rgba(76,175,80,0.15); color: #4caf50; }
+    .badge-failed { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+    .payments-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .pay-stat { background: #121212; border: 1px solid #2a2a2a; border-radius: 12px; padding: 18px; text-align: center; }
+    .pay-stat-value { font-size: 24px; font-weight: 700; margin-bottom: 3px; }
+    .pay-stat-label { font-size: 11px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 1px; }
+    .sub-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+    .sub-tab { background: #1a1a1a; border: 1px solid #2a2a2a; color: #bdbdbd; padding: 7px 16px; border-radius: 8px; cursor: pointer; font-size: 12px; }
+    .sub-tab.active { background: #ffffff18; border-color: #555; color: #fff; }
+    .btn { padding: 6px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; }
+    .btn-approve { background: #4caf50; color: #fff; }
+    .btn-reject { background: #ff4d4d; color: #fff; }
+    .btn-small { padding: 4px 10px; font-size: 11px; }
+    .btn-resolve { background: #4caf50; color: #fff; }
+    .loading { text-align: center; padding: 40px; color: #6b6b6b; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .desc-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: #bdbdbd; }
+    .refresh-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #bdbdbd; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .refresh-btn:hover { background: #2a2a2a; }
+
+    .login-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.75); }
+    .login-overlay.show { display: flex; }
+    .login-card { width: min(420px, 92vw); background: #121212; border: 1px solid #2a2a2a; border-radius: 16px; padding: 24px; }
+    .login-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .login-sub { font-size: 12px; color: #8a8a8a; margin-bottom: 18px; }
+    .field { display: grid; gap: 6px; margin-bottom: 12px; }
+    .label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #8a8a8a; }
+    .input { background: #0d0d0d; border: 1px solid #2a2a2a; color: #fff; padding: 12px 12px; border-radius: 12px; outline: none; }
+    .login-actions { display: flex; gap: 10px; margin-top: 12px; }
+    .btn-primary { background: #fff; color: #000; border: 1px solid #fff; padding: 10px 14px; border-radius: 12px; font-weight: 700; cursor: pointer; flex: 1; }
+    .btn-secondary { background: transparent; color: #bdbdbd; border: 1px solid #2a2a2a; padding: 10px 14px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+    .error { color: #ff4d4d; font-size: 12px; margin-top: 10px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>A2B LIFT</h1>
+      <span>ADMIN PANEL</span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span id="last-refresh" style="font-size:11px;color:#6b6b6b"></span>
+      <button class="refresh-btn" onclick="refreshAll()">⟳ Refresh</button>
+      <button class="refresh-btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="active" onclick="switchTab('overview')">Overview</button>
+    <button onclick="switchTab('chauffeurs')">Chauffeurs</button>
+    <button onclick="switchTab('rides')">Rides</button>
+    <button onclick="switchTab('payments')">Payments</button>
+    <button onclick="switchTab('withdrawals')">Withdrawals</button>
+    <button onclick="switchTab('safety')">Safety Reports</button>
+  </div>
+
+  <div class="content">
+    <div id="tab-overview" class="tab-content active">
+      <div class="stats-grid" id="stats-grid">
+        <div class="loading">Loading stats...</div>
+      </div>
+    </div>
+
+    <div id="tab-chauffeurs" class="tab-content">
+      <div class="section">
+        <div class="section-title">All Chauffeurs</div>
+        <div id="chauffeurs-table"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <div id="tab-rides" class="tab-content">
+      <div class="section">
+        <div class="section-title">All Rides</div>
+        <div id="rides-table"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <div id="tab-payments" class="tab-content">
+      <div class="section">
+        <div id="payments-summary" class="payments-summary"></div>
+        <div class="sub-tabs">
+          <button class="sub-tab active" id="ptab-rider" onclick="switchPayTab('rider')">Rider Payments</button>
+          <button class="sub-tab" id="ptab-withdrawals" onclick="switchPayTab('withdrawals')">Driver Withdrawals</button>
+        </div>
+        <div id="payments-rider-panel">
+          <div class="section-title">All Rider Payments</div>
+          <div id="payments-table"><div class="loading">Loading...</div></div>
+        </div>
+        <div id="payments-withdrawals-panel" style="display:none">
+          <div class="section-title">Driver Withdrawal Requests</div>
+          <div id="payments-withdrawals-table"><div class="loading">Loading...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-withdrawals" class="tab-content">
+      <div class="section">
+        <div class="section-title">Withdrawal Requests</div>
+        <div id="withdrawals-table"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <div id="tab-safety" class="tab-content">
+      <div class="section">
+        <div class="section-title">Safety Reports & Complaints</div>
+        <div id="safety-table"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="login" class="login-overlay">
+    <div class="login-card">
+      <div class="login-title">Admin Login</div>
+      <div class="login-sub">Sign in with an account whose role is <b>admin</b>.</div>
+      <div class="field">
+        <div class="label">Username</div>
+        <input id="username" class="input" placeholder="admin" autocomplete="username" />
+      </div>
+      <div class="field">
+        <div class="label">Password</div>
+        <input id="password" class="input" type="password" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <div class="login-actions">
+        <button class="btn-primary" onclick="doLogin()">Login</button>
+        <button class="btn-secondary" onclick="clearToken()">Clear Token</button>
+      </div>
+      <div id="login-error" class="error"></div>
+    </div>
+  </div>
+
+  <script>
+    const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? ''
+      : 'https://api-production-0783.up.railway.app';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6d2tpZWlrdGJocHR2Z3NxZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4ODA1NjEsImV4cCI6MjA4NjQ1NjU2MX0.BgTFknM60JsTl1iHAN1ri3pxFi2rTJfbyZ6rj6Etecc';
+    const TOKEN_KEY = 'a2b_admin_token';
+
+    function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+    function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+    function clearToken() { localStorage.removeItem(TOKEN_KEY); showLogin(true); }
+
+    function showLogin(show) {
+      document.getElementById('login').classList.toggle('show', !!show);
+    }
+
+    function authHeaders() {
+      const t = getToken();
+      return t ? { 'Authorization': 'Bearer ' + t } : {};
+    }
+
+    async function apiFetch(path, opts = {}) {
+      const headers = Object.assign({}, opts.headers || {}, authHeaders());
+      const res = await fetch(API + path, Object.assign({}, opts, { headers, credentials: 'include' }));
+      if (res.status === 401 || res.status === 403) {
+        showLogin(true);
+      }
+      return res;
+    }
+
+    async function doLogin() {
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value;
+      const errEl = document.getElementById('login-error');
+      errEl.style.display = 'none';
+      try {
+        const res = await fetch(API + '/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p }),
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          errEl.textContent = 'Login failed: ' + text;
+          errEl.style.display = 'block';
+          return;
+        }
+        const data = await res.json();
+        if (!data?.user || data.user.role !== 'admin') {
+          errEl.textContent = 'This account is not an admin.';
+          errEl.style.display = 'block';
+          return;
+        }
+        if (data.accessToken) setToken(data.accessToken);
+        showLogin(false);
+        loadStats();
+        loadChauffeurs();
+        loadRides();
+        loadPayments();
+        loadWithdrawals();
+        loadSafetyReports();
+        startAutoRefresh();
+      } catch(e) {
+        errEl.textContent = 'Login failed.';
+        errEl.style.display = 'block';
+      }
+    }
+
+    async function logout() {
+      stopAutoRefresh();
+      clearToken();
+      try { await fetch(API + '/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav button').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      event.target.classList.add('active');
+      if (tab === 'chauffeurs') loadChauffeurs();
+      if (tab === 'rides') loadRides();
+      if (tab === 'payments') loadPayments();
+      if (tab === 'withdrawals') loadWithdrawals();
+      if (tab === 'safety') loadSafetyReports();
+    }
+
+    function switchPayTab(which) {
+      document.getElementById('payments-rider-panel').style.display = which === 'rider' ? '' : 'none';
+      document.getElementById('payments-withdrawals-panel').style.display = which === 'withdrawals' ? '' : 'none';
+      document.getElementById('ptab-rider').classList.toggle('active', which === 'rider');
+      document.getElementById('ptab-withdrawals').classList.toggle('active', which === 'withdrawals');
+    }
+
+    function refreshAll() {
+      loadStats();
+      loadChauffeurs();
+      loadRides();
+      loadPayments();
+      loadWithdrawals();
+      loadSafetyReports();
+    }
+
+    async function loadStats() {
+      try {
+        const res = await apiFetch('/api/admin/stats');
+        if (!res.ok) throw new Error();
+        const el = document.getElementById('last-refresh');
+        if (el) el.textContent = 'Updated ' + new Date().toLocaleTimeString();
+        const stats = await res.json();
+        document.getElementById('stats-grid').innerHTML = `
+          <div class="stat-card"><div class="stat-value">${stats.totalRides}</div><div class="stat-label">Total Rides</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.completedRides}</div><div class="stat-label">Completed</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.activeRides}</div><div class="stat-label">Active Rides</div></div>
+          <div class="stat-card"><div class="stat-value">R ${stats.totalRevenue}</div><div class="stat-label">Total Revenue</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.totalChauffeurs}</div><div class="stat-label">Chauffeurs</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.onlineChauffeurs}</div><div class="stat-label">Online Now</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.pendingApprovals}</div><div class="stat-label">Pending Approvals</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.pendingWithdrawals}</div><div class="stat-label">Pending Withdrawals</div></div>
+          <div class="stat-card"><div class="stat-value ${stats.openReports > 0 ? 'stat-alert' : ''}">${stats.openReports}</div><div class="stat-label">Open Reports</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.totalReports}</div><div class="stat-label">Total Reports</div></div>
+        `;
+      } catch(e) {
+        document.getElementById('stats-grid').innerHTML = '<div class="loading">Failed to load stats</div>';
+      }
+    }
+
+    async function loadChauffeurs() {
+      try {
+        const res = await apiFetch('/api/chauffeurs');
+        const chauffeurs = await res.json();
+        if (!Array.isArray(chauffeurs) || !chauffeurs.length) {
+          document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">No chauffeurs registered yet</div>';
+          return;
+        }
+        const DOC_LABELS = {
+          pdrp_certificate: 'PDRP Certificate',
+          drivers_license: "Valid Driver's License",
+          driver_evaluation: 'Driver Evaluation',
+          criminal_background_check: 'Criminal Background Check',
+          double_license_disk: 'Double License Disk',
+          passenger_liability_insurance: 'Passenger Liability Insurance',
+          dekra_report: 'Dekra Report',
+          driver_photo: 'Driver Profile Photo',
+          // legacy
+          id_document: 'ID / Passport',
+          proof_of_address: 'Proof of Address',
+          vehicle_registration: 'Vehicle Registration',
+          prDP: 'PrDP Certificate',
+        };
+        let html = '<table><thead><tr><th>Driver</th><th>Phone</th><th>Vehicle</th><th>Plate</th><th>Color</th><th>Category</th><th>Status</th><th>Online</th><th>Actions</th></tr></thead><tbody>';
+        for (const c of chauffeurs) {
+          const vehicle = [c.carMake, c.vehicleModel].filter(Boolean).join(' ') || '—';
+          html += `<tr>
+            <td><strong>${c.userName || '—'}</strong><br><small style="color:#888">${c.userEmail || ''}</small></td>
+            <td>${c.userPhone || c.phone || '—'}</td>
+            <td>${vehicle}</td>
+            <td>${c.plateNumber || '—'}</td>
+            <td>${c.carColor || '—'}</td>
+            <td>${c.vehicleType || '—'}</td>
+            <td><span class="badge ${c.isApproved ? 'badge-approved' : 'badge-pending'}">${c.isApproved ? 'Approved' : 'Pending'}</span></td>
+            <td><span class="badge ${c.isOnline ? 'badge-online' : 'badge-offline'}">${c.isOnline ? 'Online' : 'Offline'}</span></td>
+            <td style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-small" style="background:#1a2a4a;color:#fff" onclick="viewDocs('${c.id}','${c.userName||'Driver'}')">📄 Docs</button>
+              ${!c.isApproved ? `<button class="btn btn-approve btn-small" onclick="approveChauffeur('${c.id}')">Approve</button>` : '<span style="color:#4caf50">✓ Approved</span>'}
+            </td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('chauffeurs-table').innerHTML = html;
+        window._docLabels = DOC_LABELS;
+      } catch(e) {
+        document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">Failed to load</div>';
+      }
+    }
+
+    async function loadRides() {
+      try {
+        const res = await apiFetch('/api/rides');
+        const rides = await res.json();
+        if (!rides.length) {
+          document.getElementById('rides-table').innerHTML = '<div class="loading">No rides</div>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th></tr></thead><tbody>';
+        for (const r of rides) {
+          html += `<tr>
+            <td>${r.pickupAddress || 'N/A'}</td>
+            <td>${r.dropoffAddress || 'N/A'}</td>
+            <td><span class="badge badge-${r.status === 'trip_completed' ? 'approved' : r.status === 'cancelled' ? 'rejected' : 'pending'}">${r.status}</span></td>
+            <td>R ${r.price || '—'}</td>
+            <td><span class="badge badge-${r.paymentStatus === 'paid' ? 'paid' : 'pending'}">${r.paymentStatus || '—'}</span></td>
+            <td>${new Date(r.createdAt).toLocaleDateString()}</td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('rides-table').innerHTML = html;
+      } catch(e) {
+        document.getElementById('rides-table').innerHTML = '<div class="loading">Failed to load</div>';
+      }
+    }
+
+    function fmt(amount) { return 'R ' + parseFloat(amount || 0).toFixed(2); }
+    function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; }
+    function methodBadge(m) {
+      const cls = m === 'card' ? 'badge-card' : m === 'wallet' ? 'badge-wallet' : 'badge-cash';
+      return `<span class="badge ${cls}">${(m||'—').toUpperCase()}</span>`;
+    }
+    function statusBadge(s) {
+      const cls = s === 'paid' || s === 'completed' ? 'badge-paid' : s === 'pending' ? 'badge-pending' : s === 'failed' ? 'badge-failed' : 'badge-pending';
+      return `<span class="badge ${cls}">${s || '—'}</span>`;
+    }
+
+    async function loadPayments() {
+      document.getElementById('payments-table').innerHTML = '<div class="loading">Loading...</div>';
+      document.getElementById('payments-withdrawals-table').innerHTML = '<div class="loading">Loading...</div>';
+      try {
+        const [pmtRes, wdRes] = await Promise.all([
+          apiFetch('/api/admin/payments'),
+          apiFetch('/api/withdrawals'),
+        ]);
+        const payments = await pmtRes.json();
+        const withdrawals = wdRes.ok ? await wdRes.json() : [];
+
+        // Summary stats
+        const paid = payments.filter(p => p.status === 'paid');
+        const totalPaid = paid.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+        const cardPaid = paid.filter(p => p.method === 'card').reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+        const walletPaid = paid.filter(p => p.method === 'wallet').reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+        const cashPaid = paid.filter(p => p.method === 'cash').reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+        const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending').reduce((s, w) => s + parseFloat(w.amount || 0), 0);
+
+        document.getElementById('payments-summary').innerHTML = `
+          <div class="pay-stat"><div class="pay-stat-value">${fmt(totalPaid)}</div><div class="pay-stat-label">Total Collected</div></div>
+          <div class="pay-stat"><div class="pay-stat-value" style="color:#818cf8">${fmt(cardPaid)}</div><div class="pay-stat-label">Via Card</div></div>
+          <div class="pay-stat"><div class="pay-stat-value" style="color:#34d399">${fmt(walletPaid)}</div><div class="pay-stat-label">Via Wallet</div></div>
+          <div class="pay-stat"><div class="pay-stat-value" style="color:#bdbdbd">${fmt(cashPaid)}</div><div class="pay-stat-label">Via Cash</div></div>
+          <div class="pay-stat"><div class="pay-stat-value">${payments.length}</div><div class="pay-stat-label">Transactions</div></div>
+          <div class="pay-stat"><div class="pay-stat-value" style="color:#ffb74d">${fmt(pendingWithdrawals)}</div><div class="pay-stat-label">Pending Withdrawals</div></div>
+        `;
+
+        // Rider payments table
+        if (!payments.length) {
+          document.getElementById('payments-table').innerHTML = '<div class="loading">No payments recorded yet</div>';
+        } else {
+          let html = `<table><thead><tr>
+            <th>Rider</th><th>Route / Description</th><th>Method</th><th>Amount</th>
+            <th>Status</th><th>Reference</th><th>Date</th>
+          </tr></thead><tbody>`;
+          for (const p of payments) {
+            html += `<tr>
+              <td>
+                <strong>${p.riderName || '—'}</strong>
+                <br><small style="color:#888">${p.riderEmail || ''}</small>
+              </td>
+              <td class="desc-cell" title="${(p.rideRoute||'').replace(/"/g,'&quot;')}">${p.rideRoute || '—'}</td>
+              <td>${methodBadge(p.method)}</td>
+              <td><strong>${fmt(p.amount)}</strong></td>
+              <td>${statusBadge(p.status)}</td>
+              <td style="font-size:11px;color:#888">${p.paystackReference ? p.paystackReference.slice(0,20)+'…' : '—'}</td>
+              <td style="font-size:12px">${fmtDate(p.paidAt || p.createdAt)}</td>
+            </tr>`;
+          }
+          html += '</tbody></table>';
+          document.getElementById('payments-table').innerHTML = html;
+        }
+
+        // Withdrawals table inside payments tab
+        if (!withdrawals.length) {
+          document.getElementById('payments-withdrawals-table').innerHTML = '<div class="loading">No withdrawal requests yet</div>';
+        } else {
+          let html = `<table><thead><tr>
+            <th>Chauffeur</th><th>Bank</th><th>Account</th><th>Amount</th>
+            <th>Status</th><th>Transfer Ref</th><th>Date</th><th>Actions</th>
+          </tr></thead><tbody>`;
+          for (const w of withdrawals) {
+            html += `<tr>
+              <td style="font-size:12px">${w.accountHolder || ('ID: ' + (w.chauffeurId||'').slice(0,8)+'…')}</td>
+              <td>${w.bankName || '—'}</td>
+              <td style="font-size:12px">${w.accountNumber ? ('•••• ' + String(w.accountNumber).slice(-4)) : '—'}</td>
+              <td><strong>${fmt(w.amount)}</strong></td>
+              <td>${statusBadge(w.status)}</td>
+              <td style="font-size:11px;color:#888">${w.paystackTransferCode || '—'}</td>
+              <td style="font-size:12px">${fmtDate(w.processedAt || w.createdAt)}</td>
+              <td>
+                ${w.status === 'pending' ? `
+                  <button class="btn btn-approve btn-small" onclick="updateWithdrawalFromPayTab('${w.id}','approved')">Approve</button>
+                  <button class="btn btn-reject btn-small" onclick="updateWithdrawalFromPayTab('${w.id}','rejected')" style="margin-left:4px">Reject</button>
+                ` : w.status === 'approved' ? `
+                  <button class="btn btn-approve btn-small" onclick="updateWithdrawalFromPayTab('${w.id}','paid')">Mark Paid</button>
+                ` : ''}
+              </td>
+            </tr>`;
+          }
+          html += '</tbody></table>';
+          document.getElementById('payments-withdrawals-table').innerHTML = html;
+        }
+      } catch(e) {
+        document.getElementById('payments-table').innerHTML = '<div class="loading">Failed to load payments</div>';
+      }
+    }
+
+    async function updateWithdrawalFromPayTab(id, status) {
+      try {
+        await apiFetch('/api/withdrawals/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        loadPayments();
+        loadStats();
+      } catch(e) { alert('Failed to update'); }
+    }
+
+    async function loadWithdrawals() {
+      try {
+        const res = await apiFetch('/api/withdrawals');
+        const withdrawals = await res.json();
+        if (!withdrawals.length) {
+          document.getElementById('withdrawals-table').innerHTML = '<div class="loading">No withdrawals</div>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Chauffeur ID</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+        for (const w of withdrawals) {
+          html += `<tr>
+            <td style="font-size:11px">${(w.chauffeurId || '').substring(0,8)}...</td>
+            <td>R ${w.amount}</td>
+            <td><span class="badge badge-${w.status === 'paid' ? 'paid' : w.status === 'approved' ? 'approved' : w.status === 'rejected' ? 'rejected' : 'pending'}">${w.status}</span></td>
+            <td>${new Date(w.createdAt).toLocaleDateString()}</td>
+            <td>
+              ${w.status === 'pending' ? `
+                <button class="btn btn-approve btn-small" onclick="updateWithdrawal('${w.id}', 'approved')">Approve</button>
+                <button class="btn btn-reject btn-small" onclick="updateWithdrawal('${w.id}', 'rejected')" style="margin-left:4px">Reject</button>
+              ` : w.status === 'approved' ? `
+                <button class="btn btn-approve btn-small" onclick="updateWithdrawal('${w.id}', 'paid')">Mark Paid</button>
+              ` : ''}
+            </td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('withdrawals-table').innerHTML = html;
+      } catch(e) {
+        document.getElementById('withdrawals-table').innerHTML = '<div class="loading">Failed to load</div>';
+      }
+    }
+
+    async function loadSafetyReports() {
+      try {
+        const res = await apiFetch('/api/safety-reports');
+        const reports = await res.json();
+        if (!reports.length) {
+          document.getElementById('safety-table').innerHTML = '<div class="loading">No safety reports</div>';
+          return;
+        }
+        let html = '<table><thead><tr><th>Type</th><th>Priority</th><th>Description</th><th>AI Response</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+        for (const r of reports) {
+          html += `<tr>
+            <td style="text-transform:capitalize">${r.type}</td>
+            <td><span class="badge badge-${r.priority}">${r.priority}</span></td>
+            <td class="desc-cell" title="${(r.description || '').replace(/"/g, '&quot;')}">${r.description || '—'}</td>
+            <td class="desc-cell" title="${(r.aiResponse || '').replace(/"/g, '&quot;')}">${r.aiResponse || '—'}</td>
+            <td><span class="badge badge-${r.status}">${r.status}</span></td>
+            <td>${new Date(r.createdAt).toLocaleDateString()}</td>
+            <td>
+              ${r.status === 'open' ? `<button class="btn btn-resolve btn-small" onclick="resolveReport('${r.id}')">Resolve</button>` : ''}
+            </td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('safety-table').innerHTML = html;
+      } catch(e) {
+        document.getElementById('safety-table').innerHTML = '<div class="loading">Failed to load</div>';
+      }
+    }
+
+    async function approveChauffeur(id) {
+      try {
+        await apiFetch('/api/chauffeurs/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isApproved: true })
+        });
+        loadChauffeurs();
+        loadStats();
+      } catch(e) { alert('Failed to approve'); }
+    }
+
+    async function updateWithdrawal(id, status) {
+      try {
+        await apiFetch('/api/withdrawals/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        loadWithdrawals();
+        loadStats();
+      } catch(e) { alert('Failed to update'); }
+    }
+
+    async function resolveReport(id) {
+      try {
+        await apiFetch('/api/safety-reports/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'resolved' })
+        });
+        loadSafetyReports();
+        loadStats();
+      } catch(e) { alert('Failed to resolve'); }
+    }
+
+    async function viewDocs(chauffeurId, name) {
+      const modal = document.getElementById('docs-modal');
+      document.getElementById('docs-modal-title').textContent = name + ' — Documents';
+      document.getElementById('docs-modal-body').innerHTML = '<div class="loading">Loading…</div>';
+      modal.style.display = 'flex';
+      try {
+        const res = await apiFetch('/api/chauffeurs/' + chauffeurId + '/documents');
+        const docs = await res.json();
+        const labels = window._docLabels || {};
+        if (!Array.isArray(docs) || !docs.length) {
+          document.getElementById('docs-modal-body').innerHTML = '<p style="color:#888;text-align:center">No documents uploaded yet.</p>';
+          return;
+        }
+        let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">';
+        for (const d of docs) {
+          const label = labels[d.documentType] || d.documentType.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase());
+          const isImg = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(d.url || '');
+          const isPdf = /\.pdf(\?|$)/i.test(d.url || '');
+          html += `<div style="background:#1a2a4a;border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:12px;color:#aaa;margin-bottom:8px">${label}</div>
+            ${isImg ? `<img src="${d.url}" style="max-width:100%;max-height:180px;border-radius:6px;object-fit:cover" />` :
+              isPdf ? `<div style="font-size:32px">📄</div>` :
+              `<div style="font-size:32px">📎</div>`}
+            <a href="${d.url}" target="_blank" style="display:block;margin-top:8px;font-size:12px;color:#4fc3f7">View / Download</a>
+          </div>`;
+        }
+        html += '</div>';
+        document.getElementById('docs-modal-body').innerHTML = html;
+      } catch(e) {
+        document.getElementById('docs-modal-body').innerHTML = '<p style="color:#f44">Failed to load documents.</p>';
+      }
+    }
+
+    let _refreshTimer = null;
+
+    function startAutoRefresh() {
+      if (_refreshTimer) clearInterval(_refreshTimer);
+      _refreshTimer = setInterval(refreshAll, 30000);
+    }
+
+    function stopAutoRefresh() {
+      if (_refreshTimer) clearInterval(_refreshTimer);
+      _refreshTimer = null;
+    }
+
+    // Boot
+    if (!getToken()) {
+      showLogin(true);
+    } else {
+      loadStats();
+      loadChauffeurs();
+      loadRides();
+      loadPayments();
+      loadWithdrawals();
+      loadSafetyReports();
+      startAutoRefresh();
+    }
+  </script>
+
+  <!-- Document Viewer Modal -->
+  <div id="docs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#0d1b2e;border-radius:14px;padding:28px;max-width:700px;width:94%;max-height:85vh;overflow-y:auto;position:relative;">
+      <button onclick="document.getElementById('docs-modal').style.display='none'" style="position:absolute;top:14px;right:16px;background:none;border:none;color:#fff;font-size:22px;cursor:pointer">✕</button>
+      <h2 id="docs-modal-title" style="color:#fff;margin:0 0 18px;font-size:18px"></h2>
+      <div id="docs-modal-body"></div>
+    </div>
+  </div>
+</body>
+</html>
+

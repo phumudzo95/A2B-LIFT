@@ -53,6 +53,7 @@ function setupCors(app: express.Application) {
       origin?.includes(".serveousercontent.com") ||
       origin?.includes(".gitpod.dev") ||
       origin?.includes(".up.railway.app") ||
+      origin?.includes(".netlify.app") ||
       (origin?.match(/^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\./) !== null);
 
     if (origin && (origins.has(origin) || isLocalhost)) {
