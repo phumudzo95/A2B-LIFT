@@ -83,8 +83,10 @@ function setupSecurity(app: express.Application) {
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: ["'self'", "https:", "wss:"],
+          frameAncestors: ["'self'", "https://*.replit.dev", "https://*.repl.co", "https://*.replit.com", "https://*.replit.app"],
         },
       },
+      frameguard: false,
     })
   );
   app.use(cookieParser());

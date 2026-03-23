@@ -108,3 +108,11 @@ Commission rate: 20%
 ## Admin Panel
 - Accessible at /admin route on the backend
 - Overview stats, driver management, ride monitoring, withdrawal approvals, safety reports
+
+## Replit Configuration
+- **Backend** runs on port 5000 (webview) via `npm run server:dev` (tsx)
+- **Frontend** (Expo Metro) runs on port 8080 via `expo start --web`
+- CORS allows Replit dev domains (`REPLIT_DEV_DOMAIN`, `REPLIT_DOMAINS`)
+- Helmet CSP `frame-ancestors` set to allow Replit preview iframe
+- `EXPO_PUBLIC_DOMAIN` set to `https://$REPLIT_DEV_DOMAIN` for API calls
+- Required environment variables: `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_API_KEY`, `PAYSTACK_SECRET_KEY`
