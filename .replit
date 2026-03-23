@@ -13,14 +13,6 @@ run = ["npm", "run", "server:prod"]
 localPort = 5000
 externalPort = 80
 
-[[ports]]
-localPort = 8080
-externalPort = 8080
-
-[[ports]]
-localPort = 8082
-externalPort = 3001
-
 [env]
 PORT = "5000"
 
@@ -67,13 +59,13 @@ name = "Start Backend"
 author = "agent"
 mode = "sequential"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run server:dev"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "fuser -k 5000/tcp 2>/dev/null; sleep 1; npm run server:dev"
+waitForPort = 5000
 
 [[workflows.workflow]]
 name = "Start Frontend"
@@ -84,7 +76,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=https://$REPLIT_DEV_DOMAIN EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=$GOOGLE_API_KEY ./node_modules/.bin/expo start --port 8080"
+args = "fuser -k 8080/tcp 2>/dev/null; sleep 1; EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=https://$REPLIT_DEV_DOMAIN EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=$GOOGLE_API_KEY ./node_modules/.bin/expo start --port 8080"
 waitForPort = 8080
 
 [userenv]

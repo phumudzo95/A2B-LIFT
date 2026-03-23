@@ -149,48 +149,45 @@ function getAppName(): string {
   }
 }
 
-const METRO_PORT = 8080;
-const METRO_TARGET = `http://localhost:${METRO_PORT}`;
+// Try 8080 first; if Metro grabbed 8081 due to a port collision, fall back
+const METRO_PORTS = [8080, 8081];
+let resolvedMetroPort = 8080;
+
+async function detectMetroPort(): Promise<number> {
+  const net = await import("net");
+  for (const port of METRO_PORTS) {
+    const open = await new Promise<boolean>((resolve) => {
+      const s = net.createConnection({ port, host: "127.0.0.1" });
+      s.once("connect", () => { s.destroy(); resolve(true); });
+      s.once("error", () => resolve(false));
+    });
+    if (open) { resolvedMetroPort = port; return port; }
+  }
+  return resolvedMetroPort;
+}
 
 function hasStaticBuild(): boolean {
   return fs.existsSync(path.resolve(process.cwd(), "static-build", "index.html"));
 }
 
-function serveExpoManifest(platform: string, res: Response) {
-  const manifestPath = path.resolve(
-    process.cwd(),
-    "static-build",
-    platform,
-    "manifest.json",
-  );
-
-  if (!fs.existsSync(manifestPath)) {
-    return res
-      .status(404)
-      .json({ error: `Manifest not found for platform: ${platform}` });
-  }
-
-  res.setHeader("expo-protocol-version", "1");
-  res.setHeader("expo-sfv-version", "0");
-  res.setHeader("content-type", "application/json");
-
-  const manifest = fs.readFileSync(manifestPath, "utf-8");
-  res.send(manifest);
+// Proxy factory — always uses resolvedMetroPort so it stays current
+function makeMetroProxy(port: number) {
+  return createProxyMiddleware({
+    target: `http://localhost:${port}`,
+    changeOrigin: true,
+    ws: true,
+    on: {
+      error: (_err: any, _req: any, res: any) => {
+        if (res && typeof res.status === "function") {
+          res.status(502).json({ error: "Metro bundler not reachable — is Start Frontend running?" });
+        }
+      },
+    },
+  });
 }
 
-// Proxy all Expo/Metro dev-server traffic to the Metro bundler on port 8080
-const metroProxy = createProxyMiddleware({
-  target: METRO_TARGET,
-  changeOrigin: true,
-  ws: true,
-  on: {
-    error: (_err: any, _req: any, res: any) => {
-      if (res && typeof res.status === "function") {
-        res.status(502).json({ error: "Metro bundler not reachable. Is `Start Frontend` running?" });
-      }
-    },
-  },
-});
+// Start with default; detectMetroPort() will correct this on startup
+let metroProxy = makeMetroProxy(8080);
 
 function serveLandingPage({
   req,
@@ -222,18 +219,7 @@ function serveLandingPage({
   res.status(200).send(html);
 }
 
-function configureExpoAndLanding(app: express.Application) {
-  const templatePath = path.resolve(
-    process.cwd(),
-    "server",
-    "templates",
-    "landing-page.html",
-  );
-  const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
-  const appName = getAppName();
-
-  log("Serving static Expo files with dynamic manifest routing");
-
+async function configureExpoAndLanding(app: express.Application) {
   const adminTemplatePath = path.resolve(
     process.cwd(),
     "server",
@@ -242,53 +228,49 @@ function configureExpoAndLanding(app: express.Application) {
   );
   const adminTemplate = fs.readFileSync(adminTemplatePath, "utf-8");
 
+  // Detect which port Metro actually started on (8080 or 8081)
+  const metroPort = await detectMetroPort();
+  metroProxy = makeMetroProxy(metroPort);
+  log(`Metro bundler detected on port ${metroPort}`);
+
   const staticBuildExists = hasStaticBuild();
-  log(`Static build: ${staticBuildExists ? "found (web)" : "not found"} — native requests always proxied to Metro:${METRO_PORT}`);
+  log(`Static build: ${staticBuildExists ? "found" : "not found"} — routing non-API traffic to Metro:${metroPort}`);
 
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith("/api")) {
-      return next();
-    }
-
-    if (req.path === "/admin") {
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      return res.status(200).send(adminTemplate);
-    }
-
-    const platform = req.header("expo-platform");
-    const isNativePlatform = platform === "ios" || platform === "android";
-
-    // Native Expo Go requests (manifest + bundles) — ALWAYS proxy to Metro
-    if (isNativePlatform && (req.path === "/" || req.path === "/manifest")) {
-      log(`[Metro proxy] ${platform} manifest → Metro:${METRO_PORT}`);
-      return (metroProxy as any)(req, res, next);
-    }
-
-    // Bundle files, source maps, HMR — always proxy to Metro
-    if (req.path.endsWith(".bundle") ||
-        req.path.endsWith(".map") ||
-        req.path.startsWith("/__metro") ||
-        req.path.startsWith("/_expo") ||
-        req.path.startsWith("/debugger-ui")) {
-      return (metroProxy as any)(req, res, next);
-    }
-
-    // Root "/" — serve web static build or landing page
-    if (req.path === "/") {
-      if (staticBuildExists) {
-        const staticIndex = path.resolve(process.cwd(), "static-build", "index.html");
-        return res.sendFile(staticIndex);
-      }
-      return serveLandingPage({ req, res, landingPageTemplate, appName });
-    }
-
-    next();
+  // /admin → admin dashboard HTML
+  app.get("/admin", (_req: Request, res: Response) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(adminTemplate);
   });
 
+  // Serve local assets folder
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
-  app.use(express.static(path.resolve(process.cwd(), "static-build")));
 
-  log("Expo routing: Checking expo-platform header on / and /manifest");
+  // If a static web build exists, serve it for non-API paths
+  if (staticBuildExists) {
+    app.use(express.static(path.resolve(process.cwd(), "static-build")));
+    // Catch-all for SPA routing — still proxy native manifests
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.path.startsWith("/api")) return next();
+      const platform = req.header("expo-platform");
+      if (platform === "ios" || platform === "android") {
+        log(`[Metro proxy] ${platform} manifest → Metro:${metroPort}`);
+        return (metroProxy as any)(req, res, next);
+      }
+      const staticIndex = path.resolve(process.cwd(), "static-build", "index.html");
+      res.sendFile(staticIndex);
+    });
+  } else {
+    // No static build — proxy everything (web + native) to Metro
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.path.startsWith("/api")) return next();
+      if (req.path === "/admin") return next(); // handled above
+      const platform = req.header("expo-platform") || "web";
+      log(`[Metro proxy] ${platform} ${req.path} → Metro:${metroPort}`);
+      return (metroProxy as any)(req, res, next);
+    });
+  }
+
+  log("Expo routing configured");
 }
 
 function setupErrorHandler(app: express.Application) {
@@ -318,7 +300,7 @@ function setupErrorHandler(app: express.Application) {
   setupBodyParsing(app);
   setupRequestLogging(app);
 
-  configureExpoAndLanding(app);
+  await configureExpoAndLanding(app);
 
   const server = await registerRoutes(app);
 
