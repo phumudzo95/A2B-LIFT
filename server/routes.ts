@@ -60,6 +60,35 @@ function getPaystackConfig() {
   return { secret, currency, callbackUrl };
 }
 
+/**
+ * Determines the base URL for Paystack callback redirects.
+ * Checks env vars in priority order so it works on Replit dev AND Railway production.
+ */
+function getAppBaseUrl(req?: Request): string {
+  if (process.env.REPLIT_DEV_DOMAIN) {
+    return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  }
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  }
+  if (process.env.PAYSTACK_CALLBACK_URL) {
+    // Strip any path — we just want origin
+    try {
+      const u = new URL(process.env.PAYSTACK_CALLBACK_URL);
+      return u.origin;
+    } catch {
+      return process.env.PAYSTACK_CALLBACK_URL;
+    }
+  }
+  // Final fallback: derive from the incoming request
+  if (req) {
+    const proto = req.header("x-forwarded-proto") || req.protocol || "https";
+    const host = req.header("x-forwarded-host") || req.get("host") || "";
+    return `${proto}://${host}`;
+  }
+  return "https://api-production-0783.up.railway.app";
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
@@ -1038,7 +1067,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ message: "User not found" });
         }
 
-        const { secret, currency, callbackUrl } = getPaystackConfig();
+        const { secret, currency } = getPaystackConfig();
+        const rideReference = `A2B-RIDE-${Date.now()}-${user.id.slice(0, 6)}`;
+        const domain = getAppBaseUrl(req);
+        const rideCallbackUrl = `${domain}/api/payments/webview-callback?reference=${rideReference}`;
 
         const amountInMinorUnits = Math.round(ride.price * 100); // kobo/cents
         const email =
@@ -1050,14 +1082,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email,
           amount: amountInMinorUnits,
           currency,
+          reference: rideReference,
+          callback_url: rideCallbackUrl,
           metadata: {
             rideId: ride.id,
             userId: user.id,
           },
         };
-        if (callbackUrl) {
-          initBody.callback_url = callbackUrl;
-        }
 
         const response = await fetch(
           "https://api.paystack.co/transaction/initialize",
@@ -1833,6 +1864,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/payments/webview-callback  — Paystack redirects here after payment; sends postMessage back to opener/parent
   app.get("/api/payments/webview-callback", (req: Request, res: Response) => {
     const reference = (req.query.reference || req.query.trxref || "") as string;
+    const appBase = getAppBaseUrl(req);
+    // Frontend URL for the fallback "Return to App" redirect
+    // FRONTEND_URL env var on Railway should be set to the Netlify app URL
+    const appReturnUrl = process.env.FRONTEND_URL
+      || "https://peaceful-mousse-459c85.netlify.app";
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -1843,22 +1879,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     *{margin:0;padding:0;box-sizing:border-box}
     body{background:#0a0a0a;color:#fff;font-family:system-ui,sans-serif;
          display:flex;flex-direction:column;align-items:center;justify-content:center;
-         min-height:100vh;gap:16px;text-align:center;padding:24px}
-    .icon{font-size:56px}
-    h2{font-size:22px;font-weight:700}
-    p{font-size:14px;opacity:0.6}
+         min-height:100vh;gap:20px;text-align:center;padding:24px}
+    .icon{font-size:64px;animation:pop .4s ease}
+    @keyframes pop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+    h2{font-size:22px;font-weight:700;margin-bottom:4px}
+    p{font-size:14px;color:rgba(255,255,255,0.55)}
+    .btn{display:inline-block;margin-top:12px;padding:14px 32px;background:#fff;
+         color:#000;font-weight:700;font-size:15px;border-radius:14px;
+         text-decoration:none;border:none;cursor:pointer}
+    #status{font-size:13px;color:rgba(255,255,255,0.4)}
   </style>
 </head>
 <body>
   <div class="icon">✅</div>
   <h2>Payment Complete</h2>
   <p>Returning to app…</p>
+  <div id="status">Closing automatically…</div>
+  <button class="btn" id="back-btn" style="display:none" onclick="goBack()">← Return to App</button>
   <script>
     var ref = ${JSON.stringify(reference)};
+    var appUrl = ${JSON.stringify(appReturnUrl)};
     var msg = { type: 'paystack-done', reference: ref };
-    try { window.opener && window.opener.postMessage(msg, '*'); } catch(e){}
-    try { window.parent && window.parent !== window && window.parent.postMessage(msg, '*'); } catch(e){}
-    setTimeout(function(){ try{ window.close(); }catch(e){} }, 1200);
+
+    // 1. Send postMessage to any listening parent/opener (web popup flow)
+    var sent = false;
+    try { if(window.opener){ window.opener.postMessage(msg,'*'); sent=true; } } catch(e){}
+    try { if(window.parent && window.parent!==window){ window.parent.postMessage(msg,'*'); sent=true; } } catch(e){}
+
+    // 2. Attempt to close popup/tab
+    function tryClose() {
+      try { window.close(); } catch(e){}
+    }
+
+    // 3. If window didn't close (mobile browser / standalone tab), show button after 1.5s
+    var closeTimer = setTimeout(tryClose, 800);
+    setTimeout(function() {
+      // If we're still here, closing failed — show the back button
+      document.getElementById('back-btn').style.display = 'inline-block';
+      document.getElementById('status').textContent = sent
+        ? 'App notified. Tap the button if the screen did not update.'
+        : 'Tap below to return to the app.';
+    }, 1600);
+
+    function goBack() {
+      // Try postMessage one more time then close / redirect
+      try { if(window.opener){ window.opener.postMessage(msg,'*'); } } catch(e){}
+      try { window.close(); } catch(e){}
+      // Redirect as last resort (works for native in-app browser scenarios)
+      setTimeout(function(){ window.location.href = appUrl; }, 300);
+    }
   </script>
 </body>
 </html>`;
@@ -1873,10 +1942,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.auth!.sub;
       const reference = `A2B-${Date.now()}-${userId.slice(0, 6)}`;
 
-      const domain = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : (process.env.PAYSTACK_CALLBACK_URL || "");
-      const callbackUrl = domain ? `${domain}/api/payments/webview-callback?reference=${reference}` : undefined;
+      const domain = getAppBaseUrl(req);
+      const callbackUrl = `${domain}/api/payments/webview-callback?reference=${reference}`;
 
       const response = await paystackAPI.post("/transaction/initialize", {
         email,
