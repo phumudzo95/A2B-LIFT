@@ -81,7 +81,8 @@
       <span>ADMIN PANEL</span>
     </div>
     <div style="display:flex;gap:10px;align-items:center">
-      <button class="refresh-btn" onclick="refreshAll()">Refresh</button>
+      <span id="last-refresh" style="font-size:11px;color:#6b6b6b"></span>
+      <button class="refresh-btn" onclick="refreshAll()">⟳ Refresh</button>
       <button class="refresh-btn" onclick="logout()">Logout</button>
     </div>
   </div>
@@ -224,7 +225,13 @@
         }
         if (data.accessToken) setToken(data.accessToken);
         showLogin(false);
-        refreshAll();
+        loadStats();
+        loadChauffeurs();
+        loadRides();
+        loadPayments();
+        loadWithdrawals();
+        loadSafetyReports();
+        startAutoRefresh();
       } catch(e) {
         errEl.textContent = 'Login failed.';
         errEl.style.display = 'block';
@@ -232,6 +239,7 @@
     }
 
     async function logout() {
+      stopAutoRefresh();
       clearToken();
       try { await fetch(API + '/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
     }
@@ -257,21 +265,19 @@
 
     function refreshAll() {
       loadStats();
-      const active = document.querySelector('.tab-content.active');
-      if (active) {
-        const id = active.id.replace('tab-', '');
-        if (id === 'chauffeurs') loadChauffeurs();
-        if (id === 'rides') loadRides();
-        if (id === 'payments') loadPayments();
-        if (id === 'withdrawals') loadWithdrawals();
-        if (id === 'safety') loadSafetyReports();
-      }
+      loadChauffeurs();
+      loadRides();
+      loadPayments();
+      loadWithdrawals();
+      loadSafetyReports();
     }
 
     async function loadStats() {
       try {
         const res = await apiFetch('/api/admin/stats');
         if (!res.ok) throw new Error();
+        const el = document.getElementById('last-refresh');
+        if (el) el.textContent = 'Updated ' + new Date().toLocaleTimeString();
         const stats = await res.json();
         document.getElementById('stats-grid').innerHTML = `
           <div class="stat-card"><div class="stat-value">${stats.totalRides}</div><div class="stat-label">Total Rides</div></div>
@@ -607,10 +613,30 @@
       }
     }
 
+    let _refreshTimer = null;
+
+    function startAutoRefresh() {
+      if (_refreshTimer) clearInterval(_refreshTimer);
+      _refreshTimer = setInterval(refreshAll, 30000);
+    }
+
+    function stopAutoRefresh() {
+      if (_refreshTimer) clearInterval(_refreshTimer);
+      _refreshTimer = null;
+    }
+
     // Boot
-    if (!getToken()) showLogin(true);
-    loadStats();
-    setInterval(loadStats, 15000);
+    if (!getToken()) {
+      showLogin(true);
+    } else {
+      loadStats();
+      loadChauffeurs();
+      loadRides();
+      loadPayments();
+      loadWithdrawals();
+      loadSafetyReports();
+      startAutoRefresh();
+    }
   </script>
 
   <!-- Document Viewer Modal -->
