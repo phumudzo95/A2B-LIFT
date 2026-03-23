@@ -92,6 +92,8 @@ export default function ClientHomeScreen() {
   const [ratingComment, setRatingComment] = useState<string>("");
   const [submittingRating, setSubmittingRating] = useState(false);
   const [onlineDrivers, setOnlineDrivers] = useState<{ id: string; lat: number; lng: number }[]>([]);
+  const [showPaymentPicker, setShowPaymentPicker] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "wallet">("cash");
 
   // Notification badge
   const [unreadCount, setUnreadCount] = useState(0);
@@ -509,6 +511,12 @@ export default function ClientHomeScreen() {
 
   async function requestRide() {
     if (!user || !location || !dropoffCoords) return;
+    setShowPaymentPicker(true);
+  }
+
+  async function handlePayAndRide(method: "cash" | "card" | "wallet") {
+    if (!user || !location || !dropoffCoords) return;
+    setShowPaymentPicker(false);
     try {
       const distanceKm = estimatedDistance || 10;
       const res = await apiRequest("POST", "/api/rides", {
@@ -521,17 +529,70 @@ export default function ClientHomeScreen() {
         dropoffAddress,
         vehicleType: selectedVehicle.id,
         distanceKm,
+        paymentMethod: method,
+        paymentStatus: method === "cash" ? "unpaid" : "pending",
         isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
       });
       const payload = await res.json();
-      // Server wraps the ride: { success, status, message, ride: {...} }
       const ride = payload.ride ?? payload;
-      setCurrentRide(ride);
-      setRideStatus("requested");
-      queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user.id] });
-      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch (e) {
-      Alert.alert("Error", "Failed to request ride");
+
+      if (method === "cash") {
+        setCurrentRide(ride);
+        setRideStatus("requested");
+        queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user.id] });
+        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        return;
+      }
+
+      if (method === "wallet") {
+        const payRes = await apiRequest("POST", "/api/payments/pay-wallet", { rideId: ride.id });
+        const payData = await payRes.json();
+        if (!payData.success) {
+          await apiRequest("PUT", `/api/rides/${ride.id}/status`, { status: "cancelled" }).catch(() => {});
+          Alert.alert("Payment Failed", payData.message || "Insufficient wallet balance.");
+          return;
+        }
+        setCurrentRide(ride);
+        setRideStatus("requested");
+        queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user.id] });
+        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        return;
+      }
+
+      if (method === "card") {
+        try {
+          const chargeRes = await apiRequest("POST", "/api/payments/charge-ride", { rideId: ride.id });
+          const chargeData = await chargeRes.json();
+          if (!chargeData.success) {
+            await apiRequest("PUT", `/api/rides/${ride.id}/status`, { status: "cancelled" }).catch(() => {});
+            Alert.alert(
+              "Payment Failed",
+              chargeData.message || "Card could not be charged.",
+              [
+                { text: "Pay Cash", onPress: () => handlePayAndRide("cash") },
+                { text: "Cancel", style: "cancel" },
+              ]
+            );
+            return;
+          }
+          setCurrentRide(ride);
+          setRideStatus("requested");
+          queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user.id] });
+          if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        } catch {
+          await apiRequest("PUT", `/api/rides/${ride.id}/status`, { status: "cancelled" }).catch(() => {});
+          Alert.alert(
+            "Payment Error",
+            "Could not process card.",
+            [
+              { text: "Pay Cash", onPress: () => handlePayAndRide("cash") },
+              { text: "Cancel", style: "cancel" },
+            ]
+          );
+        }
+      }
+    } catch {
+      Alert.alert("Error", "Failed to request ride. Please try again.");
     }
   }
 
@@ -1017,6 +1078,51 @@ export default function ClientHomeScreen() {
           </View>
         </Animated.View>
       )}
+
+      {/* Payment Method Picker */}
+      <Modal visible={showPaymentPicker} transparent animationType="slide" onRequestClose={() => setShowPaymentPicker(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowPaymentPicker(false)}>
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 16) }]}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>How would you like to pay?</Text>
+            <Text style={{ fontSize: 13, color: Colors.textMuted, fontFamily: "Inter_400Regular", marginBottom: 8 }}>
+              Fare: R {estimatedPrice}
+            </Text>
+            <Pressable style={styles.payMethodRow} onPress={() => handlePayAndRide("card")}>
+              <View style={[styles.payMethodIcon, { backgroundColor: "#1434CB" }]}>
+                <Ionicons name="card" size={20} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.payMethodName}>Pay by Card</Text>
+                <Text style={styles.payMethodSub}>Charged immediately</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+            </Pressable>
+            {(user?.walletBalance || 0) >= (estimatedPrice || 0) && (estimatedPrice || 0) > 0 && (
+              <Pressable style={styles.payMethodRow} onPress={() => handlePayAndRide("wallet")}>
+                <View style={[styles.payMethodIcon, { backgroundColor: Colors.success }]}>
+                  <Ionicons name="wallet" size={20} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.payMethodName}>Wallet Balance</Text>
+                  <Text style={styles.payMethodSub}>R {(user?.walletBalance || 0).toFixed(2)} available</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+              </Pressable>
+            )}
+            <Pressable style={styles.payMethodRow} onPress={() => handlePayAndRide("cash")}>
+              <View style={[styles.payMethodIcon, { backgroundColor: Colors.accent }]}>
+                <Ionicons name="cash" size={20} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.payMethodName}>Cash</Text>
+                <Text style={styles.payMethodSub}>Pay driver directly after ride</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* Location Picker Modal */}
       <Modal
@@ -2008,5 +2114,34 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     color: Colors.primary,
+  },
+  payMethodRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 8,
+  },
+  payMethodIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  payMethodName: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  payMethodSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+    marginTop: 2,
   },
 });

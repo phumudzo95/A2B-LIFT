@@ -77,7 +77,7 @@ export default function ClientWalletScreen() {
 
       const res = await apiRequest("POST", "/api/payments/initialize", {
         amount,
-        email: user.username + "@a2blift.app",
+        email: user.username,
         saveCard: true,
         rideId: null,
       });

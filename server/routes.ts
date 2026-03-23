@@ -218,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Maps helpers — Google Places API only
   // -----------------------------
 
-  const GOOGLE_KEY = process.env.GOOGLE_API_KEY || "";
+  const GOOGLE_KEY = process.env.GOOGLE_API_KEY || "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0";
 
   // Geocode: Google only
   app.get("/api/geocode", async (req: Request, res: Response) => {

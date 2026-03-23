@@ -79,8 +79,8 @@ function setupSecurity(app: express.Application) {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
-          scriptSrcElem: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com"],
+          scriptSrcElem: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: ["'self'", "https:", "wss:"],
@@ -177,6 +177,11 @@ function makeMetroProxy(port: number) {
     changeOrigin: true,
     ws: true,
     on: {
+      proxyReq: (proxyReq: any) => {
+        // Override Origin/Host so Metro's CORS check sees a localhost origin
+        proxyReq.setHeader("Origin", `http://localhost:${port}`);
+        proxyReq.setHeader("Host", `localhost:${port}`);
+      },
       error: (_err: any, _req: any, res: any) => {
         if (res && typeof res.status === "function") {
           res.status(502).json({ error: "Metro bundler not reachable — is Start Frontend running?" });
