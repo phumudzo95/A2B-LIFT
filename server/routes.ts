@@ -1230,11 +1230,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/rides/:id/status", async (req: Request, res: Response) => {
     try {
       const { status } = req.body;
+
+      // For cancellations, capture the pre-update ride first so we can refund
+      const rideBeforeUpdate = status === "cancelled" ? await storage.getRide(req.params.id) : null;
+
       const ride = await storage.updateRide(req.params.id, {
         status,
         ...(status === "trip_completed" ? { completedAt: new Date() } : {}),
       });
       if (!ride) return res.status(404).json({ message: "Ride not found" });
+
+      // ── Auto-refund if a card-charged ride is cancelled ──
+      if (status === "cancelled" && rideBeforeUpdate) {
+        try {
+          const payments = await storage.getPaymentsByRide(req.params.id);
+          const cardPayment = payments.find((p: any) =>
+            p.method === "card" && p.status === "paid" && p.paystackReference
+          );
+          if (cardPayment?.paystackReference) {
+            const secret = process.env.PAYSTACK_SECRET_KEY || "";
+            await axios.post(
+              "https://api.paystack.co/refund",
+              { transaction: cardPayment.paystackReference },
+              { headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" } }
+            );
+            await storage.updatePayment(cardPayment.id, { status: "refunded" });
+            const rider = await storage.getUser(rideBeforeUpdate.clientId);
+            if (rider && rideBeforeUpdate.price) {
+              const amt = Number(rideBeforeUpdate.price);
+              const balanceBefore = rider.walletBalance || 0;
+              const newBalance = balanceBefore + amt;
+              await storage.updateUser(rider.id, { walletBalance: newBalance });
+              await storage.createWalletTransaction({
+                userId: rider.id, type: "refund", amount: amt,
+                balanceBefore, balanceAfter: newBalance,
+                reference: cardPayment.paystackReference,
+                description: "Ride cancelled — card payment refunded",
+                rideId: ride.id, status: "completed",
+              });
+              await storage.createNotification({
+                userId: rider.id,
+                title: "Refund Issued",
+                body: `Your ride was cancelled. R${amt.toFixed(2)} has been refunded to your wallet.`,
+                type: "payment",
+              });
+            }
+          }
+        } catch (refundErr: any) {
+          console.error("Auto-refund failed (non-fatal):", refundErr.message);
+        }
+      }
 
       if (status === "trip_completed" && ride.chauffeurId && ride.price) {
         // Wrap each ancillary operation independently so a DB hiccup

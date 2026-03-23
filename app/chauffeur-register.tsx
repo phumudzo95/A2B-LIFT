@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Alert, Image } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,19 +25,27 @@ const COLOR_SWATCHES: Record<string, string> = {
   Navy: "#1B2A4A", Burgundy: "#6B1C2A", "Midnight Blue": "#191970", Champagne: "#F7E7CE",
 };
 
-// Required documents (same as Uber SA requirements)
-const REQUIRED_DOCS = [
-  { id: "id_document", label: "South African ID / Passport", icon: "card-outline" as const, hint: "Clear photo of your ID document" },
-  { id: "drivers_license", label: "Driver's License", icon: "car-outline" as const, hint: "Front and back of your license" },
-  { id: "proof_of_address", label: "Proof of Address", icon: "home-outline" as const, hint: "Utility bill or bank statement (not older than 3 months)" },
-  { id: "vehicle_registration", label: "Vehicle Registration", icon: "document-outline" as const, hint: "Official registration document (RC1)" },
-  { id: "prDP", label: "PrDP Certificate", icon: "ribbon-outline" as const, hint: "Professional Driving Permit (required for e-hailing)" },
+const DRIVER_DOCS = [
+  { id: "pdrp_certificate", label: "PDRP Certificate", icon: "ribbon-outline" as const, hint: "Professional Driving Permit (e-hailing category)" },
+  { id: "drivers_license", label: "Valid Driver's License", icon: "car-outline" as const, hint: "Front and back of your driver's license" },
+  { id: "driver_evaluation", label: "Driver Evaluation", icon: "clipboard-outline" as const, hint: "Official driver evaluation / assessment certificate" },
+  { id: "criminal_background_check", label: "Criminal Background Check", icon: "shield-checkmark-outline" as const, hint: "Police clearance certificate (not older than 6 months)" },
 ];
+
+const CAR_DOCS = [
+  { id: "double_license_disk", label: "Double License Disk", icon: "disc-outline" as const, hint: "Both license disks displayed in the vehicle" },
+  { id: "passenger_liability_insurance", label: "Passenger Liability Insurance", icon: "umbrella-outline" as const, hint: "Valid passenger liability insurance certificate" },
+  { id: "dekra_report", label: "Dekra Report", icon: "document-text-outline" as const, hint: "Current Dekra vehicle inspection / roadworthy report" },
+];
+
+const ALL_DOCS = [...DRIVER_DOCS, ...CAR_DOCS];
+
+type Step = "vehicle" | "documents" | "photo";
 
 export default function ChauffeurRegisterScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const [step, setStep] = useState<"vehicle" | "documents">("vehicle");
+  const [step, setStep] = useState<Step>("vehicle");
 
   // Vehicle fields
   const [carMake, setCarMake] = useState("");
@@ -49,47 +57,69 @@ export default function ChauffeurRegisterScreen() {
   const [passengerCapacity, setPassengerCapacity] = useState("4");
   const [luggageCapacity, setLuggageCapacity] = useState("2");
 
-  // Document uploads: { docId: { uri, name } }
-  const [documents, setDocuments] = useState<Record<string, { uri: string; name: string } | null>>({
-    id_document: null, drivers_license: null, proof_of_address: null,
-    vehicle_registration: null, prDP: null,
-  });
+  // Document uploads
+  const [documents, setDocuments] = useState<Record<string, { uri: string; name: string } | null>>(
+    Object.fromEntries(ALL_DOCS.map(d => [d.id, null]))
+  );
+
+  // Driver photo
+  const [driverPhoto, setDriverPhoto] = useState<{ uri: string; name: string } | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function pickDocument(docId: string) {
+  async function pickImage(docId: string, useCamera = false) {
     try {
-      if (Platform.OS === "web") {
-        // Web: use file input via ImagePicker
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          quality: 0.5,
-          allowsEditing: false,
-        });
-        if (!result.canceled && result.assets?.[0]) {
-          const asset = result.assets[0];
-          setDocuments(prev => ({ ...prev, [docId]: { uri: asset.uri, name: asset.fileName || `${docId}.jpg` } }));
-        }
-      } else {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (useCamera && Platform.OS !== "web") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== "granted") {
-          Alert.alert("Permission needed", "Please allow access to your photo library.");
+          Alert.alert("Permission needed", "Please allow camera access.");
           return;
         }
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          quality: 0.5,
-          allowsEditing: false,
-        });
+        const result = await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true, aspect: [1, 1] });
         if (!result.canceled && result.assets?.[0]) {
           const asset = result.assets[0];
+          if (docId === "driver_photo") {
+            setDriverPhoto({ uri: asset.uri, name: asset.fileName || "driver_photo.jpg" });
+          } else {
+            setDocuments(prev => ({ ...prev, [docId]: { uri: asset.uri, name: asset.fileName || `${docId}.jpg` } }));
+          }
+        }
+        return;
+      }
+      if (Platform.OS !== "web") {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "Please allow photo library access.");
+          return;
+        }
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.6,
+        allowsEditing: docId === "driver_photo",
+        aspect: docId === "driver_photo" ? [1, 1] : undefined,
+      });
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        if (docId === "driver_photo") {
+          setDriverPhoto({ uri: asset.uri, name: asset.fileName || "driver_photo.jpg" });
+        } else {
           setDocuments(prev => ({ ...prev, [docId]: { uri: asset.uri, name: asset.fileName || `${docId}.jpg` } }));
         }
       }
-    } catch (e) {
-      Alert.alert("Error", "Could not open document picker. Try again.");
+    } catch {
+      Alert.alert("Error", "Could not open image picker. Please try again.");
     }
+  }
+
+  function promptPhotoSource(docId: string) {
+    if (Platform.OS === "web") { pickImage(docId); return; }
+    Alert.alert("Upload Photo", "Choose a source", [
+      { text: "Take Photo", onPress: () => pickImage(docId, true) },
+      { text: "Choose from Library", onPress: () => pickImage(docId, false) },
+      { text: "Cancel", style: "cancel" },
+    ]);
   }
 
   function validateVehicle(): boolean {
@@ -97,27 +127,24 @@ export default function ChauffeurRegisterScreen() {
       setError("Please fill in all required vehicle fields");
       return false;
     }
-    setError("");
-    return true;
+    setError(""); return true;
   }
 
   function validateDocuments(): boolean {
-    const missing = REQUIRED_DOCS.filter(d => !documents[d.id]);
+    const missing = ALL_DOCS.filter(d => !documents[d.id]);
     if (missing.length > 0) {
       setError(`Please upload: ${missing.map(d => d.label).join(", ")}`);
       return false;
     }
-    setError("");
-    return true;
+    setError(""); return true;
   }
 
   async function handleSubmit() {
-    if (!validateDocuments()) return;
+    if (!driverPhoto) { setError("Please upload or take your driver profile photo."); return; }
     if (!user) return;
     setLoading(true);
     setError("");
     try {
-      // Step 1: Register the chauffeur profile
       const res = await apiRequest("POST", "/api/chauffeurs", {
         userId: user.id,
         carMake: carMake.trim(),
@@ -132,34 +159,31 @@ export default function ChauffeurRegisterScreen() {
       const chauffeur = await res.json();
       await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(chauffeur));
 
-      // Step 2: Upload all documents in parallel for speed
       const appRes = await apiRequest("GET", `/api/driver/applications/me?userId=${user.id}`);
       const application = await appRes.json().catch(() => null);
       const applicationId = application?.id || null;
 
-      await Promise.all(
-        REQUIRED_DOCS.map(async (doc) => {
+      const uploadOne = async (docId: string, uri: string, name: string) => {
+        let publicUrl = uri;
+        try {
+          publicUrl = await uploadDocument(uri, user.id, docId);
+        } catch (e) {
+          console.warn(`Supabase upload failed for ${docId}:`, e);
+        }
+        await apiRequest("POST", "/api/driver/documents", {
+          userId: user.id, applicationId, chauffeurId: chauffeur.id,
+          type: docId, url: publicUrl,
+        });
+      };
+
+      await Promise.all([
+        ...ALL_DOCS.map(doc => {
           const file = documents[doc.id];
-          if (!file) return;
-          try {
-            let publicUrl = file.uri;
-            try {
-              publicUrl = await uploadDocument(file.uri, user.id, doc.id);
-            } catch (uploadErr) {
-              console.warn(`Supabase upload failed for ${doc.id}, using local URI:`, uploadErr);
-            }
-            await apiRequest("POST", "/api/driver/documents", {
-              userId: user.id,
-              applicationId,
-              chauffeurId: chauffeur.id,
-              type: doc.id,
-              url: publicUrl,
-            });
-          } catch (docErr) {
-            console.warn(`Failed to save ${doc.id}:`, docErr);
-          }
-        })
-      );
+          if (!file) return Promise.resolve();
+          return uploadOne(doc.id, file.uri, file.name).catch(e => console.warn(`Failed ${doc.id}:`, e));
+        }),
+        uploadOne("driver_photo", driverPhoto.uri, driverPhoto.name).catch(e => console.warn("Failed driver_photo:", e)),
+      ]);
 
       router.replace("/chauffeur");
     } catch (e: any) {
@@ -169,6 +193,17 @@ export default function ChauffeurRegisterScreen() {
     }
   }
 
+  const StepIndicator = ({ current }: { current: number }) => (
+    <View style={styles.stepIndicator}>
+      {[1, 2, 3].map((n, i) => (
+        <React.Fragment key={n}>
+          <View style={[styles.stepDot, current >= n && styles.stepDotActive]} />
+          {i < 2 && <View style={[styles.stepLine, current > n && styles.stepLineActive]} />}
+        </React.Fragment>
+      ))}
+    </View>
+  );
+
   // ── STEP 1: Vehicle Details ──
   if (step === "vehicle") {
     return (
@@ -176,22 +211,14 @@ export default function ChauffeurRegisterScreen() {
         <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace("/")}>
           <Ionicons name="chevron-back" size={24} color={Colors.white} />
         </Pressable>
-
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
-            <View style={styles.stepIndicator}>
-              <View style={[styles.stepDot, styles.stepDotActive]} /><View style={styles.stepLine} /><View style={styles.stepDot} />
-            </View>
+            <StepIndicator current={1} />
             <Text style={styles.title}>Vehicle Details</Text>
-            <Text style={styles.subtitle}>Step 1 of 2 — Tell us about your vehicle</Text>
+            <Text style={styles.subtitle}>Step 1 of 3 — Tell us about your vehicle</Text>
           </View>
 
-          {!!error && (
-            <View style={styles.errorBox}>
-              <Ionicons name="alert-circle" size={16} color={Colors.error} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
+          {!!error && <View style={styles.errorBox}><Ionicons name="alert-circle" size={16} color={Colors.error} /><Text style={styles.errorText}>{error}</Text></View>}
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
@@ -263,64 +290,141 @@ export default function ChauffeurRegisterScreen() {
             </View>
           </View>
 
-          <Pressable
-            style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.9 }]}
-            onPress={() => { if (validateVehicle()) setStep("documents"); }}
-          >
+          <Pressable style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.9 }]} onPress={() => { if (validateVehicle()) setStep("documents"); }}>
             <Text style={styles.submitBtnText}>Next: Upload Documents</Text>
             <Ionicons name="arrow-forward" size={18} color={Colors.primary} />
           </Pressable>
-
-          <View style={{ height: insets.bottom + (Platform.OS === "web" ? 34 : 24) }} />
+          <View style={{ height: insets.bottom + 24 }} />
         </ScrollView>
       </View>
     );
   }
 
-  // ── STEP 2: Document Upload ──
+  // ── STEP 2: Documents ──
+  if (step === "documents") {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20) }]}>
+        <Pressable style={styles.backBtn} onPress={() => setStep("vehicle")}>
+          <Ionicons name="chevron-back" size={24} color={Colors.white} />
+        </Pressable>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <StepIndicator current={2} />
+            <Text style={styles.title}>Upload Documents</Text>
+            <Text style={styles.subtitle}>Step 2 of 3 — Required for compliance & verification</Text>
+          </View>
+
+          {!!error && <View style={styles.errorBox}><Ionicons name="alert-circle" size={16} color={Colors.error} /><Text style={styles.errorText}>{error}</Text></View>}
+
+          <View style={styles.docInfoBox}>
+            <Ionicons name="lock-closed-outline" size={18} color={Colors.textSecondary} />
+            <Text style={styles.docInfoText}>Your documents are encrypted and only visible to A2B LIFT admins for verification.</Text>
+          </View>
+
+          {/* Driver Documents */}
+          <Text style={styles.docSectionTitle}>Driver Documents</Text>
+          <View style={styles.form}>
+            {DRIVER_DOCS.map((doc) => {
+              const uploaded = documents[doc.id];
+              return (
+                <Pressable key={doc.id} style={[styles.docRow, uploaded && styles.docRowUploaded]} onPress={() => promptPhotoSource(doc.id)}>
+                  <View style={[styles.docIconWrap, uploaded && styles.docIconWrapUploaded]}>
+                    <Ionicons name={uploaded ? "checkmark" : doc.icon} size={20} color={uploaded ? Colors.success : Colors.textSecondary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.docLabel}>{doc.label}</Text>
+                    <Text style={styles.docHint}>{uploaded ? `✓ ${uploaded.name}` : doc.hint}</Text>
+                  </View>
+                  <Ionicons name={uploaded ? "checkmark-circle" : "cloud-upload-outline"} size={20} color={uploaded ? Colors.success : Colors.textMuted} />
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Car Documents */}
+          <Text style={[styles.docSectionTitle, { marginTop: 20 }]}>Vehicle Documents</Text>
+          <View style={styles.form}>
+            {CAR_DOCS.map((doc) => {
+              const uploaded = documents[doc.id];
+              return (
+                <Pressable key={doc.id} style={[styles.docRow, uploaded && styles.docRowUploaded]} onPress={() => promptPhotoSource(doc.id)}>
+                  <View style={[styles.docIconWrap, uploaded && styles.docIconWrapUploaded]}>
+                    <Ionicons name={uploaded ? "checkmark" : doc.icon} size={20} color={uploaded ? Colors.success : Colors.textSecondary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.docLabel}>{doc.label}</Text>
+                    <Text style={styles.docHint}>{uploaded ? `✓ ${uploaded.name}` : doc.hint}</Text>
+                  </View>
+                  <Ionicons name={uploaded ? "checkmark-circle" : "cloud-upload-outline"} size={20} color={uploaded ? Colors.success : Colors.textMuted} />
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Pressable style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.9 }]} onPress={() => { if (validateDocuments()) setStep("photo"); }}>
+            <Text style={styles.submitBtnText}>Next: Profile Photo</Text>
+            <Ionicons name="arrow-forward" size={18} color={Colors.primary} />
+          </Pressable>
+          <View style={{ height: insets.bottom + 24 }} />
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ── STEP 3: Driver Profile Photo ──
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20) }]}>
-      <Pressable style={styles.backBtn} onPress={() => setStep("vehicle")}>
+      <Pressable style={styles.backBtn} onPress={() => setStep("documents")}>
         <Ionicons name="chevron-back" size={24} color={Colors.white} />
       </Pressable>
-
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <View style={styles.stepIndicator}>
-            <View style={[styles.stepDot, styles.stepDotActive]} /><View style={[styles.stepLine, styles.stepLineActive]} /><View style={[styles.stepDot, styles.stepDotActive]} />
-          </View>
-          <Text style={styles.title}>Upload Documents</Text>
-          <Text style={styles.subtitle}>Step 2 of 2 — Required for compliance & verification</Text>
+          <StepIndicator current={3} />
+          <Text style={styles.title}>Profile Photo</Text>
+          <Text style={styles.subtitle}>Step 3 of 3 — Upload a clear photo of yourself</Text>
         </View>
 
-        {!!error && (
-          <View style={styles.errorBox}>
-            <Ionicons name="alert-circle" size={16} color={Colors.error} />
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
+        {!!error && <View style={styles.errorBox}><Ionicons name="alert-circle" size={16} color={Colors.error} /><Text style={styles.errorText}>{error}</Text></View>}
 
-        <View style={styles.docInfoBox}>
-          <Ionicons name="shield-checkmark-outline" size={18} color={Colors.textSecondary} />
-          <Text style={styles.docInfoText}>Your documents are encrypted and only visible to A2B LIFT admins for verification.</Text>
+        {/* Photo preview */}
+        <View style={styles.photoPreviewWrap}>
+          {driverPhoto ? (
+            <Image source={{ uri: driverPhoto.uri }} style={styles.photoPreview} />
+          ) : (
+            <View style={styles.photoPlaceholder}>
+              <Ionicons name="person" size={56} color={Colors.textMuted} />
+            </View>
+          )}
         </View>
 
-        <View style={styles.form}>
-          {REQUIRED_DOCS.map((doc) => {
-            const uploaded = documents[doc.id];
-            return (
-              <Pressable key={doc.id} style={[styles.docRow, uploaded && styles.docRowUploaded]} onPress={() => pickDocument(doc.id)}>
-                <View style={[styles.docIconWrap, uploaded && styles.docIconWrapUploaded]}>
-                  <Ionicons name={uploaded ? "checkmark" : doc.icon} size={20} color={uploaded ? Colors.success : Colors.textSecondary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.docLabel}>{doc.label}</Text>
-                  <Text style={styles.docHint}>{uploaded ? `✓ ${uploaded.name}` : doc.hint}</Text>
-                </View>
-                <Ionicons name={uploaded ? "checkmark-circle" : "cloud-upload-outline"} size={20} color={uploaded ? Colors.success : Colors.textMuted} />
-              </Pressable>
-            );
-          })}
+        {/* Photo instructions */}
+        <View style={styles.photoInstructions}>
+          <Text style={styles.photoInstructionsTitle}>Photo guidelines</Text>
+          {[
+            { icon: "sunny-outline", text: "Take the photo in good, natural lighting" },
+            { icon: "person-circle-outline", text: "Face the camera directly — eyes clearly visible" },
+            { icon: "remove-circle-outline", text: "No sunglasses, hats, or obstructions" },
+            { icon: "scan-outline", text: "Plain background preferred (white or light-coloured)" },
+            { icon: "expand-outline", text: "Head and shoulders must be fully in frame" },
+          ].map((tip, i) => (
+            <View key={i} style={styles.photoTipRow}>
+              <Ionicons name={tip.icon as any} size={16} color={Colors.accent === "#2A2A2A" ? "#888" : Colors.accent} />
+              <Text style={styles.photoTipText}>{tip.text}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.photoActions}>
+          {Platform.OS !== "web" && (
+            <Pressable style={styles.photoActionBtn} onPress={() => pickImage("driver_photo", true)}>
+              <Ionicons name="camera-outline" size={20} color={Colors.white} />
+              <Text style={styles.photoActionBtnText}>Take Photo</Text>
+            </Pressable>
+          )}
+          <Pressable style={[styles.photoActionBtn, { backgroundColor: Colors.surface }]} onPress={() => pickImage("driver_photo", false)}>
+            <Ionicons name="images-outline" size={20} color={Colors.white} />
+            <Text style={styles.photoActionBtnText}>Choose from Library</Text>
+          </Pressable>
         </View>
 
         <Pressable
@@ -337,8 +441,7 @@ export default function ChauffeurRegisterScreen() {
         </Pressable>
 
         <Text style={styles.submitNote}>Your application will be reviewed by our team within 24–48 hours.</Text>
-
-        <View style={{ height: insets.bottom + (Platform.OS === "web" ? 34 : 24) }} />
+        <View style={{ height: insets.bottom + 24 }} />
       </ScrollView>
     </View>
   );
@@ -349,7 +452,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center", marginLeft: -8 },
   scrollContent: { flexGrow: 1 },
   header: { marginTop: 12, marginBottom: 20, gap: 8 },
-  stepIndicator: { flexDirection: "row", alignItems: "center", gap: 0, marginBottom: 4 },
+  stepIndicator: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
   stepDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.border },
   stepDotActive: { backgroundColor: Colors.white },
   stepLine: { flex: 1, height: 2, backgroundColor: Colors.border, marginHorizontal: 6 },
@@ -360,7 +463,8 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.error, flex: 1 },
   docInfoBox: { flexDirection: "row", alignItems: "flex-start", gap: 10, backgroundColor: Colors.surface, padding: 12, borderRadius: 10, marginBottom: 16 },
   docInfoText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 18 },
-  form: { gap: 12 },
+  docSectionTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 },
+  form: { gap: 10 },
   inputGroup: { gap: 6 },
   label: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 1 },
   inputWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.card, borderRadius: 12, paddingHorizontal: 16, borderWidth: 1, borderColor: Colors.border, gap: 10 },
@@ -374,19 +478,28 @@ const styles = StyleSheet.create({
   categoryHint: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   colorRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   colorChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
-  colorChipActive: { borderColor: Colors.white, backgroundColor: Colors.accent },
+  colorChipActive: { borderColor: Colors.white, backgroundColor: "#1A2540" },
   colorSwatch: { width: 14, height: 14, borderRadius: 7 },
   colorText: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
   colorTextActive: { color: Colors.white },
   rowInputs: { flexDirection: "row", gap: 12 },
-  // Document upload rows
   docRow: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: Colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.border },
   docRowUploaded: { borderColor: Colors.success, backgroundColor: "rgba(34,197,94,0.06)" },
   docIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.card, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: Colors.border },
   docIconWrapUploaded: { backgroundColor: "rgba(34,197,94,0.1)", borderColor: Colors.success },
   docLabel: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.white, marginBottom: 2 },
   docHint: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
-  submitBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: Colors.white, paddingVertical: 15, borderRadius: 14, marginTop: 20 },
+  photoPreviewWrap: { alignItems: "center", marginBottom: 20 },
+  photoPreview: { width: 160, height: 160, borderRadius: 80, borderWidth: 3, borderColor: Colors.white },
+  photoPlaceholder: { width: 160, height: 160, borderRadius: 80, backgroundColor: Colors.surface, borderWidth: 2, borderColor: Colors.border, alignItems: "center", justifyContent: "center" },
+  photoInstructions: { backgroundColor: Colors.surface, borderRadius: 14, padding: 16, marginBottom: 20, gap: 10 },
+  photoInstructionsTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.white, marginBottom: 4 },
+  photoTipRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  photoTipText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, flex: 1, lineHeight: 18 },
+  photoActions: { flexDirection: "row", gap: 12, marginBottom: 20 },
+  photoActionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: Colors.card, paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: Colors.border },
+  photoActionBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.white },
+  submitBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: Colors.white, paddingVertical: 15, borderRadius: 14, marginTop: 4 },
   submitBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.primary },
   submitNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", marginTop: 12 },
 });

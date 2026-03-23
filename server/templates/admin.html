@@ -298,6 +298,21 @@
           document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">No chauffeurs registered yet</div>';
           return;
         }
+        const DOC_LABELS = {
+          pdrp_certificate: 'PDRP Certificate',
+          drivers_license: "Valid Driver's License",
+          driver_evaluation: 'Driver Evaluation',
+          criminal_background_check: 'Criminal Background Check',
+          double_license_disk: 'Double License Disk',
+          passenger_liability_insurance: 'Passenger Liability Insurance',
+          dekra_report: 'Dekra Report',
+          driver_photo: 'Driver Profile Photo',
+          // legacy
+          id_document: 'ID / Passport',
+          proof_of_address: 'Proof of Address',
+          vehicle_registration: 'Vehicle Registration',
+          prDP: 'PrDP Certificate',
+        };
         let html = '<table><thead><tr><th>Driver</th><th>Phone</th><th>Vehicle</th><th>Plate</th><th>Color</th><th>Category</th><th>Status</th><th>Online</th><th>Actions</th></tr></thead><tbody>';
         for (const c of chauffeurs) {
           const vehicle = [c.carMake, c.vehicleModel].filter(Boolean).join(' ') || '—';
@@ -310,13 +325,15 @@
             <td>${c.vehicleType || '—'}</td>
             <td><span class="badge ${c.isApproved ? 'badge-approved' : 'badge-pending'}">${c.isApproved ? 'Approved' : 'Pending'}</span></td>
             <td><span class="badge ${c.isOnline ? 'badge-online' : 'badge-offline'}">${c.isOnline ? 'Online' : 'Offline'}</span></td>
-            <td>
-              ${!c.isApproved ? `<button class="btn btn-approve btn-small" onclick="approveChauffeur('${c.id}')">Approve</button>` : '<span style="color:#4caf50">✓</span>'}
+            <td style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-small" style="background:#1a2a4a;color:#fff" onclick="viewDocs('${c.id}','${c.userName||'Driver'}')">📄 Docs</button>
+              ${!c.isApproved ? `<button class="btn btn-approve btn-small" onclick="approveChauffeur('${c.id}')">Approve</button>` : '<span style="color:#4caf50">✓ Approved</span>'}
             </td>
           </tr>`;
         }
         html += '</tbody></table>';
         document.getElementById('chauffeurs-table').innerHTML = html;
+        window._docLabels = DOC_LABELS;
       } catch(e) {
         document.getElementById('chauffeurs-table').innerHTML = '<div class="loading">Failed to load</div>';
       }
@@ -557,11 +574,53 @@
       } catch(e) { alert('Failed to resolve'); }
     }
 
+    async function viewDocs(chauffeurId, name) {
+      const modal = document.getElementById('docs-modal');
+      document.getElementById('docs-modal-title').textContent = name + ' — Documents';
+      document.getElementById('docs-modal-body').innerHTML = '<div class="loading">Loading…</div>';
+      modal.style.display = 'flex';
+      try {
+        const res = await apiFetch('/api/chauffeurs/' + chauffeurId + '/documents');
+        const docs = await res.json();
+        const labels = window._docLabels || {};
+        if (!Array.isArray(docs) || !docs.length) {
+          document.getElementById('docs-modal-body').innerHTML = '<p style="color:#888;text-align:center">No documents uploaded yet.</p>';
+          return;
+        }
+        let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">';
+        for (const d of docs) {
+          const label = labels[d.documentType] || d.documentType.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase());
+          const isImg = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(d.url || '');
+          const isPdf = /\.pdf(\?|$)/i.test(d.url || '');
+          html += `<div style="background:#1a2a4a;border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:12px;color:#aaa;margin-bottom:8px">${label}</div>
+            ${isImg ? `<img src="${d.url}" style="max-width:100%;max-height:180px;border-radius:6px;object-fit:cover" />` :
+              isPdf ? `<div style="font-size:32px">📄</div>` :
+              `<div style="font-size:32px">📎</div>`}
+            <a href="${d.url}" target="_blank" style="display:block;margin-top:8px;font-size:12px;color:#4fc3f7">View / Download</a>
+          </div>`;
+        }
+        html += '</div>';
+        document.getElementById('docs-modal-body').innerHTML = html;
+      } catch(e) {
+        document.getElementById('docs-modal-body').innerHTML = '<p style="color:#f44">Failed to load documents.</p>';
+      }
+    }
+
     // Boot
     if (!getToken()) showLogin(true);
     loadStats();
     setInterval(loadStats, 15000);
   </script>
+
+  <!-- Document Viewer Modal -->
+  <div id="docs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#0d1b2e;border-radius:14px;padding:28px;max-width:700px;width:94%;max-height:85vh;overflow-y:auto;position:relative;">
+      <button onclick="document.getElementById('docs-modal').style.display='none'" style="position:absolute;top:14px;right:16px;background:none;border:none;color:#fff;font-size:22px;cursor:pointer">✕</button>
+      <h2 id="docs-modal-title" style="color:#fff;margin:0 0 18px;font-size:18px"></h2>
+      <div id="docs-modal-body"></div>
+    </div>
+  </div>
 </body>
 </html>
 

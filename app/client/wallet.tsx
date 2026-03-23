@@ -266,7 +266,7 @@ export default function ClientWalletScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Payment Methods</Text>
             <Pressable onPress={() => setShowAddCard(true)}>
-              <Text style={styles.sectionAction}>+ Add Card</Text>
+              <Text style={[styles.sectionAction, { color: "#2196F3" }]}>+ Add Card</Text>
             </Pressable>
           </View>
 
