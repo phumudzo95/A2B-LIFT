@@ -100,7 +100,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "rm -f .git/index.lock && git config user.email 'a2blift@deploy.com' && git config user.name 'A2B Lift' && git add -A && git commit -m 'fix: auto-commit for Railway deploy' --allow-empty && git push https://$(grep -oP '(?<=https://).*' ~/.git-credentials | head -1)@github.com/phumudzo95/A2B-LIFT.git main 2>&1"
+args = "rm -f .git/index.lock && git config user.email 'a2blift@deploy.com' && git config user.name 'A2B Lift' && git remote set-url origin https://$GITHUB_TOKEN@github.com/phumudzo95/A2B-LIFT.git && git add -A && git diff --cached --quiet && echo 'Nothing to commit' || git commit -m 'fix: wire all backends to Supabase DB' && git push origin main 2>&1"
 
 [userenv]
 
