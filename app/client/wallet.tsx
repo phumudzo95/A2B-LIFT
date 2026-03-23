@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/query-client";
 import Colors from "@/constants/colors";
@@ -46,6 +47,7 @@ function RandIcon({ size = 20, color = "#fff" }: { size?: number; color?: string
 export default function ClientWalletScreen() {
   const insets = useSafeAreaInsets();
   const { user, refreshUser } = useAuth();
+  const router = useRouter();
 
   const [cards, setCards] = useState<SavedCard[]>([]);
   const [transactions, setTransactions] = useState<WalletTx[]>([]);
@@ -73,7 +75,12 @@ export default function ClientWalletScreen() {
       ]);
       setCards(await cardsRes.json());
       setTransactions(await txRes.json());
-    } catch (e) {
+    } catch (e: any) {
+      const msg = e?.message || "";
+      if (msg.startsWith("401")) {
+        router.replace("/login" as any);
+        return;
+      }
       console.error("Failed to load wallet data", e);
     } finally {
       setLoading(false);
@@ -190,7 +197,15 @@ export default function ClientWalletScreen() {
       setShowTopup(false);
       await openPaystackInApp(data.authorizationUrl, data.reference, `R${amount.toFixed(2)} added to wallet and card saved!`);
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to initialize payment");
+      const msg = e?.message || "";
+      if (msg.startsWith("401")) {
+        setShowTopup(false);
+        Alert.alert("Session expired", "Please log in again to continue.", [
+          { text: "Log in", onPress: () => router.replace("/login" as any) },
+        ]);
+        return;
+      }
+      Alert.alert("Error", msg || "Failed to initialize payment");
     } finally {
       setTopupLoading(false);
     }
@@ -209,7 +224,15 @@ export default function ClientWalletScreen() {
       setShowAddCard(false);
       await openPaystackInApp(data.authorizationUrl, data.reference, "Card saved! R5 credited to your wallet.");
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to save card");
+      const msg = e?.message || "";
+      if (msg.startsWith("401")) {
+        setShowAddCard(false);
+        Alert.alert("Session expired", "Please log in again to continue.", [
+          { text: "Log in", onPress: () => router.replace("/login" as any) },
+        ]);
+        return;
+      }
+      Alert.alert("Error", msg || "Failed to save card");
     } finally {
       setAddCardLoading(false);
     }
@@ -457,7 +480,7 @@ export default function ClientWalletScreen() {
             <View style={styles.addCardSteps}>
               {[
                 { icon: "shield-checkmark-outline", text: "R5 charge to verify card (credited back to your wallet)" },
-                { icon: "lock-closed-outline", text: "Card details encrypted by Paystack — never stored on our servers" },
+                { icon: "lock-closed-outline", text: "Card details encrypted and stored securely" },
                 { icon: "flash-outline", text: "Used to charge ride fares instantly without re-entering details" },
               ].map((step, i) => (
                 <View key={i} style={styles.addCardStep}>
@@ -477,7 +500,7 @@ export default function ClientWalletScreen() {
                 : (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                     <Ionicons name="card-outline" size={18} color={Colors.primary} />
-                    <Text style={styles.payBtnText}>Add Card via Paystack</Text>
+                    <Text style={styles.payBtnText}>Add Card</Text>
                   </View>
                 )
               }

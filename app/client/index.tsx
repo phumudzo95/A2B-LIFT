@@ -1112,7 +1112,7 @@ export default function ClientHomeScreen() {
               const defaultCard = savedCards.find(c => c.isDefault) || savedCards[0];
               return (
                 <Pressable
-                  style={[styles.payMethodRow, !defaultCard && { opacity: 0.6 }]}
+                  style={styles.payMethodRow}
                   onPress={() => {
                     if (!defaultCard) {
                       setShowPaymentPicker(false);
