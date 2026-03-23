@@ -130,6 +130,7 @@ export interface IStorage {
   getSavedCard(id: string): Promise<SavedCard | undefined>;
   getSavedCardsByUser(userId: string): Promise<SavedCard[]>;
   createSavedCard(data: any): Promise<SavedCard>;
+  updateSavedCard(id: string, data: Partial<SavedCard>): Promise<SavedCard>;
   deleteSavedCard(id: string): Promise<void>;
 
   // Wallet Transactions
@@ -515,6 +516,11 @@ export class DatabaseStorage implements IStorage {
 
   async createSavedCard(data: any): Promise<SavedCard> {
     const [card] = await db.insert(savedCards).values(data).returning();
+    return card;
+  }
+
+  async updateSavedCard(id: string, data: Partial<SavedCard>): Promise<SavedCard> {
+    const [card] = await db.update(savedCards).set(data).where(eq(savedCards.id, id)).returning();
     return card;
   }
 

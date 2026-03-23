@@ -1925,6 +1925,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/payments/charge-ride  — charges user's default saved card for a ride
+  app.post("/api/payments/charge-ride", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const { rideId } = req.body;
+      const userId = req.auth!.sub;
+
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const ride = await storage.getRide(rideId);
+      if (!ride) return res.status(404).json({ message: "Ride not found" });
+
+      const cards = await storage.getSavedCardsByUser(userId);
+      const defaultCard = cards.find((c: any) => c.isDefault) || cards[0];
+      if (!defaultCard) {
+        return res.status(400).json({ message: "No saved card found. Please add a card in your wallet.", needsCard: true });
+      }
+
+      const amount = ride.totalPrice || ride.estimatedPrice;
+      if (!amount) return res.status(400).json({ message: "Ride has no price set" });
+
+      const reference = `A2B-RIDE-${rideId}-${Date.now()}`;
+      const response = await paystackAPI.post("/transaction/charge_authorization", {
+        authorization_code: defaultCard.paystackAuthCode,
+        email: user.username,
+        amount: Math.round(Number(amount) * 100),
+        currency: "ZAR",
+        reference,
+        metadata: { userId, rideId },
+      });
+
+      const txData = response.data.data;
+      if (txData.status === "success") {
+        await storage.createPayment({
+          rideId, payerUserId: userId, amount: Number(amount),
+          method: "card", status: "paid",
+          currency: "ZAR", paidAt: new Date(), paystackReference: reference,
+          paystackAuthCode: defaultCard.paystackAuthCode,
+        });
+        await storage.updateRide(rideId, { paymentStatus: "paid" });
+        return res.json({ success: true, reference, card: { last4: defaultCard.last4, cardType: defaultCard.cardType } });
+      }
+
+      return res.status(400).json({ message: "Card charge failed", status: txData.status });
+    } catch (error: any) {
+      console.error("[Paystack Charge Ride]", error.response?.data || error.message);
+      return res.status(500).json({ message: "Card charge failed" });
+    }
+  });
+
   // POST /api/payments/pay-wallet
   app.post("/api/payments/pay-wallet", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
@@ -1969,6 +2019,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/payments/cards/:id", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
       await storage.deleteSavedCard(req.params.id);
+      return res.json({ success: true });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PUT /api/payments/cards/:id/default — set a card as the default
+  app.put("/api/payments/cards/:id/default", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const userId = req.auth!.sub;
+      const cards = await storage.getSavedCardsByUser(userId);
+      for (const card of cards) {
+        await storage.updateSavedCard(card.id, { isDefault: card.id === req.params.id });
+      }
       return res.json({ success: true });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });

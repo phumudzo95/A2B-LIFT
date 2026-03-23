@@ -94,6 +94,7 @@ export default function ClientHomeScreen() {
   const [onlineDrivers, setOnlineDrivers] = useState<{ id: string; lat: number; lng: number }[]>([]);
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "wallet">("cash");
+  const [savedCards, setSavedCards] = useState<{ id: string; last4: string; cardType: string; isDefault: boolean }[]>([]);
 
   // Notification badge
   const [unreadCount, setUnreadCount] = useState(0);
@@ -511,6 +512,13 @@ export default function ClientHomeScreen() {
 
   async function requestRide() {
     if (!user || !location || !dropoffCoords) return;
+    try {
+      const res = await apiRequest("GET", "/api/payments/cards");
+      const cards = await res.json();
+      setSavedCards(Array.isArray(cards) ? cards : []);
+    } catch {
+      setSavedCards([]);
+    }
     setShowPaymentPicker(true);
   }
 
@@ -565,14 +573,26 @@ export default function ClientHomeScreen() {
           const chargeData = await chargeRes.json();
           if (!chargeData.success) {
             await apiRequest("PUT", `/api/rides/${ride.id}/status`, { status: "cancelled" }).catch(() => {});
-            Alert.alert(
-              "Payment Failed",
-              chargeData.message || "Card could not be charged.",
-              [
-                { text: "Pay Cash", onPress: () => handlePayAndRide("cash") },
-                { text: "Cancel", style: "cancel" },
-              ]
-            );
+            if (chargeData.needsCard) {
+              Alert.alert(
+                "No Card Saved",
+                "Please add a card in your wallet to pay by card.",
+                [
+                  { text: "Go to Wallet", onPress: () => router.push("/client/wallet") },
+                  { text: "Pay Cash Instead", onPress: () => handlePayAndRide("cash") },
+                  { text: "Cancel", style: "cancel" },
+                ]
+              );
+            } else {
+              Alert.alert(
+                "Payment Failed",
+                chargeData.message || "Card could not be charged.",
+                [
+                  { text: "Pay Cash", onPress: () => handlePayAndRide("cash") },
+                  { text: "Cancel", style: "cancel" },
+                ]
+              );
+            }
             return;
           }
           setCurrentRide(ride);
@@ -583,7 +603,7 @@ export default function ClientHomeScreen() {
           await apiRequest("PUT", `/api/rides/${ride.id}/status`, { status: "cancelled" }).catch(() => {});
           Alert.alert(
             "Payment Error",
-            "Could not process card.",
+            "Could not process card. Please try again or pay cash.",
             [
               { text: "Pay Cash", onPress: () => handlePayAndRide("cash") },
               { text: "Cancel", style: "cancel" },
@@ -1088,16 +1108,35 @@ export default function ClientHomeScreen() {
             <Text style={{ fontSize: 13, color: Colors.textMuted, fontFamily: "Inter_400Regular", marginBottom: 8 }}>
               Fare: R {estimatedPrice}
             </Text>
-            <Pressable style={styles.payMethodRow} onPress={() => handlePayAndRide("card")}>
-              <View style={[styles.payMethodIcon, { backgroundColor: "#1434CB" }]}>
-                <Ionicons name="card" size={20} color="#fff" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.payMethodName}>Pay by Card</Text>
-                <Text style={styles.payMethodSub}>Charged immediately</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-            </Pressable>
+            {(() => {
+              const defaultCard = savedCards.find(c => c.isDefault) || savedCards[0];
+              return (
+                <Pressable
+                  style={[styles.payMethodRow, !defaultCard && { opacity: 0.6 }]}
+                  onPress={() => {
+                    if (!defaultCard) {
+                      setShowPaymentPicker(false);
+                      router.push("/client/wallet");
+                    } else {
+                      handlePayAndRide("card");
+                    }
+                  }}
+                >
+                  <View style={[styles.payMethodIcon, { backgroundColor: "#1434CB" }]}>
+                    <Ionicons name="card" size={20} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.payMethodName}>
+                      {defaultCard ? `${defaultCard.cardType?.toUpperCase()} •••• ${defaultCard.last4}` : "Pay by Card"}
+                    </Text>
+                    <Text style={styles.payMethodSub}>
+                      {defaultCard ? "Charged immediately to saved card" : "No card saved — tap to add one in wallet"}
+                    </Text>
+                  </View>
+                  <Ionicons name={defaultCard ? "chevron-forward" : "add-circle-outline"} size={16} color={Colors.textMuted} />
+                </Pressable>
+              );
+            })()}
             {(user?.walletBalance || 0) >= (estimatedPrice || 0) && (estimatedPrice || 0) > 0 && (
               <Pressable style={styles.payMethodRow} onPress={() => handlePayAndRide("wallet")}>
                 <View style={[styles.payMethodIcon, { backgroundColor: Colors.success }]}>

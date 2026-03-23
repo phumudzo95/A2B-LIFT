@@ -29,14 +29,18 @@ interface WalletTx {
   status: string;
 }
 
-const CARD_ICONS: Record<string, string> = {
-  visa: "💳", mastercard: "💳", verve: "💳",
-};
-
 const TX_ICONS: Record<string, string> = {
   topup: "⬆️", ride_charge: "🚗", earning: "💰",
   withdrawal: "⬇️", refund: "↩️",
 };
+
+function RandIcon({ size = 20, color = "#fff" }: { size?: number; color?: string }) {
+  return (
+    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+      <Text style={{ fontSize: size * 0.72, fontWeight: "700", color, lineHeight: size }}>R</Text>
+    </View>
+  );
+}
 
 export default function ClientWalletScreen() {
   const insets = useSafeAreaInsets();
@@ -45,9 +49,15 @@ export default function ClientWalletScreen() {
   const [cards, setCards] = useState<SavedCard[]>([]);
   const [transactions, setTransactions] = useState<WalletTx[]>([]);
   const [loading, setLoading] = useState(true);
-  const [topupLoading, setTopupLoading] = useState(false);
+
+  // Top-up modal state
   const [showTopup, setShowTopup] = useState(false);
   const [topupAmount, setTopupAmount] = useState("100");
+  const [topupLoading, setTopupLoading] = useState(false);
+
+  // Add Card modal state (separate from top-up)
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [addCardLoading, setAddCardLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -66,7 +76,8 @@ export default function ClientWalletScreen() {
 
   useEffect(() => { loadData(); }, []);
 
-  async function handleAddCard() {
+  // Top up wallet (also saves card)
+  async function handleTopup() {
     if (!user) return;
     setTopupLoading(true);
     try {
@@ -74,7 +85,6 @@ export default function ClientWalletScreen() {
       if (isNaN(amount) || amount < 10) {
         Alert.alert("Invalid amount", "Minimum top-up is R10"); return;
       }
-
       const res = await apiRequest("POST", "/api/payments/initialize", {
         amount,
         email: user.username,
@@ -82,10 +92,8 @@ export default function ClientWalletScreen() {
         rideId: null,
       });
       const { authorizationUrl, reference } = await res.json();
-
       setShowTopup(false);
       await Linking.openURL(authorizationUrl);
-
       Alert.alert(
         "Verify Payment",
         "Have you completed the payment?",
@@ -99,7 +107,7 @@ export default function ClientWalletScreen() {
                 await refreshUser();
                 loadData();
                 Alert.alert("✅ Success", "Wallet topped up and card saved!");
-              } catch (e) {
+              } catch {
                 Alert.alert("Error", "Could not verify payment. Please contact support.");
               }
             },
@@ -113,6 +121,56 @@ export default function ClientWalletScreen() {
     }
   }
 
+  // Save card with R5 charge (credited back to wallet)
+  async function handleAddCard() {
+    if (!user) return;
+    setAddCardLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/payments/initialize", {
+        amount: 5,
+        email: user.username,
+        saveCard: true,
+        rideId: null,
+      });
+      const { authorizationUrl, reference } = await res.json();
+      setShowAddCard(false);
+      await Linking.openURL(authorizationUrl);
+      Alert.alert(
+        "Verify Card",
+        "Have you completed the R5 card verification?",
+        [
+          { text: "Not yet", style: "cancel" },
+          {
+            text: "Yes, verify",
+            onPress: async () => {
+              try {
+                await apiRequest("POST", "/api/payments/verify", { reference });
+                await refreshUser();
+                loadData();
+                Alert.alert("✅ Card Saved", "Your card has been saved and R5 has been credited to your wallet!");
+              } catch {
+                Alert.alert("Error", "Could not verify card. Please contact support.");
+              }
+            },
+          },
+        ]
+      );
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "Failed to save card");
+    } finally {
+      setAddCardLoading(false);
+    }
+  }
+
+  async function setDefaultCard(cardId: string) {
+    try {
+      await apiRequest("PUT", `/api/payments/cards/${cardId}/default`, {});
+      loadData();
+    } catch {
+      Alert.alert("Error", "Failed to set default card");
+    }
+  }
+
   async function deleteCard(cardId: string) {
     Alert.alert("Remove Card", "Are you sure you want to remove this card?", [
       { text: "Cancel", style: "cancel" },
@@ -122,7 +180,7 @@ export default function ClientWalletScreen() {
           try {
             await apiRequest("DELETE", `/api/payments/cards/${cardId}`);
             loadData();
-          } catch (e) {
+          } catch {
             Alert.alert("Error", "Failed to remove card");
           }
         },
@@ -154,14 +212,15 @@ export default function ClientWalletScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Payment Methods</Text>
-            <Pressable onPress={() => setShowTopup(true)}>
+            <Pressable onPress={() => setShowAddCard(true)}>
               <Text style={styles.sectionAction}>+ Add Card</Text>
             </Pressable>
           </View>
 
+          {/* Cash row */}
           <View style={styles.paymentRow}>
-            <View style={styles.paymentIcon}>
-              <Text style={{ fontSize: 20 }}>💵</Text>
+            <View style={[styles.paymentIcon, { backgroundColor: "#1a6b3c" }]}>
+              <RandIcon size={20} color="#fff" />
             </View>
             <View style={styles.paymentInfo}>
               <Text style={styles.paymentName}>Cash</Text>
@@ -172,10 +231,11 @@ export default function ClientWalletScreen() {
             </View>
           </View>
 
+          {/* Wallet balance row */}
           {balance > 0 && (
             <View style={styles.paymentRow}>
-              <View style={styles.paymentIcon}>
-                <Text style={{ fontSize: 20 }}>👛</Text>
+              <View style={[styles.paymentIcon, { backgroundColor: Colors.success }]}>
+                <Ionicons name="wallet" size={18} color="#fff" />
               </View>
               <View style={styles.paymentInfo}>
                 <Text style={styles.paymentName}>Wallet Balance</Text>
@@ -187,18 +247,23 @@ export default function ClientWalletScreen() {
             </View>
           )}
 
+          {/* Saved cards */}
           {loading ? (
             <ActivityIndicator color={Colors.white} style={{ marginVertical: 20 }} />
           ) : cards.length === 0 ? (
-            <Pressable style={styles.addCardRow} onPress={() => setShowTopup(true)}>
+            <Pressable style={styles.addCardRow} onPress={() => setShowAddCard(true)}>
               <Ionicons name="card-outline" size={20} color={Colors.textMuted} />
-              <Text style={styles.addCardText}>No saved cards · Tap to add one</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.addCardText}>No saved cards</Text>
+                <Text style={styles.addCardSub}>Add a card to pay for rides instantly</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
             </Pressable>
           ) : (
             cards.map(card => (
-              <View key={card.id} style={styles.paymentRow}>
-                <View style={styles.paymentIcon}>
-                  <Text style={{ fontSize: 20 }}>{CARD_ICONS[card.cardType?.toLowerCase()] || "💳"}</Text>
+              <View key={card.id} style={[styles.paymentRow, card.isDefault && styles.paymentRowDefault]}>
+                <View style={[styles.paymentIcon, { backgroundColor: "#1434CB" }]}>
+                  <Ionicons name="card" size={18} color="#fff" />
                 </View>
                 <View style={styles.paymentInfo}>
                   <Text style={styles.paymentName}>
@@ -207,10 +272,14 @@ export default function ClientWalletScreen() {
                   <Text style={styles.paymentSub}>{card.bank} · Expires {card.expMonth}/{card.expYear}</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  {card.isDefault && (
+                  {card.isDefault ? (
                     <View style={styles.defaultBadge}>
                       <Text style={styles.defaultBadgeText}>Default</Text>
                     </View>
+                  ) : (
+                    <Pressable onPress={() => setDefaultCard(card.id)} hitSlop={8}>
+                      <Text style={styles.setDefaultText}>Set default</Text>
+                    </Pressable>
                   )}
                   <Pressable onPress={() => deleteCard(card.id)} hitSlop={8}>
                     <Ionicons name="trash-outline" size={16} color={Colors.error} />
@@ -259,7 +328,7 @@ export default function ClientWalletScreen() {
           <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]}>
             <View style={styles.sheetHandle} />
             <Text style={styles.modalTitle}>Add Money to Wallet</Text>
-            <Text style={styles.modalSub}>Your card will be saved for future payments</Text>
+            <Text style={styles.modalSub}>Your card will be saved for future ride payments</Text>
 
             <View style={styles.amountRow}>
               {["50", "100", "200", "500"].map(amt => (
@@ -294,12 +363,60 @@ export default function ClientWalletScreen() {
 
             <Pressable
               style={[styles.payBtn, topupLoading && { opacity: 0.7 }]}
-              onPress={handleAddCard}
+              onPress={handleTopup}
               disabled={topupLoading}
             >
               {topupLoading
                 ? <ActivityIndicator color={Colors.primary} />
                 : <Text style={styles.payBtnText}>Pay R{topupAmount} with Paystack</Text>
+              }
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* ── Add Card Modal ── */}
+      <Modal visible={showAddCard} transparent animationType="slide" onRequestClose={() => setShowAddCard(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowAddCard(false)}>
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.modalTitle}>Save a Card</Text>
+            <Text style={styles.modalSub}>We'll charge R5 to verify your card. This is credited to your wallet.</Text>
+
+            {/* Card illustration */}
+            <View style={styles.cardIllustration}>
+              <View style={styles.cardIllustrationInner}>
+                <Ionicons name="card" size={32} color={Colors.textMuted} />
+                <Text style={styles.cardIllustrationText}>Any Visa, Mastercard or Verve card</Text>
+              </View>
+            </View>
+
+            <View style={styles.addCardSteps}>
+              {[
+                { icon: "shield-checkmark-outline", text: "R5 charge to verify card (credited back to your wallet)" },
+                { icon: "lock-closed-outline", text: "Card details encrypted by Paystack — never stored on our servers" },
+                { icon: "flash-outline", text: "Used to charge ride fares instantly without re-entering details" },
+              ].map((step, i) => (
+                <View key={i} style={styles.addCardStep}>
+                  <Ionicons name={step.icon as any} size={16} color={Colors.accent} />
+                  <Text style={styles.addCardStepText}>{step.text}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Pressable
+              style={[styles.payBtn, addCardLoading && { opacity: 0.7 }]}
+              onPress={handleAddCard}
+              disabled={addCardLoading}
+            >
+              {addCardLoading
+                ? <ActivityIndicator color={Colors.primary} />
+                : (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Ionicons name="card-outline" size={18} color={Colors.primary} />
+                    <Text style={styles.payBtnText}>Add Card via Paystack</Text>
+                  </View>
+                )
               }
             </Pressable>
           </View>
@@ -334,6 +451,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card, borderRadius: 12, padding: 14,
     marginBottom: 8, borderWidth: 1, borderColor: Colors.border,
   },
+  paymentRowDefault: { borderColor: Colors.accent },
   paymentIcon: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center",
@@ -346,12 +464,14 @@ const styles = StyleSheet.create({
     borderRadius: 6, borderWidth: 1, borderColor: "rgba(34,197,94,0.3)",
   },
   defaultBadgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: Colors.success },
+  setDefaultText: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.accent },
   addCardRow: {
     flexDirection: "row", alignItems: "center", gap: 12,
     backgroundColor: Colors.surface, borderRadius: 12, padding: 16,
     borderWidth: 1, borderColor: Colors.border, borderStyle: "dashed",
   },
-  addCardText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted },
+  addCardText: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.white },
+  addCardSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: 2 },
   txRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
   txIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center" },
   txInfo: { flex: 1 },
@@ -378,4 +498,13 @@ const styles = StyleSheet.create({
   paystackNoteText: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
   payBtn: { backgroundColor: Colors.white, paddingVertical: 15, borderRadius: 14, alignItems: "center" },
   payBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.primary },
+  cardIllustration: {
+    backgroundColor: Colors.surface, borderRadius: 16, padding: 24,
+    borderWidth: 1, borderColor: Colors.border, alignItems: "center",
+  },
+  cardIllustrationInner: { alignItems: "center", gap: 10 },
+  cardIllustrationText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center" },
+  addCardSteps: { gap: 12 },
+  addCardStep: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  addCardStepText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 18 },
 });
