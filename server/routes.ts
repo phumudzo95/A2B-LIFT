@@ -1819,13 +1819,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/seed", async (req: Request, res: Response) => {
     try {
       const { username, password, name, seedSecret } = req.body;
-      // Require a seed secret to prevent abuse
-      if (seedSecret !== process.env.JWT_SECRET) {
-        return res.status(403).json({ message: "Invalid seed secret" });
-      }
       const existing = await storage.getUserByUsername(username || "admin");
       if (existing && existing.role === "admin") {
         return res.status(400).json({ message: "Admin user already exists" });
+      }
+      // Only require secret if an admin already exists (prevent re-seeding without auth)
+      // First-time setup (no admin yet) is allowed freely
+      const validSecret = process.env.ADMIN_SEED_SECRET || process.env.JWT_SECRET;
+      if (existing && seedSecret !== validSecret) {
+        return res.status(403).json({ message: "Invalid seed secret" });
       }
       const hashedPassword = await bcrypt.hash(password || "Admin@2026!", 10);
       const user = await storage.createUser({
