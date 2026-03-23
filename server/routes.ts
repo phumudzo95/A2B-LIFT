@@ -860,6 +860,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  // ── Document upload proxy (server → Supabase, bypasses client CORS/RLS) ──
+  app.post("/api/upload-document", authOptional, async (req: AuthedRequest, res: Response) => {
+    try {
+      const { base64Data, userId, docType } = req.body;
+      if (!base64Data || !userId || !docType) {
+        return res.status(400).json({ message: "base64Data, userId, and docType are required" });
+      }
+
+      const SUPABASE_URL = "https://zzwkieiktbhptvgsqerd.supabase.co";
+      const SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6d2tpZWlrdGJocHR2Z3NxZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4ODA1NjEsImV4cCI6MjA4NjQ1NjU2MX0.BgTFknM60JsTl1iHAN1ri3pxFi2rTJfbyZ6rj6Etecc";
+      const BUCKET = "driver-documents";
+
+      const fileName = `${userId}/${docType}_${Date.now()}.jpg`;
+      const buffer = Buffer.from(base64Data, "base64");
+
+      const uploadRes = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${fileName}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            "Content-Type": "image/jpeg",
+            "x-upsert": "true",
+          },
+          body: buffer,
+        },
+      );
+
+      if (!uploadRes.ok) {
+        const err = await uploadRes.text();
+        console.error("[upload-document] Supabase error:", err);
+        return res.status(500).json({ message: `Supabase upload failed: ${err}` });
+      }
+
+      const url = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${fileName}`;
+      return res.json({ url });
+    } catch (error: any) {
+      console.error("[upload-document] error:", error.message);
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post("/api/driver/documents", authOptional, async (req: AuthedRequest, res: Response) => {
     const { applicationId, chauffeurId, type, url, userId: bodyUserId } = req.body;
     const userId = req.auth?.sub || bodyUserId;

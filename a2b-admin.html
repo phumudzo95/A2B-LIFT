@@ -331,9 +331,9 @@
             <td>${c.vehicleType || '—'}</td>
             <td><span class="badge ${c.isApproved ? 'badge-approved' : 'badge-pending'}">${c.isApproved ? 'Approved' : 'Pending'}</span></td>
             <td><span class="badge ${c.isOnline ? 'badge-online' : 'badge-offline'}">${c.isOnline ? 'Online' : 'Offline'}</span></td>
-            <td style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="btn btn-small" style="background:#1a2a4a;color:#fff" onclick="viewDocs('${c.id}','${c.userName||'Driver'}')">📄 Docs</button>
-              ${!c.isApproved ? `<button class="btn btn-approve btn-small" onclick="approveChauffeur('${c.id}')">Approve</button>` : '<span style="color:#4caf50">✓ Approved</span>'}
+            <td>
+              ${!c.isApproved ? `<button class="btn btn-approve btn-small" onclick="approveChauffeur('${c.id}')">Approve</button>` : '<span style="color:#4caf50">✓</span>'}
+              <a href="#" onclick="viewDocs('${c.id}','${c.userName||'Driver'}');return false" style="display:block;margin-top:4px;font-size:11px;color:#4fc3f7">View Docs</a>
             </td>
           </tr>`;
         }
@@ -390,7 +390,9 @@
           apiFetch('/api/admin/payments'),
           apiFetch('/api/withdrawals'),
         ]);
+        if (!pmtRes.ok) throw new Error('Payments API error: ' + pmtRes.status);
         const payments = await pmtRes.json();
+        if (!Array.isArray(payments)) throw new Error('Invalid payments response: ' + JSON.stringify(payments).slice(0,100));
         const withdrawals = wdRes.ok ? await wdRes.json() : [];
 
         // Summary stats
@@ -467,7 +469,7 @@
           document.getElementById('payments-withdrawals-table').innerHTML = html;
         }
       } catch(e) {
-        document.getElementById('payments-table').innerHTML = '<div class="loading">Failed to load payments</div>';
+        document.getElementById('payments-table').innerHTML = `<div class="loading">Failed to load payments: ${e.message}</div>`;
       }
     }
 
