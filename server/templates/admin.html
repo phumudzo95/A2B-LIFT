@@ -189,46 +189,90 @@ tbody tr:hover { background:#fafaf8; }
 ::-webkit-scrollbar { width:5px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border-dark); border-radius:3px; }
+
+/* HAMBURGER / MOBILE TOGGLE */
+.nav-toggle { display:none; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid var(--border); border-radius:8px; background:var(--bg); cursor:pointer; font-size:16px; flex-shrink:0; }
+.sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:99; }
+.sidebar-overlay.open { display:block; }
+
+/* MOBILE BREAKPOINTS */
+@media (max-width: 768px) {
+  body { display:block; }
+  .sidebar { transform:translateX(-100%); transition:transform 0.26s ease; z-index:200; }
+  .sidebar.mobile-open { transform:translateX(0); }
+  .main { margin-left:0 !important; }
+  .nav-toggle { display:flex; }
+  .topbar { padding:0 14px; gap:8px; }
+  .topbar-right { gap:8px; }
+  .search-wrap { display:none; }
+  .timestamp { display:none; }
+  .content { padding:16px 14px; }
+  .stats-row { grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:18px; }
+  .stat-value { font-size:24px; }
+  .table-card { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table { min-width:600px; }
+  .filter-group { gap:4px; }
+  .ftab { padding:4px 10px; font-size:11px; }
+  .modal { width:96vw; }
+  .info-grid { grid-template-columns:1fr; }
+  .docs-grid { grid-template-columns:1fr; }
+  .modal-foot { flex-direction:column-reverse; }
+  .btn-lg { width:100%; text-align:center; }
+  .action-cell { flex-wrap:nowrap; gap:4px; }
+  .btn-sm { padding:4px 8px; font-size:11px; }
+  .sec-head { flex-direction:column; align-items:flex-start; gap:10px; }
+}
+
+@media (max-width: 480px) {
+  .stats-row { grid-template-columns:1fr; }
+  .page-heading { font-size:14px; }
+  .btn-refresh { padding:7px 10px; font-size:11px; }
+  .btn-logout { padding:6px 10px; font-size:11px; }
+  table { min-width:480px; }
+}
 </style>
 </head>
 <body>
 
+<!-- SIDEBAR OVERLAY (mobile) -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
 <!-- SIDEBAR -->
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar">
   <div class="logo">
     <div class="logo-wordmark">A2B <em>LIFT</em></div>
     <div class="logo-sub">Admin Panel</div>
   </div>
   <nav class="nav">
     <div class="nav-section">Overview</div>
-    <div class="nav-item active" onclick="go('overview',this)">
+    <div class="nav-item active" onclick="go('overview',this);closeSidebar()">
       <span class="nav-icon">▦</span> Dashboard
     </div>
 
     <div class="nav-section">Drivers</div>
-    <div class="nav-item" onclick="go('chauffeurs',this)">
+    <div class="nav-item" onclick="go('chauffeurs',this);closeSidebar()">
       <span class="nav-icon">🚗</span> Chauffeurs
       <span class="nav-badge" id="nb-pending" style="display:none">0</span>
     </div>
 
     <div class="nav-section">Operations</div>
-    <div class="nav-item" onclick="go('rides',this)">
+    <div class="nav-item" onclick="go('rides',this);closeSidebar()">
       <span class="nav-icon">🗺</span> Rides
     </div>
-    <div class="nav-item" onclick="go('payments',this)">
+    <div class="nav-item" onclick="go('payments',this);closeSidebar()">
       <span class="nav-icon">💳</span> Payments
     </div>
-    <div class="nav-item" onclick="go('withdrawals',this)">
+    <div class="nav-item" onclick="go('withdrawals',this);closeSidebar()">
       <span class="nav-icon">🏦</span> Withdrawals
       <span class="nav-badge" id="nb-withdrawals" style="display:none">0</span>
     </div>
-    <div class="nav-item" onclick="go('safety',this)">
+    <div class="nav-item" onclick="go('safety',this);closeSidebar()">
       <span class="nav-icon">⚠️</span> Safety Reports
       <span class="nav-badge" id="nb-safety" style="display:none">0</span>
     </div>
 
     <div class="nav-section">Accounts</div>
-    <div class="nav-item" onclick="go('users',this)">
+    <div class="nav-item" onclick="go('users',this);closeSidebar()">
       <span class="nav-icon">👤</span> All Users
     </div>
   </nav>
@@ -242,7 +286,10 @@ tbody tr:hover { background:#fafaf8; }
 <!-- MAIN -->
 <main class="main">
   <div class="topbar">
-    <div class="page-heading" id="page-title">Dashboard</div>
+    <div style="display:flex;align-items:center;gap:12px;min-width:0">
+      <button class="nav-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+      <div class="page-heading" id="page-title">Dashboard</div>
+    </div>
     <div class="topbar-right">
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
@@ -410,14 +457,12 @@ async function doLogin() {
     showLogin(false);
     document.getElementById('live-status').textContent = 'Connected · Railway';
     loadAll();
-    startAutoRefresh();
   } catch(e) {
     errEl.textContent = 'Network error — is the backend running?';
   }
 }
 
 async function doLogout() {
-  stopAutoRefresh();
   dropToken();
   try { await fetch(API + '/api/auth/logout', { method: 'POST' }); } catch(e) {}
   showLogin(true);
@@ -453,10 +498,17 @@ function loadAll() {
   loadUsers();
 }
 
-// ── AUTO-REFRESH ──
-let _timer = null;
-function startAutoRefresh() { if (_timer) clearInterval(_timer); _timer = setInterval(loadAll, 30000); }
-function stopAutoRefresh() { if (_timer) { clearInterval(_timer); _timer = null; } }
+// ── SIDEBAR TOGGLE (mobile) ──
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  const open = sb.classList.toggle('mobile-open');
+  ov.classList.toggle('open', open);
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
 
 function tick() {
   document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
@@ -902,7 +954,6 @@ if (getToken()) {
   showLogin(false);
   document.getElementById('live-status').textContent = 'Connected · Railway';
   loadAll();
-  startAutoRefresh();
 } else {
   document.getElementById('live-status').textContent = 'Not signed in';
 }
