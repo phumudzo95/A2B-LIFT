@@ -411,7 +411,7 @@ export default function ClientWalletScreen() {
 
             <View style={styles.paystackNote}>
               <Ionicons name="shield-checkmark-outline" size={14} color={Colors.textSecondary} />
-              <Text style={styles.paystackNoteText}>Secured by Paystack · Card saved for future rides</Text>
+              <Text style={styles.paystackNoteText}>Card details encrypted and stored securely</Text>
             </View>
 
             <Pressable
@@ -421,7 +421,7 @@ export default function ClientWalletScreen() {
             >
               {topupLoading
                 ? <ActivityIndicator color={Colors.primary} />
-                : <Text style={styles.payBtnText}>Pay R{topupAmount} with Paystack</Text>
+                : <Text style={styles.payBtnText}>Pay R{topupAmount} with Card</Text>
               }
             </Pressable>
           </View>
