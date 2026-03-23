@@ -1,8 +1,10 @@
 import { Platform } from "react-native";
 import { getApiUrl } from "./query-client";
 
-const SUPABASE_URL = "https://zzwkieiktbhptvgsqerd.supabase.co";
+const SUPABASE_URL =
+  process.env.EXPO_PUBLIC_SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
 const SUPABASE_ANON_KEY =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6d2tpZWlrdGJocHR2Z3NxZXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4ODA1NjEsImV4cCI6MjA4NjQ1NjU2MX0.BgTFknM60JsTl1iHAN1ri3pxFi2rTJfbyZ6rj6Etecc";
 const BUCKET = "driver-documents";
 const UPLOAD_TIMEOUT_MS = 60_000;
