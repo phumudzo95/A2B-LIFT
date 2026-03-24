@@ -36,21 +36,23 @@ export default function ChauffeurWalletScreen() {
     if (!user) return;
     try {
       const [chaufRes, banksRes] = await Promise.all([
-        apiRequest("GET", `/api/chauffeurs/user/${user.id}`),
-        apiRequest("GET", "/api/wallet/banks"),
+        apiRequest("GET", `/api/chauffeurs/user/${user.id}`).catch(() => null),
+        apiRequest("GET", "/api/wallet/banks").catch(() => null),
       ]);
-      const chaufData = await chaufRes.json();
-      setChauffeur(chaufData);
-      setBanks(await banksRes.json());
+      if (chaufRes) {
+        const chaufData = await chaufRes.json();
+        setChauffeur(chaufData);
 
-      if (chaufData?.id) {
-        const [earningsRes, withdrawRes] = await Promise.all([
-          apiRequest("GET", `/api/earnings/chauffeur/${chaufData.id}`).catch(() => null),
-          apiRequest("GET", `/api/withdrawals/chauffeur/${chaufData.id}`).catch(() => null),
-        ]);
-        if (earningsRes) setEarnings(await earningsRes.json());
-        if (withdrawRes) setWithdrawals(await withdrawRes.json());
+        if (chaufData?.id) {
+          const [earningsRes, withdrawRes] = await Promise.all([
+            apiRequest("GET", `/api/earnings/chauffeur/${chaufData.id}`).catch(() => null),
+            apiRequest("GET", `/api/withdrawals/chauffeur/${chaufData.id}`).catch(() => null),
+          ]);
+          if (earningsRes) setEarnings(await earningsRes.json());
+          if (withdrawRes) setWithdrawals(await withdrawRes.json());
+        }
       }
+      if (banksRes) setBanks(await banksRes.json());
     } catch (e) { console.error("Wallet load error", e); }
     finally { setLoading(false); }
   }, [user]);
