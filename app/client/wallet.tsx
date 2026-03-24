@@ -70,11 +70,17 @@ export default function ClientWalletScreen() {
   const loadData = useCallback(async () => {
     try {
       const [cardsRes, txRes] = await Promise.all([
-        apiRequest("GET", "/api/payments/cards"),
-        apiRequest("GET", "/api/wallet/transactions"),
+        apiRequest("GET", "/api/payments/cards").catch((e: any) => {
+          if (e?.message?.startsWith("401")) throw e;
+          return null;
+        }),
+        apiRequest("GET", "/api/wallet/transactions").catch((e: any) => {
+          if (e?.message?.startsWith("401")) throw e;
+          return null;
+        }),
       ]);
-      setCards(await cardsRes.json());
-      setTransactions(await txRes.json());
+      if (cardsRes) setCards(await cardsRes.json());
+      if (txRes) setTransactions(await txRes.json());
     } catch (e: any) {
       const msg = e?.message || "";
       if (msg.startsWith("401")) {
