@@ -62,6 +62,7 @@ export interface IStorage {
   getChauffeurByUserId(userId: string): Promise<Chauffeur | undefined>;
   createChauffeur(data: any): Promise<Chauffeur>;
   updateChauffeur(id: string, data: Partial<Chauffeur>): Promise<Chauffeur | undefined>;
+  deleteChauffeur(id: string): Promise<boolean>;
   getOnlineChauffeurs(): Promise<Chauffeur[]>;
   getAllChauffeurs(): Promise<Chauffeur[]>;
 
@@ -74,6 +75,7 @@ export interface IStorage {
     id: string,
     data: Partial<DriverApplication>,
   ): Promise<DriverApplication | undefined>;
+  deleteDriverApplication(id: string): Promise<boolean>;
 
   createDocument(data: any): Promise<Document>;
   getDocumentsByApplication(applicationId: string): Promise<Document[]>;
@@ -204,6 +206,11 @@ export class DatabaseStorage implements IStorage {
     return chauffeur;
   }
 
+  async deleteChauffeur(id: string): Promise<boolean> {
+    const deleted = await db.delete(chauffeurs).where(eq(chauffeurs.id, id)).returning();
+    return deleted.length > 0;
+  }
+
   async getOnlineChauffeurs(): Promise<Chauffeur[]> {
     return db
       .select()
@@ -259,6 +266,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(driverApplications.id, id))
       .returning();
     return app;
+  }
+
+  async deleteDriverApplication(id: string): Promise<boolean> {
+    const deleted = await db.delete(driverApplications).where(eq(driverApplications.id, id)).returning();
+    return deleted.length > 0;
   }
 
   async createDocument(data: any): Promise<Document> {

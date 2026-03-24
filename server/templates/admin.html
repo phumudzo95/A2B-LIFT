@@ -271,6 +271,11 @@ tbody tr:hover { background:#fafaf8; }
       <span class="nav-badge" id="nb-safety" style="display:none">0</span>
     </div>
 
+    <div class="nav-item" onclick="go('applications',this);closeSidebar()">
+      <span class="nav-icon">📋</span> Driver Applications
+      <span class="nav-badge" id="nb-apps" style="display:none">0</span>
+    </div>
+
     <div class="nav-section">Accounts</div>
     <div class="nav-item" onclick="go('users',this);closeSidebar()">
       <span class="nav-icon">👤</span> All Users
@@ -324,6 +329,20 @@ tbody tr:hover { background:#fafaf8; }
         </div>
       </div>
       <div class="table-card" id="chauf-table"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- DRIVER APPLICATIONS -->
+    <div class="view" id="view-applications">
+      <div class="sec-head">
+        <div class="sec-title">Driver Applications</div>
+        <div class="filter-group">
+          <button class="ftab active" onclick="fApps('all',this)">All</button>
+          <button class="ftab" onclick="fApps('pending',this)">Pending</button>
+          <button class="ftab" onclick="fApps('approved',this)">Approved</button>
+          <button class="ftab" onclick="fApps('rejected',this)">Rejected</button>
+        </div>
+      </div>
+      <div class="table-card" id="apps-table"><div class="loading">Loading…</div></div>
     </div>
 
     <!-- RIDES -->
@@ -470,8 +489,8 @@ async function doLogout() {
 
 // ── NAV ──
 let curView = 'overview';
-let allChauf = [], allWd = [], allSafe = [], chaufFilter = 'all', wdFilter = 'all', safeFilter = 'all';
-const VIEW_TITLES = { overview:'Dashboard', chauffeurs:'Chauffeurs', rides:'Rides', payments:'Payments', withdrawals:'Withdrawals', safety:'Safety Reports', users:'All Users' };
+let allChauf = [], allWd = [], allSafe = [], allApps = [], chaufFilter = 'all', wdFilter = 'all', safeFilter = 'all', appsFilter = 'all';
+const VIEW_TITLES = { overview:'Dashboard', chauffeurs:'Chauffeurs', applications:'Driver Applications', rides:'Rides', payments:'Payments', withdrawals:'Withdrawals', safety:'Safety Reports', users:'All Users' };
 
 function go(view, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -485,12 +504,13 @@ function go(view, el) {
 }
 
 function loadView() {
-  ({ overview:loadOverview, chauffeurs:loadChauf, rides:loadRides, payments:loadPay, withdrawals:loadWd, safety:loadSafe, users:loadUsers })[curView]?.();
+  ({ overview:loadOverview, chauffeurs:loadChauf, applications:loadApps, rides:loadRides, payments:loadPay, withdrawals:loadWd, safety:loadSafe, users:loadUsers })[curView]?.();
 }
 
 function loadAll() {
   loadOverview();
   loadChauf();
+  loadApps();
   loadRides();
   loadPay();
   loadWd();
@@ -627,6 +647,7 @@ function renderChauffeurTable(tableId, data, showActions) {
         <button class="btn-sm btn-detail" onclick="chaufDetail('${c.id}')">Details</button>
         <button class="btn-sm btn-detail" onclick="editChauf('${c.id}')">✏ Edit</button>
         <button class="btn-sm btn-detail" onclick="viewDocs('${c.id}','${(c.userName||'Driver').replace(/'/g,"\\'")}')">📄 Docs</button>
+        <button class="btn-sm btn-reject" onclick="deleteChauf('${c.id}','${(c.userName||'Driver').replace(/'/g,"\\'")}')">🗑 Delete</button>
       </div></td>
     </tr>`).join('')}
     </tbody></table>`;
@@ -718,6 +739,121 @@ async function saveChaufEdit(id) {
     toast('✅ Driver info updated!', 'ok');
     closeModal();
     loadChauf();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+async function deleteChauf(id, name) {
+  if (!confirm('Are you sure you want to permanently delete driver "' + name + '"? This will also remove their application and cannot be undone.')) return;
+  try {
+    const res = await apiFetch('/api/chauffeurs/' + id, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await res.text());
+    toast('🗑 Driver deleted successfully.', 'ok');
+    loadChauf();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+// ── DRIVER APPLICATIONS ──
+async function loadApps() {
+  try {
+    const res = await apiFetch('/api/admin/driver-applications');
+    if (!res.ok) throw new Error(res.status);
+    allApps = await res.json();
+    if (!Array.isArray(allApps)) allApps = [];
+    const pending = allApps.filter(a => a.status === 'pending').length;
+    const badge = document.getElementById('nb-apps');
+    if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
+    else { badge.style.display = 'none'; }
+    renderFilteredApps();
+  } catch(e) {
+    document.getElementById('apps-table').innerHTML = emptyState('❌', 'Failed to load', e.message);
+  }
+}
+
+function fApps(f, el) {
+  document.querySelectorAll('#view-applications .ftab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active'); appsFilter = f; renderFilteredApps();
+}
+
+function renderFilteredApps() {
+  let list = allApps;
+  if (appsFilter !== 'all') list = allApps.filter(a => a.status === appsFilter);
+  renderAppsTable('apps-table', list);
+}
+
+function renderAppsTable(tableId, data) {
+  const w = document.getElementById(tableId);
+  if (!data.length) { w.innerHTML = emptyState('📋', 'No applications', 'Driver applications will appear here'); return; }
+  w.innerHTML = `<table>
+    <thead><tr><th>User ID</th><th>Chauffeur ID</th><th>Status</th><th>Submitted</th><th>Reviewed</th><th>Notes</th><th>Actions</th></tr></thead>
+    <tbody>${data.map(a => `<tr>
+      <td style="font-size:12px;font-family:var(--mono)">${(a.userId||'').slice(0,12)}…</td>
+      <td style="font-size:12px;font-family:var(--mono)">${a.chauffeurId ? (a.chauffeurId.slice(0,12)+'…') : '—'}</td>
+      <td><span class="badge ${a.status==='approved'?'b-approved':a.status==='rejected'?'b-offline':'b-pending'}">${a.status||'pending'}</span></td>
+      <td style="font-size:12px">${fmt(a.submittedAt)}</td>
+      <td style="font-size:12px">${a.reviewedAt ? fmt(a.reviewedAt) : '—'}</td>
+      <td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${a.notes||'—'}</td>
+      <td><div class="action-cell">
+        ${a.status==='pending' ? `<button class="btn-sm btn-approve" onclick="approveApp('${a.id}','${a.chauffeurId||''}')">✓ Approve</button>` : ''}
+        ${a.status==='pending' ? `<button class="btn-sm btn-reject" onclick="rejectApp('${a.id}')">✕ Reject</button>` : ''}
+        <button class="btn-sm btn-detail" onclick="editAppNotes('${a.id}')">✏ Notes</button>
+        <button class="btn-sm btn-reject" onclick="deleteApp('${a.id}')">🗑 Delete</button>
+      </div></td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+async function approveApp(id, chauffeurId) {
+  if (!confirm('Approve this driver application?')) return;
+  try {
+    const res = await apiFetch('/api/admin/driver-applications/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'approved' }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast('✅ Application approved!', 'ok');
+    loadApps();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+async function rejectApp(id) {
+  const notes = prompt('Rejection reason / notes:');
+  if (!notes || !notes.trim()) return;
+  try {
+    const res = await apiFetch('/api/admin/driver-applications/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'rejected', notes: notes.trim() }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast('🚫 Application rejected.', 'err');
+    loadApps();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+async function editAppNotes(id) {
+  const a = allApps.find(x => x.id === id); if (!a) return;
+  const notes = prompt('Edit notes for this application:', a.notes || '');
+  if (notes === null) return;
+  try {
+    const res = await apiFetch('/api/admin/driver-applications/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: a.status, notes: notes.trim() }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast('✅ Notes updated!', 'ok');
+    loadApps();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+async function deleteApp(id) {
+  if (!confirm('Permanently delete this application? This cannot be undone.')) return;
+  try {
+    const res = await apiFetch('/api/admin/driver-applications/' + id, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await res.text());
+    toast('🗑 Application deleted.', 'ok');
+    loadApps();
   } catch(e) { toast('❌ ' + e.message, 'err'); }
 }
 

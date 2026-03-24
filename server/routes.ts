@@ -638,9 +638,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/chauffeurs", async (req: Request, res: Response) => {
+  app.post("/api/chauffeurs", authOptional, async (req: AuthedRequest, res: Response) => {
     try {
       const userId = req.body.userId;
+
+      // If authenticated, only allow creating/updating own chauffeur profile (unless admin)
+      if (req.auth && req.auth.role !== "admin" && req.auth.sub !== userId) {
+        return res.status(403).json({ message: "You can only register your own chauffeur profile" });
+      }
 
       // Auto-upsert user in this DB — handles cross-environment tokens (e.g. Railway user vs dev DB)
       if (userId) {
@@ -658,17 +663,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const chauffeur = await storage.createChauffeur(req.body);
+      // Upsert: if chauffeur already exists for this user, update instead of creating duplicate
+      if (!userId) return res.status(400).json({ message: "userId is required" });
+      let chauffeur;
+      const existingChauffeur = await storage.getChauffeurByUserId(userId);
+      if (existingChauffeur) {
+        chauffeur = await storage.updateChauffeur(existingChauffeur.id, {
+          carMake: req.body.carMake || existingChauffeur.carMake,
+          vehicleModel: req.body.vehicleModel || existingChauffeur.vehicleModel,
+          plateNumber: req.body.plateNumber || existingChauffeur.plateNumber,
+          vehicleType: req.body.vehicleType || existingChauffeur.vehicleType,
+          carColor: req.body.carColor || existingChauffeur.carColor,
+          phone: req.body.phone || existingChauffeur.phone,
+          passengerCapacity: req.body.passengerCapacity || existingChauffeur.passengerCapacity,
+          luggageCapacity: req.body.luggageCapacity || existingChauffeur.luggageCapacity,
+          profilePhoto: req.body.profilePhoto || existingChauffeur.profilePhoto,
+        });
+      } else {
+        chauffeur = await storage.createChauffeur(req.body);
+      }
       await storage.updateUser(req.body.userId, { role: "chauffeur" });
 
       // Create/ensure a driver application (pending) for admin review
-      const existing = await storage.getDriverApplicationByUserId(req.body.userId);
-      if (!existing) {
+      const existingApp = await storage.getDriverApplicationByUserId(req.body.userId);
+      if (!existingApp) {
         await storage.createDriverApplication({
           userId: req.body.userId,
-          chauffeurId: chauffeur.id,
+          chauffeurId: chauffeur!.id,
           status: "pending",
         });
+      } else if (existingApp.chauffeurId !== chauffeur!.id) {
+        await storage.updateDriverApplication(existingApp.id, { chauffeurId: chauffeur!.id });
       }
 
       return res.json(chauffeur);
@@ -718,6 +743,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const chauffeur = await storage.updateChauffeur(req.params.id, req.body);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
       return res.json(chauffeur);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/chauffeurs/:id", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const chauffeur = await storage.getChauffeur(req.params.id);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
+      // Also delete associated driver application
+      if (chauffeur.userId) {
+        const app = await storage.getDriverApplicationByUserId(chauffeur.userId);
+        if (app) await storage.deleteDriverApplication(app.id);
+      }
+      await storage.deleteChauffeur(req.params.id);
+      return res.json({ message: "Chauffeur deleted" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
@@ -876,6 +917,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       return res.json(updated);
+    },
+  );
+
+  app.delete(
+    "/api/admin/driver-applications/:id",
+    requireAuth,
+    requireRole(["admin"]),
+    async (req: AuthedRequest, res: Response) => {
+      try {
+        const deleted = await storage.deleteDriverApplication(req.params.id);
+        if (!deleted) return res.status(404).json({ message: "Application not found" });
+        return res.json({ message: "Application deleted" });
+      } catch (error: any) {
+        return res.status(500).json({ message: error.message });
+      }
     },
   );
 
