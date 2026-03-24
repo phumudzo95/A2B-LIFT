@@ -108,8 +108,12 @@ Commission rate: 20%
 - Font: Inter (Google Fonts)
 
 ## Admin Panel
-- Accessible at /admin route on the backend
+- Accessible at /admin route on the backend (username: `admin`, password: `Admin@2026!`)
 - Overview stats, driver management, ride monitoring, withdrawal approvals, safety reports
+- **Chauffeur management**: Approve, reject, edit vehicle info, view documents, delete drivers
+- **Driver Applications**: Dedicated section with approve/reject/delete/notes actions, filtered by status
+- **Delete**: Deleting a chauffeur also removes their associated driver application
+- Chauffeur registration uses upsert to prevent duplicate records per user
 
 ## Replit Configuration
 - **Backend** runs on port 5000 (webview) via `npm run server:dev` (tsx)
