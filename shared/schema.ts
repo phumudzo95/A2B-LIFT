@@ -49,6 +49,7 @@ export const chauffeurs = pgTable("chauffeurs", {
   lat: real("lat"),
   lng: real("lng"),
   locationUpdatedAt: timestamp("location_updated_at"),
+  pushToken: text("push_token"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

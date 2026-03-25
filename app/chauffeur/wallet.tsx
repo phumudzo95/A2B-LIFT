@@ -243,112 +243,119 @@ export default function ChauffeurWalletScreen() {
         )}
       </ScrollView>
 
-      {/* ── Withdrawal Modal ── */}
-      <Modal visible={showWithdraw} transparent animationType="slide" onRequestClose={() => setShowWithdraw(false)}>
+      {/* ── Withdrawal Modal (single modal with internal bank picker view) ── */}
+      <Modal visible={showWithdraw} transparent animationType="slide" onRequestClose={() => { if (showBankPicker) setShowBankPicker(false); else setShowWithdraw(false); }}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]}>
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 24, maxHeight: "85%" }]}>
             <View style={styles.sheetHandle} />
-            <Text style={styles.modalTitle}>Withdraw Earnings</Text>
-            <Text style={styles.modalSub}>Available: R {earnings_total.toFixed(2)}</Text>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Amount (min R50)</Text>
-                <View style={styles.fieldWrap}>
-                  <Text style={styles.randSign}>R</Text>
-                  <TextInput
-                    style={styles.fieldInput}
-                    value={withdrawAmount}
-                    onChangeText={setWithdrawAmount}
-                    keyboardType="numeric"
-                    placeholder="0.00"
-                    placeholderTextColor={Colors.textMuted}
-                  />
+            {showBankPicker ? (
+              /* ── Inline bank list ── */
+              <>
+                <View style={styles.bankPickerHeader}>
+                  <Pressable onPress={() => setShowBankPicker(false)} hitSlop={12}>
+                    <Ionicons name="chevron-back" size={22} color={Colors.white} />
+                  </Pressable>
+                  <Text style={styles.modalTitle}>Select Bank</Text>
+                  <View style={{ width: 22 }} />
                 </View>
-              </View>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {banks.map((bank, idx) => (
+                    <Pressable
+                      key={`${bank.code}-${idx}`}
+                      style={[styles.bankRow, selectedBank?.code === bank.code && selectedBank?.name === bank.name && styles.bankRowSelected]}
+                      onPress={() => { setSelectedBank(bank); setShowBankPicker(false); }}
+                    >
+                      <Text style={styles.bankName}>{bank.name}</Text>
+                      {selectedBank?.code === bank.code && selectedBank?.name === bank.name && (
+                        <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+                      )}
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </>
+            ) : (
+              /* ── Withdrawal form ── */
+              <>
+                <Text style={styles.modalTitle}>Withdraw Earnings</Text>
+                <Text style={styles.modalSub}>Available: R {earnings_total.toFixed(2)}</Text>
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Bank</Text>
-                <Pressable style={styles.bankPicker} onPress={() => setShowBankPicker(true)}>
-                  <Text style={selectedBank ? styles.bankPickerValue : styles.bankPickerPlaceholder}>
-                    {selectedBank?.name || "Select your bank"}
-                  </Text>
-                  <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
-                </Pressable>
-              </View>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Amount (min R50)</Text>
+                    <View style={styles.fieldWrap}>
+                      <Text style={styles.randSign}>R</Text>
+                      <TextInput
+                        style={styles.fieldInput}
+                        value={withdrawAmount}
+                        onChangeText={setWithdrawAmount}
+                        keyboardType="numeric"
+                        placeholder="0.00"
+                        placeholderTextColor={Colors.textMuted}
+                      />
+                    </View>
+                  </View>
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Account Number</Text>
-                <View style={styles.fieldWrap}>
-                  <TextInput
-                    style={[styles.fieldInput, { paddingLeft: 0 }]}
-                    value={accountNumber}
-                    onChangeText={setAccountNumber}
-                    keyboardType="numeric"
-                    placeholder="Enter account number"
-                    placeholderTextColor={Colors.textMuted}
-                  />
-                </View>
-              </View>
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Bank</Text>
+                    <Pressable style={styles.bankPicker} onPress={() => setShowBankPicker(true)}>
+                      <Text style={selectedBank ? styles.bankPickerValue : styles.bankPickerPlaceholder}>
+                        {selectedBank?.name || "Select your bank"}
+                      </Text>
+                      <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
+                    </Pressable>
+                  </View>
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Account Holder Name</Text>
-                <View style={styles.fieldWrap}>
-                  <TextInput
-                    style={[styles.fieldInput, { paddingLeft: 0 }]}
-                    value={accountName}
-                    onChangeText={setAccountName}
-                    placeholder="As it appears on your bank account"
-                    placeholderTextColor={Colors.textMuted}
-                  />
-                </View>
-              </View>
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Account Number</Text>
+                    <View style={styles.fieldWrap}>
+                      <TextInput
+                        style={[styles.fieldInput, { paddingLeft: 0 }]}
+                        value={accountNumber}
+                        onChangeText={setAccountNumber}
+                        keyboardType="numeric"
+                        placeholder="Enter account number"
+                        placeholderTextColor={Colors.textMuted}
+                      />
+                    </View>
+                  </View>
 
-              <View style={styles.paystackNote}>
-                <Ionicons name="shield-checkmark-outline" size={14} color={Colors.textSecondary} />
-                <Text style={styles.paystackNoteText}>Powered by Paystack · Funds arrive within 24hrs</Text>
-              </View>
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Account Holder Name</Text>
+                    <View style={styles.fieldWrap}>
+                      <TextInput
+                        style={[styles.fieldInput, { paddingLeft: 0 }]}
+                        value={accountName}
+                        onChangeText={setAccountName}
+                        placeholder="As it appears on your bank account"
+                        placeholderTextColor={Colors.textMuted}
+                      />
+                    </View>
+                  </View>
 
-              <View style={styles.modalActions}>
-                <Pressable style={styles.cancelBtn} onPress={() => setShowWithdraw(false)}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.confirmBtn, withdrawLoading && { opacity: 0.7 }]}
-                  onPress={handleWithdraw}
-                  disabled={withdrawLoading}
-                >
-                  {withdrawLoading
-                    ? <ActivityIndicator color={Colors.primary} size="small" />
-                    : <Text style={styles.confirmBtnText}>Withdraw</Text>
-                  }
-                </Pressable>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+                  <View style={styles.paystackNote}>
+                    <Ionicons name="shield-checkmark-outline" size={14} color={Colors.textSecondary} />
+                    <Text style={styles.paystackNoteText}>Powered by Paystack · Funds arrive within 24hrs</Text>
+                  </View>
 
-      {/* ── Bank Picker Modal ── */}
-      <Modal visible={showBankPicker} transparent animationType="slide" onRequestClose={() => setShowBankPicker(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 24, maxHeight: "70%" }]}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.modalTitle}>Select Bank</Text>
-            <ScrollView>
-              {banks.map(bank => (
-                <Pressable
-                  key={bank.code}
-                  style={[styles.bankRow, selectedBank?.code === bank.code && styles.bankRowSelected]}
-                  onPress={() => { setSelectedBank(bank); setShowBankPicker(false); }}
-                >
-                  <Text style={styles.bankName}>{bank.name}</Text>
-                  {selectedBank?.code === bank.code && (
-                    <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-                  )}
-                </Pressable>
-              ))}
-            </ScrollView>
+                  <View style={styles.modalActions}>
+                    <Pressable style={styles.cancelBtn} onPress={() => setShowWithdraw(false)}>
+                      <Text style={styles.cancelBtnText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.confirmBtn, withdrawLoading && { opacity: 0.7 }]}
+                      onPress={handleWithdraw}
+                      disabled={withdrawLoading}
+                    >
+                      {withdrawLoading
+                        ? <ActivityIndicator color={Colors.primary} size="small" />
+                        : <Text style={styles.confirmBtnText}>Withdraw</Text>
+                      }
+                    </Pressable>
+                  </View>
+                </ScrollView>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -420,6 +427,7 @@ const styles = StyleSheet.create({
   cancelBtnText: { fontSize: 14, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
   confirmBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: "center", backgroundColor: Colors.white },
   confirmBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.primary },
+  bankPickerHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 8 },
   bankRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: Colors.border },
   bankRowSelected: { backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 8 },
   bankName: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.white },

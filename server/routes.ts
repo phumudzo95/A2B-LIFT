@@ -18,6 +18,30 @@ import { authOptional, requireAuth, requireRole, type AuthedRequest } from "./au
 import { signAccessToken, type UserRole } from "./auth";
 import { externalApiService } from "./external-api-service";
 
+async function sendExpoPushNotification(tokens: string[], title: string, body: string, data?: object) {
+  const messages = tokens
+    .filter(t => t && t.startsWith("ExponentPushToken["))
+    .map(to => ({
+      to,
+      sound: "default",
+      title,
+      body,
+      data: data || {},
+      priority: "high",
+      channelId: "ride-alerts",
+      android: { channelId: "ride-alerts", priority: "max", sound: "default" },
+    }));
+  if (messages.length === 0) return;
+  try {
+    await axios.post("https://exp.host/--/api/v2/push/send", messages, {
+      headers: { "Content-Type": "application/json", Accept: "application/json", "Accept-Encoding": "gzip, deflate" },
+      timeout: 5000,
+    });
+  } catch (e: any) {
+    console.error("[push] Failed to send Expo push notification:", e.message);
+  }
+}
+
 function generateAIResponse(type: string, description: string): string {
   const responses: Record<string, string[]> = {
     safety: [
@@ -721,6 +745,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/chauffeurs/:id/push-token", async (req: Request, res: Response) => {
+    try {
+      const { pushToken } = req.body;
+      await storage.updateChauffeur(req.params.id, { pushToken });
+      return res.json({ success: true });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/chauffeurs/:id", async (req: Request, res: Response) => {
     try {
       const chauffeur = await storage.getChauffeur(req.params.id);
@@ -1195,9 +1229,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (notified === 0) {
           io.emit("ride:new", ride);
         }
+        // Push notification to all nearby drivers (wakes up drivers not in the app)
+        const pushTokens = nearbyChauffeurs.map(c => (c as any).pushToken).filter(Boolean);
+        if (pushTokens.length > 0) {
+          sendExpoPushNotification(
+            pushTokens,
+            "🚗 New Ride Request",
+            `Pickup: ${ride.pickupAddress || "Nearby"} — tap to accept`,
+            { rideId: ride.id, type: "ride:new" }
+          );
+        }
       } else {
         // No nearby drivers — broadcast to all online approved drivers as fallback
         io.emit("ride:new", ride);
+        // Push to ALL online approved drivers with tokens
+        const allDrivers = (await storage.getAllChauffeurs()).filter(c => c.isOnline && c.isApproved);
+        const pushTokens = allDrivers.map(c => (c as any).pushToken).filter(Boolean);
+        if (pushTokens.length > 0) {
+          sendExpoPushNotification(
+            pushTokens,
+            "🚗 New Ride Request",
+            `Pickup: ${ride.pickupAddress || "Nearby"} — tap to accept`,
+            { rideId: ride.id, type: "ride:new" }
+          );
+        }
       }
 
       // Always return success immediately — client shows "searching" UI

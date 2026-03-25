@@ -69,6 +69,15 @@
       "expo-font",
       "expo-web-browser",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#0a0a0a",
+          "sounds": [],
+          "mode": "production"
+        }
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "A2B LIFT uses your location to connect you with nearby drivers and navigate your trip.",

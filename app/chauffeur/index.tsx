@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import * as Notifications from "expo-notifications";
 import {
   View,
   Text,
@@ -88,6 +89,50 @@ export default function ChauffeurDashboard() {
 
   useEffect(() => {
     loadChauffeur();
+  }, []);
+
+  // Register for push notifications and save token to server
+  useEffect(() => {
+    if (!chauffeur?.id || Platform.OS === "web") return;
+    (async () => {
+      try {
+        if (Platform.OS === "android") {
+          await Notifications.setNotificationChannelAsync("ride-alerts", {
+            name: "Ride Alerts",
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            sound: "default",
+            bypassDnd: true,
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          });
+        }
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== "granted") return;
+        const tokenData = await Notifications.getExpoPushTokenAsync();
+        if (tokenData?.data) {
+          await apiRequest("PUT", `/api/chauffeurs/${chauffeur.id}/push-token`, { pushToken: tokenData.data });
+        }
+      } catch (e: any) {
+        console.log("[push] Registration:", e.message);
+      }
+    })();
+  }, [chauffeur?.id]);
+
+  // Handle push notification taps (bring driver to home to see the popup)
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+    const sub = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data as any;
+      if (data?.type === "ride:new") setIsOnline(true);
+    });
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {
