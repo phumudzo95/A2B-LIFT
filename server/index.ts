@@ -244,14 +244,17 @@ async function configureExpoAndLanding(app: express.Application) {
   const staticBuildExists = hasStaticBuild();
   log(`Static build: ${staticBuildExists ? "found" : "not found"} — routing non-API traffic to Metro:${metroPort}`);
 
-  // /admin → admin dashboard HTML (always fresh — no caching)
-  app.get("/admin", (_req: Request, res: Response) => {
+  // Admin dashboard — served at BOTH /admin and /a2b-admin (new URL busts any stale browser cache)
+  const serveAdmin = (_req: Request, res: Response) => {
     const freshTemplate = fs.readFileSync(adminTemplatePath, "utf-8");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     res.status(200).send(freshTemplate);
-  });
+  };
+  app.get("/admin", serveAdmin);
+  app.get("/a2b-admin", serveAdmin);
 
   // Serve local assets folder
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
@@ -274,7 +277,7 @@ async function configureExpoAndLanding(app: express.Application) {
     // No static build — proxy everything (web + native) to Metro
     app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.path.startsWith("/api")) return next();
-      if (req.path === "/admin") return next(); // handled above
+      if (req.path === "/admin" || req.path === "/a2b-admin") return next(); // handled above
       if (req.path.startsWith("/socket.io")) return next(); // let Socket.IO handle this
       const platform = req.header("expo-platform") || "web";
       log(`[Metro proxy] ${platform} ${req.path} → Metro:${metroPort}`);
