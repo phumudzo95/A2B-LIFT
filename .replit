@@ -93,3 +93,4 @@ JWT_SECRET = "918af73337fa8332dc0e0769b6b9babab0e1d090a26ffcef2d7029ec9b5ec1ebde
 SUPABASE_DB_URL = "postgresql://postgres.zzwkieiktbhptvgsqerd:A2brt89%400kk@aws-1-eu-west-1.pooler.supabase.com:5432/postgres"
 PORT = "5000"
 NODE_ENV = "development"
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp6d2tpZWlrdGJocHR2Z3NxZXJkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDg4MDU2MSwiZXhwIjoyMDg2NDU2NTYxfQ.gUy2z9-a9YCa4YoBnCWQ_55BaZCDew8iemiK18ohhbU"
