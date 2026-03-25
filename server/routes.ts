@@ -1504,18 +1504,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // on earnings / notifications does NOT kill the status update.
         try {
           const earningsCalc = calculateChauffeurEarnings(ride.price);
-          await storage.createEarning({
-            chauffeurId: ride.chauffeurId,
-            rideId: ride.id,
-            amount: earningsCalc.chauffeurEarnings,
-            commission: earningsCalc.commission,
-          });
-          const chauffeur = await storage.getChauffeur(ride.chauffeurId);
-          if (chauffeur) {
-            await storage.updateChauffeur(ride.chauffeurId, {
-              earningsTotal:
-                (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings,
+          // Guard against double-counting: Paystack webhook may have already created
+          // the earning record for card payments before trip_completed fires.
+          const existingEarnings = await storage.getEarningsByChauffeur(ride.chauffeurId);
+          const alreadyRecorded = existingEarnings.some((e: any) => e.rideId === ride.id);
+          if (!alreadyRecorded) {
+            await storage.createEarning({
+              chauffeurId: ride.chauffeurId,
+              rideId: ride.id,
+              amount: earningsCalc.chauffeurEarnings,
+              commission: earningsCalc.commission,
             });
+            const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+            if (chauffeur) {
+              await storage.updateChauffeur(ride.chauffeurId, {
+                earningsTotal:
+                  (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings,
+              });
+            }
           }
         } catch (earningsErr: any) {
           console.error("earnings record failed (non-fatal):", earningsErr.message);

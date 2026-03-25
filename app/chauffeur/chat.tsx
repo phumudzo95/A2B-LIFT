@@ -87,12 +87,12 @@ export default function ChauffeurChatScreen() {
         </View>
       ) : (
         <FlatList
-          data={Array.isArray(messages) ? messages : []}
+          data={Array.isArray(messages) ? [...messages].reverse() : []}
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
           contentContainerStyle={styles.messagesList}
           showsVerticalScrollIndicator={false}
-          inverted={false}
+          inverted={true}
         />
       )}
 
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   headerName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.white },
   headerStatus: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.success },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  messagesList: { padding: 16, gap: 8, flexGrow: 1, justifyContent: "flex-end" },
+  messagesList: { padding: 16, gap: 8, flexGrow: 1 },
   messageBubble: { maxWidth: "80%", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, gap: 4 },
   myMessage: { alignSelf: "flex-end", backgroundColor: Colors.white, borderBottomRightRadius: 4 },
   theirMessage: { alignSelf: "flex-start", backgroundColor: Colors.surface, borderBottomLeftRadius: 4 },
