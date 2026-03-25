@@ -1530,7 +1530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (ride.clientId) {
         await storage.createNotification({
           userId: ride.clientId,
-          title: "Chauffeur Assigned",
+          title: "Driver Assigned",
           body: "Your premium chauffeur has been assigned and is on the way.",
           type: "ride",
         });

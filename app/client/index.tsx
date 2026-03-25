@@ -101,6 +101,10 @@ export default function ClientHomeScreen() {
   // Notification badge
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Live driver ETA notification state
+  const [liveEtaMin, setLiveEtaMin] = useState<number | null>(null);
+  const [initialEtaMin, setInitialEtaMin] = useState<number | null>(null);
+
   // ETA to nearest available driver (shown on map in idle/selecting state)
   const [nearestDriverEta, setNearestDriverEta] = useState<string | null>(null);
 
@@ -306,6 +310,8 @@ export default function ClientHomeScreen() {
     setCurrentRide(ride);
     if (ride.status === "chauffeur_assigned") {
       setRideStatus("assigned");
+      setLiveEtaMin(null);
+      setInitialEtaMin(null);
       if (ride.chauffeurId) {
         fetchChauffeurDetails(ride.chauffeurId);
         // Fetch driver's current location to show route from driver → pickup
@@ -314,6 +320,11 @@ export default function ClientHomeScreen() {
             const driverLoc = { lat: c.lat, lng: c.lng };
             setDriverLocation(driverLoc);
             fetchRoute(driverLoc, { lat: ride.pickupLat, lng: ride.pickupLng });
+            // Set initial ETA from haversine distance (will be refined by route API)
+            const dist = haversineDistance(c.lat, c.lng, parseFloat(ride.pickupLat), parseFloat(ride.pickupLng));
+            const eta = Math.max(1, Math.round((dist / 30) * 60));
+            setInitialEtaMin(eta);
+            setLiveEtaMin(eta);
           }
         }).catch(() => {});
       }
@@ -389,11 +400,31 @@ export default function ClientHomeScreen() {
         const distKm = haversineDistance(driverLoc.lat, driverLoc.lng, destLat, destLng);
         const etaMin = Math.max(1, Math.round((distKm / 30) * 60));
         setEtaText(etaMin <= 1 ? "Arriving now" : `${etaMin} min away`);
+        // Update live ETA for notification banner
+        setLiveEtaMin(etaMin);
+        setInitialEtaMin(prev => prev ?? etaMin);
       }
     };
     on("location:update", handleDriverLocation);
     return () => { off("location:update", handleDriverLocation); };
   }, [currentRide, rideStatus, location]);
+
+  // Fallback: decrease ETA by 1 every 60s when no location updates come in
+  useEffect(() => {
+    if (rideStatus !== "assigned" && rideStatus !== "arriving") return;
+    const timer = setInterval(() => {
+      setLiveEtaMin(prev => prev !== null && prev > 0 ? prev - 1 : prev);
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [rideStatus]);
+
+  // Reset ETA state when trip starts or ends
+  useEffect(() => {
+    if (rideStatus === "in_trip" || rideStatus === "completed" || rideStatus === "idle") {
+      setLiveEtaMin(null);
+      setInitialEtaMin(null);
+    }
+  }, [rideStatus]);
 
   async function fetchRoute(origin: { lat: number; lng: number }, dest: { lat: number; lng: number }) {
     try {
@@ -404,7 +435,12 @@ export default function ClientHomeScreen() {
       if (data.polyline) {
         setRoutePolyline(data.polyline);
         if (data.durationText) setTripDurationText(data.durationText);
-        if (data.durationMin) setTripDurationMin(data.durationMin);
+        if (data.durationMin) {
+          setTripDurationMin(data.durationMin);
+          // Refine live ETA from accurate route calculation
+          setLiveEtaMin(data.durationMin);
+          setInitialEtaMin(prev => prev ?? data.durationMin);
+        }
         if (data.distanceKm) setEstimatedDistance(Math.round(data.distanceKm * 10) / 10);
         setEtaText(`ETA: ${data.durationText}`);
       }
@@ -709,10 +745,7 @@ export default function ClientHomeScreen() {
           loading={locationLoading}
           etaText={etaText || undefined}
           statusText={
-            rideStatus === "assigned" ? "Your driver is on the way" :
-            rideStatus === "arriving" ? "Your driver is arriving" :
-            rideStatus === "in_trip" ? "Trip In Progress" :
-            undefined
+            rideStatus === "in_trip" ? "Trip In Progress" : undefined
           }
         />
 
@@ -766,6 +799,47 @@ export default function ClientHomeScreen() {
               </View>
             </View>
           </View>
+        )}
+
+        {/* Live driver notification banner — floats above map when driver is on the way */}
+        {(rideStatus === "assigned" || rideStatus === "arriving") && chauffeurDetails && (
+          <Animated.View entering={FadeInDown.duration(500)} style={styles.liveNotifBanner}>
+            <View style={styles.liveNotifRow}>
+              <View style={styles.liveCarIconWrap}>
+                <Ionicons name="car" size={20} color={Colors.white} />
+              </View>
+              <View style={styles.liveNotifInfo}>
+                <Text style={styles.liveNotifTitle} numberOfLines={1}>
+                  {rideStatus === "arriving" ? "Driver arriving now" : "Driver on the way"}
+                </Text>
+                <Text style={styles.liveNotifVehicle} numberOfLines={1}>
+                  {[chauffeurDetails.carMake, chauffeurDetails.vehicleModel].filter(Boolean).join(" ") || "Your Vehicle"}
+                  {"  ·  "}
+                  <Text style={styles.liveNotifPlate}>{chauffeurDetails.plateNumber}</Text>
+                </Text>
+              </View>
+              <View style={styles.liveEtaBox}>
+                <Text style={styles.liveEtaNum}>
+                  {liveEtaMin !== null ? (liveEtaMin <= 1 ? "<1" : String(liveEtaMin)) : "—"}
+                </Text>
+                <Text style={styles.liveEtaUnit}>min</Text>
+              </View>
+            </View>
+            {/* Progress bar track */}
+            <View style={styles.liveProgressTrack}>
+              <View style={[
+                styles.liveProgressFill,
+                {
+                  width: `${initialEtaMin && liveEtaMin !== null
+                    ? Math.max(4, Math.round((liveEtaMin / initialEtaMin) * 100))
+                    : 100}%` as any,
+                  backgroundColor: (liveEtaMin !== null && liveEtaMin <= 2)
+                    ? Colors.warning
+                    : Colors.success,
+                }
+              ]} />
+            </View>
+          </Animated.View>
         )}
       </View>
 
@@ -1873,6 +1947,88 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
     marginTop: 1,
+  },
+  // Live driver notification banner
+  liveNotifBanner: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    right: 12,
+    backgroundColor: "rgba(0,0,0,0.92)",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    zIndex: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+    gap: 10,
+  },
+  liveNotifRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  liveCarIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.success,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  liveNotifInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  liveNotifTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  liveNotifVehicle: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+  },
+  liveNotifPlate: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+    letterSpacing: 0.5,
+  },
+  liveEtaBox: {
+    alignItems: "center",
+    minWidth: 44,
+    flexShrink: 0,
+  },
+  liveEtaNum: {
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+    lineHeight: 28,
+  },
+  liveEtaUnit: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+    marginTop: -2,
+  },
+  liveProgressTrack: {
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  liveProgressFill: {
+    height: 4,
+    borderRadius: 2,
   },
   // Vehicle color badge
   plateChip: {
