@@ -135,7 +135,14 @@ Commission rate: 20%
 - Wallet payments: deducted from user wallet balance on trip completion
 - Cash payments: auto-marked as paid when trip status → `trip_completed`
 - Commission: 20% platform fee tracked per trip in `earnings` table
-- **No in-app payouts**: drivers contact support for withdrawals; gateway handles payout externally
+- Paystack webhook URL (must register in Paystack dashboard): `https://api-production-0783.up.railway.app/api/paystack/webhook`
+
+## Driver Withdrawals
+- Drivers request withdrawals from the Earnings screen (bank details form)
+- Backend: POST `/api/wallet/withdraw` — creates Paystack transfer recipient + initiates transfer
+- Paystack sends money from A2B LIFT Paystack balance to driver's bank account
+- **Requires**: "Automated Transfers" enabled in Paystack dashboard (Settings → Transfers)
+- Withdrawal history tracked in `withdrawals` table
 
 ## Commission Tracking
 - Every completed trip: `earnings` table stores `amount` (driver's 80%) and `commission` (platform's 20%)
@@ -143,8 +150,23 @@ Commission rate: 20%
 - Admin dashboard shows: Total Revenue, Platform Commission, Driver Earnings
 - Webhook deduplication prevents double-counting earnings per ride
 
-## Railway Auto-Deploy
-- Push to GitHub → Railway auto-deploys via `GITHUB_TOKEN`
-- Build: `npm install && npm run build`
+## Railway Deployment (Production Backend)
+- Production API URL: `https://api-production-0783.up.railway.app`
+- Push to GitHub (`git push origin main`) → Railway auto-deploys
+- Build: `npm install && npm run server:build`
 - Start: `node server_dist/index.js`
 - Health check: `/api/health`
+- All env vars must be set in Railway dashboard (not .env file)
+
+## App Store Publishing
+- **EAS Build**: `eas.json` configured with development/preview/production profiles
+- All builds point to Railway API: `EXPO_PUBLIC_DOMAIN=https://api-production-0783.up.railway.app`
+- iOS: bundle ID `com.a2blift`, buildNumber auto-increments
+- Android: package `com.a2blift`, versionCode auto-increments
+- Required before submitting to stores:
+  1. Run `eas login` and `eas build:configure` to link EAS project ID
+  2. Set EAS secrets: `EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY` (your live pk_live key)
+  3. iOS: Apple Developer account + provisioning profile
+  4. Android: Google Play Console account + `google-play-key.json` service account
+  5. Register Paystack webhook URL in Paystack dashboard
+- Permissions configured: Location (foreground), Camera, Photo Library

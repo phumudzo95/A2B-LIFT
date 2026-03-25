@@ -16,16 +16,45 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.a2blift",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "A2B LIFT needs your location to show nearby drivers and navigate to your destination.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "A2B LIFT uses your location to connect you with nearby drivers and to track your trip.",
+        "NSCameraUsageDescription": "A2B LIFT needs camera access to let you upload your profile photo and vehicle documents.",
+        "NSPhotoLibraryUsageDescription": "A2B LIFT needs access to your photo library to let you upload your profile photo and vehicle documents.",
+        "NSPhotoLibraryAddUsageDescription": "A2B LIFT saves trip-related photos to your library.",
+        "UIBackgroundModes": ["location", "fetch"]
+      },
       "config": {
         "googleMapsApiKey": "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0"
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
       }
     },
     "android": {
       "package": "com.a2blift",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#000000",
-        "foregroundImage": "./assets/images/icon.png"
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png",
+        "backgroundColor": "#000000"
       },
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.VIBRATE"
+      ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0"
@@ -38,11 +67,32 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "A2B LIFT uses your location to connect you with nearby drivers and navigate your trip.",
+          "locationWhenInUsePermission": "A2B LIFT needs your location to show nearby drivers and navigate to your destination.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "A2B LIFT needs access to your photos to let you upload your profile photo and documents.",
+          "cameraPermission": "A2B LIFT needs camera access to let you take photos for your profile and documents."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a2b-lift"
+      }
     }
   }
 }
