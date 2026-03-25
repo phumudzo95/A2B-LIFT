@@ -32,6 +32,7 @@ export const chauffeurs = pgTable("chauffeurs", {
     .default(sql`gen_random_uuid()`),
   userId: varchar("user_id")
     .notNull()
+    .unique()
     .references(() => users.id),
   carMake: text("car_make"),
   vehicleModel: text("vehicle_model").notNull(),

@@ -7,7 +7,7 @@ import crypto from "node:crypto";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users } from "../shared/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import {
   calculatePrice,
   calculateChauffeurEarnings,
