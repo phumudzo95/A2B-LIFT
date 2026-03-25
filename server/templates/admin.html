@@ -679,30 +679,67 @@ function renderChauffeurTable(tableId, data, showActions) {
     </tbody></table>`;
 }
 
-async function approveChauf(id) {
-  if (!confirm('Approve this chauffeur? They will be notified and can start accepting rides.')) return;
+function approveChauf(id) { showChauffeurConfirm(id, 'approve'); }
+function rejectChauf(id) { showChauffeurConfirm(id, 'reject'); }
+
+function showChauffeurConfirm(id, action) {
+  const c = allChauf.find(x => x.id === id); if (!c) return;
+  const isApprove = action === 'approve';
+  document.getElementById('m-title').textContent = isApprove ? '✓ Approve Driver' : '✕ Reject Driver';
+  document.getElementById('m-sub').textContent = isApprove
+    ? 'Review all details before approving. The driver will be notified immediately.'
+    : 'Review details and provide a rejection reason. The driver will be notified immediately.';
+  document.getElementById('m-body').innerHTML = `
+    <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px">
+      ${c.profilePhoto ? `<img src="${c.profilePhoto}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0" onerror="this.style.display='none'" />` : `<div style="width:64px;height:64px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">🧑‍✈️</div>`}
+      <div>
+        <div style="font-weight:700;font-size:16px">${c.userName || '—'}</div>
+        <div style="color:var(--muted);font-size:13px;margin-top:2px">${c.userEmail || '—'}</div>
+        <div style="color:var(--muted);font-size:13px">${c.phone || c.userPhone || '—'}</div>
+      </div>
+    </div>
+    <div class="info-grid">
+      <div class="info-row"><div class="info-label">Vehicle</div><div class="info-val">${[c.carMake, c.vehicleModel].filter(Boolean).join(' ') || '—'}</div></div>
+      <div class="info-row"><div class="info-label">Plate</div><div class="info-val"><span style="font-family:var(--mono);font-weight:600">${c.plateNumber || '—'}</span></div></div>
+      <div class="info-row"><div class="info-label">Color</div><div class="info-val">${c.carColor || '—'}</div></div>
+      <div class="info-row"><div class="info-label">Category</div><div class="info-val" style="text-transform:capitalize">${c.vehicleType || '—'}</div></div>
+      <div class="info-row"><div class="info-label">Capacity</div><div class="info-val">${c.passengerCapacity || 4} passengers · ${c.luggageCapacity || 2} bags</div></div>
+      <div class="info-row"><div class="info-label">Registered</div><div class="info-val">${fmt(c.createdAt)}</div></div>
+      ${!isApprove ? `<div style="margin-top:8px"><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;font-weight:600">Rejection Reason <span style="color:var(--red)">*</span></label><textarea id="chauf-reject-reason" class="f-input" style="width:100%;min-height:80px;resize:vertical;box-sizing:border-box" placeholder="Explain why this application was not approved…"></textarea></div>` : ''}
+    </div>`;
+  document.getElementById('m-foot').innerHTML = isApprove
+    ? `<button class="btn-lg btn-outline" onclick="closeModal()">Cancel</button>
+       <button class="btn-lg btn-green" onclick="doApproveChauf('${id}')">✓ Confirm Approval</button>`
+    : `<button class="btn-lg btn-outline" onclick="closeModal()">Cancel</button>
+       <button class="btn-lg" style="background:var(--red);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer" onclick="doRejectChauf('${id}')">✕ Confirm Rejection</button>`;
+  openModal();
+}
+
+async function doApproveChauf(id) {
+  closeModal();
   try {
-    const res = await apiFetch('/api/chauffeurs/' + id + '/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const res = await apiFetch('/api/chauffeurs/' + id + '/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
     if (!res.ok) throw new Error(await res.text());
-    toast('✅ Chauffeur approved! Notification sent.', 'ok');
+    toast('✅ Chauffeur approved! Notification sent to driver.', 'ok');
     loadChauf();
   } catch(e) { toast('❌ ' + e.message, 'err'); }
 }
 
-async function rejectChauf(id) {
-  const reason = prompt('Please enter the rejection reason:');
-  if (!reason || !reason.trim()) return;
+async function doRejectChauf(id) {
+  const reason = document.getElementById('chauf-reject-reason')?.value.trim();
+  if (!reason) {
+    const el = document.getElementById('chauf-reject-reason');
+    if (el) { el.style.borderColor = 'var(--red)'; el.focus(); }
+    return;
+  }
+  closeModal();
   try {
     const res = await apiFetch('/api/chauffeurs/' + id + '/reject', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason: reason.trim() }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
     });
     if (!res.ok) throw new Error(await res.text());
-    toast('🚫 Chauffeur rejected. Notification sent.', 'err');
+    toast('🚫 Driver rejected. Notification sent.', 'err');
     loadChauf();
   } catch(e) { toast('❌ ' + e.message, 'err'); }
 }
@@ -828,31 +865,79 @@ function renderAppsTable(tableId, data) {
     </tbody></table>`;
 }
 
-async function approveApp(id, chauffeurId) {
-  if (!confirm('Approve this driver application?')) return;
+function approveApp(id, chauffeurId) { showAppConfirm(id, chauffeurId, 'approve'); }
+function rejectApp(id, chauffeurId) { showAppConfirm(id, chauffeurId, 'reject'); }
+
+function showAppConfirm(id, chauffeurId, action) {
+  const a = allApps.find(x => x.id === id); if (!a) return;
+  const c = allChauf.find(x => x.id === (chauffeurId || a.chauffeurId));
+  const isApprove = action === 'approve';
+  document.getElementById('m-title').textContent = isApprove ? '✓ Approve Application' : '✕ Reject Application';
+  document.getElementById('m-sub').textContent = isApprove
+    ? 'Review all driver details before approving. Driver will be notified immediately.'
+    : 'Review details and provide a rejection reason. Driver will be notified immediately.';
+  document.getElementById('m-body').innerHTML = `
+    ${c ? `<div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px">
+      ${c.profilePhoto ? `<img src="${c.profilePhoto}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0" onerror="this.style.display='none'" />` : `<div style="width:64px;height:64px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">🧑‍✈️</div>`}
+      <div>
+        <div style="font-weight:700;font-size:16px">${c.userName || '—'}</div>
+        <div style="color:var(--muted);font-size:13px;margin-top:2px">${c.userEmail || '—'}</div>
+        <div style="color:var(--muted);font-size:13px">${c.phone || c.userPhone || '—'}</div>
+      </div>
+    </div>
+    <div class="info-grid">
+      <div class="info-row"><div class="info-label">Vehicle</div><div class="info-val">${[c.carMake, c.vehicleModel].filter(Boolean).join(' ') || '—'}</div></div>
+      <div class="info-row"><div class="info-label">Plate</div><div class="info-val"><span style="font-family:var(--mono);font-weight:600">${c.plateNumber || '—'}</span></div></div>
+      <div class="info-row"><div class="info-label">Color</div><div class="info-val">${c.carColor || '—'}</div></div>
+      <div class="info-row"><div class="info-label">Category</div><div class="info-val" style="text-transform:capitalize">${c.vehicleType || '—'}</div></div>
+      <div class="info-row"><div class="info-label">Capacity</div><div class="info-val">${c.passengerCapacity || 4} passengers · ${c.luggageCapacity || 2} bags</div></div>
+    </div>` : `<div class="info-grid"><div class="info-row"><div class="info-label">Application ID</div><div class="info-val" style="font-family:var(--mono);font-size:12px">${id}</div></div><div class="info-row"><div class="info-label">Submitted</div><div class="info-val">${fmt(a.submittedAt)}</div></div></div>`}
+    <div class="info-grid" style="margin-top:8px">
+      <div class="info-row"><div class="info-label">Status</div><div class="info-val"><span class="badge ${a.status==='approved'?'b-approved':a.status==='rejected'?'b-offline':'b-pending'}">${a.status||'pending'}</span></div></div>
+      <div class="info-row"><div class="info-label">Submitted</div><div class="info-val">${fmt(a.submittedAt)}</div></div>
+    </div>
+    ${!isApprove ? `<div style="margin-top:12px"><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;font-weight:600">Rejection Reason <span style="color:var(--red)">*</span></label><textarea id="app-reject-reason" class="f-input" style="width:100%;min-height:80px;resize:vertical;box-sizing:border-box" placeholder="Explain why this application was not approved…"></textarea></div>` : ''}
+  `;
+  document.getElementById('m-foot').innerHTML = isApprove
+    ? `<button class="btn-lg btn-outline" onclick="closeModal()">Cancel</button>
+       <button class="btn-lg btn-green" onclick="doApproveApp('${id}','${chauffeurId||''}')">✓ Confirm Approval</button>`
+    : `<button class="btn-lg btn-outline" onclick="closeModal()">Cancel</button>
+       <button class="btn-lg" style="background:var(--red);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer" onclick="doRejectApp('${id}')">✕ Confirm Rejection</button>`;
+  openModal();
+}
+
+async function doApproveApp(id, chauffeurId) {
+  closeModal();
   try {
     const res = await apiFetch('/api/admin/driver-applications/' + id, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'approved' }),
     });
     if (!res.ok) throw new Error(await res.text());
-    toast('✅ Application approved!', 'ok');
-    loadApps();
+    // Also approve the linked chauffeur profile so they can go online
+    if (chauffeurId) {
+      await apiFetch('/api/chauffeurs/' + chauffeurId + '/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' } }).catch(() => {});
+    }
+    toast('✅ Application approved! Driver notified.', 'ok');
+    loadApps(); loadChauf();
   } catch(e) { toast('❌ ' + e.message, 'err'); }
 }
 
-async function rejectApp(id) {
-  const notes = prompt('Rejection reason / notes:');
-  if (!notes || !notes.trim()) return;
+async function doRejectApp(id) {
+  const notes = document.getElementById('app-reject-reason')?.value.trim();
+  if (!notes) {
+    const el = document.getElementById('app-reject-reason');
+    if (el) { el.style.borderColor = 'var(--red)'; el.focus(); }
+    return;
+  }
+  closeModal();
   try {
     const res = await apiFetch('/api/admin/driver-applications/' + id, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'rejected', notes: notes.trim() }),
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'rejected', notes }),
     });
     if (!res.ok) throw new Error(await res.text());
-    toast('🚫 Application rejected.', 'err');
+    toast('🚫 Application rejected. Driver notified.', 'err');
     loadApps();
   } catch(e) { toast('❌ ' + e.message, 'err'); }
 }
@@ -905,8 +990,8 @@ function chaufDetail(id) {
     <button class="btn-lg btn-outline" onclick="closeModal()">Close</button>
     <button class="btn-lg btn-outline" onclick="closeModal();viewDocs('${c.id}','${(c.userName||'Driver').replace(/'/g,"\\'")}')">📄 View Docs</button>
     <button class="btn-lg btn-outline" onclick="closeModal();editChauf('${c.id}')">✏ Edit</button>
-    ${!c.isApproved ? `<button class="btn-lg btn-green" onclick="approveChauf('${c.id}');closeModal()">✓ Approve</button>` : ''}
-    ${!c.isApproved ? `<button class="btn-lg" style="background:var(--red);color:#fff;border:none" onclick="closeModal();rejectChauf('${c.id}')">✕ Reject</button>` : ''}
+    ${!c.isApproved ? `<button class="btn-lg btn-green" onclick="closeModal();approveChauf('${c.id}')">✓ Approve</button>` : ''}
+    ${!c.isApproved ? `<button class="btn-lg" style="background:var(--red);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer" onclick="closeModal();rejectChauf('${c.id}')">✕ Reject</button>` : ''}
   `;
   openModal();
 }
