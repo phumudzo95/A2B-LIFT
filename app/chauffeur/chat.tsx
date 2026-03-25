@@ -63,7 +63,7 @@ export default function ChauffeurChatScreen() {
   const wrapperProps = Platform.OS === "web" ? {} : { behavior: Platform.OS === "ios" ? "padding" : "height" as any, keyboardVerticalOffset: 0 };
 
   return (
-    <Wrapper style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]} {...wrapperProps}>
+    <Wrapper style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0), paddingBottom: Platform.OS === "web" ? 84 : 0 }]} {...wrapperProps}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Ionicons name="chevron-back" size={24} color={Colors.white} />

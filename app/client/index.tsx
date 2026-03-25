@@ -1019,14 +1019,20 @@ export default function ClientHomeScreen() {
               <Text style={styles.tripPriceValue}>R {currentRide.price}</Text>
             </View>
           )}
-          {(rideStatus === "assigned" || rideStatus === "arriving") && (
+          {(rideStatus === "assigned" || rideStatus === "arriving" || rideStatus === "in_trip") && (
             <Pressable
               style={styles.cancelRideActiveBtn}
               onPress={() => {
-                Alert.alert("Cancel Ride", "Are you sure you want to cancel?", [
-                  { text: "Keep Ride", style: "cancel" },
-                  { text: "Cancel Ride", style: "destructive", onPress: cancelRide },
-                ]);
+                if (Platform.OS === "web") {
+                  if ((global as any).confirm?.("Are you sure you want to cancel this ride?") !== false) {
+                    cancelRide();
+                  }
+                } else {
+                  Alert.alert("Cancel Ride", "Are you sure you want to cancel?", [
+                    { text: "Keep Ride", style: "cancel" },
+                    { text: "Cancel Ride", style: "destructive", onPress: cancelRide },
+                  ]);
+                }
               }}
             >
               <Text style={styles.cancelRideActiveBtnText}>Cancel Ride</Text>

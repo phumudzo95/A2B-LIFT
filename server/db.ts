@@ -17,6 +17,9 @@ const requireSsl = dbUrl.includes("supabase") || dbUrl.includes("neon.tech");
 export const pool = new Pool({
   connectionString: dbUrl,
   ssl: requireSsl ? { rejectUnauthorized: false } : false,
+  max: 5,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 5000,
 });
 
 export const db = drizzle(pool, { schema });

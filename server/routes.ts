@@ -840,7 +840,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
               reviewerAdminId: req.auth!.sub,
             });
           }
-        } catch {}
+        } catch (e: any) {
+          console.error("[approve] application update failed:", e.message);
+        }
+        try {
+          const docs = await storage.getDocumentsByUser(chauffeur.userId);
+          for (const doc of docs) {
+            await storage.updateDocument(doc.id, { status: "approved" });
+          }
+        } catch (e: any) {
+          console.error("[approve] document update failed:", e.message);
+        }
+        if (chauffeur.pushToken) {
+          sendExpoPushNotification([chauffeur.pushToken], "Application Approved 🎉", "You're approved! Go online to start accepting rides.");
+        }
       }
       return res.json({ success: true });
     } catch (error: any) {
@@ -1825,6 +1838,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const message = await storage.createMessage(req.body);
       io.emit("chat:newMessage", message);
+      const { rideId, senderId, messageText: msgText } = req.body;
+      if (rideId && senderId) {
+        try {
+          const ride = await storage.getRide(rideId);
+          if (ride) {
+            const previewText = (msgText || "").slice(0, 80);
+            if (senderId === ride.clientId && ride.chauffeurId) {
+              const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+              if (chauffeur?.pushToken) {
+                sendExpoPushNotification([chauffeur.pushToken], "New message from rider", previewText);
+              }
+              if (chauffeur?.userId) {
+                await storage.createNotification({ userId: chauffeur.userId, type: "chat", title: "New message from rider", body: previewText, isRead: false });
+              }
+            } else if (ride.chauffeurId) {
+              const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+              if (chauffeur?.userId && senderId !== ride.clientId) {
+                await storage.createNotification({ userId: ride.clientId, type: "chat", title: "New message from chauffeur", body: previewText, isRead: false });
+              }
+            }
+          }
+        } catch (e: any) {
+          console.error("[chat] notification failed (non-fatal):", e.message);
+        }
+      }
       return res.json(message);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });

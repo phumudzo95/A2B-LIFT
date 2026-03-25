@@ -152,14 +152,18 @@ export default function ChauffeurWalletScreen() {
             </View>
           </View>
           <Pressable
-            style={[styles.withdrawBtn, earnings_total < 50 && { opacity: 0.5 }]}
-            onPress={() => earnings_total >= 50 ? setShowWithdraw(true) : Alert.alert("Minimum withdrawal is R50")}
+            style={[styles.withdrawBtn, earnings_total < 50 && styles.withdrawBtnDisabled]}
+            onPress={() => setShowWithdraw(true)}
+            disabled={earnings_total < 50}
           >
-            <Ionicons name="arrow-down-circle-outline" size={16} color={Colors.primary} />
-            <Text style={styles.withdrawBtnText}>Withdraw to Bank</Text>
+            <Ionicons name="arrow-down-circle-outline" size={16} color={earnings_total < 50 ? Colors.textMuted : Colors.primary} />
+            <Text style={[styles.withdrawBtnText, earnings_total < 50 && styles.withdrawBtnTextDisabled]}>Withdraw to Bank</Text>
           </Pressable>
           {earnings_total < 50 && (
-            <Text style={styles.minNote}>Minimum withdrawal is R50</Text>
+            <View style={styles.minNoteRow}>
+              <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
+              <Text style={styles.minNote}>Minimum withdrawal is R50. Earn more rides to unlock.</Text>
+            </View>
           )}
         </View>
 
@@ -383,7 +387,10 @@ const styles = StyleSheet.create({
     borderRadius: 12, marginTop: 4,
   },
   withdrawBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.primary },
-  minNote: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: -4 },
+  withdrawBtnDisabled: { backgroundColor: Colors.surface, opacity: 0.6 },
+  withdrawBtnTextDisabled: { color: Colors.textMuted },
+  minNoteRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+  minNote: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   tabs: { flexDirection: "row", marginHorizontal: 20, backgroundColor: Colors.surface, borderRadius: 12, padding: 4, marginBottom: 16 },
   tab: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: 10 },
   tabActive: { backgroundColor: Colors.card },

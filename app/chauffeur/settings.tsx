@@ -110,6 +110,7 @@ export default function ChauffeurSettingsScreen() {
     if (!userDocuments || !Array.isArray(userDocuments)) return "missing";
     const doc = userDocuments.find((d: any) => d.type === type || d.documentType === type);
     if (!doc) return "missing";
+    if ((application as any)?.status === "approved") return "approved";
     return doc.status as "pending" | "approved" | "rejected";
   }
 
@@ -136,8 +137,8 @@ export default function ChauffeurSettingsScreen() {
 
       <View style={styles.profileCard}>
         <View style={styles.avatar}>
-          {user?.profilePhoto ? (
-            <Image source={{ uri: user.profilePhoto }} style={styles.avatarImg} />
+          {(chauffeur?.profilePhoto || user?.profilePhoto) ? (
+            <Image source={{ uri: chauffeur?.profilePhoto || user?.profilePhoto }} style={styles.avatarImg} />
           ) : (
             <Ionicons name="person" size={28} color={Colors.white} />
           )}
