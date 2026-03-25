@@ -59,14 +59,13 @@ export default function ChauffeurChatScreen() {
     );
   }, [user?.id]);
 
+  const Wrapper = Platform.OS === "web" ? View : KeyboardAvoidingView;
+  const wrapperProps = Platform.OS === "web" ? {} : { behavior: Platform.OS === "ios" ? "padding" : "height" as any, keyboardVerticalOffset: 0 };
+
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={0}
-    >
+    <Wrapper style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]} {...wrapperProps}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => router.back()} hitSlop={12}>
           <Ionicons name="chevron-back" size={24} color={Colors.white} />
         </Pressable>
         <View style={styles.headerInfo}>
@@ -93,10 +92,11 @@ export default function ChauffeurChatScreen() {
           contentContainerStyle={styles.messagesList}
           showsVerticalScrollIndicator={false}
           inverted={true}
+          style={styles.list}
         />
       )}
 
-      <View style={[styles.inputBar, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 8) }]}>
+      <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <TextInput
           style={styles.textInput}
           placeholder="Type a message..."
@@ -104,16 +104,21 @@ export default function ChauffeurChatScreen() {
           value={messageText}
           onChangeText={setMessageText}
           multiline
+          returnKeyType="send"
+          onSubmitEditing={() => { if (messageText.trim()) sendMutation.mutate(); }}
+          blurOnSubmit={false}
         />
         <Pressable
-          style={[styles.sendBtn, !messageText.trim() && { opacity: 0.4 }]}
-          onPress={() => { if (messageText.trim()) sendMutation.mutate(); }}
-          disabled={!messageText.trim() || sendMutation.isPending}
+          style={[styles.sendBtn, (!messageText.trim() || sendMutation.isPending) && { opacity: 0.4 }]}
+          onPress={() => { if (messageText.trim() && !sendMutation.isPending) sendMutation.mutate(); }}
         >
-          <Ionicons name="send" size={18} color={Colors.primary} />
+          {sendMutation.isPending
+            ? <ActivityIndicator size="small" color={Colors.primary} />
+            : <Ionicons name="send" size={18} color={Colors.primary} />
+          }
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+    </Wrapper>
   );
 }
 
@@ -125,6 +130,7 @@ const styles = StyleSheet.create({
   headerName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.white },
   headerStatus: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.success },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  list: { flex: 1 },
   messagesList: { padding: 16, gap: 8, flexGrow: 1 },
   messageBubble: { maxWidth: "80%", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, gap: 4 },
   myMessage: { alignSelf: "flex-end", backgroundColor: Colors.white, borderBottomRightRadius: 4 },
@@ -135,7 +141,30 @@ const styles = StyleSheet.create({
   messageTime: { fontSize: 10, fontFamily: "Inter_400Regular", alignSelf: "flex-end" },
   myTime: { color: Colors.textMuted },
   theirTime: { color: Colors.textMuted },
-  inputBar: { flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 8, gap: 8, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.card },
-  textInput: { flex: 1, backgroundColor: Colors.surface, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.white, maxHeight: 100 },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.white, alignItems: "center", justifyContent: "center" },
+  inputBar: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    backgroundColor: Colors.card,
+    minHeight: 64,
+  },
+  textInput: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: Colors.white,
+    maxHeight: 120,
+    minHeight: 44,
+  },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.white, alignItems: "center", justifyContent: "center", marginBottom: 2 },
 });

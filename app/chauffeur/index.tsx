@@ -83,6 +83,8 @@ export default function ChauffeurDashboard() {
   const [myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [routePolyline, setRoutePolyline] = useState<string | null>(null);
   const [showNavModal, setShowNavModal] = useState(false);
+  const [navSteps, setNavSteps] = useState<Array<{ instruction: string; distance: string; maneuver: string; endLat: number; endLng: number }>>([]);
+  const [currentStepIdx, setCurrentStepIdx] = useState(0);
 
   useEffect(() => {
     loadChauffeur();
@@ -246,8 +248,27 @@ export default function ChauffeurDashboard() {
       if (data.distanceText && data.durationText) {
         setRideEta({ distanceText: data.distanceText, durationText: data.durationText, distanceKm: data.distanceKm, durationMin: data.durationMin });
       }
+      if (Array.isArray(data.steps) && data.steps.length > 0) {
+        setNavSteps(data.steps);
+        setCurrentStepIdx(0);
+      }
     } catch {}
   }
+
+  // Auto-advance nav step when driver is within 30m of the next step endpoint
+  useEffect(() => {
+    if (!myLocation || navSteps.length === 0) return;
+    const step = navSteps[currentStepIdx];
+    if (!step?.endLat || !step?.endLng) return;
+    const R = 6371000;
+    const dLat = (step.endLat - myLocation.lat) * Math.PI / 180;
+    const dLng = (step.endLng - myLocation.lng) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(myLocation.lat * Math.PI / 180) * Math.cos(step.endLat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    if (dist < 30 && currentStepIdx < navSteps.length - 1) {
+      setCurrentStepIdx(i => i + 1);
+    }
+  }, [myLocation?.lat, myLocation?.lng]);
 
   function stopLocationUpdates() {
     if (locationInterval) {
@@ -391,19 +412,33 @@ export default function ChauffeurDashboard() {
             loading={!myLocation}
           />
         </View>
+        {navSteps.length > 0 && (
+          <View style={styles.navStepBox}>
+            <View style={styles.navStepRow}>
+              <Ionicons
+                name={
+                  navSteps[currentStepIdx]?.maneuver?.includes("left") ? "arrow-back" :
+                  navSteps[currentStepIdx]?.maneuver?.includes("right") ? "arrow-forward" :
+                  navSteps[currentStepIdx]?.maneuver?.includes("uturn") ? "return-down-back" :
+                  "arrow-up"
+                }
+                size={28}
+                color={Colors.white}
+              />
+              <Text style={styles.navStepInstruction} numberOfLines={2}>
+                {navSteps[currentStepIdx]?.instruction || "Follow the route"}
+              </Text>
+            </View>
+            <View style={styles.navStepMeta}>
+              <Text style={styles.navStepDist}>{navSteps[currentStepIdx]?.distance}</Text>
+              <Text style={styles.navStepCount}>{currentStepIdx + 1} / {navSteps.length}</Text>
+            </View>
+          </View>
+        )}
         <View style={[styles.navModalFooter, { paddingBottom: insets.bottom + 16 }]}>
-          <Pressable style={styles.openMapsBtn} onPress={openNavigationApp}>
-            <Ionicons name="navigate-circle" size={18} color={Colors.primary} />
-            <Text style={styles.openMapsBtnText}>Open Navigation</Text>
-          </Pressable>
-          {currentRide?.status === "chauffeur_assigned" && (
-            <Pressable style={[styles.rideActionBtn, { flex: 1 }]} onPress={() => { updateRideStatus("chauffeur_arriving"); setShowNavModal(false); }}>
-              <Text style={styles.rideActionBtnText}>Arriving at Pickup</Text>
-            </Pressable>
-          )}
-          {currentRide?.status === "chauffeur_arriving" && (
-            <Pressable style={[styles.rideActionBtn, { flex: 1 }]} onPress={() => { updateRideStatus("trip_started"); setShowNavModal(false); }}>
-              <Text style={styles.rideActionBtnText}>Start Trip</Text>
+          {(currentRide?.status === "chauffeur_assigned" || currentRide?.status === "chauffeur_arriving") && (
+            <Pressable style={[styles.rideActionBtn, { flex: 1 }]} onPress={() => { updateRideStatus("trip_started"); setShowNavModal(false); fetchDriverRoute(parseFloat(currentRide!.dropoffLat), parseFloat(currentRide!.dropoffLng)); }}>
+              <Text style={styles.rideActionBtnText}>Start Trip — Rider On Board</Text>
             </Pressable>
           )}
           {currentRide?.status === "trip_started" && (
@@ -581,14 +616,12 @@ export default function ChauffeurDashboard() {
             </Pressable>
           </View>
           <View style={styles.rideActionRow}>
-            {currentRide.status === "chauffeur_assigned" && (
-              <Pressable style={({ pressed }) => [styles.rideActionBtn, pressed && { opacity: 0.9 }]} onPress={() => updateRideStatus("chauffeur_arriving")}>
-                <Text style={styles.rideActionBtnText}>Arriving at Pickup</Text>
-              </Pressable>
-            )}
-            {currentRide.status === "chauffeur_arriving" && (
-              <Pressable style={({ pressed }) => [styles.rideActionBtn, pressed && { opacity: 0.9 }]} onPress={() => updateRideStatus("trip_started")}>
-                <Text style={styles.rideActionBtnText}>Start Trip</Text>
+            {(currentRide.status === "chauffeur_assigned" || currentRide.status === "chauffeur_arriving") && (
+              <Pressable style={({ pressed }) => [styles.rideActionBtn, pressed && { opacity: 0.9 }]} onPress={() => {
+                updateRideStatus("trip_started");
+                fetchDriverRoute(parseFloat(currentRide.dropoffLat), parseFloat(currentRide.dropoffLng));
+              }}>
+                <Text style={styles.rideActionBtnText}>Start Trip — Rider On Board</Text>
               </Pressable>
             )}
             {currentRide.status === "trip_started" && (
@@ -705,7 +738,11 @@ const styles = StyleSheet.create({
   navModalClose: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center" },
   navModalAddresses: { paddingHorizontal: 20, paddingVertical: 14, gap: 8, borderBottomWidth: 1, borderBottomColor: Colors.border },
   navModalMap: { flex: 1 },
-  navModalFooter: { paddingHorizontal: 20, paddingTop: 16, gap: 10 },
-  openMapsBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: Colors.white, borderRadius: 14, paddingVertical: 14 },
-  openMapsBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.primary },
+  navModalFooter: { paddingHorizontal: 20, paddingTop: 12, gap: 10 },
+  navStepBox: { marginHorizontal: 0, backgroundColor: Colors.primary, paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: Colors.border },
+  navStepRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  navStepInstruction: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.white, lineHeight: 22 },
+  navStepMeta: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
+  navStepDist: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.success },
+  navStepCount: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted },
 });

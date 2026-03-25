@@ -369,12 +369,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (data.status === "OK" && data.routes?.length > 0) {
         const route = data.routes[0];
         const leg = route.legs[0];
+        const steps = (leg.steps || []).map((step: any) => ({
+          instruction: step.html_instructions.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(),
+          distance: step.distance?.text || "",
+          duration: step.duration?.text || "",
+          endLat: step.end_location?.lat,
+          endLng: step.end_location?.lng,
+          maneuver: step.maneuver || "straight",
+        }));
         return res.json({
           polyline: route.overview_polyline.points,
           distanceKm: leg.distance.value / 1000,
           distanceText: leg.distance.text,
           durationMin: Math.ceil(leg.duration.value / 60),
           durationText: leg.duration.text,
+          steps,
         });
       }
       return res.status(404).json({ message: "No route found" });
@@ -969,12 +978,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       );
       if (!uploadRes.ok) {
-        return res.status(500).json({ message: "Photo upload failed. Please try again." });
+        const errText = await uploadRes.text().catch(() => uploadRes.statusText);
+        console.error("[upload/profile-photo] Supabase error:", uploadRes.status, errText);
+        if (uploadRes.status === 401 || uploadRes.status === 403) {
+          return res.status(500).json({ message: "Photo upload failed: Supabase service key not configured. Please add SUPABASE_SERVICE_ROLE_KEY to environment secrets." });
+        }
+        return res.status(500).json({ message: `Photo upload failed (${uploadRes.status}): ${errText}` });
       }
       const url = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${fileName}`;
+      // Persist the photo URL in the chauffeur profile immediately
+      try {
+        await storage.updateChauffeur(chauffeurId, { profilePhoto: url });
+      } catch {}
       return res.json({ url });
     } catch (error: any) {
-      return res.status(500).json({ message: "Photo upload failed. Please try again." });
+      console.error("[upload/profile-photo] error:", error.message);
+      return res.status(500).json({ message: error.message || "Photo upload failed. Please try again." });
     }
   });
 

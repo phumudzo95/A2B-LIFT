@@ -709,8 +709,8 @@ export default function ClientHomeScreen() {
           loading={locationLoading}
           etaText={etaText || undefined}
           statusText={
-            rideStatus === "assigned" ? "Your Chauffeur is En Route" :
-            rideStatus === "arriving" ? "Your Chauffeur is Arriving" :
+            rideStatus === "assigned" ? "Your driver is on the way" :
+            rideStatus === "arriving" ? "Your driver is arriving" :
             rideStatus === "in_trip" ? "Trip In Progress" :
             undefined
           }
@@ -1018,6 +1018,19 @@ export default function ClientHomeScreen() {
               <Text style={styles.tripPriceLabel}>Ride Price</Text>
               <Text style={styles.tripPriceValue}>R {currentRide.price}</Text>
             </View>
+          )}
+          {(rideStatus === "assigned" || rideStatus === "arriving") && (
+            <Pressable
+              style={styles.cancelRideActiveBtn}
+              onPress={() => {
+                Alert.alert("Cancel Ride", "Are you sure you want to cancel?", [
+                  { text: "Keep Ride", style: "cancel" },
+                  { text: "Cancel Ride", style: "destructive", onPress: cancelRide },
+                ]);
+              }}
+            >
+              <Text style={styles.cancelRideActiveBtnText}>Cancel Ride</Text>
+            </Pressable>
           )}
         </Animated.View>
       )}
@@ -1875,6 +1888,19 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
+  },
+  cancelRideActiveBtn: {
+    marginTop: 12,
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.error,
+    alignItems: "center",
+  },
+  cancelRideActiveBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.error,
   },
   cancelFullBtn: {
     paddingVertical: 16,
