@@ -1555,10 +1555,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       if (!ride) return res.status(404).json({ message: "Ride not found" });
 
-      // ── Auto-refund if a card-charged ride is cancelled ──
+      // ── Cancellation: refunds + notifications for all parties ──
       if (status === "cancelled" && rideBeforeUpdate) {
         try {
           const payments = await storage.getPaymentsByRide(req.params.id);
+
+          // ── Card payment → Paystack refund + credit wallet ──
           const cardPayment = payments.find((p: any) =>
             p.method === "card" && p.status === "paid" && p.paystackReference
           );
@@ -1580,19 +1582,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 userId: rider.id, type: "refund", amount: amt,
                 balanceBefore, balanceAfter: newBalance,
                 reference: cardPayment.paystackReference,
-                description: "Ride cancelled — card payment refunded",
+                description: "Ride cancelled — card payment refunded to wallet",
                 rideId: ride.id, status: "completed",
               });
               await storage.createNotification({
                 userId: rider.id,
                 title: "Refund Issued",
-                body: `Your ride was cancelled. R${amt.toFixed(2)} has been refunded to your wallet.`,
+                body: `Your ride was cancelled. R${amt.toFixed(2)} has been refunded to your A2B wallet.`,
                 type: "payment",
               });
             }
           }
+
+          // ── Wallet payment → reverse the wallet deduction ──
+          const walletPayment = !cardPayment
+            ? payments.find((p: any) => p.method === "wallet" && p.status === "paid")
+            : null;
+          if (walletPayment && rideBeforeUpdate.price) {
+            const rider = await storage.getUser(rideBeforeUpdate.clientId);
+            if (rider) {
+              const amt = Number(rideBeforeUpdate.price);
+              const balanceBefore = rider.walletBalance || 0;
+              const newBalance = balanceBefore + amt;
+              await storage.updateUser(rider.id, { walletBalance: newBalance });
+              await storage.updatePayment(walletPayment.id, { status: "refunded" });
+              await storage.createWalletTransaction({
+                userId: rider.id, type: "refund", amount: amt,
+                balanceBefore, balanceAfter: newBalance,
+                reference: `wallet_refund_${ride.id}_${Date.now()}`,
+                description: "Ride cancelled — wallet balance restored",
+                rideId: ride.id, status: "completed",
+              });
+              await storage.createNotification({
+                userId: rider.id,
+                title: "Refund Issued",
+                body: `Your ride was cancelled. R${amt.toFixed(2)} has been returned to your A2B wallet.`,
+                type: "payment",
+              });
+            }
+          }
+
+          // ── Cash rides → notify client (no charge to reverse) ──
+          const paymentMethod = rideBeforeUpdate.paymentMethod || "cash";
+          if (!cardPayment && !walletPayment && paymentMethod === "cash") {
+            await storage.createNotification({
+              userId: rideBeforeUpdate.clientId,
+              title: "Ride Cancelled",
+              body: "Your ride has been cancelled. No charges were applied.",
+              type: "ride",
+            });
+          }
+
+          // ── Notify the assigned chauffeur (if any) ──
+          if (rideBeforeUpdate.chauffeurId) {
+            const chauffeur = await storage.getChauffeur(rideBeforeUpdate.chauffeurId);
+            if (chauffeur?.userId) {
+              await storage.createNotification({
+                userId: chauffeur.userId,
+                title: "Ride Cancelled",
+                body: "The client has cancelled this trip.",
+                type: "ride",
+              });
+            }
+            if ((chauffeur as any)?.pushToken) {
+              sendExpoPushNotification(
+                [(chauffeur as any).pushToken],
+                "Ride Cancelled",
+                "The client has cancelled this trip."
+              );
+            }
+          }
         } catch (refundErr: any) {
-          console.error("Auto-refund failed (non-fatal):", refundErr.message);
+          console.error("Cancellation refund/notification failed (non-fatal):", refundErr.message);
         }
       }
 
