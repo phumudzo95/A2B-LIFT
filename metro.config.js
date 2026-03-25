@@ -2,11 +2,15 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-const defaultBlockList = config.resolver.blockList || [];
-const extraBlockList = [/[/\\]\.local[/\\].*/];
+const localDirPattern = /[/\\]\.local[/\\]/;
 
-config.resolver.blockList = Array.isArray(defaultBlockList)
-  ? [...defaultBlockList, ...extraBlockList]
-  : extraBlockList;
+const defaultBlockList = config.resolver.blockList;
+if (Array.isArray(defaultBlockList)) {
+  config.resolver.blockList = [...defaultBlockList, localDirPattern];
+} else if (defaultBlockList instanceof RegExp) {
+  config.resolver.blockList = [defaultBlockList, localDirPattern];
+} else {
+  config.resolver.blockList = [localDirPattern];
+}
 
 module.exports = config;
