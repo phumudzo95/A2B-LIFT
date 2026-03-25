@@ -1012,6 +1012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           method: "POST",
           headers: {
             Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+            apikey: SUPABASE_SERVICE_KEY,
             "Content-Type": "image/jpeg",
             "x-upsert": "true",
           },
@@ -1059,6 +1060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           method: "POST",
           headers: {
             Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            apikey: SUPABASE_ANON_KEY,
             "Content-Type": "image/jpeg",
             "x-upsert": "true",
           },

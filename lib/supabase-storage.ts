@@ -42,6 +42,7 @@ export async function uploadDocument(
           method: "POST",
           headers: {
             Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            apikey: SUPABASE_ANON_KEY,
             "Content-Type": "image/jpeg",
             "x-upsert": "true",
           },
