@@ -940,7 +940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // ── Profile photo upload for admin (base64 → Supabase Storage) ──
-  app.post("/api/upload/profile-photo", async (req: Request, res: Response) => {
+  app.post("/api/upload/profile-photo", authOptional, async (req: AuthedRequest, res: Response) => {
     try {
       const { base64Data, chauffeurId } = req.body;
       if (!base64Data || !chauffeurId) {
