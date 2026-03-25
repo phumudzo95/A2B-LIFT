@@ -428,8 +428,9 @@ tbody tr:hover { background:#fafaf8; }
 <div class="toast" id="toast"></div>
 
 <script>
-const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? '' : 'https://api-production-0783.up.railway.app';
+// Always use the same origin that served this page — avoids CORS issues on dev/staging domains.
+// The backend API is co-located with the admin HTML regardless of where it's hosted.
+const API = '';
 const TOKEN_KEY = 'a2b_admin_token';
 
 function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
@@ -474,7 +475,7 @@ async function doLogin() {
     }
     if (data.accessToken) saveToken(data.accessToken);
     showLogin(false);
-    document.getElementById('live-status').textContent = 'Connected · Railway';
+    document.getElementById('live-status').textContent = 'Connected · Live';
     loadAll();
   } catch(e) {
     errEl.textContent = 'Network error — is the backend running?';
