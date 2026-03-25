@@ -107,6 +107,7 @@ export interface IStorage {
   // Earnings / withdrawals
   createEarning(data: any): Promise<Earning>;
   getEarningsByChauffeur(chauffeurId: string): Promise<Earning[]>;
+  getAllEarnings(): Promise<Earning[]>;
 
   createWithdrawal(data: any): Promise<Withdrawal>;
   getWithdrawalsByChauffeur(chauffeurId: string): Promise<Withdrawal[]>;
@@ -419,6 +420,10 @@ export class DatabaseStorage implements IStorage {
       .from(earnings)
       .where(eq(earnings.chauffeurId, chauffeurId))
       .orderBy(desc(earnings.createdAt));
+  }
+
+  async getAllEarnings(): Promise<Earning[]> {
+    return db.select().from(earnings).orderBy(desc(earnings.createdAt));
   }
 
   async createWithdrawal(data: any): Promise<Withdrawal> {

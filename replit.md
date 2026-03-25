@@ -117,8 +117,34 @@ Commission rate: 20%
 
 ## Replit Configuration
 - **Backend** runs on port 5000 (webview) via `npm run server:dev` (tsx)
-- **Frontend** (Expo Metro) runs on port 8080 via `expo start --web`
+- **Frontend** (Expo Metro) runs on port 8081 via `expo start --port 8081`
 - CORS allows Replit dev domains (`REPLIT_DEV_DOMAIN`, `REPLIT_DOMAINS`)
 - Helmet CSP `frame-ancestors` set to allow Replit preview iframe
-- `EXPO_PUBLIC_DOMAIN` set to `https://$REPLIT_DEV_DOMAIN` for API calls
-- Required environment variables: `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_API_KEY`, `PAYSTACK_SECRET_KEY`
+- Required environment variables (all set as secrets/env vars):
+  - `SUPABASE_DB_URL` - Supabase PostgreSQL connection string
+  - `JWT_SECRET` - JWT signing secret
+  - `GOOGLE_API_KEY` / `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` - Google Maps
+  - `PAYSTACK_SECRET_KEY` - Paystack live secret key (sk_live_...)
+  - `EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY` - Paystack live public key (pk_live_...)
+  - `SUPABASE_URL` - Supabase project URL
+  - `GITHUB_TOKEN` - For Railway auto-deploy via git push
+
+## Payment Flow (Live)
+- Paystack is configured with LIVE keys (not sandbox)
+- Card payments: initialize via `/api/paystack/initialize` → Paystack hosted page → webhook `charge.success`
+- Wallet payments: deducted from user wallet balance on trip completion
+- Cash payments: auto-marked as paid when trip status → `trip_completed`
+- Commission: 20% platform fee tracked per trip in `earnings` table
+- **No in-app payouts**: drivers contact support for withdrawals; gateway handles payout externally
+
+## Commission Tracking
+- Every completed trip: `earnings` table stores `amount` (driver's 80%) and `commission` (platform's 20%)
+- `chauffeurs.earningsTotal` tracks running driver balance
+- Admin dashboard shows: Total Revenue, Platform Commission, Driver Earnings
+- Webhook deduplication prevents double-counting earnings per ride
+
+## Railway Auto-Deploy
+- Push to GitHub → Railway auto-deploys via `GITHUB_TOKEN`
+- Build: `npm install && npm run build`
+- Start: `node server_dist/index.js`
+- Health check: `/api/health`

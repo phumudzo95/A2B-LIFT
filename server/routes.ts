@@ -1299,10 +1299,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(200).json({ received: true });
         }
 
+        const finalAmount = amount || ride.price || 0;
+
         await storage.createPayment({
           rideId: ride.id,
           payerUserId: userId || ride.clientId,
-          amount: amount || ride.price || 0,
+          amount: finalAmount,
           method: "paystack",
           status: "paid",
           provider: "paystack",
@@ -1313,6 +1315,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentStatus: "paid",
           paymentMethod: "card",
         });
+
+        // Record earnings and commission if not already done (webhook may fire before trip_completed)
+        if (ride.chauffeurId && finalAmount > 0) {
+          try {
+            const earningsCalc = calculateChauffeurEarnings(finalAmount);
+            const existing = await storage.getEarningsByChauffeur(ride.chauffeurId);
+            const alreadyRecorded = existing.some((e) => e.rideId === ride.id);
+            if (!alreadyRecorded) {
+              await storage.createEarning({
+                chauffeurId: ride.chauffeurId,
+                rideId: ride.id,
+                amount: earningsCalc.chauffeurEarnings,
+                commission: earningsCalc.commission,
+              });
+              const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+              if (chauffeur) {
+                await storage.updateChauffeur(ride.chauffeurId, {
+                  earningsTotal: (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings,
+                });
+              }
+            }
+          } catch (earningsErr: any) {
+            console.error("Webhook earnings record failed (non-fatal):", earningsErr.message);
+          }
+        }
       } catch (dbError) {
         console.error("Error applying Paystack payment:", dbError);
         // Still return 200 so Paystack does not retry indefinitely
@@ -1858,9 +1885,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const allChauffeurs = await storage.getAllChauffeurs();
         const allWithdrawals = await storage.getAllWithdrawals();
         const allReports = await storage.getAllSafetyReports();
+        const allEarnings = await storage.getAllEarnings();
 
         const completedRides = allRides.filter((r) => r.status === "trip_completed");
         const totalRevenue = completedRides.reduce((sum, r) => sum + (r.price || 0), 0);
+        const totalPlatformCommission = allEarnings.reduce((sum, e) => sum + (e.commission || 0), 0);
+        const totalDriverEarnings = allEarnings.reduce((sum, e) => sum + (e.amount || 0), 0);
         const activeRides = allRides.filter(
           (r) => !["trip_completed", "cancelled"].includes(r.status as string),
         );
@@ -1873,6 +1903,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           completedRides: completedRides.length,
           activeRides: activeRides.length,
           totalRevenue: Math.round(totalRevenue),
+          totalPlatformCommission: Math.round(totalPlatformCommission),
+          totalDriverEarnings: Math.round(totalDriverEarnings),
+          commissionRate: 20,
           totalChauffeurs: allChauffeurs.length,
           onlineChauffeurs: allChauffeurs.filter((c) => c.isOnline).length,
           pendingApprovals: pendingApprovals.length,

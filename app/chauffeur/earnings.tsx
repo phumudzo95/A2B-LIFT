@@ -7,24 +7,19 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  TextInput,
   Alert,
-  FlatList,
   RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/query-client";
+import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 
 export default function EarningsScreen() {
   const insets = useSafeAreaInsets();
   const [chauffeurId, setChauffeurId] = useState<string | null>(null);
   const [chauffeur, setChauffeur] = useState<any>(null);
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [showWithdraw, setShowWithdraw] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem("a2b_chauffeur").then((stored) => {
@@ -46,24 +41,13 @@ export default function EarningsScreen() {
     enabled: !!chauffeurId,
   });
 
-  const withdrawMutation = useMutation({
-    mutationFn: async (amount: number) => {
-      const res = await apiRequest("POST", "/api/withdrawals", {
-        chauffeurId,
-        amount,
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      setShowWithdraw(false);
-      setWithdrawAmount("");
-      queryClient.invalidateQueries({ queryKey: ["/api/withdrawals/chauffeur"] });
-      Alert.alert("Success", "Withdrawal request submitted");
-    },
-    onError: () => {
-      Alert.alert("Error", "Failed to submit withdrawal");
-    },
-  });
+  const showWithdrawInfo = () => {
+    Alert.alert(
+      "Earnings Withdrawal",
+      "Your earnings are accumulated in the A2B LIFT platform account. To withdraw your funds, please contact support or visit the A2B LIFT partner portal. Payouts are processed externally.",
+      [{ text: "OK" }]
+    );
+  };
 
   const earningsList = Array.isArray(earningsData) ? earningsData : [];
   const totalEarnings = earningsList.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
@@ -85,42 +69,13 @@ export default function EarningsScreen() {
         <Text style={styles.totalSub}>Commission paid: R {totalCommission.toFixed(0)} (20%)</Text>
         <Pressable
           style={({ pressed }) => [styles.withdrawBtn, pressed && { opacity: 0.9 }]}
-          onPress={() => setShowWithdraw(!showWithdraw)}
+          onPress={showWithdrawInfo}
         >
           <Ionicons name="arrow-up-circle" size={18} color={Colors.primary} />
           <Text style={styles.withdrawBtnText}>Request Withdrawal</Text>
         </Pressable>
       </View>
 
-      {showWithdraw && (
-        <View style={styles.withdrawCard}>
-          <Text style={styles.withdrawTitle}>Withdrawal Amount</Text>
-          <View style={styles.withdrawInputRow}>
-            <Text style={styles.currencyPrefix}>R</Text>
-            <TextInput
-              style={styles.withdrawInput}
-              placeholder="0"
-              placeholderTextColor={Colors.textMuted}
-              value={withdrawAmount}
-              onChangeText={setWithdrawAmount}
-              keyboardType="number-pad"
-            />
-          </View>
-          <Pressable
-            style={({ pressed }) => [styles.submitWithdrawBtn, pressed && { opacity: 0.9 }]}
-            onPress={() => {
-              const amt = parseFloat(withdrawAmount);
-              if (!amt || amt <= 0) {
-                Alert.alert("Invalid", "Enter a valid amount");
-                return;
-              }
-              withdrawMutation.mutate(amt);
-            }}
-          >
-            <Text style={styles.submitWithdrawText}>Submit</Text>
-          </Pressable>
-        </View>
-      )}
 
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
