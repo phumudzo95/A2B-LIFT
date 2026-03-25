@@ -2371,13 +2371,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/wallet/withdraw
-  // NOTE: Payouts are handled externally via the Paystack gateway dashboard.
-  // Drivers withdraw directly from the gateway — no in-app transfers.
-  app.post("/api/wallet/withdraw", requireAuth, (_req: AuthedRequest, res: Response) => {
-    return res.status(503).json({
-      message: "Withdrawals are processed externally. Please contact support to arrange your payout.",
-    });
+  // POST /api/wallet/withdraw — Paystack transfer to driver's bank account
+  app.post("/api/wallet/withdraw", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const { amount, bankCode, accountNumber, accountName } = req.body;
+      const userId = req.auth!.sub;
+
+      if (!amount || !bankCode || !accountNumber || !accountName) {
+        return res.status(400).json({ message: "amount, bankCode, accountNumber and accountName are required" });
+      }
+
+      const chauffeur = await storage.getChauffeurByUserId(userId);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
+      if ((chauffeur.earningsTotal || 0) < amount) {
+        return res.status(400).json({ message: "Insufficient earnings balance" });
+      }
+
+      const recipientRes = await paystackAPI.post("/transferrecipient", {
+        type: "nuban", name: accountName,
+        account_number: accountNumber, bank_code: bankCode, currency: "ZAR",
+      });
+      const recipientCode = recipientRes.data.data.recipient_code;
+
+      const transferRef = `A2B-WITHDRAW-${Date.now()}`;
+      const transferRes = await paystackAPI.post("/transfer", {
+        source: "balance", amount: Math.round(amount * 100),
+        recipient: recipientCode, reason: "A2B LIFT earnings withdrawal",
+        reference: transferRef, currency: "ZAR",
+      });
+
+      const transferCode = transferRes.data.data.transfer_code;
+      const status = transferRes.data.data.status;
+
+      await storage.createWithdrawal({
+        chauffeurId: chauffeur.id, amount,
+        status: status === "success" ? "completed" : "pending",
+        bankName: bankCode, accountNumber, accountHolder: accountName,
+        paystackTransferCode: transferCode, paystackRecipientCode: recipientCode,
+      });
+
+      await storage.updateChauffeur(chauffeur.id, {
+        earningsTotal: (chauffeur.earningsTotal || 0) - amount,
+      });
+
+      return res.json({
+        success: true,
+        message: status === "success" ? "Transfer successful" : "Transfer initiated — funds arrive within 24hrs",
+        transferCode, status,
+      });
+    } catch (error: any) {
+      console.error("[Paystack Withdraw]", error.response?.data || error.message);
+      return res.status(500).json({ message: error.response?.data?.message || error.message });
+    }
   });
 
   // GET /api/wallet/banks
