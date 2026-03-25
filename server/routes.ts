@@ -740,9 +740,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/chauffeurs/:id", async (req: Request, res: Response) => {
     try {
-      const chauffeur = await storage.updateChauffeur(req.params.id, req.body);
+      const { name, ...chauffeurData } = req.body;
+      const chauffeur = await storage.updateChauffeur(req.params.id, chauffeurData);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
-      return res.json(chauffeur);
+      if (name && chauffeur.userId) {
+        await storage.updateUser(chauffeur.userId, { name: name.trim() });
+      }
+      return res.json({ ...chauffeur, userName: name || chauffeur.userName });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }

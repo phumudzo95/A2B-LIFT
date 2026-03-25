@@ -271,11 +271,6 @@ tbody tr:hover { background:#fafaf8; }
       <span class="nav-badge" id="nb-safety" style="display:none">0</span>
     </div>
 
-    <div class="nav-item" onclick="go('applications',this);closeSidebar()">
-      <span class="nav-icon">📋</span> Driver Applications
-      <span class="nav-badge" id="nb-apps" style="display:none">0</span>
-    </div>
-
     <div class="nav-section">Accounts</div>
     <div class="nav-item" onclick="go('users',this);closeSidebar()">
       <span class="nav-icon">👤</span> All Users
@@ -329,20 +324,6 @@ tbody tr:hover { background:#fafaf8; }
         </div>
       </div>
       <div class="table-card" id="chauf-table"><div class="loading">Loading…</div></div>
-    </div>
-
-    <!-- DRIVER APPLICATIONS -->
-    <div class="view" id="view-applications">
-      <div class="sec-head">
-        <div class="sec-title">Driver Applications</div>
-        <div class="filter-group">
-          <button class="ftab active" onclick="fApps('all',this)">All</button>
-          <button class="ftab" onclick="fApps('pending',this)">Pending</button>
-          <button class="ftab" onclick="fApps('approved',this)">Approved</button>
-          <button class="ftab" onclick="fApps('rejected',this)">Rejected</button>
-        </div>
-      </div>
-      <div class="table-card" id="apps-table"><div class="loading">Loading…</div></div>
     </div>
 
     <!-- RIDES -->
@@ -506,7 +487,7 @@ async function doLogout() {
 // ── NAV ──
 let curView = 'overview';
 let allChauf = [], allWd = [], allSafe = [], allApps = [], chaufFilter = 'all', wdFilter = 'all', safeFilter = 'all', appsFilter = 'all';
-const VIEW_TITLES = { overview:'Dashboard', chauffeurs:'Chauffeurs', applications:'Driver Applications', rides:'Rides', payments:'Payments', withdrawals:'Withdrawals', safety:'Safety Reports', users:'All Users' };
+const VIEW_TITLES = { overview:'Dashboard', chauffeurs:'Chauffeurs', rides:'Rides', payments:'Payments', withdrawals:'Withdrawals', safety:'Safety Reports', users:'All Users' };
 
 function go(view, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -520,13 +501,12 @@ function go(view, el) {
 }
 
 function loadView() {
-  ({ overview:loadOverview, chauffeurs:loadChauf, applications:loadApps, rides:loadRides, payments:loadPay, withdrawals:loadWd, safety:loadSafe, users:loadUsers })[curView]?.();
+  ({ overview:loadOverview, chauffeurs:loadChauf, rides:loadRides, payments:loadPay, withdrawals:loadWd, safety:loadSafe, users:loadUsers })[curView]?.();
 }
 
 function loadAll() {
   loadOverview();
   loadChauf();
-  loadApps();
   loadRides();
   loadPay();
   loadWd();
@@ -747,34 +727,54 @@ async function doRejectChauf(id) {
 function editChauf(id) {
   const c = allChauf.find(x => x.id === id); if (!c) return;
   document.getElementById('m-title').textContent = 'Edit Driver: ' + (c.userName || 'Chauffeur');
-  document.getElementById('m-sub').textContent = 'Update driver and vehicle information';
-  document.getElementById('m-body').innerHTML = `<div class="info-grid" style="gap:12px">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Car Make</label>
-        <input id="edit-carMake" class="f-input" value="${(c.carMake||'').replace(/"/g,'&quot;')}" /></div>
-      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Vehicle Model</label>
-        <input id="edit-vehicleModel" class="f-input" value="${(c.vehicleModel||'').replace(/"/g,'&quot;')}" /></div>
+  document.getElementById('m-sub').textContent = 'Update driver profile and vehicle information';
+  document.getElementById('m-body').innerHTML = `
+    <!-- Profile photo preview + URL -->
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div style="position:relative;flex-shrink:0">
+        <img id="edit-photo-preview" src="${c.profilePhoto||''}" onerror="this.style.display='none';document.getElementById('edit-photo-fallback').style.display='flex'" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--border);${c.profilePhoto?'':'display:none'}" />
+        <div id="edit-photo-fallback" style="width:72px;height:72px;border-radius:50%;background:var(--bg2);display:${c.profilePhoto?'none':'flex'};align-items:center;justify-content:center;font-size:30px;border:2px solid var(--border)">🧑‍✈️</div>
+      </div>
+      <div style="flex:1">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600">Profile Photo URL</label>
+        <input id="edit-profilePhoto" class="f-input" placeholder="https://…/photo.jpg" value="${(c.profilePhoto||'').replace(/"/g,'&quot;')}" oninput="const v=this.value.trim();const img=document.getElementById('edit-photo-preview');const fb=document.getElementById('edit-photo-fallback');if(v){img.src=v;img.style.display='';fb.style.display='none';}else{img.style.display='none';fb.style.display='flex';}" />
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Paste a direct image URL (HTTPS). The photo will show on the rider's app when a trip is accepted.</div>
+      </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Plate Number</label>
-        <input id="edit-plateNumber" class="f-input" value="${(c.plateNumber||'').replace(/"/g,'&quot;')}" /></div>
-      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Car Color</label>
-        <input id="edit-carColor" class="f-input" value="${(c.carColor||'').replace(/"/g,'&quot;')}" /></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Vehicle Type</label>
-        <select id="edit-vehicleType" class="f-input">
-          <option ${c.vehicleType==='sedan'?'selected':''}>sedan</option>
-          <option ${c.vehicleType==='suv'?'selected':''}>suv</option>
-          <option ${c.vehicleType==='luxury'?'selected':''}>luxury</option>
-          <option ${c.vehicleType==='van'?'selected':''}>van</option>
-        </select></div>
-      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Passengers</label>
-        <input id="edit-passengerCapacity" class="f-input" type="number" value="${c.passengerCapacity||4}" /></div>
-      <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Luggage</label>
-        <input id="edit-luggageCapacity" class="f-input" type="number" value="${c.luggageCapacity||2}" /></div>
-    </div>
-  </div>`;
+    <div class="info-grid" style="gap:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600">Full Name</label>
+          <input id="edit-name" class="f-input" value="${(c.userName||'').replace(/"/g,'&quot;')}" placeholder="Driver full name" /></div>
+        <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600">Phone Number</label>
+          <input id="edit-phone" class="f-input" value="${(c.phone||c.userPhone||'').replace(/"/g,'&quot;')}" placeholder="+27…" /></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600">Car Make</label>
+          <input id="edit-carMake" class="f-input" value="${(c.carMake||'').replace(/"/g,'&quot;')}" /></div>
+        <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600">Vehicle Model</label>
+          <input id="edit-vehicleModel" class="f-input" value="${(c.vehicleModel||'').replace(/"/g,'&quot;')}" /></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600">Plate Number</label>
+          <input id="edit-plateNumber" class="f-input" value="${(c.plateNumber||'').replace(/"/g,'&quot;')}" /></div>
+        <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600">Car Color</label>
+          <input id="edit-carColor" class="f-input" value="${(c.carColor||'').replace(/"/g,'&quot;')}" /></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600">Vehicle Type</label>
+          <select id="edit-vehicleType" class="f-input">
+            <option ${c.vehicleType==='sedan'?'selected':''}>sedan</option>
+            <option ${c.vehicleType==='suv'?'selected':''}>suv</option>
+            <option ${c.vehicleType==='luxury'?'selected':''}>luxury</option>
+            <option ${c.vehicleType==='van'?'selected':''}>van</option>
+            <option ${c.vehicleType==='executive'?'selected':''}>executive</option>
+          </select></div>
+        <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600">Passengers</label>
+          <input id="edit-passengerCapacity" class="f-input" type="number" value="${c.passengerCapacity||4}" /></div>
+        <div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600">Luggage</label>
+          <input id="edit-luggageCapacity" class="f-input" type="number" value="${c.luggageCapacity||2}" /></div>
+      </div>
+    </div>`;
   document.getElementById('m-foot').innerHTML = `
     <button class="btn-lg btn-outline" onclick="closeModal()">Cancel</button>
     <button class="btn-lg btn-green" onclick="saveChaufEdit('${c.id}')">💾 Save Changes</button>
@@ -783,7 +783,11 @@ function editChauf(id) {
 }
 
 async function saveChaufEdit(id) {
+  const nameVal = document.getElementById('edit-name').value.trim();
   const updates = {
+    name: nameVal,
+    phone: document.getElementById('edit-phone').value.trim(),
+    profilePhoto: document.getElementById('edit-profilePhoto').value.trim(),
     carMake: document.getElementById('edit-carMake').value.trim(),
     vehicleModel: document.getElementById('edit-vehicleModel').value.trim(),
     plateNumber: document.getElementById('edit-plateNumber').value.trim(),

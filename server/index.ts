@@ -154,9 +154,9 @@ function getAppName(): string {
   }
 }
 
-// Try 8080 first; if Metro grabbed 8081 due to a port collision, fall back
-const METRO_PORTS = [8080, 8081];
-let resolvedMetroPort = 8080;
+// Try 8081 first (configured in Start Frontend workflow), fall back to 8080
+const METRO_PORTS = [8081, 8080, 8082];
+let resolvedMetroPort = 8081;
 
 async function detectMetroPort(): Promise<number> {
   const net = await import("net");
@@ -196,7 +196,7 @@ function makeMetroProxy(port: number) {
 }
 
 // Start with default; detectMetroPort() will correct this on startup
-let metroProxy = makeMetroProxy(8080);
+let metroProxy = makeMetroProxy(8081);
 
 function serveLandingPage({
   req,

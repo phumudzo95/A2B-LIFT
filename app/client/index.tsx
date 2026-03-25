@@ -12,6 +12,7 @@ import {
   Alert,
   Linking,
   ScrollView,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -44,6 +45,7 @@ interface ChauffeurDetails {
   carColor: string;
   carMake: string | null;
   vehicleType: string;
+  profilePhoto: string | null;
 }
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -949,7 +951,15 @@ export default function ClientHomeScreen() {
 
           <View style={styles.chauffeurCard}>
             <View style={styles.chauffeurAvatar}>
-              <Ionicons name="person" size={24} color={Colors.white} />
+              {chauffeurDetails?.profilePhoto ? (
+                <Image
+                  source={{ uri: chauffeurDetails.profilePhoto }}
+                  style={{ width: 48, height: 48, borderRadius: 24 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Ionicons name="person" size={24} color={Colors.white} />
+              )}
             </View>
             <View style={styles.chauffeurInfo}>
               <Text style={styles.chauffeurName}>{chauffeurDetails?.driverName || "Your Driver"}</Text>
