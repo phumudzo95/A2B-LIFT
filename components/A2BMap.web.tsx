@@ -63,10 +63,11 @@ export default function A2BMap({
   nearbyDrivers = [],
   routePolyline,
   showDriver = false,
+  followDriver = false,
   loading = false,
   etaText,
   statusText,
-}: A2BMapProps) {
+}: A2BMapProps & { followDriver?: boolean }) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -236,13 +237,20 @@ export default function A2BMap({
       driverMarkerRef.current.setMap(null);
     }
 
-    const bounds = new google.maps.LatLngBounds();
-    let hasMultiple = false;
-    if (pickupLocation) bounds.extend({ lat: pickupLocation.lat, lng: pickupLocation.lng });
-    if (dropoffLocation) { bounds.extend({ lat: dropoffLocation.lat, lng: dropoffLocation.lng }); hasMultiple = true; }
-    if (showDriver && driverLocation) { bounds.extend({ lat: driverLocation.lat, lng: driverLocation.lng }); hasMultiple = true; }
-    if (hasMultiple) {
-      mapInstanceRef.current.fitBounds(bounds, { top: 60, right: 40, bottom: 160, left: 40 });
+    if (followDriver && showDriver && driverLocation) {
+      mapInstanceRef.current.panTo({ lat: driverLocation.lat, lng: driverLocation.lng });
+      if (mapInstanceRef.current.getZoom() < 16) {
+        mapInstanceRef.current.setZoom(16);
+      }
+    } else {
+      const bounds = new google.maps.LatLngBounds();
+      let hasMultiple = false;
+      if (pickupLocation) bounds.extend({ lat: pickupLocation.lat, lng: pickupLocation.lng });
+      if (dropoffLocation) { bounds.extend({ lat: dropoffLocation.lat, lng: dropoffLocation.lng }); hasMultiple = true; }
+      if (showDriver && driverLocation) { bounds.extend({ lat: driverLocation.lat, lng: driverLocation.lng }); hasMultiple = true; }
+      if (hasMultiple) {
+        mapInstanceRef.current.fitBounds(bounds, { top: 60, right: 40, bottom: 160, left: 40 });
+      }
     }
   }
 

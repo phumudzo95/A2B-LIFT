@@ -148,6 +148,35 @@ export default function ChauffeurDashboard() {
     return () => { off("ride:new", handleNewRide); };
   }, [isOnline, chauffeur, currentRide]);
 
+  // Listen for rider-side cancellations so driver screen resets automatically
+  useEffect(() => {
+    const handleRideUpdate = (ride: any) => {
+      setCurrentRide((prev: any) => {
+        if (prev && ride.id === prev.id && ride.status === "cancelled") {
+          setRoutePolyline(null);
+          setRideEta(null);
+          setShowNavModal(false);
+          setNavSteps([]);
+          AsyncStorage.removeItem("a2b_current_ride").catch(() => {});
+          Alert.alert("Ride Cancelled", "The rider has cancelled this trip.");
+          return null;
+        }
+        return prev;
+      });
+    };
+    on("ride:statusUpdate", handleRideUpdate);
+    return () => off("ride:statusUpdate", handleRideUpdate);
+  }, []);
+
+  // Persist currentRide to AsyncStorage so it survives app restarts
+  useEffect(() => {
+    if (currentRide) {
+      AsyncStorage.setItem("a2b_current_ride", JSON.stringify(currentRide)).catch(() => {});
+    } else {
+      AsyncStorage.removeItem("a2b_current_ride").catch(() => {});
+    }
+  }, [currentRide]);
+
   useEffect(() => {
     if (isOnline && chauffeur) {
       startLocationUpdates();
@@ -191,6 +220,22 @@ export default function ChauffeurDashboard() {
     return () => clearInterval(poll);
   }, [isOnline, chauffeur?.isApproved, chauffeur?.id, currentRide, incomingRide]);
 
+  async function restoreActiveRide() {
+    try {
+      const saved = await AsyncStorage.getItem("a2b_current_ride");
+      if (!saved) return;
+      const ride = JSON.parse(saved);
+      const rideRes = await apiRequest("GET", `/api/rides/${ride.id}`);
+      if (!rideRes.ok) { await AsyncStorage.removeItem("a2b_current_ride"); return; }
+      const freshRide = await rideRes.json();
+      if (freshRide.status === "trip_completed" || freshRide.status === "cancelled") {
+        await AsyncStorage.removeItem("a2b_current_ride");
+      } else {
+        setCurrentRide(freshRide);
+      }
+    } catch {}
+  }
+
   async function loadChauffeur() {
     if (!user) return;
     try {
@@ -203,6 +248,7 @@ export default function ChauffeurDashboard() {
         setIsOnline(cached.isOnline || false);
         setLoading(false);
         refreshChauffeur(cached.id);
+        restoreActiveRide();
         return;
       }
       const res = await apiRequest("GET", `/api/chauffeurs/user/${user.id}`);
@@ -211,6 +257,7 @@ export default function ChauffeurDashboard() {
       setChauffeur(c);
       setIsOnline(c.isOnline || false);
       await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(c));
+      restoreActiveRide();
     } catch {
       router.replace("/chauffeur-register");
     } finally {
@@ -482,12 +529,12 @@ export default function ChauffeurDashboard() {
         )}
         <View style={[styles.navModalFooter, { paddingBottom: insets.bottom + 16 }]}>
           {(currentRide?.status === "chauffeur_assigned" || currentRide?.status === "chauffeur_arriving") && (
-            <Pressable style={[styles.rideActionBtn, { flex: 1 }]} onPress={() => { updateRideStatus("trip_started"); setShowNavModal(false); fetchDriverRoute(parseFloat(currentRide!.dropoffLat), parseFloat(currentRide!.dropoffLng)); }}>
+            <Pressable style={[styles.rideActionBtn, styles.rideActionBtnFull]} onPress={() => { updateRideStatus("trip_started"); setShowNavModal(false); fetchDriverRoute(parseFloat(currentRide!.dropoffLat), parseFloat(currentRide!.dropoffLng)); }}>
               <Text style={styles.rideActionBtnText}>Start Trip — Rider On Board</Text>
             </Pressable>
           )}
           {currentRide?.status === "trip_started" && (
-            <Pressable style={[styles.rideActionBtn, styles.completeBtn, { flex: 1 }]} onPress={() => { updateRideStatus("trip_completed"); }}>
+            <Pressable style={[styles.rideActionBtn, styles.completeBtn, styles.rideActionBtnFull]} onPress={() => { updateRideStatus("trip_completed"); }}>
               <Text style={styles.rideActionBtnText}>Complete Trip</Text>
             </Pressable>
           )}
@@ -759,6 +806,7 @@ const styles = StyleSheet.create({
   currentRidePrice: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white },
   rideActionRow: { gap: 8 },
   rideActionBtn: { backgroundColor: Colors.white, paddingVertical: 14, borderRadius: 14, alignItems: "center" },
+  rideActionBtnFull: { width: "100%" as const },
   completeBtn: { backgroundColor: Colors.success },
   rideActionBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.primary },
   statsRow: { flexDirection: "row", gap: 12, marginBottom: 16 },

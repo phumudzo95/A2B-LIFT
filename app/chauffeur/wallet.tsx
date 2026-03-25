@@ -192,21 +192,30 @@ export default function ChauffeurWalletScreen() {
                 <Text style={styles.emptySub}>Complete rides to earn money</Text>
               </View>
             ) : (
-              earnings.map(e => (
-                <View key={e.id} style={styles.listRow}>
-                  <View style={styles.listIcon}>
-                    <Text style={{ fontSize: 18 }}>🚗</Text>
-                  </View>
-                  <View style={styles.listInfo}>
-                    <Text style={styles.listTitle}>Ride Completed</Text>
-                    <Text style={styles.listSub}>Commission: R{e.commission.toFixed(2)} deducted</Text>
-                    <Text style={styles.listDate}>
-                      {new Date(e.createdAt).toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric" })}
+              earnings.map(e => {
+                const isCashCommission = e.amount < 0;
+                return (
+                  <View key={e.id} style={styles.listRow}>
+                    <View style={styles.listIcon}>
+                      <Text style={{ fontSize: 18 }}>{isCashCommission ? "💵" : "💳"}</Text>
+                    </View>
+                    <View style={styles.listInfo}>
+                      <Text style={styles.listTitle}>{isCashCommission ? "Cash Trip Commission" : "Card Trip Earnings"}</Text>
+                      <Text style={styles.listSub}>
+                        {isCashCommission
+                          ? `Commission charged: R${e.commission.toFixed(2)} (cash collected)`
+                          : `Commission: R${e.commission.toFixed(2)} deducted`}
+                      </Text>
+                      <Text style={styles.listDate}>
+                        {new Date(e.createdAt).toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric" })}
+                      </Text>
+                    </View>
+                    <Text style={[styles.listAmount, isCashCommission && { color: Colors.error }]}>
+                      {isCashCommission ? `-R ${Math.abs(e.amount).toFixed(2)}` : `+R ${e.amount.toFixed(2)}`}
                     </Text>
                   </View>
-                  <Text style={styles.listAmount}>+R {e.amount.toFixed(2)}</Text>
-                </View>
-              ))
+                );
+              })
             )}
           </View>
         )}

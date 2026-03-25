@@ -170,8 +170,8 @@ export default function A2BMap({
       mapRef.current.animateToRegion({
         latitude: driverLocation.lat,
         longitude: driverLocation.lng,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
       }, 800);
     } else if (routeCoords.length > 0) {
       zoomToCoords(routeCoords);

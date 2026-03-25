@@ -1604,19 +1604,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // the earning record for card payments before trip_completed fires.
           const existingEarnings = await storage.getEarningsByChauffeur(ride.chauffeurId);
           const alreadyRecorded = existingEarnings.some((e: any) => e.rideId === ride.id);
+          const paymentMethod = ride.paymentMethod || "cash";
           if (!alreadyRecorded) {
-            await storage.createEarning({
-              chauffeurId: ride.chauffeurId,
-              rideId: ride.id,
-              amount: earningsCalc.chauffeurEarnings,
-              commission: earningsCalc.commission,
-            });
-            const chauffeur = await storage.getChauffeur(ride.chauffeurId);
-            if (chauffeur) {
-              await storage.updateChauffeur(ride.chauffeurId, {
-                earningsTotal:
-                  (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings,
+            if (paymentMethod === "cash") {
+              // Cash trips: driver collects full fare in cash.
+              // Platform deducts 20% commission from driver's digital balance.
+              await storage.createEarning({
+                chauffeurId: ride.chauffeurId,
+                rideId: ride.id,
+                amount: -earningsCalc.commission,
+                commission: earningsCalc.commission,
               });
+              const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+              if (chauffeur) {
+                await storage.updateChauffeur(ride.chauffeurId, {
+                  earningsTotal:
+                    (chauffeur.earningsTotal || 0) - earningsCalc.commission,
+                });
+              }
+            } else {
+              // Card trips: add 80% earnings to digital wallet balance.
+              await storage.createEarning({
+                chauffeurId: ride.chauffeurId,
+                rideId: ride.id,
+                amount: earningsCalc.chauffeurEarnings,
+                commission: earningsCalc.commission,
+              });
+              const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+              if (chauffeur) {
+                await storage.updateChauffeur(ride.chauffeurId, {
+                  earningsTotal:
+                    (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings,
+                });
+              }
             }
           }
         } catch (earningsErr: any) {
