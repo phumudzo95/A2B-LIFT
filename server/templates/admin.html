@@ -724,6 +724,32 @@ async function doRejectChauf(id) {
   } catch(e) { toast('❌ ' + e.message, 'err'); }
 }
 
+async function handlePhotoUpload(input, chauffeurId) {
+  const file = input.files[0]; if (!file) return;
+  const label = document.getElementById('edit-photo-upload-label');
+  label.textContent = 'Uploading…';
+  try {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const base64Data = e.target.result.split(',')[1];
+      const res = await apiFetch('/api/upload/profile-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64Data, chauffeurId }),
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const { url } = await res.json();
+      document.getElementById('edit-profilePhoto').value = url;
+      const img = document.getElementById('edit-photo-preview');
+      const fb = document.getElementById('edit-photo-fallback');
+      img.src = url; img.style.display = ''; fb.style.display = 'none';
+      label.textContent = '✅ Photo uploaded';
+      toast('✅ Photo uploaded successfully', 'ok');
+    };
+    reader.readAsDataURL(file);
+  } catch(e) { label.textContent = 'Choose Photo'; toast('❌ Photo upload failed', 'err'); }
+}
+
 function editChauf(id) {
   const c = allChauf.find(x => x.id === id); if (!c) return;
   document.getElementById('m-title').textContent = 'Edit Driver: ' + (c.userName || 'Chauffeur');
@@ -736,9 +762,13 @@ function editChauf(id) {
         <div id="edit-photo-fallback" style="width:72px;height:72px;border-radius:50%;background:var(--bg2);display:${c.profilePhoto?'none':'flex'};align-items:center;justify-content:center;font-size:30px;border:2px solid var(--border)">🧑‍✈️</div>
       </div>
       <div style="flex:1">
-        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600">Profile Photo URL</label>
-        <input id="edit-profilePhoto" class="f-input" placeholder="https://…/photo.jpg" value="${(c.profilePhoto||'').replace(/"/g,'&quot;')}" oninput="const v=this.value.trim();const img=document.getElementById('edit-photo-preview');const fb=document.getElementById('edit-photo-fallback');if(v){img.src=v;img.style.display='';fb.style.display='none';}else{img.style.display='none';fb.style.display='flex';}" />
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">Paste a direct image URL (HTTPS). The photo will show on the rider's app when a trip is accepted.</div>
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600">Profile Photo</label>
+        <input type="hidden" id="edit-profilePhoto" value="${(c.profilePhoto||'').replace(/"/g,'&quot;')}" />
+        <label id="edit-photo-upload-btn" style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;color:var(--fg)">
+          <span>📷</span> <span id="edit-photo-upload-label">Choose Photo</span>
+          <input type="file" accept="image/*" style="display:none" onchange="handlePhotoUpload(this,'${c.id}')" />
+        </label>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Upload a JPEG or PNG photo. It will appear on the rider's app when a trip is accepted.</div>
       </div>
     </div>
     <div class="info-grid" style="gap:12px">

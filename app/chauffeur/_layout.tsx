@@ -102,6 +102,12 @@ function ClassicTabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

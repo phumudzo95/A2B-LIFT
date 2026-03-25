@@ -10,6 +10,7 @@ import {
   Alert,
   RefreshControl,
   Image,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -80,6 +81,7 @@ export default function ChauffeurDashboard() {
   const [locationInterval, setLocationIntervalId] = useState<any>(null);
   const [myLocation, setMyLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [routePolyline, setRoutePolyline] = useState<string | null>(null);
+  const [showNavModal, setShowNavModal] = useState(false);
 
   useEffect(() => {
     loadChauffeur();
@@ -266,10 +268,22 @@ export default function ChauffeurDashboard() {
         fetchDriverRoute(parseFloat(ride.pickupLat), parseFloat(ride.pickupLng));
       }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowNavModal(true);
     } catch {
       Alert.alert("Error", "Ride may have been taken by another chauffeur");
       setIncomingRide(null);
     }
+  }
+
+  function confirmCancelRide() {
+    Alert.alert(
+      "Cancel Trip",
+      "Are you sure you want to cancel this trip? This may affect your rating.",
+      [
+        { text: "Keep Trip", style: "cancel" },
+        { text: "Cancel Trip", style: "destructive", onPress: () => updateRideStatus("cancelled") },
+      ]
+    );
   }
 
   function declineRide() {
@@ -282,10 +296,11 @@ export default function ChauffeurDashboard() {
     try {
       const res = await apiRequest("PUT", `/api/rides/${currentRide.id}/status`, { status });
       const ride = await res.json();
-      if (status === "trip_completed") {
+      if (status === "trip_completed" || status === "cancelled") {
         setCurrentRide(null);
         setRoutePolyline(null);
         setRideEta(null);
+        setShowNavModal(false);
         if (chauffeur) refreshChauffeur(chauffeur.id);
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
@@ -310,6 +325,69 @@ export default function ChauffeurDashboard() {
   if (!chauffeur) return null;
 
   return (
+    <>
+    {/* Turn-by-turn navigation modal — shown immediately after accepting a ride */}
+    <Modal
+      visible={showNavModal}
+      animationType="slide"
+      onRequestClose={() => setShowNavModal(false)}
+    >
+      <View style={styles.navModal}>
+        <View style={[styles.navModalHeader, { paddingTop: insets.top + 16 }]}>
+          <View>
+            <Text style={styles.navModalTitle}>
+              {currentRide?.status === "trip_started" ? "Navigating to Dropoff" : "Navigate to Pickup"}
+            </Text>
+            {rideEta && (
+              <Text style={styles.navModalEta}>{rideEta.durationText} · {rideEta.distanceText}</Text>
+            )}
+          </View>
+          <Pressable style={styles.navModalClose} onPress={() => setShowNavModal(false)}>
+            <Ionicons name="chevron-down" size={22} color={Colors.white} />
+          </Pressable>
+        </View>
+        {currentRide && (
+          <View style={styles.navModalAddresses}>
+            <View style={styles.incomingRow}>
+              <View style={styles.dotGreen} />
+              <Text style={styles.incomingAddress} numberOfLines={1}>{currentRide.pickupAddress || "Pickup"}</Text>
+            </View>
+            <View style={styles.incomingRow}>
+              <View style={styles.dotRed} />
+              <Text style={styles.incomingAddress} numberOfLines={1}>{currentRide.dropoffAddress || "Dropoff"}</Text>
+            </View>
+          </View>
+        )}
+        <View style={styles.navModalMap}>
+          <A2BMap
+            pickupLocation={currentRide ? { lat: parseFloat(currentRide.pickupLat), lng: parseFloat(currentRide.pickupLng) } : myLocation}
+            dropoffLocation={currentRide ? { lat: parseFloat(currentRide.dropoffLat), lng: parseFloat(currentRide.dropoffLng) } : undefined}
+            driverLocation={myLocation}
+            routePolyline={routePolyline}
+            showDriver={true}
+            followDriver={true}
+            loading={!myLocation}
+          />
+        </View>
+        <View style={[styles.navModalFooter, { paddingBottom: insets.bottom + 16 }]}>
+          {currentRide?.status === "chauffeur_assigned" && (
+            <Pressable style={[styles.rideActionBtn, { flex: 1 }]} onPress={() => { updateRideStatus("chauffeur_arriving"); setShowNavModal(false); }}>
+              <Text style={styles.rideActionBtnText}>Arriving at Pickup</Text>
+            </Pressable>
+          )}
+          {currentRide?.status === "chauffeur_arriving" && (
+            <Pressable style={[styles.rideActionBtn, { flex: 1 }]} onPress={() => { updateRideStatus("trip_started"); setShowNavModal(false); }}>
+              <Text style={styles.rideActionBtnText}>Start Trip</Text>
+            </Pressable>
+          )}
+          {currentRide?.status === "trip_started" && (
+            <Pressable style={[styles.rideActionBtn, styles.completeBtn, { flex: 1 }]} onPress={() => { updateRideStatus("trip_completed"); }}>
+              <Text style={styles.rideActionBtnText}>Complete Trip</Text>
+            </Pressable>
+          )}
+        </View>
+      </View>
+    </Modal>
     <ScrollView
       style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}
       contentContainerStyle={styles.scrollContent}
@@ -459,6 +537,23 @@ export default function ChauffeurDashboard() {
           {currentRide.price && (
             <Text style={styles.currentRidePrice}>R {currentRide.price}</Text>
           )}
+          <View style={styles.rideSecondaryRow}>
+            <Pressable
+              style={styles.chatBtn}
+              onPress={() => router.push({ pathname: "/chauffeur/chat", params: { rideId: currentRide.id, riderName: currentRide.clientName || "Rider" } })}
+            >
+              <Ionicons name="chatbubble-outline" size={16} color={Colors.white} />
+              <Text style={styles.chatBtnText}>Message</Text>
+            </Pressable>
+            <Pressable style={styles.navBtn} onPress={() => setShowNavModal(true)}>
+              <Ionicons name="navigate" size={16} color={Colors.white} />
+              <Text style={styles.chatBtnText}>Navigate</Text>
+            </Pressable>
+            <Pressable style={styles.cancelRideBtn} onPress={confirmCancelRide}>
+              <Ionicons name="close-circle-outline" size={16} color={Colors.error} />
+              <Text style={styles.cancelRideBtnText}>Cancel</Text>
+            </Pressable>
+          </View>
           <View style={styles.rideActionRow}>
             {currentRide.status === "chauffeur_assigned" && (
               <Pressable style={({ pressed }) => [styles.rideActionBtn, pressed && { opacity: 0.9 }]} onPress={() => updateRideStatus("chauffeur_arriving")}>
@@ -501,6 +596,7 @@ export default function ChauffeurDashboard() {
 
       <View style={{ height: 120 }} />
     </ScrollView>
+    </>
   );
 }
 
@@ -570,4 +666,18 @@ const styles = StyleSheet.create({
   vehicleName: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.white },
   vehiclePlate: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   vehicleType: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary, backgroundColor: Colors.surface, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  rideSecondaryRow: { flexDirection: "row", gap: 8, marginBottom: 4 },
+  chatBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: Colors.surface, borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: Colors.border },
+  navBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: Colors.accent, borderRadius: 10, paddingVertical: 10 },
+  cancelRideBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "rgba(255,77,77,0.08)", borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: "rgba(255,77,77,0.2)" },
+  chatBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  cancelRideBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.error },
+  navModal: { flex: 1, backgroundColor: Colors.primary },
+  navModalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  navModalTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.white },
+  navModalEta: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: 2 },
+  navModalClose: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center" },
+  navModalAddresses: { paddingHorizontal: 20, paddingVertical: 14, gap: 8, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  navModalMap: { flex: 1 },
+  navModalFooter: { paddingHorizontal: 20, paddingTop: 16, flexDirection: "row", gap: 12 },
 });

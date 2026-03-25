@@ -939,6 +939,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  // ── Profile photo upload for admin (base64 → Supabase Storage) ──
+  app.post("/api/upload/profile-photo", async (req: Request, res: Response) => {
+    try {
+      const { base64Data, chauffeurId } = req.body;
+      if (!base64Data || !chauffeurId) {
+        return res.status(400).json({ message: "base64Data and chauffeurId are required" });
+      }
+      const SUPABASE_URL = process.env.SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
+      const SUPABASE_ANON_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+      const BUCKET = "driver-documents";
+      const fileName = `${chauffeurId}/profile_${Date.now()}.jpg`;
+      const buffer = Buffer.from(base64Data, "base64");
+      const uploadRes = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${fileName}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            "Content-Type": "image/jpeg",
+            "x-upsert": "true",
+          },
+          body: buffer,
+        },
+      );
+      if (!uploadRes.ok) {
+        const err = await uploadRes.text();
+        return res.status(500).json({ message: "Photo upload failed. Please try again." });
+      }
+      const url = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${fileName}`;
+      return res.json({ url });
+    } catch (error: any) {
+      return res.status(500).json({ message: "Photo upload failed. Please try again." });
+    }
+  });
+
   // ── Document upload proxy (server → Supabase, bypasses client CORS/RLS) ──
   app.post("/api/upload-document", authOptional, async (req: AuthedRequest, res: Response) => {
     try {

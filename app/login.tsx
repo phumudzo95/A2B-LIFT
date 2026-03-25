@@ -75,7 +75,18 @@ export default function LoginScreen() {
       await login(username.trim(), password);
       // AuthGate handles navigation when user state changes
     } catch (e: any) {
-      setError(e.message || "Login failed. Please try again.");
+      const raw = (e?.message || "").toLowerCase();
+      if (raw.includes("invalid") || raw.includes("wrong") || raw.includes("incorrect") || raw.includes("password") || raw.includes("credentials") || raw.includes("not found") || raw.includes("username")) {
+        setError("Incorrect email or password. Please check and try again.");
+      } else if (raw.includes("fetch") || raw.includes("network") || raw.includes("connect") || raw.includes("timeout")) {
+        setError("Unable to connect. Please check your internet connection.");
+      } else if (raw.includes("too many") || raw.includes("rate")) {
+        setError("Too many attempts. Please wait a moment and try again.");
+      } else if (raw.includes("suspended") || raw.includes("banned") || raw.includes("blocked")) {
+        setError("Your account has been suspended. Please contact support.");
+      } else {
+        setError(e.message || "Login failed. Please try again.");
+      }
     } finally { setLoading(false); }
   }
 
