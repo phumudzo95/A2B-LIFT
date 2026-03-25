@@ -459,16 +459,27 @@ async function doLogin() {
   const u = document.getElementById('l-user').value.trim();
   const p = document.getElementById('l-pass').value;
   const errEl = document.getElementById('l-err');
+  const btn = document.querySelector('.btn-login');
   errEl.textContent = '';
   if (!u || !p) { errEl.textContent = 'Enter username and password.'; return; }
+  btn.textContent = 'Signing in…';
+  btn.disabled = true;
   try {
+    console.log('[Admin] Logging in as:', u, '| API base:', API || '(same origin)');
     const res = await fetch(API + '/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: u, password: p }),
     });
-    if (!res.ok) { errEl.textContent = 'Login failed — check credentials.'; return; }
+    console.log('[Admin] Login response status:', res.status);
+    if (!res.ok) {
+      const body = await res.text();
+      console.error('[Admin] Login failed:', body);
+      errEl.textContent = 'Login failed — check credentials. (' + res.status + ')';
+      return;
+    }
     const data = await res.json();
+    console.log('[Admin] Login data:', data?.user?.role);
     if (!data?.user || data.user.role !== 'admin') {
       errEl.textContent = 'This account does not have admin access.';
       return;
@@ -478,7 +489,11 @@ async function doLogin() {
     document.getElementById('live-status').textContent = 'Connected · Live';
     loadAll();
   } catch(e) {
-    errEl.textContent = 'Network error — is the backend running?';
+    console.error('[Admin] Login error:', e);
+    errEl.textContent = 'Error: ' + (e.message || 'Network error — check console.');
+  } finally {
+    btn.textContent = 'Sign in';
+    btn.disabled = false;
   }
 }
 

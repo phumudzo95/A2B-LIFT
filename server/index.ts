@@ -244,10 +244,13 @@ async function configureExpoAndLanding(app: express.Application) {
   const staticBuildExists = hasStaticBuild();
   log(`Static build: ${staticBuildExists ? "found" : "not found"} — routing non-API traffic to Metro:${metroPort}`);
 
-  // /admin → admin dashboard HTML
+  // /admin → admin dashboard HTML (always fresh — no caching)
   app.get("/admin", (_req: Request, res: Response) => {
+    const freshTemplate = fs.readFileSync(adminTemplatePath, "utf-8");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.status(200).send(adminTemplate);
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.status(200).send(freshTemplate);
   });
 
   // Serve local assets folder
