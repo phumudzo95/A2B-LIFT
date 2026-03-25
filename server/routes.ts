@@ -939,24 +939,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // ── Profile photo upload for admin (base64 → Supabase Storage) ──
-  app.post("/api/upload/profile-photo", authOptional, async (req: AuthedRequest, res: Response) => {
+  // ── Profile photo upload for admin (base64 → Supabase Storage) — admin-only ──
+  app.post("/api/upload/profile-photo", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
     try {
       const { base64Data, chauffeurId } = req.body;
-      if (!base64Data || !chauffeurId) {
+      if (!base64Data || typeof base64Data !== "string" || !chauffeurId || typeof chauffeurId !== "string") {
         return res.status(400).json({ message: "base64Data and chauffeurId are required" });
       }
+      // Enforce maximum base64 size (~5 MB)
+      if (base64Data.length > 7_000_000) {
+        return res.status(400).json({ message: "Image too large. Maximum 5 MB." });
+      }
       const SUPABASE_URL = process.env.SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
-      const SUPABASE_ANON_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+      const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
       const BUCKET = "driver-documents";
-      const fileName = `${chauffeurId}/profile_${Date.now()}.jpg`;
+      const safeId = chauffeurId.replace(/[^a-zA-Z0-9_-]/g, "");
+      const fileName = `${safeId}/profile_${Date.now()}.jpg`;
       const buffer = Buffer.from(base64Data, "base64");
       const uploadRes = await fetch(
         `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${fileName}`,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
             "Content-Type": "image/jpeg",
             "x-upsert": "true",
           },
@@ -964,7 +969,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       );
       if (!uploadRes.ok) {
-        const err = await uploadRes.text();
         return res.status(500).json({ message: "Photo upload failed. Please try again." });
       }
       const url = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${fileName}`;
