@@ -4,10 +4,13 @@
   "version": "1.0.0",
   "scripts": {
     "server:dev": "tsx server/index.ts",
-    "build": "esbuild server/index.ts --bundle --platform=node --outfile=server_dist/index.js",
-    "start": "node server_dist/index.js",
+    "server:build": "esbuild server/index.ts --bundle --platform=node --packages=external --outfile=server_dist/index.js",
+    "server:prod": "NODE_ENV=production node server_dist/index.js",
+    "expo:static:build": "npx expo export --platform web --output-dir static-build",
+    "build": "npm run server:build",
+    "start": "npm run server:prod",
     "db:push": "drizzle-kit push",
-    "build:prod": "npm run build && npm run db:push"
+    "build:prod": "npm run expo:static:build && npm run server:build"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
