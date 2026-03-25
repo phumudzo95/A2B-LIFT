@@ -110,7 +110,10 @@ export default function ChauffeurSettingsScreen() {
     if (!userDocuments || !Array.isArray(userDocuments)) return "missing";
     const doc = userDocuments.find((d: any) => d.type === type || d.documentType === type);
     if (!doc) return "missing";
-    if ((application as any)?.status === "approved") return "approved";
+    const appStatus = (application as any)?.status;
+    if (appStatus === "approved") return "approved";
+    if (appStatus === "rejected") return "rejected";
+    if (application && appStatus === "pending") return "pending";
     return doc.status as "pending" | "approved" | "rejected";
   }
 

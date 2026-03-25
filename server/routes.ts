@@ -1467,6 +1467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 rideId: ride.id,
                 amount: earningsCalc.chauffeurEarnings,
                 commission: earningsCalc.commission,
+                type: "card",
               });
               const chauffeur = await storage.getChauffeur(ride.chauffeurId);
               if (chauffeur) {
@@ -1614,6 +1615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 rideId: ride.id,
                 amount: -earningsCalc.commission,
                 commission: earningsCalc.commission,
+                type: "cash",
               });
               const chauffeur = await storage.getChauffeur(ride.chauffeurId);
               if (chauffeur) {
@@ -1623,12 +1625,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
               }
             } else {
-              // Card trips: add 80% earnings to digital wallet balance.
+              // Card / wallet trips: add 80% earnings to digital wallet balance.
               await storage.createEarning({
                 chauffeurId: ride.chauffeurId,
                 rideId: ride.id,
                 amount: earningsCalc.chauffeurEarnings,
                 commission: earningsCalc.commission,
+                type: paymentMethod,
               });
               const chauffeur = await storage.getChauffeur(ride.chauffeurId);
               if (chauffeur) {
@@ -1856,6 +1859,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -----------------------------
   app.post("/api/messages", async (req: Request, res: Response) => {
     try {
+      const { rideId: _rid, senderId: _sid, messageText: _mt } = req.body;
+      console.log(`[POST /api/messages] rideId=${_rid} senderId=${_sid} text="${(_mt || "").slice(0, 40)}"`);
       const message = await storage.createMessage(req.body);
       io.emit("chat:newMessage", message);
       const { rideId, senderId, messageText: msgText } = req.body;
@@ -1971,6 +1976,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const notif = await storage.markNotificationRead(req.params.id);
       if (!notif) return res.status(404).json({ message: "Notification not found" });
       return res.json(notif);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/notifications/user/:userId/all", async (req: Request, res: Response) => {
+    try {
+      await storage.deleteAllNotificationsByUser(req.params.userId);
+      return res.json({ message: "All notifications cleared" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }

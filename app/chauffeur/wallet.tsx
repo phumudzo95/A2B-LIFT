@@ -36,7 +36,7 @@ const SA_BANKS: Bank[] = [
   { name: "VBS Mutual Bank", code: "588000" },
 ];
 
-interface Earning { id: string; amount: number; commission: number; createdAt: string; rideId: string; }
+interface Earning { id: string; amount: number; commission: number; createdAt: string; rideId: string; type?: string; }
 
 export default function ChauffeurWalletScreen() {
   const insets = useSafeAreaInsets();
@@ -193,25 +193,28 @@ export default function ChauffeurWalletScreen() {
               </View>
             ) : (
               earnings.map(e => {
-                const isCashCommission = e.amount < 0;
+                const method = e.type || (e.amount < 0 ? "cash" : "card");
+                const isCash = method === "cash";
+                const isWallet = method === "wallet";
+                const icon = isCash ? "💵" : isWallet ? "👛" : "💳";
+                const label = isCash ? "Cash Trip Commission" : isWallet ? "Wallet Trip Earnings" : "Card Trip Earnings";
+                const sub = isCash
+                  ? `Commission charged: R${e.commission.toFixed(2)} (cash collected)`
+                  : `Commission: R${e.commission.toFixed(2)} deducted`;
                 return (
                   <View key={e.id} style={styles.listRow}>
                     <View style={styles.listIcon}>
-                      <Text style={{ fontSize: 18 }}>{isCashCommission ? "💵" : "💳"}</Text>
+                      <Text style={{ fontSize: 18 }}>{icon}</Text>
                     </View>
                     <View style={styles.listInfo}>
-                      <Text style={styles.listTitle}>{isCashCommission ? "Cash Trip Commission" : "Card Trip Earnings"}</Text>
-                      <Text style={styles.listSub}>
-                        {isCashCommission
-                          ? `Commission charged: R${e.commission.toFixed(2)} (cash collected)`
-                          : `Commission: R${e.commission.toFixed(2)} deducted`}
-                      </Text>
+                      <Text style={styles.listTitle}>{label}</Text>
+                      <Text style={styles.listSub}>{sub}</Text>
                       <Text style={styles.listDate}>
                         {new Date(e.createdAt).toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric" })}
                       </Text>
                     </View>
-                    <Text style={[styles.listAmount, isCashCommission && { color: Colors.error }]}>
-                      {isCashCommission ? `-R ${Math.abs(e.amount).toFixed(2)}` : `+R ${e.amount.toFixed(2)}`}
+                    <Text style={[styles.listAmount, isCash && { color: Colors.error }]}>
+                      {isCash ? `-R ${Math.abs(e.amount).toFixed(2)}` : `+R ${e.amount.toFixed(2)}`}
                     </Text>
                   </View>
                 );

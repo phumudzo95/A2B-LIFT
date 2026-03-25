@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, FlatList, Platform, KeyboardAvoidingView, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Pressable, TextInput, FlatList, Platform, KeyboardAvoidingView, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
@@ -32,15 +32,24 @@ export default function ChauffeurChatScreen() {
 
   const sendMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/messages", {
+      if (!user?.id) throw new Error("Not authenticated — please log in again.");
+      if (!rideId) throw new Error("No active ride found.");
+      const res = await apiRequest("POST", "/api/messages", {
         rideId,
-        senderId: user?.id,
+        senderId: user.id,
         messageText: messageText.trim(),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `Server error ${res.status}`);
+      }
     },
     onSuccess: () => {
       setMessageText("");
       queryClient.invalidateQueries({ queryKey: ["/api/messages/ride", rideId || ""] });
+    },
+    onError: (error: any) => {
+      Alert.alert("Message Failed", error?.message || "Could not send message. Please try again.");
     },
   });
 

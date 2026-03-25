@@ -162,6 +162,7 @@ export const earnings = pgTable("earnings", {
   rideId: varchar("ride_id").references(() => rides.id),
   amount: real("amount").notNull(),
   commission: real("commission").notNull(),
+  type: text("type"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

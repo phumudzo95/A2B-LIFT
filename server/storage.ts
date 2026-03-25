@@ -130,6 +130,7 @@ export interface IStorage {
   createNotification(data: any): Promise<Notification>;
   getNotificationsByUser(userId: string): Promise<Notification[]>;
   markNotificationRead(id: string): Promise<Notification | undefined>;
+  deleteAllNotificationsByUser(userId: string): Promise<void>;
 
   // Saved Cards (Paystack)
   getSavedCard(id: string): Promise<SavedCard | undefined>;
@@ -521,6 +522,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.id, id))
       .returning();
     return notification;
+  }
+
+  async deleteAllNotificationsByUser(userId: string): Promise<void> {
+    await db.delete(notifications).where(eq(notifications.userId, userId));
   }
 
   async getSavedCard(id: string): Promise<SavedCard | undefined> {

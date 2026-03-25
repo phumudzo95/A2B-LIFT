@@ -307,6 +307,7 @@ export default function ClientHomeScreen() {
 
   // Apply a ride status update received from socket or polling
   const applyRideUpdate = useCallback((ride: any) => {
+    if (ride.status === "cancelled") return;
     setCurrentRide(ride);
     if (ride.status === "chauffeur_assigned") {
       setRideStatus("assigned");

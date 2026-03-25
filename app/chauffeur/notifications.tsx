@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, Pressable, ScrollView,
-  ActivityIndicator, Platform, RefreshControl,
+  ActivityIndicator, Platform, RefreshControl, Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -51,6 +51,28 @@ export default function ChauffeurNotificationsScreen() {
     } catch {}
   }
 
+  function confirmClearAll() {
+    if (notifications.length === 0) return;
+    Alert.alert(
+      "Clear All Notifications",
+      "This will permanently delete all your notifications. Are you sure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear All", style: "destructive",
+          onPress: async () => {
+            try {
+              await apiRequest("DELETE", `/api/notifications/user/${user!.id}/all`);
+              setNotifications([]);
+            } catch {
+              Alert.alert("Error", "Failed to clear notifications. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  }
+
   function getIcon(type: string) {
     switch (type) {
       case "ride": return "car-sport";
@@ -97,7 +119,13 @@ export default function ChauffeurNotificationsScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.white} />
         </Pressable>
         <Text style={styles.title}>Notifications</Text>
-        <View style={{ width: 36 }} />
+        <Pressable
+          onPress={confirmClearAll}
+          style={[styles.clearBtn, notifications.length === 0 && { opacity: 0.3 }]}
+          disabled={notifications.length === 0}
+        >
+          <Text style={styles.clearBtnText}>Clear All</Text>
+        </Pressable>
       </View>
 
       <ScrollView
@@ -152,6 +180,8 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center" },
   title: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.white },
+  clearBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: "rgba(255,80,80,0.15)", borderWidth: 1, borderColor: "rgba(255,80,80,0.3)" },
+  clearBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#FF5050" },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 120 },
   empty: { alignItems: "center", paddingVertical: 60, gap: 12 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", color: Colors.white },
