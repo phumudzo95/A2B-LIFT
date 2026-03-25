@@ -2476,14 +2476,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json(banks);
     } catch (error: any) {
       return res.json([
-        { name: "Absa Bank", code: "632005" },
-        { name: "Capitec Bank", code: "470010" },
-        { name: "First National Bank (FNB)", code: "250655" },
-        { name: "Nedbank", code: "198765" },
-        { name: "Standard Bank", code: "051001" },
+        { name: "ABSA Bank", code: "632005" },
         { name: "African Bank", code: "430000" },
+        { name: "Albaraka Bank", code: "800000" },
+        { name: "Bidvest Bank", code: "462005" },
+        { name: "Capitec Bank", code: "470010" },
         { name: "Discovery Bank", code: "679000" },
+        { name: "Finbond Mutual Bank", code: "589000" },
+        { name: "First National Bank (FNB)", code: "250655" },
+        { name: "Grindrod Bank", code: "584000" },
+        { name: "HBZ Bank", code: "570000" },
+        { name: "Investec Bank", code: "580105" },
+        { name: "Mercantile Bank", code: "450905" },
+        { name: "Nedbank", code: "198765" },
+        { name: "Old Mutual Bank", code: "462005" },
+        { name: "Postbank", code: "460005" },
+        { name: "Sasfin Bank", code: "683000" },
+        { name: "Standard Bank", code: "051001" },
+        { name: "State Bank of India", code: "801000" },
         { name: "TymeBank", code: "678910" },
+        { name: "Ubank (Teba Bank)", code: "431010" },
+        { name: "VBS Mutual Bank", code: "588000" },
       ]);
     }
   });

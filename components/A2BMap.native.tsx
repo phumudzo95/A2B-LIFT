@@ -118,6 +118,13 @@ export default function A2BMap({
 }: A2BMapProps) {
   const mapRef = useRef<MapView>(null);
   const mapReadyRef = useRef(false);
+  const driverMarkerRef = useRef<any>(null);
+  // Store initial driver coordinate so the Marker's coordinate prop never changes (prevents blink).
+  // Position updates are done imperatively via animateMarkerToCoordinate.
+  const initialDriverCoordRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  if (!initialDriverCoordRef.current && driverLocation) {
+    initialDriverCoordRef.current = { latitude: driverLocation.lat, longitude: driverLocation.lng };
+  }
 
   // Use user's location for initialRegion if available, else Johannesburg
   const center = pickupLocation || DEFAULT_REGION;
@@ -215,6 +222,20 @@ export default function A2BMap({
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [routeCoords, zoomToCoords]);
 
+  // Smoothly animate driver marker to new GPS position — no React re-render so no blink
+  useEffect(() => {
+    if (!driverLocation || !driverMarkerRef.current) return;
+    if (!initialDriverCoordRef.current) {
+      initialDriverCoordRef.current = { latitude: driverLocation.lat, longitude: driverLocation.lng };
+    }
+    try {
+      driverMarkerRef.current.animateMarkerToCoordinate(
+        { latitude: driverLocation.lat, longitude: driverLocation.lng },
+        400
+      );
+    } catch {}
+  }, [driverLocation?.lat, driverLocation?.lng]);
+
   if (!GOOGLE_MAPS_API_KEY) {
     return (
       <View style={styles.fallback}>
@@ -285,10 +306,11 @@ export default function A2BMap({
           </Marker>
         ))}
 
-        {showDriver && driverLocation && (
+        {showDriver && initialDriverCoordRef.current && (
           <Marker
+            ref={driverMarkerRef}
             identifier="driver-marker"
-            coordinate={{ latitude: driverLocation.lat, longitude: driverLocation.lng }}
+            coordinate={initialDriverCoordRef.current}
             anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={false}
             tracksInfoWindowChanges={false}

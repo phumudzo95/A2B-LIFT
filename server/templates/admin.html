@@ -729,25 +729,29 @@ async function handlePhotoUpload(input, chauffeurId) {
   const label = document.getElementById('edit-photo-upload-label');
   label.textContent = 'Uploading…';
   try {
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      const base64Data = e.target.result.split(',')[1];
-      const res = await apiFetch('/api/upload/profile-photo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64Data, chauffeurId }),
-      });
-      if (!res.ok) throw new Error('Upload failed');
-      const { url } = await res.json();
-      document.getElementById('edit-profilePhoto').value = url;
-      const img = document.getElementById('edit-photo-preview');
-      const fb = document.getElementById('edit-photo-fallback');
-      img.src = url; img.style.display = ''; fb.style.display = 'none';
-      label.textContent = '✅ Photo uploaded';
-      toast('✅ Photo uploaded successfully', 'ok');
-    };
-    reader.readAsDataURL(file);
-  } catch(e) { label.textContent = 'Choose Photo'; toast('❌ Photo upload failed', 'err'); }
+    const base64Data = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const res = await apiFetch('/api/upload/profile-photo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64Data, chauffeurId }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || 'Upload failed (status ' + res.status + ')');
+    }
+    const { url } = await res.json();
+    document.getElementById('edit-profilePhoto').value = url;
+    const img = document.getElementById('edit-photo-preview');
+    const fb = document.getElementById('edit-photo-fallback');
+    img.src = url; img.style.display = ''; fb.style.display = 'none';
+    label.textContent = '✅ Photo uploaded';
+    toast('✅ Photo uploaded successfully', 'ok');
+  } catch(e) { label.textContent = 'Choose Photo'; toast('❌ ' + (e.message || 'Photo upload failed'), 'err'); }
 }
 
 function editChauf(id) {

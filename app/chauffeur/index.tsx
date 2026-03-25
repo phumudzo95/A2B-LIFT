@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Image,
   Modal,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -275,6 +276,27 @@ export default function ChauffeurDashboard() {
     }
   }
 
+  function openNavigationApp() {
+    if (!currentRide) return;
+    const isToPickup = currentRide.status !== "trip_started";
+    const destLat = isToPickup ? currentRide.pickupLat : currentRide.dropoffLat;
+    const destLng = isToPickup ? currentRide.pickupLng : currentRide.dropoffLng;
+    const label = encodeURIComponent(isToPickup ? (currentRide.pickupAddress || "Pickup") : (currentRide.dropoffAddress || "Dropoff"));
+    if (Platform.OS === "ios") {
+      const appleMaps = `maps://maps.apple.com/?daddr=${destLat},${destLng}&dirflg=d`;
+      const googleMaps = `comgooglemaps://?daddr=${destLat},${destLng}&directionsmode=driving`;
+      Linking.canOpenURL(googleMaps).then(supported => {
+        Linking.openURL(supported ? googleMaps : appleMaps).catch(() =>
+          Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`)
+        );
+      });
+    } else {
+      Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`).catch(() => {
+        Alert.alert("Navigation", "Could not open Google Maps. Please navigate manually.");
+      });
+    }
+  }
+
   function confirmCancelRide() {
     Alert.alert(
       "Cancel Trip",
@@ -370,6 +392,10 @@ export default function ChauffeurDashboard() {
           />
         </View>
         <View style={[styles.navModalFooter, { paddingBottom: insets.bottom + 16 }]}>
+          <Pressable style={styles.openMapsBtn} onPress={openNavigationApp}>
+            <Ionicons name="navigate-circle" size={18} color={Colors.primary} />
+            <Text style={styles.openMapsBtnText}>Open Navigation</Text>
+          </Pressable>
           {currentRide?.status === "chauffeur_assigned" && (
             <Pressable style={[styles.rideActionBtn, { flex: 1 }]} onPress={() => { updateRideStatus("chauffeur_arriving"); setShowNavModal(false); }}>
               <Text style={styles.rideActionBtnText}>Arriving at Pickup</Text>
@@ -679,5 +705,7 @@ const styles = StyleSheet.create({
   navModalClose: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center" },
   navModalAddresses: { paddingHorizontal: 20, paddingVertical: 14, gap: 8, borderBottomWidth: 1, borderBottomColor: Colors.border },
   navModalMap: { flex: 1 },
-  navModalFooter: { paddingHorizontal: 20, paddingTop: 16, flexDirection: "row", gap: 12 },
+  navModalFooter: { paddingHorizontal: 20, paddingTop: 16, gap: 10 },
+  openMapsBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: Colors.white, borderRadius: 14, paddingVertical: 14 },
+  openMapsBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.primary },
 });

@@ -11,6 +11,31 @@ import Colors from "@/constants/colors";
 
 interface Bank { name: string; code: string; }
 interface Withdrawal { id: string; amount: number; status: string; bankName: string; accountNumber: string; createdAt: string; }
+
+const SA_BANKS: Bank[] = [
+  { name: "ABSA Bank", code: "632005" },
+  { name: "African Bank", code: "430000" },
+  { name: "Albaraka Bank", code: "800000" },
+  { name: "Bidvest Bank", code: "462005" },
+  { name: "Capitec Bank", code: "470010" },
+  { name: "Discovery Bank", code: "679000" },
+  { name: "Finbond Mutual Bank", code: "589000" },
+  { name: "First National Bank (FNB)", code: "250655" },
+  { name: "Grindrod Bank", code: "584000" },
+  { name: "HBZ Bank", code: "570000" },
+  { name: "Investec Bank", code: "580105" },
+  { name: "Mercantile Bank", code: "450905" },
+  { name: "Nedbank", code: "198765" },
+  { name: "Old Mutual Bank", code: "462005" },
+  { name: "Postbank", code: "460005" },
+  { name: "Sasfin Bank", code: "683000" },
+  { name: "Standard Bank", code: "051001" },
+  { name: "State Bank of India", code: "801000" },
+  { name: "TymeBank", code: "678910" },
+  { name: "Ubank (Teba Bank)", code: "431010" },
+  { name: "VBS Mutual Bank", code: "588000" },
+];
+
 interface Earning { id: string; amount: number; commission: number; createdAt: string; rideId: string; }
 
 export default function ChauffeurWalletScreen() {
@@ -20,7 +45,7 @@ export default function ChauffeurWalletScreen() {
   const [chauffeur, setChauffeur] = useState<any>(null);
   const [earnings, setEarnings] = useState<Earning[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
-  const [banks, setBanks] = useState<Bank[]>([]);
+  const [banks, setBanks] = useState<Bank[]>(SA_BANKS);
   const [loading, setLoading] = useState(true);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawLoading, setWithdrawLoading] = useState(false);
@@ -52,7 +77,10 @@ export default function ChauffeurWalletScreen() {
           if (withdrawRes) setWithdrawals(await withdrawRes.json());
         }
       }
-      if (banksRes) setBanks(await banksRes.json());
+      if (banksRes) {
+        const banksData = await banksRes.json();
+        if (Array.isArray(banksData) && banksData.length > 0) setBanks(banksData);
+      }
     } catch (e) { console.error("Wallet load error", e); }
     finally { setLoading(false); }
   }, [user]);
