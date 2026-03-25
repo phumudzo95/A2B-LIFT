@@ -35,6 +35,26 @@ const DARK_MAP_STYLE = [
   { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3d3d3d" }] },
 ];
 
+// Isolated memoized component so the driver marker never unmounts/remounts
+// when the parent map re-renders (e.g. from location polling). Only re-renders
+// when latitude or longitude actually changes, which is the correct behaviour.
+const DriverMarker = React.memo(
+  ({ latitude, longitude }: { latitude: number; longitude: number }) => (
+    <Marker
+      coordinate={{ latitude, longitude }}
+      anchor={{ x: 0.5, y: 0.5 }}
+      tracksViewChanges={false}
+      flat={true}
+    >
+      <View style={driverMarkerStyle.wrap}>
+        <Ionicons name="car-sport" size={20} color="#000" />
+      </View>
+    </Marker>
+  ),
+  (prev, next) => prev.latitude === next.latitude && prev.longitude === next.longitude,
+);
+const driverMarkerStyle = { wrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#FFFFFF", alignItems: "center" as const, justifyContent: "center" as const, shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 6 } };
+
 function decodePolyline(encoded: string): { latitude: number; longitude: number }[] {
   const points: { latitude: number; longitude: number }[] = [];
   let index = 0;
@@ -118,13 +138,6 @@ export default function A2BMap({
 }: A2BMapProps) {
   const mapRef = useRef<MapView>(null);
   const mapReadyRef = useRef(false);
-  const driverMarkerRef = useRef<any>(null);
-  // Store initial driver coordinate so the Marker's coordinate prop never changes (prevents blink).
-  // Position updates are done imperatively via animateMarkerToCoordinate.
-  const initialDriverCoordRef = useRef<{ latitude: number; longitude: number } | null>(null);
-  if (!initialDriverCoordRef.current && driverLocation) {
-    initialDriverCoordRef.current = { latitude: driverLocation.lat, longitude: driverLocation.lng };
-  }
 
   // Use user's location for initialRegion if available, else Johannesburg
   const center = pickupLocation || DEFAULT_REGION;
@@ -222,19 +235,6 @@ export default function A2BMap({
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [routeCoords, zoomToCoords]);
 
-  // Smoothly animate driver marker to new GPS position — no React re-render so no blink
-  useEffect(() => {
-    if (!driverLocation || !driverMarkerRef.current) return;
-    if (!initialDriverCoordRef.current) {
-      initialDriverCoordRef.current = { latitude: driverLocation.lat, longitude: driverLocation.lng };
-    }
-    try {
-      driverMarkerRef.current.animateMarkerToCoordinate(
-        { latitude: driverLocation.lat, longitude: driverLocation.lng },
-        400
-      );
-    } catch {}
-  }, [driverLocation?.lat, driverLocation?.lng]);
 
   if (!GOOGLE_MAPS_API_KEY) {
     return (
@@ -306,20 +306,11 @@ export default function A2BMap({
           </Marker>
         ))}
 
-        {showDriver && initialDriverCoordRef.current && (
-          <Marker
-            ref={driverMarkerRef}
-            identifier="driver-marker"
-            coordinate={initialDriverCoordRef.current}
-            anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}
-            tracksInfoWindowChanges={false}
-            flat={true}
-          >
-            <View style={styles.driverMarker}>
-              <Ionicons name="car-sport" size={20} color="#000" />
-            </View>
-          </Marker>
+        {showDriver && driverLocation && (
+          <DriverMarker
+            latitude={driverLocation.lat}
+            longitude={driverLocation.lng}
+          />
         )}
 
         {routeCoords.length > 0 && (
@@ -404,16 +395,6 @@ const styles = StyleSheet.create({
   },
   dropoffMarker: {
     alignItems: "center",
-  },
-  driverMarker: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#000",
   },
   nearbyDriverMarker: {
     width: 30,
