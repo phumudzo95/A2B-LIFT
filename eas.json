@@ -8,38 +8,36 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "https://api-production-0783.up.railway.app"
+        "EXPO_PUBLIC_DOMAIN": "https://api-production-0783.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co"
       }
     },
     "preview": {
       "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_DOMAIN": "https://api-production-0783.up.railway.app"
+      "android": {
+        "buildType": "apk"
       },
-      "ios": {
-        "simulator": false
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "https://api-production-0783.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co"
       }
     },
     "production": {
       "autoIncrement": true,
-      "env": {
-        "EXPO_PUBLIC_DOMAIN": "https://api-production-0783.up.railway.app"
+      "android": {
+        "buildType": "app-bundle"
       },
-      "ios": {
-        "resourceClass": "m-medium"
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "https://api-production-0783.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co"
       }
     }
   },
   "submit": {
     "production": {
-      "ios": {
-        "appleId": "",
-        "ascAppId": "",
-        "appleTeamId": ""
-      },
       "android": {
         "serviceAccountKeyPath": "./google-play-key.json",
-        "track": "production"
+        "track": "internal"
       }
     }
   }
