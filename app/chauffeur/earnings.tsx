@@ -12,6 +12,7 @@ import {
   RefreshControl,
   Modal,
   FlatList,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -87,8 +88,9 @@ export default function EarningsScreen() {
   });
 
   const earningsList = Array.isArray(earningsData) ? earningsData : [];
-  const totalEarnings = earningsList.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
-  const totalCommission = earningsList.reduce((sum: number, e: any) => sum + (e.commission || 0), 0);
+  const cardEarnings = earningsList.filter((e: any) => e.type === "card");
+  const totalEarnings = cardEarnings.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
+  const totalCommission = cardEarnings.reduce((sum: number, e: any) => sum + (e.commission || 0), 0);
   const withdrawalsList = Array.isArray(withdrawals) ? withdrawals : [];
   const banksList = Array.isArray(banksData) ? banksData : [];
 
@@ -102,7 +104,7 @@ export default function EarningsScreen() {
       <Text style={styles.title}>Earnings</Text>
 
       <View style={styles.totalCard}>
-        <Text style={styles.totalLabel}>Total Earnings</Text>
+        <Text style={styles.totalLabel}>Card Trip Earnings</Text>
         <Text style={styles.totalValue}>R {totalEarnings.toFixed(0)}</Text>
         <Text style={styles.totalSub}>Commission paid: R {totalCommission.toFixed(0)} (20%)</Text>
         <Pressable
@@ -180,7 +182,10 @@ export default function EarningsScreen() {
 
       {/* Withdrawal Modal */}
       <Modal visible={showWithdraw} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Withdraw Earnings</Text>
@@ -244,7 +249,7 @@ export default function EarningsScreen() {
               }
             </Pressable>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Bank Picker Modal */}

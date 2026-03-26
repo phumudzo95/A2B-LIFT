@@ -106,6 +106,7 @@ function ClassicTabLayout() {
         name="chat"
         options={{
           href: null,
+          tabBarStyle: { display: "none" },
         }}
       />
     </Tabs>
