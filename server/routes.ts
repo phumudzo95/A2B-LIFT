@@ -2715,7 +2715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const chauffeur = await storage.getChauffeurByUserId(userId);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
       if ((chauffeur.earningsTotal || 0) < amount) {
-        return res.status(400).json({ message: "Insufficient earnings balance" });
+        return res.status(400).json({ message: `You only have R${(chauffeur.earningsTotal || 0).toFixed(2)} available to withdraw. Please enter a lower amount.` });
       }
 
       const recipientRes = await paystackAPI.post("/transferrecipient", {

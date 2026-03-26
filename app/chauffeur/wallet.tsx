@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, Pressable, ScrollView,
-  ActivityIndicator, Alert, Modal, TextInput, Platform,
+  ActivityIndicator, Alert, Modal, TextInput, Platform, KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -93,7 +93,11 @@ export default function ChauffeurWalletScreen() {
     if (!selectedBank) { Alert.alert("Please select your bank"); return; }
     if (!accountNumber.trim() || accountNumber.length < 8) { Alert.alert("Please enter a valid account number"); return; }
     if (!accountName.trim()) { Alert.alert("Please enter the account holder name"); return; }
-    if ((chauffeur?.earningsTotal || 0) < amount) { Alert.alert("Insufficient balance"); return; }
+    const available = earnings.filter(e => e.type === "card").reduce((s, e) => s + e.amount, 0);
+    if (available < amount) {
+      Alert.alert("Not Enough Balance", `You only have R${available.toFixed(2)} in card earnings available to withdraw. Please enter a lower amount.`);
+      return;
+    }
 
     setWithdrawLoading(true);
     try {
@@ -115,8 +119,13 @@ export default function ChauffeurWalletScreen() {
     } finally { setWithdrawLoading(false); }
   }
 
-  const earnings_total = chauffeur?.earningsTotal || 0;
-  const totalEarned = earnings.reduce((sum, e) => sum + e.amount, 0);
+  const cardBalance = earnings
+    .filter(e => e.type === "card")
+    .reduce((sum, e) => sum + e.amount, 0);
+  const earnings_total = cardBalance;
+  const totalEarned = earnings
+    .filter(e => e.type === "card" || e.type === "wallet")
+    .reduce((sum, e) => sum + e.amount, 0);
   const totalWithdrawn = withdrawals.filter(w => w.status === "completed").reduce((sum, w) => sum + w.amount, 0);
 
   if (loading) {
@@ -133,7 +142,7 @@ export default function ChauffeurWalletScreen() {
 
         {/* ── Earnings Card ── */}
         <View style={styles.earningsCard}>
-          <Text style={styles.earningsLabel}>Available Balance</Text>
+          <Text style={styles.earningsLabel}>Card Earnings (Withdrawable)</Text>
           <Text style={styles.earningsAmount}>R {earnings_total.toFixed(2)}</Text>
           <View style={styles.statsRow}>
             <View style={styles.stat}>
@@ -246,9 +255,9 @@ export default function ChauffeurWalletScreen() {
                   </View>
                   <View style={{ alignItems: "flex-end", gap: 4 }}>
                     <Text style={[styles.listAmount, { color: Colors.error }]}>-R {w.amount.toFixed(2)}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: w.status === "completed" ? "rgba(34,197,94,0.12)" : "rgba(255,214,0,0.12)" }]}>
-                      <Text style={[styles.statusText, { color: w.status === "completed" ? Colors.success : "#b8860b" }]}>
-                        {w.status}
+                    <View style={[styles.statusBadge, { backgroundColor: w.status === "completed" ? "rgba(34,197,94,0.12)" : w.status === "failed" ? "rgba(239,68,68,0.12)" : "rgba(255,214,0,0.12)" }]}>
+                      <Text style={[styles.statusText, { color: w.status === "completed" ? Colors.success : w.status === "failed" ? Colors.error : "#b8860b" }]}>
+                        {w.status === "completed" ? "Paid" : w.status === "pending" ? "Processing" : w.status === "failed" ? "Failed" : w.status}
                       </Text>
                     </View>
                   </View>
@@ -261,8 +270,11 @@ export default function ChauffeurWalletScreen() {
 
       {/* ── Withdrawal Modal (single modal with internal bank picker view) ── */}
       <Modal visible={showWithdraw} transparent animationType="slide" onRequestClose={() => { if (showBankPicker) setShowBankPicker(false); else setShowWithdraw(false); }}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 24, maxHeight: "85%" }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 24, maxHeight: "90%" }]}>
             <View style={styles.sheetHandle} />
 
             {showBankPicker ? (
@@ -294,9 +306,9 @@ export default function ChauffeurWalletScreen() {
               /* ── Withdrawal form ── */
               <>
                 <Text style={styles.modalTitle}>Withdraw Earnings</Text>
-                <Text style={styles.modalSub}>Available: R {earnings_total.toFixed(2)}</Text>
+                <Text style={styles.modalSub}>Card earnings available: R {earnings_total.toFixed(2)}</Text>
 
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                   <View style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>Amount (min R50)</Text>
                     <View style={styles.fieldWrap}>
@@ -373,7 +385,7 @@ export default function ChauffeurWalletScreen() {
               </>
             )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
