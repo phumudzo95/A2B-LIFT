@@ -104,6 +104,7 @@ export default function ChauffeurWalletScreen() {
       const res = await apiRequest("POST", "/api/wallet/withdraw", {
         amount,
         bankCode: selectedBank.code,
+        bankName: selectedBank.name,
         accountNumber: accountNumber.trim(),
         accountName: accountName.trim(),
       });

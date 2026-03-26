@@ -727,8 +727,8 @@ export default function ChauffeurDashboard() {
 
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>R {(chauffeur.earningsTotal || 0).toFixed(0)}</Text>
-          <Text style={styles.statLabel}>Today's Earnings</Text>
+          <Text style={styles.statValue}>R {(chauffeur.cardEarningsTotal || 0).toFixed(0)}</Text>
+          <Text style={styles.statLabel}>Card Earnings</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statValue}>

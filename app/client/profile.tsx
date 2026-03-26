@@ -29,10 +29,9 @@ export default function ProfileScreen() {
         <Text style={styles.profileName}>{user?.name || "User"}</Text>
         <Text style={styles.profileUsername}>{user?.username || user?.email || ""}</Text>
         {user?.phone && <Text style={styles.profilePhone}>{user.phone}</Text>}
-        <View style={styles.ratingRow}>
-          <Ionicons name="star" size={14} color={Colors.warning} />
-          <Text style={styles.ratingText}>{(user?.rating || 5.0).toFixed(1)}</Text>
-        </View>
+        {user?.createdAt && (
+          <Text style={styles.profilePhone}>Member since {new Date(user.createdAt).getFullYear()}</Text>
+        )}
       </View>
 
       <View style={styles.menuGroup}>

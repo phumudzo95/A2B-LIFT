@@ -766,12 +766,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const chauffeur = await storage.getChauffeur(req.params.id);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
-      const ratings = await storage.getRatingsByChauffeur(req.params.id);
+      const [ratings, earningsList] = await Promise.all([
+        storage.getRatingsByChauffeur(req.params.id),
+        storage.getEarningsByChauffeur(req.params.id).catch(() => []),
+      ]);
       const computedRating =
         ratings.length > 0
           ? parseFloat((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1))
           : null;
-      return res.json({ ...chauffeur, computedRating, totalRatings: ratings.length });
+      const cardEarningsTotal = (earningsList as any[])
+        .filter((e: any) => e.type === "card")
+        .reduce((s: number, e: any) => s + (e.amount || 0), 0);
+      return res.json({ ...chauffeur, computedRating, totalRatings: ratings.length, cardEarningsTotal });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
@@ -2706,7 +2712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/wallet/withdraw — Paystack transfer to driver's bank account
   app.post("/api/wallet/withdraw", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
-      const { amount, bankCode, accountNumber, accountName } = req.body;
+      const { amount, bankCode, bankName: bankNameInput, accountNumber, accountName } = req.body;
       const userId = req.auth!.sub;
 
       if (!amount || !bankCode || !accountNumber || !accountName) {
@@ -2738,7 +2744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createWithdrawal({
         chauffeurId: chauffeur.id, amount,
         status: status === "success" ? "completed" : "pending",
-        bankName: bankCode, accountNumber, accountHolder: accountName,
+        bankName: bankNameInput || bankCode, accountNumber, accountHolder: accountName,
         paystackTransferCode: transferCode, paystackRecipientCode: recipientCode,
       });
 

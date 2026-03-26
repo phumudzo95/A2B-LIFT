@@ -61,6 +61,7 @@ export default function EarningsScreen() {
     mutationFn: async () => {
       const amt = parseFloat(withdrawAmount);
       if (!amt || amt <= 0) throw new Error("Enter a valid amount");
+      if (amt > totalEarnings) throw new Error(`You only have R${totalEarnings.toFixed(2)} available to withdraw`);
       if (!selectedBank) throw new Error("Select a bank");
       if (!accountNumber.trim()) throw new Error("Enter your account number");
       if (!accountName.trim()) throw new Error("Enter the account holder name");
@@ -68,6 +69,7 @@ export default function EarningsScreen() {
       const res = await apiRequest("POST", "/api/wallet/withdraw", {
         amount: amt,
         bankCode: selectedBank.code,
+        bankName: selectedBank.name,
         accountNumber: accountNumber.trim(),
         accountName: accountName.trim(),
       });
@@ -124,8 +126,8 @@ export default function EarningsScreen() {
         </View>
         <View style={styles.statCard}>
           <Ionicons name="trending-up" size={20} color={Colors.success} />
-          <Text style={styles.statValue}>R {chauffeur?.earningsTotal?.toFixed(0) || "0"}</Text>
-          <Text style={styles.statLabel}>Available Balance</Text>
+          <Text style={styles.statValue}>R {totalEarnings.toFixed(0)}</Text>
+          <Text style={styles.statLabel}>Card Earnings</Text>
         </View>
       </View>
 
@@ -195,11 +197,11 @@ export default function EarningsScreen() {
             </View>
 
             <Text style={styles.balanceHint}>
-              Available: R {chauffeur?.earningsTotal?.toFixed(0) || "0"}
+              Card earnings available: R {totalEarnings.toFixed(2)}
             </Text>
 
             <Text style={styles.fieldLabel}>Amount (ZAR)</Text>
-            <View style={styles.amountRow}>
+            <View style={[styles.amountRow, parseFloat(withdrawAmount) > totalEarnings && !!withdrawAmount && { borderColor: Colors.error }]}>
               <Text style={styles.currencyPrefix}>R</Text>
               <TextInput
                 style={styles.amountInput}
@@ -210,6 +212,11 @@ export default function EarningsScreen() {
                 keyboardType="number-pad"
               />
             </View>
+            {!!withdrawAmount && parseFloat(withdrawAmount) > totalEarnings && (
+              <Text style={styles.inputError}>
+                You only have R{totalEarnings.toFixed(2)} available. Please enter a lower amount.
+              </Text>
+            )}
 
             <Text style={styles.fieldLabel}>Bank</Text>
             <Pressable style={styles.bankSelector} onPress={() => setShowBankPicker(true)}>
@@ -333,6 +340,7 @@ const styles = StyleSheet.create({
   textField: { backgroundColor: Colors.surface, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.white, borderWidth: 1, borderColor: Colors.border },
   submitBtn: { backgroundColor: Colors.white, paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 4 },
   submitBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.primary },
+  inputError: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.error, marginTop: 4, marginBottom: 2 },
   bankItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   bankItemText: { fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.white },
 });
