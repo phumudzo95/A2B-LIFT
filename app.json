@@ -23,7 +23,10 @@
         "NSCameraUsageDescription": "A2B LIFT needs camera access to let you upload your profile photo and vehicle documents.",
         "NSPhotoLibraryUsageDescription": "A2B LIFT needs access to your photo library to let you upload your profile photo and vehicle documents.",
         "NSPhotoLibraryAddUsageDescription": "A2B LIFT saves trip-related photos to your library.",
-        "UIBackgroundModes": ["location", "fetch"]
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ]
       },
       "config": {
         "googleMapsApiKey": "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0"
@@ -32,14 +35,16 @@
         "NSPrivacyAccessedAPITypes": [
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
           }
         ]
       }
     },
     "android": {
       "package": "com.a2blift",
-      "versionCode": 1,
+      "versionCode": 2,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -101,7 +106,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "a2b-lift"
+        "projectId": "f282a582-7512-48d6-b563-13aa571d9115"
       }
     }
   }
