@@ -11,7 +11,6 @@ import {
   Alert,
   RefreshControl,
   Modal,
-  FlatList,
   KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -52,9 +51,10 @@ export default function EarningsScreen() {
     enabled: !!chauffeurId,
   });
 
-  const { data: banksData } = useQuery({
+  const { data: banksData, isLoading: banksLoading } = useQuery({
     queryKey: ["/api/wallet/banks"],
-    enabled: showBankPicker,
+    enabled: showWithdraw,
+    staleTime: 1000 * 60 * 10,
   });
 
   const withdrawMutation = useMutation({
@@ -219,12 +219,40 @@ export default function EarningsScreen() {
             )}
 
             <Text style={styles.fieldLabel}>Bank</Text>
-            <Pressable style={styles.bankSelector} onPress={() => setShowBankPicker(true)}>
+            <Pressable
+              style={[styles.bankSelector, showBankPicker && { borderColor: Colors.white }]}
+              onPress={() => setShowBankPicker((v) => !v)}
+            >
               <Text style={[styles.bankSelectorText, !selectedBank && { color: Colors.textMuted }]}>
                 {selectedBank ? selectedBank.name : "Select your bank"}
               </Text>
-              <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
+              <Ionicons name={showBankPicker ? "chevron-up" : "chevron-down"} size={16} color={Colors.textMuted} />
             </Pressable>
+
+            {showBankPicker && (
+              <View style={styles.bankDropdown}>
+                {banksLoading ? (
+                  <ActivityIndicator color={Colors.white} style={{ paddingVertical: 16 }} />
+                ) : banksList.length === 0 ? (
+                  <Text style={styles.bankEmptyText}>No banks found. Try again.</Text>
+                ) : (
+                  <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                    {banksList.map((bank: any) => (
+                      <Pressable
+                        key={bank.code}
+                        style={({ pressed }) => [styles.bankDropdownItem, pressed && { opacity: 0.7 }]}
+                        onPress={() => { setSelectedBank(bank); setShowBankPicker(false); }}
+                      >
+                        <Text style={styles.bankItemText}>{bank.name}</Text>
+                        {selectedBank?.code === bank.code && (
+                          <Ionicons name="checkmark" size={16} color={Colors.success} />
+                        )}
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            )}
 
             <Text style={styles.fieldLabel}>Account Number</Text>
             <TextInput
@@ -259,42 +287,6 @@ export default function EarningsScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Bank Picker Modal */}
-      <Modal visible={showBankPicker} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { maxHeight: "70%" }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Bank</Text>
-              <Pressable onPress={() => setShowBankPicker(false)}>
-                <Ionicons name="close" size={22} color={Colors.white} />
-              </Pressable>
-            </View>
-            {banksList.length === 0
-              ? <ActivityIndicator color={Colors.white} style={{ marginTop: 20 }} />
-              : (
-                <FlatList
-                  data={banksList}
-                  keyExtractor={(item: any) => item.code}
-                  renderItem={({ item }: { item: any }) => (
-                    <Pressable
-                      style={({ pressed }) => [styles.bankItem, pressed && { opacity: 0.7 }]}
-                      onPress={() => {
-                        setSelectedBank(item);
-                        setShowBankPicker(false);
-                      }}
-                    >
-                      <Text style={styles.bankItemText}>{item.name}</Text>
-                      {selectedBank?.code === item.code && (
-                        <Ionicons name="checkmark" size={16} color={Colors.success} />
-                      )}
-                    </Pressable>
-                  )}
-                />
-              )
-            }
-          </View>
-        </View>
-      </Modal>
     </ScrollView>
   );
 }
@@ -341,6 +333,8 @@ const styles = StyleSheet.create({
   submitBtn: { backgroundColor: Colors.white, paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 4 },
   submitBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.primary },
   inputError: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.error, marginTop: 4, marginBottom: 2 },
-  bankItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  bankDropdown: { backgroundColor: Colors.accent, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, marginTop: 4, marginBottom: 4, overflow: "hidden" },
+  bankDropdownItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  bankEmptyText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center" as const, paddingVertical: 16 },
   bankItemText: { fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.white },
 });
