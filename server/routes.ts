@@ -2429,7 +2429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/payments/initialize
   app.post("/api/payments/initialize", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
-      const { amount, email, rideId, saveCard } = req.body;
+      const { amount, email, rideId, saveCard, saveCardOnly } = req.body;
       const userId = req.auth!.sub;
       const reference = `A2B-${Date.now()}-${userId.slice(0, 6)}`;
 
@@ -2446,6 +2446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId,
           rideId: rideId || null,
           saveCard: saveCard || false,
+          saveCardOnly: saveCardOnly || false,
           custom_fields: [
             { display_name: "App", variable_name: "app", value: "A2B LIFT" }
           ],
@@ -2517,7 +2518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateRide(metadata.rideId, { paymentStatus: "paid" });
       }
 
-      if (!metadata.rideId) {
+      if (!metadata.rideId && !metadata.saveCardOnly) {
         const user = await storage.getUser(userId);
         const balanceBefore = user?.walletBalance || 0;
         const newBalance = balanceBefore + amount;

@@ -215,18 +215,18 @@ export default function ClientWalletScreen() {
     }
   }
 
-  // Save card with R5 charge (credited back to wallet)
+  // Save card — R1 authorization charge, refunded immediately to wallet (net zero to user)
   async function handleAddCard() {
     if (!user) return;
     setAddCardLoading(true);
     try {
       const res = await apiRequest("POST", "/api/payments/initialize", {
-        amount: 5, email: user.username, saveCard: true, rideId: null,
+        amount: 1, email: user.username, saveCard: true, saveCardOnly: true, rideId: null,
       });
       const data = await res.json();
       if (!data.authorizationUrl) throw new Error(data.message || "Could not initialize payment");
       setShowAddCard(false);
-      await openPaystackInApp(data.authorizationUrl, data.reference, "Card saved! R5 credited to your wallet.");
+      await openPaystackInApp(data.authorizationUrl, data.reference, "Your card has been saved successfully!");
     } catch (e: any) {
       const msg = e?.message || "";
       if (msg.startsWith("401")) {
@@ -471,7 +471,7 @@ export default function ClientWalletScreen() {
           <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 24 }]}>
             <View style={styles.sheetHandle} />
             <Text style={styles.modalTitle}>Save a Card</Text>
-            <Text style={styles.modalSub}>We'll charge R5 to verify your card. This is credited to your wallet.</Text>
+            <Text style={styles.modalSub}>Add your card once and pay rides instantly — no re-entering details.</Text>
 
             {/* Card illustration */}
             <View style={styles.cardIllustration}>
@@ -483,9 +483,9 @@ export default function ClientWalletScreen() {
 
             <View style={styles.addCardSteps}>
               {[
-                { icon: "shield-checkmark-outline", text: "R5 charge to verify card (credited back to your wallet)" },
-                { icon: "lock-closed-outline", text: "Card details encrypted and stored securely" },
-                { icon: "flash-outline", text: "Used to charge ride fares instantly without re-entering details" },
+                { icon: "shield-checkmark-outline", text: "Card details are encrypted and stored securely" },
+                { icon: "lock-closed-outline", text: "Your card is never shared with drivers or third parties" },
+                { icon: "flash-outline", text: "Ride fares are charged automatically at the end of each trip" },
               ].map((step, i) => (
                 <View key={i} style={styles.addCardStep}>
                   <Ionicons name={step.icon as any} size={16} color={Colors.accent} />
