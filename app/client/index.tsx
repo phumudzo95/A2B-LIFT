@@ -37,15 +37,41 @@ const VEHICLE_TYPES = [
 type RideStatus = "idle" | "selecting" | "confirming" | "requested" | "assigned" | "arriving" | "in_trip" | "completed" | "no_drivers";
 
 interface ChauffeurDetails {
+  id?: string;
   driverName: string;
   driverPhone: string | null;
-  driverRating: number;
+  driverRating: number | null;
+  totalRatings?: number;
   vehicleModel: string;
   plateNumber: string;
   carColor: string;
   carMake: string | null;
   vehicleType: string;
   profilePhoto: string | null;
+}
+
+interface DriverReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  reviewerName: string;
+}
+
+interface DriverProfile {
+  id: string;
+  driverName: string;
+  driverRating: number | null;
+  totalRatings: number;
+  completedTrips: number;
+  distribution: Record<number, number>;
+  profilePhoto: string | null;
+  carMake: string | null;
+  vehicleModel: string;
+  carColor: string;
+  plateNumber: string;
+  vehicleCategory: string;
+  ratings: DriverReview[];
 }
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -97,6 +123,11 @@ export default function ClientHomeScreen() {
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "wallet">("cash");
   const [savedCards, setSavedCards] = useState<{ id: string; last4: string; cardType: string; isDefault: boolean }[]>([]);
+
+  // Driver profile modal
+  const [showDriverProfile, setShowDriverProfile] = useState(false);
+  const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
+  const [driverProfileLoading, setDriverProfileLoading] = useState(false);
 
   // Notification badge
   const [unreadCount, setUnreadCount] = useState(0);
@@ -206,6 +237,23 @@ export default function ClientHomeScreen() {
       const details = await res.json();
       setChauffeurDetails(details);
     } catch {}
+  }
+
+  async function openDriverProfile() {
+    const chauffeurId = chauffeurDetails?.id;
+    if (!chauffeurId) return;
+    setDriverProfileLoading(true);
+    setShowDriverProfile(true);
+    try {
+      const res = await apiRequest("GET", `/api/chauffeurs/${chauffeurId}/profile`);
+      const data = await res.json();
+      setDriverProfile(data);
+    } catch {
+      Alert.alert("Error", "Could not load driver profile.");
+      setShowDriverProfile(false);
+    } finally {
+      setDriverProfileLoading(false);
+    }
   }
 
   function openLocationPicker(target: "pickup" | "dropoff") {
@@ -1025,17 +1073,22 @@ export default function ClientHomeScreen() {
           </View>
 
           <View style={styles.chauffeurCard}>
-            <View style={styles.chauffeurAvatar}>
-              {chauffeurDetails?.profilePhoto ? (
-                <Image
-                  source={{ uri: chauffeurDetails.profilePhoto }}
-                  style={{ width: 48, height: 48, borderRadius: 24 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Ionicons name="person" size={24} color={Colors.white} />
-              )}
-            </View>
+            <Pressable style={styles.chauffeurAvatarBtn} onPress={openDriverProfile}>
+              <View style={styles.chauffeurAvatar}>
+                {chauffeurDetails?.profilePhoto ? (
+                  <Image
+                    source={{ uri: chauffeurDetails.profilePhoto }}
+                    style={{ width: 48, height: 48, borderRadius: 24 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Ionicons name="person" size={24} color={Colors.white} />
+                )}
+              </View>
+              <View style={styles.viewProfileBadge}>
+                <Ionicons name="eye" size={9} color={Colors.white} />
+              </View>
+            </Pressable>
             <View style={styles.chauffeurInfo}>
               <Text style={styles.chauffeurName}>{chauffeurDetails?.driverName || "Your Driver"}</Text>
               {/* Show exact vehicle — make + model */}
@@ -1046,7 +1099,11 @@ export default function ClientHomeScreen() {
                 <View style={styles.driverMeta}>
                   <View style={styles.ratingChip}>
                     <Ionicons name="star" size={11} color={Colors.warning} />
-                    <Text style={styles.ratingChipText}>{(chauffeurDetails.driverRating || 5.0).toFixed(1)}</Text>
+                    <Text style={styles.ratingChipText}>
+                      {chauffeurDetails.driverRating !== null && chauffeurDetails.driverRating !== undefined
+                        ? chauffeurDetails.driverRating.toFixed(1)
+                        : "New"}
+                    </Text>
                   </View>
                   {/* Plate number chip */}
                   <View style={styles.plateChip}>
@@ -1202,6 +1259,132 @@ export default function ClientHomeScreen() {
           </View>
         </Animated.View>
       )}
+
+      {/* Driver Profile Modal */}
+      <Modal visible={showDriverProfile} transparent animationType="slide" onRequestClose={() => setShowDriverProfile(false)}>
+        <View style={styles.profileModalOverlay}>
+          <View style={[styles.profileModalSheet, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.profileModalHeader}>
+              <Text style={styles.profileModalTitle}>Driver Profile</Text>
+              <Pressable onPress={() => setShowDriverProfile(false)} style={styles.profileCloseBtn}>
+                <Ionicons name="close" size={20} color={Colors.textMuted} />
+              </Pressable>
+            </View>
+
+            {driverProfileLoading ? (
+              <View style={styles.profileLoadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={styles.profileLoadingText}>Loading profile...</Text>
+              </View>
+            ) : driverProfile ? (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+                {/* Profile Header */}
+                <View style={styles.profileHero}>
+                  <View style={styles.profileAvatarLarge}>
+                    {driverProfile.profilePhoto ? (
+                      <Image source={{ uri: driverProfile.profilePhoto }} style={styles.profileAvatarImg} resizeMode="cover" />
+                    ) : (
+                      <Ionicons name="person" size={44} color={Colors.white} />
+                    )}
+                  </View>
+                  <Text style={styles.profileDriverName}>{driverProfile.driverName}</Text>
+                  <Text style={styles.profileVehicle}>
+                    {[driverProfile.carMake, driverProfile.vehicleModel].filter(Boolean).join(" ")}
+                  </Text>
+                  {driverProfile.plateNumber ? (
+                    <View style={styles.profilePlateChip}>
+                      <Text style={styles.profilePlateText}>{driverProfile.plateNumber}</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {/* Stats Row */}
+                <View style={styles.profileStatsRow}>
+                  <View style={styles.profileStatBox}>
+                    <Text style={styles.profileStatValue}>
+                      {driverProfile.driverRating !== null ? driverProfile.driverRating.toFixed(1) : "—"}
+                    </Text>
+                    <View style={{ flexDirection: "row", gap: 2, justifyContent: "center", marginBottom: 2 }}>
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Ionicons
+                          key={s}
+                          name={s <= Math.round(driverProfile.driverRating ?? 0) ? "star" : "star-outline"}
+                          size={11}
+                          color={Colors.warning}
+                        />
+                      ))}
+                    </View>
+                    <Text style={styles.profileStatLabel}>{driverProfile.totalRatings} ratings</Text>
+                  </View>
+                  <View style={styles.profileStatDivider} />
+                  <View style={styles.profileStatBox}>
+                    <Text style={styles.profileStatValue}>{driverProfile.completedTrips}</Text>
+                    <Text style={styles.profileStatLabel}>Trips Completed</Text>
+                  </View>
+                </View>
+
+                {/* Rating Distribution */}
+                {driverProfile.totalRatings > 0 && (
+                  <View style={styles.profileDistribution}>
+                    <Text style={styles.profileSectionTitle}>Rating Breakdown</Text>
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const count = driverProfile.distribution[star] || 0;
+                      const pct = driverProfile.totalRatings > 0 ? count / driverProfile.totalRatings : 0;
+                      return (
+                        <View key={star} style={styles.distRow}>
+                          <Text style={styles.distLabel}>{star}</Text>
+                          <Ionicons name="star" size={10} color={Colors.warning} />
+                          <View style={styles.distBarBg}>
+                            <View style={[styles.distBarFill, { flex: pct }]} />
+                            <View style={{ flex: 1 - pct }} />
+                          </View>
+                          <Text style={styles.distCount}>{count}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {/* Reviews */}
+                {driverProfile.ratings.length > 0 ? (
+                  <View style={styles.profileReviews}>
+                    <Text style={styles.profileSectionTitle}>Recent Reviews</Text>
+                    {driverProfile.ratings.map((review) => (
+                      <View key={review.id} style={styles.reviewCard}>
+                        <View style={styles.reviewHeader}>
+                          <View style={styles.reviewAvatar}>
+                            <Text style={styles.reviewAvatarText}>{review.reviewerName.charAt(0).toUpperCase()}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.reviewerName}>{review.reviewerName}</Text>
+                            <Text style={styles.reviewDate}>
+                              {new Date(review.createdAt).toLocaleDateString("en-ZA", { year: "numeric", month: "short", day: "numeric" })}
+                            </Text>
+                          </View>
+                          <View style={styles.reviewStars}>
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Ionicons key={s} name={s <= review.rating ? "star" : "star-outline"} size={12} color={Colors.warning} />
+                            ))}
+                          </View>
+                        </View>
+                        {review.comment ? (
+                          <Text style={styles.reviewComment}>{review.comment}</Text>
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.noReviewsContainer}>
+                    <Ionicons name="chatbubble-outline" size={32} color={Colors.textMuted} />
+                    <Text style={styles.noReviewsText}>No reviews yet</Text>
+                  </View>
+                )}
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
 
       {/* Payment Method Picker */}
       <Modal visible={showPaymentPicker} transparent animationType="slide" onRequestClose={() => setShowPaymentPicker(false)}>
@@ -2130,6 +2313,9 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
+  chauffeurAvatarBtn: {
+    position: "relative",
+  },
   chauffeurAvatar: {
     width: 48,
     height: 48,
@@ -2137,6 +2323,226 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     alignItems: "center",
     justifyContent: "center",
+  },
+  viewProfileBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: Colors.surface,
+  },
+  profileModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  profileModalSheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    maxHeight: "90%",
+  },
+  profileModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  profileModalTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  profileCloseBtn: {
+    padding: 4,
+  },
+  profileLoadingContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+    gap: 12,
+  },
+  profileLoadingText: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  profileHero: {
+    alignItems: "center",
+    paddingVertical: 16,
+    gap: 8,
+  },
+  profileAvatarLarge: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: Colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  profileAvatarImg: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+  },
+  profileDriverName: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+  },
+  profileVehicle: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+  },
+  profilePlateChip: {
+    backgroundColor: Colors.background,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginTop: 4,
+  },
+  profilePlateText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+    letterSpacing: 1,
+  },
+  profileStatsRow: {
+    flexDirection: "row",
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    marginBottom: 20,
+    overflow: "hidden",
+  },
+  profileStatBox: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 16,
+    gap: 4,
+  },
+  profileStatDivider: {
+    width: 1,
+    backgroundColor: Colors.surface,
+    marginVertical: 12,
+  },
+  profileStatValue: {
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+  },
+  profileStatLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+  },
+  profileDistribution: {
+    marginBottom: 24,
+    gap: 8,
+  },
+  profileSectionTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+    marginBottom: 8,
+  },
+  distRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  distLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textMuted,
+    width: 12,
+    textAlign: "right",
+  },
+  distBarBg: {
+    flex: 1,
+    height: 8,
+    backgroundColor: Colors.background,
+    borderRadius: 4,
+    flexDirection: "row",
+    overflow: "hidden",
+  },
+  distBarFill: {
+    backgroundColor: Colors.warning,
+    borderRadius: 4,
+  },
+  distCount: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+    width: 20,
+    textAlign: "right",
+  },
+  profileReviews: {
+    gap: 12,
+  },
+  reviewCard: {
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+  },
+  reviewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  reviewAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewAvatarText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  reviewerName: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  reviewDate: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+    marginTop: 1,
+  },
+  reviewStars: {
+    flexDirection: "row",
+    gap: 2,
+  },
+  reviewComment: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    lineHeight: 20,
+    paddingLeft: 44,
+  },
+  noReviewsContainer: {
+    paddingVertical: 32,
+    alignItems: "center",
+    gap: 8,
+  },
+  noReviewsText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
   },
   chauffeurInfo: {
     flex: 1,

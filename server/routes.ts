@@ -777,11 +777,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const chauffeur = await storage.getChauffeur(req.params.id);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
       const user = await storage.getUser(chauffeur.userId);
+      const ratings = await storage.getRatingsByChauffeur(req.params.id);
+      const avgRating =
+        ratings.length > 0
+          ? parseFloat((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1))
+          : null;
       return res.json({
         ...chauffeur,
         driverName: user?.name || "Chauffeur",
         driverPhone: chauffeur.phone || user?.phone || null,
-        driverRating: user?.rating || 5.0,
+        driverRating: avgRating,
+        totalRatings: ratings.length,
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/chauffeurs/:id/profile", async (req: Request, res: Response) => {
+    try {
+      const chauffeur = await storage.getChauffeur(req.params.id);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
+      const user = await storage.getUser(chauffeur.userId);
+      const ratings = await storage.getRatingsByChauffeur(req.params.id);
+
+      const avgRating =
+        ratings.length > 0
+          ? parseFloat((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(2))
+          : null;
+
+      const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      ratings.forEach((r) => { distribution[r.rating] = (distribution[r.rating] || 0) + 1; });
+
+      const uniqueClientIds = [...new Set(ratings.slice(0, 30).map((r) => r.clientId))];
+      const reviewerMap: Record<string, string> = {};
+      await Promise.all(
+        uniqueClientIds.map(async (id) => {
+          const u = await storage.getUser(id);
+          if (u) reviewerMap[id] = u.name;
+        })
+      );
+
+      const ratingsWithNames = ratings.slice(0, 30).map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.createdAt,
+        reviewerName: reviewerMap[r.clientId] || "Anonymous",
+      }));
+
+      const rides = await storage.getRidesByChauffeur(req.params.id);
+      const completedTrips = rides.filter((r) => r.status === "trip_completed").length;
+
+      return res.json({
+        id: chauffeur.id,
+        driverName: user?.name || "Chauffeur",
+        driverRating: avgRating,
+        totalRatings: ratings.length,
+        completedTrips,
+        distribution,
+        profilePhoto: chauffeur.profilePhoto,
+        carMake: chauffeur.carMake,
+        vehicleModel: chauffeur.vehicleModel,
+        carColor: chauffeur.carColor,
+        plateNumber: chauffeur.plateNumber,
+        vehicleCategory: chauffeur.vehicleCategory,
+        ratings: ratingsWithNames,
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
