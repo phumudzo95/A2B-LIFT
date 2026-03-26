@@ -194,7 +194,7 @@ export default function ClientWalletScreen() {
         Alert.alert("Invalid amount", "Minimum top-up is R10"); return;
       }
       const res = await apiRequest("POST", "/api/payments/initialize", {
-        amount, email: user.username, saveCard: true, rideId: null,
+        amount, email: user.email || user.username, saveCard: true, rideId: null,
       });
       const data = await res.json();
       if (!data.authorizationUrl) throw new Error(data.message || "Could not initialize payment");
@@ -221,7 +221,7 @@ export default function ClientWalletScreen() {
     setAddCardLoading(true);
     try {
       const res = await apiRequest("POST", "/api/payments/initialize", {
-        amount: 1, email: user.username, saveCard: true, saveCardOnly: true, rideId: null,
+        amount: 1, email: user.email || user.username, saveCard: true, saveCardOnly: true, rideId: null,
       });
       const data = await res.json();
       if (!data.authorizationUrl) throw new Error(data.message || "Could not initialize payment");

@@ -2435,9 +2435,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/payments/initialize
   app.post("/api/payments/initialize", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
-      const { amount, email, rideId, saveCard, saveCardOnly } = req.body;
+      const { amount, email: clientEmail, rideId, saveCard, saveCardOnly } = req.body;
       const userId = req.auth!.sub;
       const reference = `A2B-${Date.now()}-${userId.slice(0, 6)}`;
+
+      const user = await storage.getUser(userId);
+      const email = (user?.email && user.email.includes("@")) ? user.email : clientEmail;
+
+      if (!email || !email.includes("@")) {
+        return res.status(400).json({ message: "A valid email address is required to process payments. Please update your profile email." });
+      }
 
       const domain = getAppBaseUrl(req);
       const callbackUrl = `${domain}/api/payments/webview-callback?reference=${reference}`;
