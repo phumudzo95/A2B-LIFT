@@ -9,7 +9,7 @@ import { apiRequest, queryClient } from "@/lib/query-client";
 import { useSocket } from "@/lib/socket-context";
 import Colors from "@/constants/colors";
 
-export default function ChauffeurChatScreen() {
+export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { rideId, riderName } = useLocalSearchParams<{ rideId: string; riderName: string }>();
@@ -68,11 +68,8 @@ export default function ChauffeurChatScreen() {
     );
   }, [user?.id]);
 
-  const Wrapper = Platform.OS === "web" ? View : KeyboardAvoidingView;
-  const wrapperProps = Platform.OS === "web" ? {} : { behavior: Platform.OS === "ios" ? "padding" : "height" as any, keyboardVerticalOffset: 0 };
-
   return (
-    <Wrapper style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0), paddingBottom: Platform.OS === "web" ? 84 : 0 }]} {...wrapperProps}>
+    <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Ionicons name="chevron-back" size={24} color={Colors.white} />
@@ -102,32 +99,39 @@ export default function ChauffeurChatScreen() {
           showsVerticalScrollIndicator={false}
           inverted={true}
           style={styles.list}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         />
       )}
 
-      <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Type a message..."
-          placeholderTextColor={Colors.textMuted}
-          value={messageText}
-          onChangeText={setMessageText}
-          multiline
-          returnKeyType="send"
-          onSubmitEditing={() => { if (messageText.trim()) sendMutation.mutate(); }}
-          blurOnSubmit={false}
-        />
-        <Pressable
-          style={[styles.sendBtn, (!messageText.trim() || sendMutation.isPending) && { opacity: 0.4 }]}
-          onPress={() => { if (messageText.trim() && !sendMutation.isPending) sendMutation.mutate(); }}
-        >
-          {sendMutation.isPending
-            ? <ActivityIndicator size="small" color={Colors.primary} />
-            : <Ionicons name="send" size={18} color={Colors.primary} />
-          }
-        </Pressable>
-      </View>
-    </Wrapper>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "web" ? 84 : 0}
+      >
+        <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 84 : 16) }]}>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Type a message..."
+            placeholderTextColor={Colors.textMuted}
+            value={messageText}
+            onChangeText={setMessageText}
+            multiline
+            returnKeyType="send"
+            onSubmitEditing={() => { if (messageText.trim()) sendMutation.mutate(); }}
+            blurOnSubmit={false}
+          />
+          <Pressable
+            style={[styles.sendBtn, (!messageText.trim() || sendMutation.isPending) && { opacity: 0.4 }]}
+            onPress={() => { if (messageText.trim() && !sendMutation.isPending) sendMutation.mutate(); }}
+          >
+            {sendMutation.isPending
+              ? <ActivityIndicator size="small" color={Colors.primary} />
+              : <Ionicons name="send" size={18} color={Colors.primary} />
+            }
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 

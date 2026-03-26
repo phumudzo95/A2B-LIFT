@@ -731,8 +731,16 @@ export default function ChauffeurDashboard() {
           <Text style={styles.statLabel}>Today's Earnings</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{chauffeur.rating || "5.0"}</Text>
-          <Text style={styles.statLabel}>Rating</Text>
+          <Text style={styles.statValue}>
+            {chauffeur.computedRating !== null && chauffeur.computedRating !== undefined
+              ? Number(chauffeur.computedRating).toFixed(1)
+              : chauffeur.totalRatings === 0 || chauffeur.totalRatings === undefined
+                ? "New"
+                : "—"}
+          </Text>
+          <Text style={styles.statLabel}>
+            Rating{chauffeur.totalRatings ? ` (${chauffeur.totalRatings})` : ""}
+          </Text>
         </View>
       </View>
 

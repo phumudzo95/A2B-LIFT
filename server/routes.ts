@@ -766,7 +766,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const chauffeur = await storage.getChauffeur(req.params.id);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
-      return res.json(chauffeur);
+      const ratings = await storage.getRatingsByChauffeur(req.params.id);
+      const computedRating =
+        ratings.length > 0
+          ? parseFloat((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1))
+          : null;
+      return res.json({ ...chauffeur, computedRating, totalRatings: ratings.length });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
