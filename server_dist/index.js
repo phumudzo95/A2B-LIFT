@@ -50,8 +50,10 @@ __export(schema_exports, {
   driverApplications: () => driverApplications,
   earnings: () => earnings,
   insertChauffeurSchema: () => insertChauffeurSchema,
+  insertLivenessSessionSchema: () => insertLivenessSessionSchema,
   insertRideSchema: () => insertRideSchema,
   insertUserSchema: () => insertUserSchema,
+  livenessSessions: () => livenessSessions,
   messages: () => messages,
   notifications: () => notifications,
   payments: () => payments,
@@ -81,7 +83,7 @@ var users = (0, import_pg_core.pgTable)("users", {
 });
 var chauffeurs = (0, import_pg_core.pgTable)("chauffeurs", {
   id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
-  userId: (0, import_pg_core.varchar)("user_id").notNull().references(() => users.id),
+  userId: (0, import_pg_core.varchar)("user_id").notNull().unique().references(() => users.id),
   carMake: (0, import_pg_core.text)("car_make"),
   vehicleModel: (0, import_pg_core.text)("vehicle_model").notNull(),
   plateNumber: (0, import_pg_core.text)("plate_number").notNull(),
@@ -97,6 +99,7 @@ var chauffeurs = (0, import_pg_core.pgTable)("chauffeurs", {
   lat: (0, import_pg_core.real)("lat"),
   lng: (0, import_pg_core.real)("lng"),
   locationUpdatedAt: (0, import_pg_core.timestamp)("location_updated_at"),
+  pushToken: (0, import_pg_core.text)("push_token"),
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
 });
 var rides = (0, import_pg_core.pgTable)("rides", {
@@ -119,8 +122,32 @@ var rides = (0, import_pg_core.pgTable)("rides", {
   paymentMethod: (0, import_pg_core.text)("payment_method").default("cash"),
   paymentStatus: (0, import_pg_core.text)("payment_status").notNull().default("unpaid"),
   // unpaid|pending|paid|failed|refunded
+  cashSelfieUrl: (0, import_pg_core.text)("cash_selfie_url"),
+  livenessStatus: (0, import_pg_core.text)("liveness_status").default("not_required"),
+  // not_required|pending|passed|failed
+  livenessProvider: (0, import_pg_core.text)("liveness_provider"),
+  livenessSessionId: (0, import_pg_core.varchar)("liveness_session_id"),
+  livenessScore: (0, import_pg_core.real)("liveness_score"),
+  livenessVerifiedAt: (0, import_pg_core.timestamp)("liveness_verified_at"),
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow(),
   completedAt: (0, import_pg_core.timestamp)("completed_at")
+});
+var livenessSessions = (0, import_pg_core.pgTable)("liveness_sessions", {
+  id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
+  userId: (0, import_pg_core.varchar)("user_id").notNull().references(() => users.id),
+  provider: (0, import_pg_core.text)("provider").notNull().default("mock"),
+  status: (0, import_pg_core.text)("status").notNull().default("pending"),
+  // pending|passed|failed|expired
+  challengeCode: (0, import_pg_core.text)("challenge_code").notNull(),
+  selfieUrl: (0, import_pg_core.text)("selfie_url"),
+  score: (0, import_pg_core.real)("score"),
+  attempts: (0, import_pg_core.integer)("attempts").notNull().default(0),
+  maxAttempts: (0, import_pg_core.integer)("max_attempts").notNull().default(3),
+  errorReason: (0, import_pg_core.text)("error_reason"),
+  expiresAt: (0, import_pg_core.timestamp)("expires_at").notNull(),
+  verifiedAt: (0, import_pg_core.timestamp)("verified_at"),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow(),
+  updatedAt: (0, import_pg_core.timestamp)("updated_at").defaultNow()
 });
 var payments = (0, import_pg_core.pgTable)("payments", {
   id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
@@ -176,6 +203,7 @@ var earnings = (0, import_pg_core.pgTable)("earnings", {
   rideId: (0, import_pg_core.varchar)("ride_id").references(() => rides.id),
   amount: (0, import_pg_core.real)("amount").notNull(),
   commission: (0, import_pg_core.real)("commission").notNull(),
+  type: (0, import_pg_core.text)("type"),
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
 });
 var withdrawals = (0, import_pg_core.pgTable)("withdrawals", {
@@ -281,7 +309,26 @@ var insertRideSchema = (0, import_drizzle_zod.createInsertSchema)(rides).pick({
   dropoffLng: true,
   dropoffAddress: true,
   vehicleType: true,
-  paymentMethod: true
+  paymentMethod: true,
+  cashSelfieUrl: true,
+  livenessStatus: true,
+  livenessProvider: true,
+  livenessSessionId: true,
+  livenessScore: true,
+  livenessVerifiedAt: true
+});
+var insertLivenessSessionSchema = (0, import_drizzle_zod.createInsertSchema)(livenessSessions).pick({
+  userId: true,
+  provider: true,
+  status: true,
+  challengeCode: true,
+  selfieUrl: true,
+  score: true,
+  attempts: true,
+  maxAttempts: true,
+  errorReason: true,
+  expiresAt: true,
+  verifiedAt: true
 });
 
 // server/storage.ts
@@ -302,7 +349,8 @@ var DatabaseStorage = class {
     return user;
   }
   async getUserByUsername(username) {
-    const [user] = await db.select().from(users).where(import_drizzle_orm2.sql`lower(${users.username}) = lower(${username})`);
+    const normalised = username.toLowerCase().trim();
+    const [user] = await db.select().from(users).where((0, import_drizzle_orm2.eq)(users.username, normalised));
     return user;
   }
   async createUser(insertUser) {
@@ -403,6 +451,22 @@ var DatabaseStorage = class {
   async getAllRides() {
     return db.select().from(rides).orderBy((0, import_drizzle_orm2.desc)(rides.createdAt));
   }
+  async createLivenessSession(data) {
+    const [session] = await db.insert(livenessSessions).values(data).returning();
+    return session;
+  }
+  async getLivenessSession(id) {
+    const [session] = await db.select().from(livenessSessions).where((0, import_drizzle_orm2.eq)(livenessSessions.id, id));
+    return session;
+  }
+  async getLatestPendingLivenessSessionByUser(userId) {
+    const [session] = await db.select().from(livenessSessions).where((0, import_drizzle_orm2.and)((0, import_drizzle_orm2.eq)(livenessSessions.userId, userId), (0, import_drizzle_orm2.eq)(livenessSessions.status, "pending"))).orderBy((0, import_drizzle_orm2.desc)(livenessSessions.createdAt));
+    return session;
+  }
+  async updateLivenessSession(id, data) {
+    const [session] = await db.update(livenessSessions).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm2.eq)(livenessSessions.id, id)).returning();
+    return session;
+  }
   async createPayment(data) {
     const [payment] = await db.insert(payments).values(data).returning();
     return payment;
@@ -490,6 +554,9 @@ var DatabaseStorage = class {
     const [notification] = await db.update(notifications).set({ isRead: true }).where((0, import_drizzle_orm2.eq)(notifications.id, id)).returning();
     return notification;
   }
+  async deleteAllNotificationsByUser(userId) {
+    await db.delete(notifications).where((0, import_drizzle_orm2.eq)(notifications.userId, userId));
+  }
   async getSavedCard(id) {
     const [card] = await db.select().from(savedCards).where((0, import_drizzle_orm2.eq)(savedCards.id, id));
     return card;
@@ -547,7 +614,10 @@ console.log(`[DB] Full URL: ${maskedUrl}`);
 var requireSsl2 = dbUrl2.includes("supabase") || dbUrl2.includes("neon.tech");
 var pool2 = new import_pg2.Pool({
   connectionString: dbUrl2,
-  ssl: requireSsl2 ? { rejectUnauthorized: false } : false
+  ssl: requireSsl2 ? { rejectUnauthorized: false } : false,
+  max: 5,
+  idleTimeoutMillis: 1e4,
+  connectionTimeoutMillis: 5e3
 });
 var db2 = (0, import_node_postgres2.drizzle)(pool2, { schema: schema_exports });
 
@@ -767,6 +837,27 @@ var ExternalApiService = class {
 var externalApiService = new ExternalApiService();
 
 // server/routes.ts
+async function sendExpoPushNotification(tokens, title, body, data) {
+  const messages2 = tokens.filter((t) => t && t.startsWith("ExponentPushToken[")).map((to) => ({
+    to,
+    sound: "default",
+    title,
+    body,
+    data: data || {},
+    priority: "high",
+    channelId: "ride-alerts",
+    android: { channelId: "ride-alerts", priority: "max", sound: "default" }
+  }));
+  if (messages2.length === 0) return;
+  try {
+    await import_axios.default.post("https://exp.host/--/api/v2/push/send", messages2, {
+      headers: { "Content-Type": "application/json", Accept: "application/json", "Accept-Encoding": "gzip, deflate" },
+      timeout: 5e3
+    });
+  } catch (e) {
+    console.error("[push] Failed to send Expo push notification:", e.message);
+  }
+}
 function generateAIResponse(type, description) {
   const responses = {
     safety: [
@@ -826,6 +917,116 @@ function getAppBaseUrl(req) {
     return `${proto}://${host}`;
   }
   return "https://api-production-0783.up.railway.app";
+}
+function getLivenessProvider() {
+  const raw = (process.env.LIVENESS_PROVIDER || "mock").toLowerCase().trim();
+  return raw === "smile_id" ? "smile_id" : "mock";
+}
+function buildChallengeCode() {
+  const pool3 = ["BLINK", "TURN_LEFT", "TURN_RIGHT", "SMILE"];
+  const first = pool3[Math.floor(Math.random() * pool3.length)];
+  const second = pool3[Math.floor(Math.random() * pool3.length)];
+  return `${first}-${second}`;
+}
+function challengeLabel(code) {
+  const labels = {
+    BLINK: "Blink your eyes",
+    TURN_LEFT: "Turn your face left",
+    TURN_RIGHT: "Turn your face right",
+    SMILE: "Give a clear smile"
+  };
+  return code.split("-").map((part) => labels[part] || part).join(" then ");
+}
+function isAllowedSelfieUrl(rawUrl) {
+  try {
+    const parsed = new URL(rawUrl);
+    if (!["https:"].includes(parsed.protocol)) return false;
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    if (supabaseUrl) {
+      const supabaseHost = new URL(supabaseUrl).host;
+      if (parsed.host === supabaseHost) return true;
+    }
+    return parsed.host.endsWith("supabase.co");
+  } catch {
+    return false;
+  }
+}
+function getImageDimensions(buffer) {
+  if (buffer.length > 24 && buffer[0] === 137 && buffer[1] === 80 && buffer[2] === 78 && buffer[3] === 71) {
+    return {
+      width: buffer.readUInt32BE(16),
+      height: buffer.readUInt32BE(20)
+    };
+  }
+  if (buffer.length > 4 && buffer[0] === 255 && buffer[1] === 216) {
+    let offset = 2;
+    while (offset < buffer.length - 1) {
+      if (buffer[offset] !== 255) {
+        offset++;
+        continue;
+      }
+      const marker = buffer[offset + 1];
+      if (marker === 192 || marker === 194) {
+        if (offset + 8 >= buffer.length) return null;
+        const height = buffer.readUInt16BE(offset + 5);
+        const width = buffer.readUInt16BE(offset + 7);
+        return { width, height };
+      }
+      if (marker === 218 || marker === 217) break;
+      if (offset + 3 >= buffer.length) break;
+      const segmentLength = buffer.readUInt16BE(offset + 2);
+      if (segmentLength <= 0) break;
+      offset += 2 + segmentLength;
+    }
+  }
+  return null;
+}
+async function runMockSelfieQualityCheck(selfieUrl) {
+  if (!isAllowedSelfieUrl(selfieUrl)) {
+    return {
+      passed: false,
+      score: 0.1,
+      reason: "Selfie URL is not from an allowed secure storage domain."
+    };
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12e3);
+  try {
+    const response = await fetch(selfieUrl, { signal: controller.signal });
+    if (!response.ok) {
+      return { passed: false, score: 0.1, reason: "Could not fetch selfie image." };
+    }
+    const contentType = (response.headers.get("content-type") || "").toLowerCase();
+    if (!contentType.startsWith("image/")) {
+      return { passed: false, score: 0.1, reason: "Uploaded file is not an image." };
+    }
+    const imageBuffer = Buffer.from(await response.arrayBuffer());
+    const bytes = imageBuffer.length;
+    if (bytes < 3e4) {
+      return { passed: false, score: 0.2, reason: "Image is too small. Retake a clearer selfie." };
+    }
+    if (bytes > 8e6) {
+      return { passed: false, score: 0.2, reason: "Image file is too large." };
+    }
+    const dimensions = getImageDimensions(imageBuffer);
+    if (!dimensions) {
+      return { passed: false, score: 0.2, reason: "Unsupported image format for quality checks." };
+    }
+    const minSide = Math.min(dimensions.width, dimensions.height);
+    if (minSide < 480) {
+      return { passed: false, score: 0.3, reason: "Image resolution is too low. Move closer and retake." };
+    }
+    const aspect = dimensions.width / dimensions.height;
+    if (aspect < 0.6 || aspect > 1.8) {
+      return { passed: false, score: 0.35, reason: "Face framing appears invalid. Retake selfie centered." };
+    }
+    const score = Math.min(0.99, Math.max(0.75, 0.75 + Math.min(bytes / 1e6, 0.24)));
+    return { passed: true, score };
+  } catch {
+    return { passed: false, score: 0.15, reason: "Selfie quality check failed. Please retry." };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 async function registerRoutes(app2) {
   const httpServer = (0, import_node_http.createServer)(app2);
@@ -1052,12 +1253,21 @@ async function registerRoutes(app2) {
       if (data.status === "OK" && data.routes?.length > 0) {
         const route = data.routes[0];
         const leg = route.legs[0];
+        const steps = (leg.steps || []).map((step) => ({
+          instruction: step.html_instructions.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(),
+          distance: step.distance?.text || "",
+          duration: step.duration?.text || "",
+          endLat: step.end_location?.lat,
+          endLng: step.end_location?.lng,
+          maneuver: step.maneuver || "straight"
+        }));
         return res.json({
           polyline: route.overview_polyline.points,
           distanceKm: leg.distance.value / 1e3,
           distanceText: leg.distance.text,
           durationMin: Math.ceil(leg.duration.value / 60),
-          durationText: leg.duration.text
+          durationText: leg.duration.text,
+          steps
         });
       }
       return res.status(404).json({ message: "No route found" });
@@ -1335,11 +1545,32 @@ async function registerRoutes(app2) {
       return res.status(500).json({ message: error.message });
     }
   });
+  app2.put("/api/chauffeurs/:id/push-token", requireAuth, async (req, res) => {
+    try {
+      const { pushToken } = req.body;
+      const authedReq = req;
+      const chauffeur = await storage.getChauffeur(req.params.id);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
+      if (chauffeur.userId !== authedReq.user.id && authedReq.user.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      await storage.updateChauffeur(req.params.id, { pushToken });
+      return res.json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
   app2.get("/api/chauffeurs/:id", async (req, res) => {
     try {
       const chauffeur = await storage.getChauffeur(req.params.id);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
-      return res.json(chauffeur);
+      const [ratings, earningsList] = await Promise.all([
+        storage.getRatingsByChauffeur(req.params.id),
+        storage.getEarningsByChauffeur(req.params.id).catch(() => [])
+      ]);
+      const computedRating = ratings.length > 0 ? parseFloat((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1)) : null;
+      const cardEarningsTotal = earningsList.filter((e) => e.type === "card").reduce((s, e) => s + (e.amount || 0), 0);
+      return res.json({ ...chauffeur, computedRating, totalRatings: ratings.length, cardEarningsTotal });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
@@ -1349,11 +1580,61 @@ async function registerRoutes(app2) {
       const chauffeur = await storage.getChauffeur(req.params.id);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
       const user = await storage.getUser(chauffeur.userId);
+      const ratings = await storage.getRatingsByChauffeur(req.params.id);
+      const avgRating = ratings.length > 0 ? parseFloat((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1)) : null;
       return res.json({
         ...chauffeur,
         driverName: user?.name || "Chauffeur",
         driverPhone: chauffeur.phone || user?.phone || null,
-        driverRating: user?.rating || 5
+        driverRating: avgRating,
+        totalRatings: ratings.length
+      });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.get("/api/chauffeurs/:id/profile", async (req, res) => {
+    try {
+      const chauffeur = await storage.getChauffeur(req.params.id);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
+      const user = await storage.getUser(chauffeur.userId);
+      const ratings = await storage.getRatingsByChauffeur(req.params.id);
+      const avgRating = ratings.length > 0 ? parseFloat((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(2)) : null;
+      const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      ratings.forEach((r) => {
+        distribution[r.rating] = (distribution[r.rating] || 0) + 1;
+      });
+      const uniqueClientIds = [...new Set(ratings.slice(0, 30).map((r) => r.clientId))];
+      const reviewerMap = {};
+      await Promise.all(
+        uniqueClientIds.map(async (id) => {
+          const u = await storage.getUser(id);
+          if (u) reviewerMap[id] = u.name;
+        })
+      );
+      const ratingsWithNames = ratings.slice(0, 30).map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        createdAt: r.createdAt,
+        reviewerName: reviewerMap[r.clientId] || "Anonymous"
+      }));
+      const rides2 = await storage.getRidesByChauffeur(req.params.id);
+      const completedTrips = rides2.filter((r) => r.status === "trip_completed").length;
+      return res.json({
+        id: chauffeur.id,
+        driverName: user?.name || "Chauffeur",
+        driverRating: avgRating,
+        totalRatings: ratings.length,
+        completedTrips,
+        distribution,
+        profilePhoto: chauffeur.profilePhoto,
+        carMake: chauffeur.carMake,
+        vehicleModel: chauffeur.vehicleModel,
+        carColor: chauffeur.carColor,
+        plateNumber: chauffeur.plateNumber,
+        vehicleCategory: chauffeur.vehicleCategory,
+        ratings: ratingsWithNames
       });
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -1361,9 +1642,13 @@ async function registerRoutes(app2) {
   });
   app2.put("/api/chauffeurs/:id", async (req, res) => {
     try {
-      const chauffeur = await storage.updateChauffeur(req.params.id, req.body);
+      const { name, ...chauffeurData } = req.body;
+      const chauffeur = await storage.updateChauffeur(req.params.id, chauffeurData);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
-      return res.json(chauffeur);
+      if (name && chauffeur.userId) {
+        await storage.updateUser(chauffeur.userId, { name: name.trim() });
+      }
+      return res.json({ ...chauffeur, userName: name || chauffeur.userName });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
@@ -1404,7 +1689,19 @@ async function registerRoutes(app2) {
               reviewerAdminId: req.auth.sub
             });
           }
-        } catch {
+        } catch (e) {
+          console.error("[approve] application update failed:", e.message);
+        }
+        try {
+          const docs = await storage.getDocumentsByUser(chauffeur.userId);
+          for (const doc of docs) {
+            await storage.updateDocument(doc.id, { status: "approved" });
+          }
+        } catch (e) {
+          console.error("[approve] document update failed:", e.message);
+        }
+        if (chauffeur.pushToken) {
+          sendExpoPushNotification([chauffeur.pushToken], "Application Approved \u{1F389}", "You're approved! Go online to start accepting rides.");
         }
       }
       return res.json({ success: true });
@@ -1539,6 +1836,53 @@ async function registerRoutes(app2) {
       }
     }
   );
+  app2.post("/api/upload/profile-photo", requireAuth, requireRole(["admin"]), async (req, res) => {
+    try {
+      const { base64Data, chauffeurId } = req.body;
+      if (!base64Data || typeof base64Data !== "string" || !chauffeurId || typeof chauffeurId !== "string") {
+        return res.status(400).json({ message: "base64Data and chauffeurId are required" });
+      }
+      if (base64Data.length > 7e6) {
+        return res.status(400).json({ message: "Image too large. Maximum 5 MB." });
+      }
+      const SUPABASE_URL = process.env.SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
+      const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+      const BUCKET = "driver-documents";
+      const safeId = chauffeurId.replace(/[^a-zA-Z0-9_-]/g, "");
+      const fileName = `${safeId}/profile_${Date.now()}.jpg`;
+      const buffer = Buffer.from(base64Data, "base64");
+      const uploadRes = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${fileName}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+            apikey: SUPABASE_SERVICE_KEY,
+            "Content-Type": "image/jpeg",
+            "x-upsert": "true"
+          },
+          body: buffer
+        }
+      );
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text().catch(() => uploadRes.statusText);
+        console.error("[upload/profile-photo] Supabase error:", uploadRes.status, errText);
+        if (uploadRes.status === 401 || uploadRes.status === 403) {
+          return res.status(500).json({ message: "Photo upload failed: Supabase service key not configured. Please add SUPABASE_SERVICE_ROLE_KEY to environment secrets." });
+        }
+        return res.status(500).json({ message: `Photo upload failed (${uploadRes.status}): ${errText}` });
+      }
+      const url = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${fileName}`;
+      try {
+        await storage.updateChauffeur(chauffeurId, { profilePhoto: url });
+      } catch {
+      }
+      return res.json({ url });
+    } catch (error) {
+      console.error("[upload/profile-photo] error:", error.message);
+      return res.status(500).json({ message: error.message || "Photo upload failed. Please try again." });
+    }
+  });
   app2.post("/api/upload-document", authOptional, async (req, res) => {
     try {
       const { base64Data, userId, docType } = req.body;
@@ -1556,6 +1900,7 @@ async function registerRoutes(app2) {
           method: "POST",
           headers: {
             Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            apikey: SUPABASE_ANON_KEY,
             "Content-Type": "image/jpeg",
             "x-upsert": "true"
           },
@@ -1634,6 +1979,113 @@ async function registerRoutes(app2) {
   app2.get("/api/pricing/categories", async (_req, res) => {
     return res.json(getVehicleCategories());
   });
+  app2.post("/api/liveness/session", requireAuth, async (req, res) => {
+    try {
+      const provider = getLivenessProvider();
+      const userId = req.auth.sub;
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1e3);
+      const challengeCode = buildChallengeCode();
+      const existing = await storage.getLatestPendingLivenessSessionByUser(userId);
+      if (existing && existing.expiresAt && new Date(existing.expiresAt).getTime() > Date.now()) {
+        return res.json({
+          sessionId: existing.id,
+          provider: existing.provider,
+          expiresAt: existing.expiresAt,
+          challenge: challengeLabel(existing.challengeCode),
+          maxAttempts: existing.maxAttempts,
+          attempts: existing.attempts
+        });
+      }
+      const session = await storage.createLivenessSession({
+        userId,
+        provider,
+        status: "pending",
+        challengeCode,
+        maxAttempts: 3,
+        attempts: 0,
+        expiresAt
+      });
+      return res.json({
+        sessionId: session.id,
+        provider: session.provider,
+        expiresAt: session.expiresAt,
+        challenge: challengeLabel(session.challengeCode),
+        maxAttempts: session.maxAttempts,
+        attempts: session.attempts
+      });
+    } catch (error) {
+      return res.status(500).json({ message: error.message || "Failed to create liveness session" });
+    }
+  });
+  app2.post("/api/liveness/verify", requireAuth, async (req, res) => {
+    try {
+      const { sessionId, selfieUrl } = req.body;
+      if (!sessionId || !selfieUrl) {
+        return res.status(400).json({ message: "sessionId and selfieUrl are required" });
+      }
+      const session = await storage.getLivenessSession(sessionId);
+      if (!session || session.userId !== req.auth.sub) {
+        return res.status(404).json({ message: "Liveness session not found" });
+      }
+      if (session.status === "passed") {
+        return res.json({
+          passed: true,
+          sessionId: session.id,
+          score: session.score || 0.99,
+          provider: session.provider,
+          selfieUrl: session.selfieUrl || selfieUrl
+        });
+      }
+      if (new Date(session.expiresAt).getTime() <= Date.now()) {
+        await storage.updateLivenessSession(session.id, {
+          status: "expired",
+          errorReason: "Session expired. Please retry liveness."
+        });
+        return res.status(410).json({ message: "Session expired. Please retry liveness." });
+      }
+      const nextAttempts = (session.attempts || 0) + 1;
+      if (nextAttempts > (session.maxAttempts || 3)) {
+        await storage.updateLivenessSession(session.id, {
+          status: "failed",
+          attempts: nextAttempts,
+          errorReason: "Maximum attempts reached"
+        });
+        return res.status(429).json({ message: "Maximum liveness attempts reached" });
+      }
+      if (session.provider !== "mock") {
+        await storage.updateLivenessSession(session.id, {
+          attempts: nextAttempts,
+          selfieUrl,
+          errorReason: "Provider integration pending"
+        });
+        return res.status(501).json({
+          message: "Selected liveness provider is not configured yet. Switch LIVENESS_PROVIDER=mock for now."
+        });
+      }
+      const qualityResult = await runMockSelfieQualityCheck(selfieUrl);
+      const passed = qualityResult.passed;
+      const score = qualityResult.score;
+      const status = passed ? "passed" : "failed";
+      const updated = await storage.updateLivenessSession(session.id, {
+        attempts: nextAttempts,
+        selfieUrl,
+        score,
+        status,
+        verifiedAt: passed ? /* @__PURE__ */ new Date() : null,
+        errorReason: passed ? null : qualityResult.reason || "Selfie quality check failed"
+      });
+      return res.json({
+        passed,
+        sessionId: updated?.id || session.id,
+        score,
+        provider: session.provider,
+        selfieUrl,
+        reason: passed ? null : qualityResult.reason || "Selfie quality check failed"
+      });
+    } catch (error) {
+      return res.status(500).json({ message: error.message || "Liveness verification failed" });
+    }
+  });
   app2.post("/api/rides", requireAuth, async (req, res) => {
     try {
       const { distanceKm, isLateNight, ...rideData } = req.body;
@@ -1667,6 +2119,23 @@ async function registerRoutes(app2) {
       }
       const categoryId = rideData.vehicleType || "budget";
       const priceEstimate = calculatePrice(distanceKm || 10, categoryId, { isLateNight });
+      const paymentMethod = rideData.paymentMethod || "cash";
+      if (paymentMethod === "cash") {
+        const { livenessSessionId, livenessStatus, cashSelfieUrl } = rideData;
+        if (!livenessSessionId || livenessStatus !== "passed" || !cashSelfieUrl) {
+          return res.status(400).json({
+            success: false,
+            message: "Cash rides require completed liveness verification"
+          });
+        }
+        const session = await storage.getLivenessSession(livenessSessionId);
+        if (!session || session.userId !== clientId || session.status !== "passed") {
+          return res.status(403).json({
+            success: false,
+            message: "Invalid liveness session"
+          });
+        }
+      }
       const ride = await storage.createRide({
         ...rideData,
         price: priceEstimate.totalPrice,
@@ -1696,8 +2165,27 @@ async function registerRoutes(app2) {
         if (notified === 0) {
           io.emit("ride:new", ride);
         }
+        const pushTokens = nearbyChauffeurs.map((c) => c.pushToken).filter(Boolean);
+        if (pushTokens.length > 0) {
+          sendExpoPushNotification(
+            pushTokens,
+            "\u{1F697} New Ride Request",
+            `Pickup: ${ride.pickupAddress || "Nearby"} \u2014 tap to accept`,
+            { rideId: ride.id, type: "ride:new" }
+          );
+        }
       } else {
         io.emit("ride:new", ride);
+        const allDrivers = (await storage.getAllChauffeurs()).filter((c) => c.isOnline && c.isApproved);
+        const pushTokens = allDrivers.map((c) => c.pushToken).filter(Boolean);
+        if (pushTokens.length > 0) {
+          sendExpoPushNotification(
+            pushTokens,
+            "\u{1F697} New Ride Request",
+            `Pickup: ${ride.pickupAddress || "Nearby"} \u2014 tap to accept`,
+            { rideId: ride.id, type: "ride:new" }
+          );
+        }
       }
       return res.json({
         success: true,
@@ -1840,7 +2328,8 @@ async function registerRoutes(app2) {
                 chauffeurId: ride.chauffeurId,
                 rideId: ride.id,
                 amount: earningsCalc.chauffeurEarnings,
-                commission: earningsCalc.commission
+                commission: earningsCalc.commission,
+                type: "card"
               });
               const chauffeur = await storage.getChauffeur(ride.chauffeurId);
               if (chauffeur) {
@@ -1898,7 +2387,7 @@ async function registerRoutes(app2) {
       if (ride.clientId) {
         await storage.createNotification({
           userId: ride.clientId,
-          title: "Chauffeur Assigned",
+          title: "Driver Assigned",
           body: "Your premium chauffeur has been assigned and is on the way.",
           type: "ride"
         });
@@ -1944,36 +2433,113 @@ async function registerRoutes(app2) {
                 balanceBefore,
                 balanceAfter: newBalance,
                 reference: cardPayment.paystackReference,
-                description: "Ride cancelled \u2014 card payment refunded",
+                description: "Ride cancelled \u2014 card payment refunded to wallet",
                 rideId: ride.id,
                 status: "completed"
               });
               await storage.createNotification({
                 userId: rider.id,
                 title: "Refund Issued",
-                body: `Your ride was cancelled. R${amt.toFixed(2)} has been refunded to your wallet.`,
+                body: `Your ride was cancelled. R${amt.toFixed(2)} has been refunded to your A2B wallet.`,
                 type: "payment"
               });
             }
           }
+          const walletPayment = !cardPayment ? payments2.find((p) => p.method === "wallet" && p.status === "paid") : null;
+          if (walletPayment && rideBeforeUpdate.price) {
+            const rider = await storage.getUser(rideBeforeUpdate.clientId);
+            if (rider) {
+              const amt = Number(rideBeforeUpdate.price);
+              const balanceBefore = rider.walletBalance || 0;
+              const newBalance = balanceBefore + amt;
+              await storage.updateUser(rider.id, { walletBalance: newBalance });
+              await storage.updatePayment(walletPayment.id, { status: "refunded" });
+              await storage.createWalletTransaction({
+                userId: rider.id,
+                type: "refund",
+                amount: amt,
+                balanceBefore,
+                balanceAfter: newBalance,
+                reference: `wallet_refund_${ride.id}_${Date.now()}`,
+                description: "Ride cancelled \u2014 wallet balance restored",
+                rideId: ride.id,
+                status: "completed"
+              });
+              await storage.createNotification({
+                userId: rider.id,
+                title: "Refund Issued",
+                body: `Your ride was cancelled. R${amt.toFixed(2)} has been returned to your A2B wallet.`,
+                type: "payment"
+              });
+            }
+          }
+          const paymentMethod = rideBeforeUpdate.paymentMethod || "cash";
+          if (!cardPayment && !walletPayment && paymentMethod === "cash") {
+            await storage.createNotification({
+              userId: rideBeforeUpdate.clientId,
+              title: "Ride Cancelled",
+              body: "Your ride has been cancelled. No charges were applied.",
+              type: "ride"
+            });
+          }
+          if (rideBeforeUpdate.chauffeurId) {
+            const chauffeur = await storage.getChauffeur(rideBeforeUpdate.chauffeurId);
+            if (chauffeur?.userId) {
+              await storage.createNotification({
+                userId: chauffeur.userId,
+                title: "Ride Cancelled",
+                body: "The client has cancelled this trip.",
+                type: "ride"
+              });
+            }
+            if (chauffeur?.pushToken) {
+              sendExpoPushNotification(
+                [chauffeur.pushToken],
+                "Ride Cancelled",
+                "The client has cancelled this trip."
+              );
+            }
+          }
         } catch (refundErr) {
-          console.error("Auto-refund failed (non-fatal):", refundErr.message);
+          console.error("Cancellation refund/notification failed (non-fatal):", refundErr.message);
         }
       }
       if (status === "trip_completed" && ride.chauffeurId && ride.price) {
         try {
           const earningsCalc = calculateChauffeurEarnings(ride.price);
-          await storage.createEarning({
-            chauffeurId: ride.chauffeurId,
-            rideId: ride.id,
-            amount: earningsCalc.chauffeurEarnings,
-            commission: earningsCalc.commission
-          });
-          const chauffeur = await storage.getChauffeur(ride.chauffeurId);
-          if (chauffeur) {
-            await storage.updateChauffeur(ride.chauffeurId, {
-              earningsTotal: (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings
-            });
+          const existingEarnings = await storage.getEarningsByChauffeur(ride.chauffeurId);
+          const alreadyRecorded = existingEarnings.some((e) => e.rideId === ride.id);
+          const paymentMethod = ride.paymentMethod || "cash";
+          if (!alreadyRecorded) {
+            if (paymentMethod === "cash") {
+              await storage.createEarning({
+                chauffeurId: ride.chauffeurId,
+                rideId: ride.id,
+                amount: -earningsCalc.commission,
+                commission: earningsCalc.commission,
+                type: "cash"
+              });
+              const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+              if (chauffeur) {
+                await storage.updateChauffeur(ride.chauffeurId, {
+                  earningsTotal: (chauffeur.earningsTotal || 0) - earningsCalc.commission
+                });
+              }
+            } else {
+              await storage.createEarning({
+                chauffeurId: ride.chauffeurId,
+                rideId: ride.id,
+                amount: earningsCalc.chauffeurEarnings,
+                commission: earningsCalc.commission,
+                type: paymentMethod
+              });
+              const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+              if (chauffeur) {
+                await storage.updateChauffeur(ride.chauffeurId, {
+                  earningsTotal: (chauffeur.earningsTotal || 0) + earningsCalc.chauffeurEarnings
+                });
+              }
+            }
           }
         } catch (earningsErr) {
           console.error("earnings record failed (non-fatal):", earningsErr.message);
@@ -2158,8 +2724,35 @@ async function registerRoutes(app2) {
   });
   app2.post("/api/messages", async (req, res) => {
     try {
+      const { rideId: _rid, senderId: _sid, messageText: _mt } = req.body;
+      console.log(`[POST /api/messages] rideId=${_rid} senderId=${_sid} text="${(_mt || "").slice(0, 40)}"`);
       const message = await storage.createMessage(req.body);
       io.emit("chat:newMessage", message);
+      const { rideId, senderId, messageText: msgText } = req.body;
+      if (rideId && senderId) {
+        try {
+          const ride = await storage.getRide(rideId);
+          if (ride) {
+            const previewText = (msgText || "").slice(0, 80);
+            if (senderId === ride.clientId && ride.chauffeurId) {
+              const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+              if (chauffeur?.pushToken) {
+                sendExpoPushNotification([chauffeur.pushToken], "New message from rider", previewText);
+              }
+              if (chauffeur?.userId) {
+                await storage.createNotification({ userId: chauffeur.userId, type: "chat", title: "New message from rider", body: previewText, isRead: false });
+              }
+            } else if (ride.chauffeurId) {
+              const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+              if (chauffeur?.userId && senderId !== ride.clientId) {
+                await storage.createNotification({ userId: ride.clientId, type: "chat", title: "New message from chauffeur", body: previewText, isRead: false });
+              }
+            }
+          }
+        } catch (e) {
+          console.error("[chat] notification failed (non-fatal):", e.message);
+        }
+      }
       return res.json(message);
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -2241,6 +2834,14 @@ async function registerRoutes(app2) {
       return res.status(500).json({ message: error.message });
     }
   });
+  app2.delete("/api/notifications/user/:userId/all", async (req, res) => {
+    try {
+      await storage.deleteAllNotificationsByUser(req.params.userId);
+      return res.json({ message: "All notifications cleared" });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
   app2.post("/api/trip-enquiries", requireAuth, async (req, res) => {
     try {
       const { rideId, message } = req.body;
@@ -2307,6 +2908,51 @@ async function registerRoutes(app2) {
           rideRoute: ridesById[p.rideId] ? `${ridesById[p.rideId].pickupAddress || "?"} \u2192 ${ridesById[p.rideId].dropoffAddress || "?"}` : p.rideId ? `Ride ${p.rideId.slice(0, 8)}` : "Wallet top-up"
         }));
         return res.json(enriched);
+      } catch (error) {
+        return res.status(500).json({ message: error.message });
+      }
+    }
+  );
+  app2.get(
+    "/api/admin/liveness-selfies",
+    requireAuth,
+    requireRole(["admin"]),
+    async (_req, res) => {
+      try {
+        const allRides = await storage.getAllRides();
+        const selfieRides = allRides.filter((ride) => Boolean(ride.cashSelfieUrl)).sort((a, b) => {
+          const left = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const right = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return right - left;
+        });
+        const records = await Promise.all(
+          selfieRides.map(async (ride) => {
+            const rider = await storage.getUser(ride.clientId);
+            const chauffeur = ride.chauffeurId ? await storage.getChauffeur(ride.chauffeurId) : void 0;
+            const chauffeurUser = chauffeur?.userId ? await storage.getUser(chauffeur.userId) : void 0;
+            return {
+              rideId: ride.id,
+              riderId: ride.clientId,
+              riderName: rider?.name || "Unknown Rider",
+              riderEmail: rider?.username || "",
+              chauffeurId: chauffeur?.id || null,
+              chauffeurName: chauffeurUser?.name || null,
+              pickupAddress: ride.pickupAddress || null,
+              dropoffAddress: ride.dropoffAddress || null,
+              paymentMethod: ride.paymentMethod || "cash",
+              paymentStatus: ride.paymentStatus || "unpaid",
+              rideStatus: ride.status || "requested",
+              price: ride.price || 0,
+              cashSelfieUrl: ride.cashSelfieUrl,
+              livenessStatus: ride.livenessStatus || "not_required",
+              livenessProvider: ride.livenessProvider || "mock",
+              livenessScore: ride.livenessScore,
+              livenessVerifiedAt: ride.livenessVerifiedAt,
+              createdAt: ride.createdAt
+            };
+          })
+        );
+        return res.json(records);
       } catch (error) {
         return res.status(500).json({ message: error.message });
       }
@@ -2509,9 +3155,14 @@ async function registerRoutes(app2) {
   });
   app2.post("/api/payments/initialize", requireAuth, async (req, res) => {
     try {
-      const { amount, email, rideId, saveCard } = req.body;
+      const { amount, email: clientEmail, rideId, saveCard, saveCardOnly } = req.body;
       const userId = req.auth.sub;
       const reference = `A2B-${Date.now()}-${userId.slice(0, 6)}`;
+      const user = await storage.getUser(userId);
+      const email = user?.email && user.email.includes("@") ? user.email : clientEmail;
+      if (!email || !email.includes("@")) {
+        return res.status(400).json({ message: "A valid email address is required to process payments. Please update your profile email." });
+      }
       const domain = getAppBaseUrl(req);
       const callbackUrl = `${domain}/api/payments/webview-callback?reference=${reference}`;
       const response = await paystackAPI.post("/transaction/initialize", {
@@ -2524,6 +3175,7 @@ async function registerRoutes(app2) {
           userId,
           rideId: rideId || null,
           saveCard: saveCard || false,
+          saveCardOnly: saveCardOnly || false,
           custom_fields: [
             { display_name: "App", variable_name: "app", value: "A2B LIFT" }
           ]
@@ -2588,7 +3240,7 @@ async function registerRoutes(app2) {
         }
         await storage.updateRide(metadata.rideId, { paymentStatus: "paid" });
       }
-      if (!metadata.rideId) {
+      if (!metadata.rideId && !metadata.saveCardOnly) {
         const user = await storage.getUser(userId);
         const balanceBefore = user?.walletBalance || 0;
         const newBalance = balanceBefore + amount;
@@ -2760,7 +3412,7 @@ async function registerRoutes(app2) {
   });
   app2.post("/api/wallet/withdraw", requireAuth, async (req, res) => {
     try {
-      const { amount, bankCode, accountNumber, accountName } = req.body;
+      const { amount, bankCode, bankName: bankNameInput, accountNumber, accountName } = req.body;
       const userId = req.auth.sub;
       if (!amount || !bankCode || !accountNumber || !accountName) {
         return res.status(400).json({ message: "amount, bankCode, accountNumber and accountName are required" });
@@ -2768,7 +3420,7 @@ async function registerRoutes(app2) {
       const chauffeur = await storage.getChauffeurByUserId(userId);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
       if ((chauffeur.earningsTotal || 0) < amount) {
-        return res.status(400).json({ message: "Insufficient earnings balance" });
+        return res.status(400).json({ message: `You only have R${(chauffeur.earningsTotal || 0).toFixed(2)} available to withdraw. Please enter a lower amount.` });
       }
       const recipientRes = await paystackAPI.post("/transferrecipient", {
         type: "nuban",
@@ -2793,7 +3445,7 @@ async function registerRoutes(app2) {
         chauffeurId: chauffeur.id,
         amount,
         status: status === "success" ? "completed" : "pending",
-        bankName: bankCode,
+        bankName: bankNameInput || bankCode,
         accountNumber,
         accountHolder: accountName,
         paystackTransferCode: transferCode,
@@ -2820,14 +3472,27 @@ async function registerRoutes(app2) {
       return res.json(banks);
     } catch (error) {
       return res.json([
-        { name: "Absa Bank", code: "632005" },
-        { name: "Capitec Bank", code: "470010" },
-        { name: "First National Bank (FNB)", code: "250655" },
-        { name: "Nedbank", code: "198765" },
-        { name: "Standard Bank", code: "051001" },
+        { name: "ABSA Bank", code: "632005" },
         { name: "African Bank", code: "430000" },
+        { name: "Albaraka Bank", code: "800000" },
+        { name: "Bidvest Bank", code: "462005" },
+        { name: "Capitec Bank", code: "470010" },
         { name: "Discovery Bank", code: "679000" },
-        { name: "TymeBank", code: "678910" }
+        { name: "Finbond Mutual Bank", code: "589000" },
+        { name: "First National Bank (FNB)", code: "250655" },
+        { name: "Grindrod Bank", code: "584000" },
+        { name: "HBZ Bank", code: "570000" },
+        { name: "Investec Bank", code: "580105" },
+        { name: "Mercantile Bank", code: "450905" },
+        { name: "Nedbank", code: "198765" },
+        { name: "Old Mutual Bank", code: "462005" },
+        { name: "Postbank", code: "460005" },
+        { name: "Sasfin Bank", code: "683000" },
+        { name: "Standard Bank", code: "051001" },
+        { name: "State Bank of India", code: "801000" },
+        { name: "TymeBank", code: "678910" },
+        { name: "Ubank (Teba Bank)", code: "431010" },
+        { name: "VBS Mutual Bank", code: "588000" }
       ]);
     }
   });
@@ -2908,6 +3573,7 @@ function setupSecurity(app2) {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com", "https://cdn.jsdelivr.net"],
           scriptSrcElem: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com", "https://cdn.jsdelivr.net"],
+          scriptSrcAttr: ["'unsafe-inline'"],
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
@@ -2957,8 +3623,8 @@ function setupRequestLogging(app2) {
     next();
   });
 }
-var METRO_PORTS = [8080, 8081];
-var resolvedMetroPort = 8080;
+var METRO_PORTS = [8081, 8080, 8082];
+var resolvedMetroPort = 8081;
 async function detectMetroPort() {
   const net = await import("net");
   for (const port of METRO_PORTS) {
@@ -2997,8 +3663,9 @@ function makeMetroProxy(port) {
     }
   });
 }
-var metroProxy = makeMetroProxy(8080);
+var metroProxy = makeMetroProxy(8081);
 async function configureExpoAndLanding(app2) {
+  const isProductionRuntime = process.env.NODE_ENV === "production";
   const adminTemplatePath = path.resolve(
     process.cwd(),
     "server",
@@ -3006,36 +3673,56 @@ async function configureExpoAndLanding(app2) {
     "admin.html"
   );
   const adminTemplate = fs.readFileSync(adminTemplatePath, "utf-8");
-  const metroPort = await detectMetroPort();
-  metroProxy = makeMetroProxy(metroPort);
-  log(`Metro bundler detected on port ${metroPort}`);
+  let metroPort = resolvedMetroPort;
+  if (!isProductionRuntime) {
+    metroPort = await detectMetroPort();
+    metroProxy = makeMetroProxy(metroPort);
+    log(`Metro bundler detected on port ${metroPort}`);
+  }
   const staticBuildExists = hasStaticBuild();
-  log(`Static build: ${staticBuildExists ? "found" : "not found"} \u2014 routing non-API traffic to Metro:${metroPort}`);
-  app2.get("/admin", (_req, res) => {
+  if (isProductionRuntime) {
+    log(`Static build: ${staticBuildExists ? "found" : "not found"} \u2014 production mode (Metro proxy disabled)`);
+  } else {
+    log(`Static build: ${staticBuildExists ? "found" : "not found"} \u2014 routing non-API traffic to Metro:${metroPort}`);
+  }
+  const serveAdmin = (_req, res) => {
+    const freshTemplate = fs.readFileSync(adminTemplatePath, "utf-8");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.status(200).send(adminTemplate);
-  });
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.status(200).send(freshTemplate);
+  };
+  app2.get("/admin", serveAdmin);
+  app2.get("/a2b-admin", serveAdmin);
   app2.use("/assets", import_express.default.static(path.resolve(process.cwd(), "assets")));
   if (staticBuildExists) {
     app2.use(import_express.default.static(path.resolve(process.cwd(), "static-build")));
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) return next();
       const platform = req.header("expo-platform");
-      if (platform === "ios" || platform === "android") {
+      if (!isProductionRuntime && (platform === "ios" || platform === "android")) {
         log(`[Metro proxy] ${platform} manifest \u2192 Metro:${metroPort}`);
         return metroProxy(req, res, next);
       }
       const staticIndex = path.resolve(process.cwd(), "static-build", "index.html");
       res.sendFile(staticIndex);
     });
-  } else {
+  } else if (!isProductionRuntime) {
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) return next();
-      if (req.path === "/admin") return next();
+      if (req.path === "/admin" || req.path === "/a2b-admin" || req.path.startsWith("/admin/") || req.path.startsWith("/a2b-admin/")) return next();
       if (req.path.startsWith("/socket.io")) return next();
       const platform = req.header("expo-platform") || "web";
       log(`[Metro proxy] ${platform} ${req.path} \u2192 Metro:${metroPort}`);
       return metroProxy(req, res, next);
+    });
+  } else {
+    app2.use((req, res, next) => {
+      if (req.path.startsWith("/api")) return next();
+      if (req.path === "/admin" || req.path === "/a2b-admin" || req.path.startsWith("/admin/") || req.path.startsWith("/a2b-admin/")) return next();
+      if (req.path.startsWith("/socket.io")) return next();
+      return res.status(404).json({ message: "Web build not available on this deployment" });
     });
   }
   log("Expo routing configured");

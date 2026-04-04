@@ -229,6 +229,7 @@ function serveLandingPage({
 }
 
 async function configureExpoAndLanding(app: express.Application) {
+  const isProductionRuntime = process.env.NODE_ENV === "production";
   const adminTemplatePath = path.resolve(
     process.cwd(),
     "server",
@@ -237,13 +238,21 @@ async function configureExpoAndLanding(app: express.Application) {
   );
   const adminTemplate = fs.readFileSync(adminTemplatePath, "utf-8");
 
-  // Detect which port Metro actually started on (8080 or 8081)
-  const metroPort = await detectMetroPort();
-  metroProxy = makeMetroProxy(metroPort);
-  log(`Metro bundler detected on port ${metroPort}`);
+  // Metro proxying is for development only; production must never proxy web/admin paths.
+  let metroPort = resolvedMetroPort;
+  if (!isProductionRuntime) {
+    // Detect which port Metro actually started on (8080 or 8081)
+    metroPort = await detectMetroPort();
+    metroProxy = makeMetroProxy(metroPort);
+    log(`Metro bundler detected on port ${metroPort}`);
+  }
 
   const staticBuildExists = hasStaticBuild();
-  log(`Static build: ${staticBuildExists ? "found" : "not found"} — routing non-API traffic to Metro:${metroPort}`);
+  if (isProductionRuntime) {
+    log(`Static build: ${staticBuildExists ? "found" : "not found"} — production mode (Metro proxy disabled)`);
+  } else {
+    log(`Static build: ${staticBuildExists ? "found" : "not found"} — routing non-API traffic to Metro:${metroPort}`);
+  }
 
   // Admin dashboard — served at BOTH /admin and /a2b-admin (new URL busts any stale browser cache)
   const serveAdmin = (_req: Request, res: Response) => {
@@ -267,22 +276,30 @@ async function configureExpoAndLanding(app: express.Application) {
     app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.path.startsWith("/api")) return next();
       const platform = req.header("expo-platform");
-      if (platform === "ios" || platform === "android") {
+      if (!isProductionRuntime && (platform === "ios" || platform === "android")) {
         log(`[Metro proxy] ${platform} manifest → Metro:${metroPort}`);
         return (metroProxy as any)(req, res, next);
       }
       const staticIndex = path.resolve(process.cwd(), "static-build", "index.html");
       res.sendFile(staticIndex);
     });
-  } else {
+  } else if (!isProductionRuntime) {
     // No static build — proxy everything (web + native) to Metro
     app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.path.startsWith("/api")) return next();
-      if (req.path === "/admin" || req.path === "/a2b-admin") return next(); // handled above
+      if (req.path === "/admin" || req.path === "/a2b-admin" || req.path.startsWith("/admin/") || req.path.startsWith("/a2b-admin/")) return next(); // handled above
       if (req.path.startsWith("/socket.io")) return next(); // let Socket.IO handle this
       const platform = req.header("expo-platform") || "web";
       log(`[Metro proxy] ${platform} ${req.path} → Metro:${metroPort}`);
       return (metroProxy as any)(req, res, next);
+    });
+  } else {
+    // Production + no static build: avoid proxy loops; keep API/admin routes only.
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.path.startsWith("/api")) return next();
+      if (req.path === "/admin" || req.path === "/a2b-admin" || req.path.startsWith("/admin/") || req.path.startsWith("/a2b-admin/")) return next();
+      if (req.path.startsWith("/socket.io")) return next();
+      return res.status(404).json({ message: "Web build not available on this deployment" });
     });
   }
 
