@@ -3665,7 +3665,12 @@ function makeMetroProxy(port) {
 }
 var metroProxy = makeMetroProxy(8081);
 async function configureExpoAndLanding(app2) {
-  const isProductionRuntime = process.env.NODE_ENV === "production";
+  const isRailwayRuntime = Boolean(
+    process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID || process.env.RAILWAY_SERVICE_ID
+  );
+  const isProductionRuntime = process.env.NODE_ENV === "production" || isRailwayRuntime;
+  const appPort = Number.parseInt(process.env.PORT || "", 10);
+  let allowMetroProxy = !isProductionRuntime;
   const adminTemplatePath = path.resolve(
     process.cwd(),
     "server",
@@ -3674,13 +3679,17 @@ async function configureExpoAndLanding(app2) {
   );
   const adminTemplate = fs.readFileSync(adminTemplatePath, "utf-8");
   let metroPort = resolvedMetroPort;
-  if (!isProductionRuntime) {
+  if (allowMetroProxy) {
     metroPort = await detectMetroPort();
+    if (Number.isFinite(appPort) && appPort === metroPort) {
+      allowMetroProxy = false;
+      log(`Metro proxy disabled because target port ${metroPort} equals app PORT ${appPort}`);
+    }
     metroProxy = makeMetroProxy(metroPort);
     log(`Metro bundler detected on port ${metroPort}`);
   }
   const staticBuildExists = hasStaticBuild();
-  if (isProductionRuntime) {
+  if (!allowMetroProxy) {
     log(`Static build: ${staticBuildExists ? "found" : "not found"} \u2014 production mode (Metro proxy disabled)`);
   } else {
     log(`Static build: ${staticBuildExists ? "found" : "not found"} \u2014 routing non-API traffic to Metro:${metroPort}`);
@@ -3701,14 +3710,14 @@ async function configureExpoAndLanding(app2) {
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) return next();
       const platform = req.header("expo-platform");
-      if (!isProductionRuntime && (platform === "ios" || platform === "android")) {
+      if (allowMetroProxy && (platform === "ios" || platform === "android")) {
         log(`[Metro proxy] ${platform} manifest \u2192 Metro:${metroPort}`);
         return metroProxy(req, res, next);
       }
       const staticIndex = path.resolve(process.cwd(), "static-build", "index.html");
       res.sendFile(staticIndex);
     });
-  } else if (!isProductionRuntime) {
+  } else if (allowMetroProxy) {
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) return next();
       if (req.path === "/admin" || req.path === "/a2b-admin" || req.path.startsWith("/admin/") || req.path.startsWith("/a2b-admin/")) return next();

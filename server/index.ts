@@ -229,7 +229,15 @@ function serveLandingPage({
 }
 
 async function configureExpoAndLanding(app: express.Application) {
-  const isProductionRuntime = process.env.NODE_ENV === "production";
+  const isRailwayRuntime = Boolean(
+    process.env.RAILWAY_PUBLIC_DOMAIN ||
+      process.env.RAILWAY_ENVIRONMENT ||
+      process.env.RAILWAY_PROJECT_ID ||
+      process.env.RAILWAY_SERVICE_ID,
+  );
+  const isProductionRuntime = process.env.NODE_ENV === "production" || isRailwayRuntime;
+  const appPort = Number.parseInt(process.env.PORT || "", 10);
+  let allowMetroProxy = !isProductionRuntime;
   const adminTemplatePath = path.resolve(
     process.cwd(),
     "server",
@@ -240,15 +248,20 @@ async function configureExpoAndLanding(app: express.Application) {
 
   // Metro proxying is for development only; production must never proxy web/admin paths.
   let metroPort = resolvedMetroPort;
-  if (!isProductionRuntime) {
+  if (allowMetroProxy) {
     // Detect which port Metro actually started on (8080 or 8081)
     metroPort = await detectMetroPort();
+    if (Number.isFinite(appPort) && appPort === metroPort) {
+      // Hard stop for self-proxy loops (app -> Metro on same port -> app).
+      allowMetroProxy = false;
+      log(`Metro proxy disabled because target port ${metroPort} equals app PORT ${appPort}`);
+    }
     metroProxy = makeMetroProxy(metroPort);
     log(`Metro bundler detected on port ${metroPort}`);
   }
 
   const staticBuildExists = hasStaticBuild();
-  if (isProductionRuntime) {
+  if (!allowMetroProxy) {
     log(`Static build: ${staticBuildExists ? "found" : "not found"} — production mode (Metro proxy disabled)`);
   } else {
     log(`Static build: ${staticBuildExists ? "found" : "not found"} — routing non-API traffic to Metro:${metroPort}`);
@@ -276,14 +289,14 @@ async function configureExpoAndLanding(app: express.Application) {
     app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.path.startsWith("/api")) return next();
       const platform = req.header("expo-platform");
-      if (!isProductionRuntime && (platform === "ios" || platform === "android")) {
+      if (allowMetroProxy && (platform === "ios" || platform === "android")) {
         log(`[Metro proxy] ${platform} manifest → Metro:${metroPort}`);
         return (metroProxy as any)(req, res, next);
       }
       const staticIndex = path.resolve(process.cwd(), "static-build", "index.html");
       res.sendFile(staticIndex);
     });
-  } else if (!isProductionRuntime) {
+  } else if (allowMetroProxy) {
     // No static build — proxy everything (web + native) to Metro
     app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.path.startsWith("/api")) return next();
