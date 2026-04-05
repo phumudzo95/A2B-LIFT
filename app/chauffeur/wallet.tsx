@@ -216,7 +216,8 @@ export default function ChauffeurWalletScreen() {
                 const method = e.type || (e.amount < 0 ? "cash" : "card");
                 const isCash = method === "cash";
                 const isWallet = method === "wallet";
-                const icon = isCash ? "�" : isWallet ? "👛" : "💳";
+                const iconName = isCash ? "cash-outline" : isWallet ? "wallet-outline" : "card-outline";
+                const iconColor = isCash ? Colors.success : isWallet ? Colors.accent : "#60a5fa";
                 const label = isCash ? "Cash Trip Commission" : isWallet ? "Wallet Trip Earnings" : "Card Trip Earnings";
                 const sub = isCash
                   ? `Commission charged: R${e.commission.toFixed(2)} (cash collected)`
@@ -224,7 +225,7 @@ export default function ChauffeurWalletScreen() {
                 return (
                   <View key={e.id} style={styles.listRow}>
                     <View style={styles.listIcon}>
-                      <Text style={{ fontSize: 18 }}>{icon}</Text>
+                      <Ionicons name={iconName as any} size={20} color={iconColor} />
                     </View>
                     <View style={styles.listInfo}>
                       <Text style={styles.listTitle}>{label}</Text>

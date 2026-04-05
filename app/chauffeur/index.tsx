@@ -766,7 +766,7 @@ export default function ChauffeurDashboard() {
             {completedTrip?.paymentMethod === "cash" ? (
               <>
                 <View style={styles.payPopupIconWrap}>
-                  <Text style={{ fontSize: 40 }}>�</Text>
+                  <Ionicons name="cash-outline" size={40} color={Colors.success} />
                 </View>
                 <Text style={styles.payPopupTitle}>Collect Cash Payment</Text>
                 <Text style={styles.payPopupAmount}>R {completedTrip?.price ?? "0"}</Text>
