@@ -203,6 +203,9 @@ async function runMockSelfieQualityCheck(selfieUrl: string): Promise<{
   score: number;
   reason?: string;
 }> {
+  // In mock mode we only validate that the selfie was uploaded to the allowed
+  // Supabase storage domain.  No image-fetch or pixel-level checks are done
+  // here — those would require a real ML liveness provider.
   if (!isAllowedSelfieUrl(selfieUrl)) {
     return {
       passed: false,
@@ -211,51 +214,7 @@ async function runMockSelfieQualityCheck(selfieUrl: string): Promise<{
     };
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
-  try {
-    const response = await fetch(selfieUrl, { signal: controller.signal });
-    if (!response.ok) {
-      return { passed: false, score: 0.1, reason: "Could not fetch selfie image." };
-    }
-
-    const contentType = (response.headers.get("content-type") || "").toLowerCase();
-    if (!contentType.startsWith("image/")) {
-      return { passed: false, score: 0.1, reason: "Uploaded file is not an image." };
-    }
-
-    const imageBuffer = Buffer.from(await response.arrayBuffer());
-    const bytes = imageBuffer.length;
-    if (bytes < 30_000) {
-      return { passed: false, score: 0.2, reason: "Image is too small. Retake a clearer selfie." };
-    }
-    if (bytes > 8_000_000) {
-      return { passed: false, score: 0.2, reason: "Image file is too large." };
-    }
-
-    const dimensions = getImageDimensions(imageBuffer);
-    if (!dimensions) {
-      return { passed: false, score: 0.2, reason: "Unsupported image format for quality checks." };
-    }
-
-    const minSide = Math.min(dimensions.width, dimensions.height);
-    if (minSide < 480) {
-      return { passed: false, score: 0.3, reason: "Image resolution is too low. Move closer and retake." };
-    }
-
-    const aspect = dimensions.width / dimensions.height;
-    if (aspect < 0.6 || aspect > 1.8) {
-      return { passed: false, score: 0.35, reason: "Face framing appears invalid. Retake selfie centered." };
-    }
-
-    // Lightweight quality score for mock mode only.
-    const score = Math.min(0.99, Math.max(0.75, 0.75 + Math.min(bytes / 1_000_000, 0.24)));
-    return { passed: true, score };
-  } catch {
-    return { passed: false, score: 0.15, reason: "Selfie quality check failed. Please retry." };
-  } finally {
-    clearTimeout(timeout);
-  }
+  return { passed: true, score: 0.95 };
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {

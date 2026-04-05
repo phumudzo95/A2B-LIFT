@@ -728,7 +728,7 @@ export default function ClientHomeScreen() {
       setLivenessMessage(
         passed
           ? "Verification passed. You can now continue with cash booking."
-          : "Verification failed. Please retake your selfie.",
+          : (verifyData?.reason || "Verification failed. Please retake your selfie."),
       );
     } catch (error: any) {
       setLivenessMessage(error?.message || "Liveness verification failed. Please try again.");
@@ -757,8 +757,8 @@ export default function ClientHomeScreen() {
       resetCashLiveness(true);
       queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user?.id] });
       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch {
-      Alert.alert("Error", "Failed to request cash ride. Please try again.");
+    } catch (err: any) {
+      Alert.alert("Error", err?.message || "Failed to request cash ride. Please try again.");
     }
   }
 
