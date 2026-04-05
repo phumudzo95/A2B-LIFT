@@ -20,10 +20,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/query-client";
 import { useSocket } from "@/lib/socket-context";
+import { uploadDocument } from "@/lib/supabase-storage";
 import Colors from "@/constants/colors";
 import A2BMap from "@/components/A2BMap";
 
@@ -124,6 +126,18 @@ export default function ClientHomeScreen() {
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "wallet">("cash");
   const [savedCards, setSavedCards] = useState<{ id: string; last4: string; cardType: string; isDefault: boolean }[]>([]);
+
+  // Cash liveness flow
+  const [showCashLiveness, setShowCashLiveness] = useState(false);
+  const [livenessSessionId, setLivenessSessionId] = useState<string | null>(null);
+  const [livenessChallenge, setLivenessChallenge] = useState<string>("");
+  const [livenessAttempts, setLivenessAttempts] = useState(0);
+  const [livenessMaxAttempts, setLivenessMaxAttempts] = useState(3);
+  const [livenessSelfieLocalUri, setLivenessSelfieLocalUri] = useState<string | null>(null);
+  const [livenessSelfieUrl, setLivenessSelfieUrl] = useState<string | null>(null);
+  const [livenessPassed, setLivenessPassed] = useState(false);
+  const [livenessBusy, setLivenessBusy] = useState(false);
+  const [livenessMessage, setLivenessMessage] = useState<string>("");
 
   // Driver profile modal
   const [showDriverProfile, setShowDriverProfile] = useState(false);
@@ -228,7 +242,7 @@ export default function ClientHomeScreen() {
       setDriverLocation(null);
       setRideStatus("no_drivers");
       queryClient.invalidateQueries({ queryKey: ["/api/rides/client"] });
-    }, 45000);
+    }, 120000);
     return () => clearTimeout(timeout);
   }, [rideStatus]);
 
@@ -610,35 +624,157 @@ export default function ClientHomeScreen() {
     setShowPaymentPicker(true);
   }
 
+  async function createRideRecord(
+    method: "cash" | "card" | "wallet",
+    extras: Record<string, unknown> = {},
+  ) {
+    if (!user || !location || !dropoffCoords) return null;
+    const distanceKm = estimatedDistance || 10;
+    const res = await apiRequest("POST", "/api/rides", {
+      clientId: user.id,
+      pickupLat: location.lat,
+      pickupLng: location.lng,
+      pickupAddress,
+      dropoffLat: dropoffCoords.lat,
+      dropoffLng: dropoffCoords.lng,
+      dropoffAddress,
+      vehicleType: selectedVehicle.id,
+      distanceKm,
+      paymentMethod: method,
+      paymentStatus: method === "cash" ? "unpaid" : "pending",
+      isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
+      ...extras,
+    });
+    const payload = await res.json();
+    return payload.ride ?? payload;
+  }
+
+  function resetCashLiveness(closeModal = false) {
+    if (closeModal) setShowCashLiveness(false);
+    setLivenessSessionId(null);
+    setLivenessChallenge("");
+    setLivenessAttempts(0);
+    setLivenessMaxAttempts(3);
+    setLivenessSelfieLocalUri(null);
+    setLivenessSelfieUrl(null);
+    setLivenessPassed(false);
+    setLivenessBusy(false);
+    setLivenessMessage("");
+  }
+
+  async function openCashLivenessFlow() {
+    if (!user) return;
+    setShowCashLiveness(true);
+    setLivenessBusy(true);
+    setLivenessMessage("Creating secure liveness session...");
+    try {
+      const res = await apiRequest("POST", "/api/liveness/session", {});
+      const data = await res.json();
+      setLivenessSessionId(data.sessionId || null);
+      setLivenessChallenge(data.challenge || "Blink and smile");
+      setLivenessAttempts(Number(data.attempts || 0));
+      setLivenessMaxAttempts(Number(data.maxAttempts || 3));
+      setLivenessMessage("Session ready. Capture your selfie to continue.");
+    } catch (error: any) {
+      setLivenessMessage(error?.message || "Could not start liveness verification.");
+    } finally {
+      setLivenessBusy(false);
+    }
+  }
+
+  async function captureAndVerifyLiveness() {
+    if (!user || !livenessSessionId) return;
+    setLivenessBusy(true);
+    setLivenessMessage("Opening camera...");
+    try {
+      if (Platform.OS !== "web") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "Please allow camera access to continue cash verification.");
+          setLivenessBusy(false);
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 0.7,
+        allowsEditing: true,
+        aspect: [1, 1],
+        cameraType: ImagePicker.CameraType.front,
+      });
+
+      if (result.canceled || !result.assets?.[0]) {
+        setLivenessMessage("Capture cancelled.");
+        setLivenessBusy(false);
+        return;
+      }
+
+      const selfieUri = result.assets[0].uri;
+      setLivenessSelfieLocalUri(selfieUri);
+      setLivenessMessage("Uploading selfie securely...");
+      const uploadedUrl = await uploadDocument(selfieUri, user.id, "cash_liveness_selfie");
+      setLivenessSelfieUrl(uploadedUrl);
+
+      setLivenessMessage("Verifying liveness...");
+      const verifyRes = await apiRequest("POST", "/api/liveness/verify", {
+        sessionId: livenessSessionId,
+        selfieUrl: uploadedUrl,
+      });
+      const verifyData = await verifyRes.json();
+
+      const passed = Boolean(verifyData?.passed);
+      setLivenessPassed(passed);
+      setLivenessAttempts((prev) => prev + 1);
+      setLivenessMessage(
+        passed
+          ? "Verification passed. You can now continue with cash booking."
+          : "Verification failed. Please retake your selfie.",
+      );
+    } catch (error: any) {
+      setLivenessMessage(error?.message || "Liveness verification failed. Please try again.");
+    } finally {
+      setLivenessBusy(false);
+    }
+  }
+
+  async function continueWithVerifiedCashRide() {
+    if (!livenessPassed || !livenessSessionId || !livenessSelfieUrl) {
+      Alert.alert("Verification Required", "Please complete liveness verification first.");
+      return;
+    }
+    try {
+      const ride = await createRideRecord("cash", {
+        livenessSessionId,
+        livenessStatus: "passed",
+        livenessProvider: "mock",
+        livenessVerifiedAt: new Date().toISOString(),
+        cashSelfieUrl: livenessSelfieUrl,
+      });
+      if (!ride) return;
+
+      setCurrentRide(ride);
+      setRideStatus("requested");
+      resetCashLiveness(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user?.id] });
+      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {
+      Alert.alert("Error", "Failed to request cash ride. Please try again.");
+    }
+  }
+
   async function handlePayAndRide(method: "cash" | "card" | "wallet") {
     if (!user || !location || !dropoffCoords) return;
     setShowPaymentPicker(false);
-    try {
-      const distanceKm = estimatedDistance || 10;
-      const res = await apiRequest("POST", "/api/rides", {
-        clientId: user.id,
-        pickupLat: location.lat,
-        pickupLng: location.lng,
-        pickupAddress,
-        dropoffLat: dropoffCoords.lat,
-        dropoffLng: dropoffCoords.lng,
-        dropoffAddress,
-        vehicleType: selectedVehicle.id,
-        distanceKm,
-        paymentMethod: method,
-        paymentStatus: method === "cash" ? "unpaid" : "pending",
-        isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
-      });
-      const payload = await res.json();
-      const ride = payload.ride ?? payload;
 
-      if (method === "cash") {
-        setCurrentRide(ride);
-        setRideStatus("requested");
-        queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user.id] });
-        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        return;
-      }
+    if (method === "cash") {
+      setPaymentMethod("cash");
+      openCashLivenessFlow();
+      return;
+    }
+
+    try {
+      const ride = await createRideRecord(method);
+      if (!ride) return;
 
       if (method === "wallet") {
         const payRes = await apiRequest("POST", "/api/payments/pay-wallet", { rideId: ride.id });
@@ -1455,6 +1591,81 @@ export default function ClientHomeScreen() {
             </Pressable>
           </View>
         </Pressable>
+      </Modal>
+
+      {/* Cash Liveness Screen */}
+      <Modal
+        visible={showCashLiveness}
+        animationType="slide"
+        onRequestClose={() => resetCashLiveness(true)}
+      >
+        <View style={[styles.livenessContainer, { paddingTop: insets.top + 8 }]}> 
+          <View style={styles.livenessHeader}>
+            <Pressable onPress={() => resetCashLiveness(true)} hitSlop={12}>
+              <Ionicons name="arrow-back" size={24} color={Colors.white} />
+            </Pressable>
+            <Text style={styles.livenessTitle}>Cash Verification</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <View style={styles.livenessCard}>
+            <Text style={styles.livenessHeadline}>Liveness Check Required</Text>
+            <Text style={styles.livenessBodyText}>
+              Before requesting a cash trip, take a live selfie. This helps prevent fraud and secures cash collections.
+            </Text>
+            <Text style={styles.livenessFareNote}>
+              Fare reminder: route choice affects the final fare. Confirm route with your driver before trip starts.
+            </Text>
+            <View style={styles.livenessMetaRow}>
+              <Text style={styles.livenessMetaText}>Attempts: {livenessAttempts}/{livenessMaxAttempts}</Text>
+            </View>
+            {!!livenessChallenge && (
+              <View style={styles.challengeBox}>
+                <Ionicons name="sparkles-outline" size={16} color={Colors.accent} />
+                <Text style={styles.challengeText}>Action: {livenessChallenge}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.livenessPreviewWrap}>
+            {livenessSelfieLocalUri ? (
+              <Image source={{ uri: livenessSelfieLocalUri }} style={styles.livenessPreviewImg} />
+            ) : (
+              <View style={styles.livenessPlaceholder}>
+                <Ionicons name="person-circle-outline" size={82} color={Colors.textMuted} />
+                <Text style={styles.livenessPlaceholderText}>No selfie captured yet</Text>
+              </View>
+            )}
+          </View>
+
+          {!!livenessMessage && (
+            <Text style={styles.livenessStatusText}>{livenessMessage}</Text>
+          )}
+
+          <View style={styles.livenessActions}>
+            <Pressable
+              style={[styles.livenessBtnSecondary, livenessBusy && { opacity: 0.6 }]}
+              disabled={livenessBusy}
+              onPress={captureAndVerifyLiveness}
+            >
+              {livenessBusy ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <Text style={styles.livenessBtnSecondaryText}>
+                  {livenessSelfieLocalUri ? "Retake Selfie" : "Start Liveness"}
+                </Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={[styles.livenessBtnPrimary, !livenessPassed && styles.livenessBtnDisabled]}
+              disabled={!livenessPassed || livenessBusy}
+              onPress={continueWithVerifiedCashRide}
+            >
+              <Text style={styles.livenessBtnPrimaryText}>Continue With Cash Ride</Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* Location Picker Modal */}
@@ -2794,5 +3005,134 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  livenessContainer: {
+    flex: 1,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 18,
+  },
+  livenessHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+  },
+  livenessTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  livenessCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    gap: 10,
+  },
+  livenessHeadline: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+  },
+  livenessBodyText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    lineHeight: 20,
+  },
+  livenessFareNote: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.warning,
+  },
+  livenessMetaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  livenessMetaText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textMuted,
+  },
+  challengeBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  challengeText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  livenessPreviewWrap: {
+    marginTop: 14,
+    backgroundColor: Colors.surface,
+    borderRadius: 18,
+    overflow: "hidden",
+    minHeight: 280,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  livenessPreviewImg: {
+    width: "100%",
+    height: 320,
+  },
+  livenessPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  livenessPlaceholderText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textMuted,
+  },
+  livenessStatusText: {
+    marginTop: 12,
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textSecondary,
+  },
+  livenessActions: {
+    marginTop: "auto",
+    gap: 10,
+    paddingBottom: 20,
+    paddingTop: 12,
+  },
+  livenessBtnSecondary: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 48,
+  },
+  livenessBtnSecondaryText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  livenessBtnPrimary: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 50,
+  },
+  livenessBtnDisabled: {
+    opacity: 0.5,
+  },
+  livenessBtnPrimaryText: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: Colors.primary,
   },
 });

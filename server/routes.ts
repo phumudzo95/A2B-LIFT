@@ -918,7 +918,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cardEarningsTotal = (earningsList as any[])
         .filter((e: any) => e.type === "card")
         .reduce((s: number, e: any) => s + (e.amount || 0), 0);
-      return res.json({ ...chauffeur, computedRating, totalRatings: ratings.length, cardEarningsTotal });
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEarnings = (earningsList as any[])
+        .filter((e: any) => e.createdAt && new Date(e.createdAt) >= todayStart)
+        .reduce((s: number, e: any) => s + (e.amount || 0), 0);
+      return res.json({ ...chauffeur, computedRating, totalRatings: ratings.length, cardEarningsTotal, todayEarnings });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
@@ -1894,6 +1899,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           body: "Your premium chauffeur has been assigned and is on the way.",
           type: "ride",
         });
+      }
+      // Notify the driver they are on the way to pick up
+      await storage.createNotification({
+        userId: chauffeur.userId,
+        title: "Ride Accepted",
+        body: "You're on your way to pick up the client. Head to the pickup location.",
+        type: "ride",
+      });
+      if (chauffeur.pushToken) {
+        sendExpoPushNotification(
+          [chauffeur.pushToken],
+          "🚗 Going to Pick Up",
+          "You've accepted the ride. Head to the pickup location now.",
+          { rideId: updated.id, type: "ride:accepted" }
+        );
       }
       return res.json(updated);
     } catch (error: any) {

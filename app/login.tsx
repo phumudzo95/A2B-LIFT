@@ -154,21 +154,7 @@ export default function LoginScreen() {
           {loading ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.loginBtnText}>Sign In</Text>}
         </Pressable>
 
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or continue with</Text>
-          <View style={styles.dividerLine} />
-        </View>
 
-        <Pressable style={({ pressed }) => [styles.googleBtn, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }, googleLoading && { opacity: 0.7 }]}
-          onPress={handleGoogleSignIn} disabled={googleLoading}>
-          {googleLoading ? <ActivityIndicator color="#1a1a1a" size="small" /> : (
-            <>
-              <Image source={require("../assets/images/google_icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />
-              <Text style={styles.googleBtnText}>Continue with Google</Text>
-            </>
-          )}
-        </Pressable>
       </View>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 16) }]}>

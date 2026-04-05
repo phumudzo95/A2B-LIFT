@@ -1,9 +1,9 @@
 export const VEHICLE_CATEGORIES: Record<string, { name: string; pricePerKm: number; baseFare: number; examples: string }> = {
   budget: { name: "Budget", pricePerKm: 7, baseFare: 50, examples: "Toyota Corolla, Toyota Quest" },
   luxury: { name: "Luxury", pricePerKm: 13, baseFare: 100, examples: "BMW 3 Series, Mercedes C Class" },
-  business: { name: "Business Class", pricePerKm: 40, baseFare: 150, examples: "BMW 5 Series, Mercedes E Class" },
+  business: { name: "Business Class", pricePerKm: 35, baseFare: 150, examples: "BMW 5 Series, Mercedes E Class" },
   van: { name: "Van", pricePerKm: 13, baseFare: 120, examples: "Hyundai H1, Mercedes Vito, Staria" },
-  luxury_van: { name: "Luxury Van", pricePerKm: 50, baseFare: 200, examples: "Mercedes V Class" },
+  luxury_van: { name: "Luxury Van", pricePerKm: 35, baseFare: 200, examples: "Mercedes V Class" },
 };
 
 const PRICING_CONFIG = {

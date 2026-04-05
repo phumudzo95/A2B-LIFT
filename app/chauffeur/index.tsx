@@ -47,6 +47,7 @@ export default function ChauffeurDashboard() {
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
   const [rideEta, setRideEta] = useState<{ distanceText: string; durationText: string; distanceKm: number; durationMin: number } | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [todayEarnings, setTodayEarnings] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -296,6 +297,7 @@ export default function ChauffeurDashboard() {
       const c = await res.json();
       setChauffeur(c);
       setIsOnline(c.isOnline || false);
+      if (typeof c.todayEarnings === "number") setTodayEarnings(c.todayEarnings);
       await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(c));
     } catch {}
   }
@@ -435,10 +437,10 @@ export default function ChauffeurDashboard() {
   if (!chauffeur.isApproved) {
     return (
       <View style={[styles.pendingContainer, { paddingTop: insets.top + 20 }]}>
-        <Pressable style={[styles.floatBell, { top: insets.top + 16 }]} onPress={() => router.push("/chauffeur/notifications")}>
-          <Ionicons name="notifications-outline" size={22} color={Colors.white} />
-          {unreadCount > 0 && <View style={styles.bellBadge}><Text style={styles.bellBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text></View>}
-        </Pressable>
+        <View style={[styles.floatEarnings, { top: insets.top + 16 }]}>
+          <Text style={styles.earningsLabel}>Today</Text>
+          <Text style={styles.earningsAmount}>R {todayEarnings}</Text>
+        </View>
         <View style={styles.pendingInner}>
           <Ionicons name="hourglass" size={60} color={Colors.warning} />
           <Text style={styles.pendingTitle}>Pending Approval</Text>
@@ -564,11 +566,11 @@ export default function ChauffeurDashboard() {
         <Text style={styles.pillText}>{isOnline ? "Online" : "Offline"}</Text>
       </Pressable>
 
-      {/* ─── Notification bell (top-right) ─── */}
-      <Pressable style={[styles.floatBell, { top: insets.top + 16 }]} onPress={() => router.push("/chauffeur/notifications")}>
-        <Ionicons name="notifications-outline" size={22} color={Colors.white} />
-        {unreadCount > 0 && <View style={styles.bellBadge}><Text style={styles.bellBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text></View>}
-      </Pressable>
+      {/* ─── Today's earnings (top-right) ─── */}
+      <View style={[styles.floatEarnings, { top: insets.top + 16 }]}>
+        <Text style={styles.earningsLabel}>Today</Text>
+        <Text style={styles.earningsAmount}>R {todayEarnings}</Text>
+      </View>
 
       {/* ─── "Finding trips" pill ─── */}
       {isOnline && !currentRide && !incomingRide && (
@@ -708,6 +710,10 @@ const styles = StyleSheet.create({
   floatBell: { position: "absolute", right: 76, width: 44, height: 44, borderRadius: 22, backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_BORDER, alignItems: "center", justifyContent: "center", zIndex: 5 },
   bellBadge: { position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.error, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
   bellBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: Colors.white },
+
+  floatEarnings: { position: "absolute", right: 76, minWidth: 72, borderRadius: 16, backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_BORDER, alignItems: "center", justifyContent: "center", paddingHorizontal: 12, paddingVertical: 8, zIndex: 5 },
+  earningsLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
+  earningsAmount: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.accent },
 
   findingPill: { position: "absolute", alignSelf: "center", backgroundColor: GLASS, borderRadius: 24, paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1, borderColor: GLASS_BORDER, zIndex: 5 },
   findingPillText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.white },
