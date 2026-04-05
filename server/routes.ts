@@ -6,8 +6,9 @@ import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users } from "../shared/schema";
+import { users, livenessSessions, rides as ridesTable } from "../shared/schema";
 import { desc, eq, sql } from "drizzle-orm";
+import { uploadLivenessPhoto, getAdminSignedUrl } from "./livenessPhotoService";
 import {
   calculatePrice,
   calculateChauffeurEarnings,
@@ -259,6 +260,8 @@ async function runMockSelfieQualityCheck(selfieUrl: string): Promise<{
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+
+  const SUPABASE_SERVICE_KEY_CONFIGURED = !!(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   // Attach optional auth to all API requests (doesn't break legacy endpoints)
   app.use("/api", authOptional);
@@ -3260,6 +3263,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("[Webhook Error]", error.message);
       return res.sendStatus(200);
+    }
+  });
+
+  // ── Route Selection (driver picks fastest/shortest/less-traffic after accepting) ──
+  app.post("/api/rides/:id/select-route", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { selectedRouteId, distanceKm, fare, currency = "ZAR" } = req.body;
+
+      if (distanceKm == null || fare == null || !selectedRouteId) {
+        return res.status(400).json({ error: "selectedRouteId, distanceKm and fare are required" });
+      }
+
+      const ride = await storage.getRide(id);
+      if (!ride) return res.status(404).json({ error: "Ride not found" });
+
+      // Only the assigned chauffeur or admin may select the route
+      const authedReq = req as AuthedRequest;
+      const chauffeur = authedReq.auth?.role !== "admin"
+        ? await storage.getChauffeur(ride.chauffeurId ?? "")
+        : null;
+      if (chauffeur && chauffeur.userId !== authedReq.auth!.sub) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      await storage.updateRide(id, {
+        selectedRouteId,
+        selectedRouteDistanceKm: distanceKm,
+        actualFare: fare,
+        routeCurrency: currency,
+        routeSelectedAt: new Date(),
+      } as any);
+
+      // Notify ride room so client sees the locked fare
+      io.to(`ride:${id}`).emit("route_confirmed", {
+        rideId: id,
+        selectedRouteId,
+        distanceKm,
+        fare,
+        currency,
+        confirmedAt: new Date().toISOString(),
+      });
+
+      return res.json({ success: true, rideId: id, lockedFare: fare });
+    } catch (err: any) {
+      console.error("[select-route]", err.message);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ── Upload liveness / cash-selfie photo (base64 → Supabase Storage) ──
+  app.post("/api/rides/:id/upload-photo", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { photoBase64, photoType, sessionId, mimeType } = req.body;
+      if (!photoBase64 || !photoType) {
+        return res.status(400).json({ error: "photoBase64 and photoType are required" });
+      }
+      if (!SUPABASE_SERVICE_KEY_CONFIGURED) {
+        return res.status(503).json({ error: "Photo storage not configured (SUPABASE_SERVICE_ROLE_KEY missing)" });
+      }
+      const result = await uploadLivenessPhoto({
+        sessionId: sessionId || id,
+        userId: (req as AuthedRequest).auth!.sub,
+        rideId: id,
+        photoBase64,
+        mimeType: mimeType || "image/jpeg",
+        photoType,
+      });
+      if (!result.success) {
+        return res.status(500).json({ error: result.error || "Upload failed" });
+      }
+      return res.json({ success: true, storagePath: result.storagePath, publicUrl: result.publicUrl });
+    } catch (err: any) {
+      console.error("[upload-photo]", err.message);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ── Admin: get signed photo URLs for a ride ────────────────────────────────
+  app.get("/api/admin/rides/:id/photos", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const ride = await storage.getRide(req.params.id);
+      if (!ride) return res.status(404).json({ error: "Ride not found" });
+
+      const livSessions = await db
+        .select()
+        .from(livenessSessions)
+        .where(eq(livenessSessions.rideId, req.params.id))
+        .orderBy(desc(livenessSessions.createdAt));
+
+      const SUPABASE_URL = process.env.SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
+      const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+      async function makeSignedUrl(bucket: "ride-photos" | "liveness-photos", path: string | null | undefined): Promise<string | null> {
+        if (!path || !SERVICE_KEY) return null;
+        // Strip full URL to bare path if needed
+        const bare = path.replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/(?:public|sign)\/[^/]+\//, "");
+        return getAdminSignedUrl(bucket, bare);
+      }
+
+      const cashSelfieSignedUrl = await makeSignedUrl("ride-photos", ride.cashSelfieUrl);
+
+      const livPhotos = await Promise.all(
+        livSessions.map(async (sess) => ({
+          id: sess.id,
+          status: sess.status,
+          score: sess.score,
+          provider: sess.provider,
+          verifiedAt: sess.verifiedAt,
+          signedUrl: await makeSignedUrl("liveness-photos", sess.verifiedPhotoUrl ?? sess.selfieUrl),
+        }))
+      );
+
+      return res.json({
+        rideId: req.params.id,
+        cashSelfie: {
+          storagePath: ride.cashSelfieUrl,
+          signedUrl: cashSelfieSignedUrl,
+        },
+        livenessPhotos: livPhotos,
+      });
+    } catch (err: any) {
+      console.error("[admin/rides/photos]", err.message);
+      return res.status(500).json({ error: "Internal server error" });
     }
   });
 

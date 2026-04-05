@@ -162,6 +162,26 @@ tbody tr:hover { background:#fafaf8; }
 .doc-link { display:block; margin-top:8px; font-size:12px; color:var(--blue); font-weight:600; text-decoration:none; }
 .doc-link:hover { text-decoration:underline; }
 
+/* PHOTO VIEWER (Trip Details) */
+.photo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; margin-top:14px; }
+.photo-card { border:1px solid var(--border); border-radius:10px; padding:14px; background:var(--surface); display:flex; flex-direction:column; gap:10px; }
+.photo-card-head { display:flex; justify-content:space-between; align-items:center; }
+.photo-card-label { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.4px; }
+.photo-img-box { width:100%; height:160px; border-radius:8px; overflow:hidden; background:#f0f0ee; display:flex; align-items:center; justify-content:center; position:relative; }
+.photo-img-box img { width:100%; height:100%; object-fit:cover; cursor:zoom-in; }
+.photo-placeholder { color:var(--muted-light); font-size:12px; text-align:center; padding:8px; }
+.photo-meta { color:var(--muted); font-size:11px; line-height:1.5; }
+.photo-actions { display:flex; gap:8px; }
+.photo-actions button { flex:1; padding:7px 4px; border-radius:7px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); font-family:var(--font); }
+.photo-btn-view { background:var(--bg); color:var(--text); }
+.photo-btn-dl { background:var(--black); color:#fff; border-color:var(--black); }
+/* Lightbox */
+#photo-lightbox { position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:3000; display:none; align-items:center; justify-content:center; flex-direction:column; gap:12px; }
+#photo-lightbox.open { display:flex; }
+#photo-lightbox img { max-width:92vw; max-height:82vh; object-fit:contain; border-radius:8px; }
+#photo-lightbox-label { color:#fff; font-size:14px; font-weight:600; }
+#photo-lightbox-close { position:absolute; top:18px; right:22px; background:none; border:none; color:#fff; font-size:22px; cursor:pointer; }
+
 /* TOAST */
 .toast { position:fixed; bottom:24px; right:24px; background:var(--black); color:#fff; border-radius:10px; padding:12px 18px; font-size:13px; font-weight:500; z-index:2000; transform:translateY(70px); opacity:0; transition:all 0.3s ease; display:flex; align-items:center; gap:8px; box-shadow:var(--shadow-md); }
 .toast.show { transform:translateY(0); opacity:1; }
@@ -407,6 +427,13 @@ tbody tr:hover { background:#fafaf8; }
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Photo Lightbox -->
+<div id="photo-lightbox" onclick="closeLightbox()">
+  <button id="photo-lightbox-close" onclick="closeLightbox()">✕</button>
+  <div id="photo-lightbox-label"></div>
+  <img id="photo-lightbox-img" src="" alt="" onclick="event.stopPropagation()"/>
+</div>
 
 <script>
 const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -719,19 +746,104 @@ async function loadRides() {
       return;
     }
     document.getElementById('rides-table').innerHTML = `<table>
-      <thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th></tr></thead>
+      <thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th><th></th></tr></thead>
       <tbody>${rides.map(r => `<tr>
-        <td style="max-width:180px;font-size:13px">${r.pickupAddress || 'N/A'}</td>
-        <td style="max-width:180px;font-size:13px">${r.dropoffAddress || 'N/A'}</td>
+        <td style="max-width:160px;font-size:13px">${r.pickupAddress || 'N/A'}</td>
+        <td style="max-width:160px;font-size:13px">${r.dropoffAddress || 'N/A'}</td>
         <td><span class="badge ${r.status === 'trip_completed' ? 'b-completed' : r.status === 'cancelled' ? 'b-cancelled' : 'b-pending'}">${r.status || '—'}</span></td>
-        <td style="font-weight:700;color:var(--green)">R ${r.price || '—'}</td>
+        <td style="font-weight:700;color:var(--green)">R ${r.actualFare != null ? r.actualFare : (r.price || '—')}</td>
         <td><span class="badge ${r.paymentStatus === 'paid' ? 'b-paid' : 'b-pending'}">${r.paymentStatus || 'unpaid'}</span></td>
         <td style="font-size:12px">${fmt(r.createdAt)}</td>
+        <td><button class="btn-sm btn-detail" onclick="rideDetail('${r.id}','${(r.pickupAddress||'').replace(/'/g,"\\'").slice(0,30)}')">📷 Photos</button></td>
       </tr>`).join('')}
       </tbody></table>`;
   } catch(e) {
     document.getElementById('rides-table').innerHTML = emptyState('❌', 'Failed to load rides', e.message);
   }
+}
+
+// ── RIDE PHOTO DETAIL (TripPhotoViewer) ──
+async function rideDetail(rideId, label) {
+  openModal('Trip Photos', label || rideId);
+  document.getElementById('m-body').innerHTML = '<div class="loading">Loading photos…</div>';
+  document.getElementById('m-foot').innerHTML = '';
+  try {
+    const res = await apiFetch(`/api/admin/rides/${rideId}/photos`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    function statusColor(s) {
+      return ({verified:'#22c55e',passed:'#22c55e',failed:'#ef4444',pending:'#f59e0b',expired:'#6b7280'})[s?.toLowerCase()] || '#6b7280';
+    }
+
+    function photoCard(label, signedUrl, badge, meta) {
+      const imgHtml = signedUrl
+        ? `<img src="${signedUrl}" alt="${label}" onclick="openLightbox('${signedUrl}','${label.replace(/'/g,"\\'")}')"/>`
+        : `<div class="photo-placeholder">${badge?.text === 'NONE' ? '— No photo —' : '⚠ Not available'}</div>`;
+      const badgeHtml = badge
+        ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:${statusColor(badge.text)}22;color:${statusColor(badge.text)};border:1px solid ${statusColor(badge.text)}44">${badge.text}</span>`
+        : '';
+      const metaHtml = meta ? `<div class="photo-meta">${meta}</div>` : '';
+      const dlBtn = signedUrl
+        ? `<button class="photo-btn-dl" onclick="downloadPhoto('${signedUrl}','${label.replace(/'/g,"\\'")}')">⬇ Download</button>`
+        : '';
+      const viewBtn = signedUrl
+        ? `<button class="photo-btn-view" onclick="openLightbox('${signedUrl}','${label.replace(/'/g,"\\'")}')">🔍 View Full</button>`
+        : '';
+      return `<div class="photo-card">
+        <div class="photo-card-head"><span class="photo-card-label">${label}</span>${badgeHtml}</div>
+        <div class="photo-img-box">${imgHtml}</div>
+        ${metaHtml}
+        <div class="photo-actions">${viewBtn}${dlBtn}</div>
+      </div>`;
+    }
+
+    const cards = [];
+
+    // Cash payment selfie
+    const cashBadge = data.cashSelfie?.signedUrl ? { text: 'UPLOADED' } : { text: 'NONE' };
+    cards.push(photoCard('Cash Payment Selfie', data.cashSelfie?.signedUrl, cashBadge, null));
+
+    // Liveness photos
+    if (data.livenessPhotos?.length) {
+      data.livenessPhotos.forEach((ph, i) => {
+        const lbl = `Liveness Photo${data.livenessPhotos.length > 1 ? ` #${i+1}` : ''}`;
+        const badge = { text: (ph.status || 'UNKNOWN').toUpperCase() };
+        const metaParts = [
+          ph.score != null ? `Score: ${(ph.score * 100).toFixed(0)}%` : null,
+          ph.provider ? `Provider: ${ph.provider}` : null,
+          ph.verifiedAt ? `Verified: ${new Date(ph.verifiedAt).toLocaleString()}` : null,
+        ].filter(Boolean).join('  ·  ');
+        cards.push(photoCard(lbl, ph.signedUrl, badge, metaParts));
+      });
+    } else {
+      cards.push(photoCard('Liveness Photo', null, { text: 'NOT REQUIRED' }, null));
+    }
+
+    document.getElementById('m-body').innerHTML = `
+      <h3 style="font-size:14px;font-weight:700;margin:0 0 4px;color:var(--text)">📷 Trip Photos</h3>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Ride ID: ${rideId}</p>
+      <div class="photo-grid">${cards.join('')}</div>`;
+  } catch(e) {
+    document.getElementById('m-body').innerHTML = `<div style="color:var(--red);font-size:13px">Failed to load photos: ${e.message}</div>`;
+  }
+}
+
+function openLightbox(url, label) {
+  document.getElementById('photo-lightbox-img').src = url;
+  document.getElementById('photo-lightbox-label').textContent = label;
+  document.getElementById('photo-lightbox').classList.add('open');
+}
+function closeLightbox() {
+  document.getElementById('photo-lightbox').classList.remove('open');
+  document.getElementById('photo-lightbox-img').src = '';
+}
+function downloadPhoto(url, label) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = label.replace(/\s+/g,'_') + '.jpg';
+  a.target = '_blank';
+  a.click();
 }
 
 // ── PAYMENTS ──

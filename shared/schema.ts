@@ -76,8 +76,43 @@ export const rides = pgTable("rides", {
   vehicleType: text("vehicle_type"),
   paymentMethod: text("payment_method").default("cash"),
   paymentStatus: text("payment_status").notNull().default("unpaid"), // unpaid|pending|paid|failed|refunded
+  cashSelfieUrl: text("cash_selfie_url"),
+  livenessStatus: text("liveness_status").default("not_required"), // not_required|pending|passed|failed
+  livenessProvider: text("liveness_provider"),
+  livenessSessionId: varchar("liveness_session_id"),
+  livenessScore: real("liveness_score"),
+  livenessVerifiedAt: timestamp("liveness_verified_at"),
+  // Route selection (set when driver picks fastest/shortest/least-traffic route)
+  selectedRouteId: text("selected_route_id"),
+  selectedRouteDistanceKm: real("selected_route_distance_km"),
+  actualFare: real("actual_fare"),
+  routeCurrency: text("route_currency").default("ZAR"),
+  routeSelectedAt: timestamp("route_selected_at"),
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
+});
+
+export const livenessSessions = pgTable("liveness_sessions", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id),
+  provider: text("provider").notNull().default("mock"),
+  status: text("status").notNull().default("pending"), // pending|passed|failed|expired
+  challengeCode: text("challenge_code").notNull(),
+  selfieUrl: text("selfie_url"),
+  verifiedPhotoUrl: text("verified_photo_url"),
+  rideId: varchar("ride_id"),
+  score: real("score"),
+  attempts: integer("attempts").notNull().default(0),
+  maxAttempts: integer("max_attempts").notNull().default(3),
+  errorReason: text("error_reason"),
+  expiresAt: timestamp("expires_at").notNull(),
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const payments = pgTable("payments", {
@@ -305,6 +340,26 @@ export const insertRideSchema = createInsertSchema(rides).pick({
   dropoffAddress: true,
   vehicleType: true,
   paymentMethod: true,
+  cashSelfieUrl: true,
+  livenessStatus: true,
+  livenessProvider: true,
+  livenessSessionId: true,
+  livenessScore: true,
+  livenessVerifiedAt: true,
+});
+
+export const insertLivenessSessionSchema = createInsertSchema(livenessSessions).pick({
+  userId: true,
+  provider: true,
+  status: true,
+  challengeCode: true,
+  selfieUrl: true,
+  score: true,
+  attempts: true,
+  maxAttempts: true,
+  errorReason: true,
+  expiresAt: true,
+  verifiedAt: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -312,6 +367,7 @@ export type User = typeof users.$inferSelect;
 export type Chauffeur = typeof chauffeurs.$inferSelect;
 export type Ride = typeof rides.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
+export type LivenessSession = typeof livenessSessions.$inferSelect;
 export type DriverApplication = typeof driverApplications.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type RideRating = typeof rideRatings.$inferSelect;
