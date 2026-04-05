@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import * as Notifications from "expo-notifications";
 import {
   View,
   Text,
@@ -18,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import Constants from "expo-constants";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -59,6 +59,8 @@ export default function ChauffeurDashboard() {
   const seenRideIdRef = useRef<string | null>(null);
   const menuAnim = useRef(new Animated.Value(0)).current;
   const incomingSlide = useRef(new Animated.Value(300)).current;
+  const notificationsRef = useRef<any>(null);
+  const isExpoGoAndroid = Platform.OS === "android" && Constants.appOwnership === "expo";
 
   // ─── Sound ───────────────────────────────────────────────────────────────
   async function playTripAlert() {
@@ -87,6 +89,16 @@ export default function ChauffeurDashboard() {
   }
 
   useEffect(() => { return () => { soundRef.current?.unloadAsync(); }; }, []);
+
+  useEffect(() => {
+    if (Platform.OS === "web" || isExpoGoAndroid) return;
+    try {
+      // Load notifications only where supported to avoid Expo Go Android runtime errors.
+      notificationsRef.current = require("expo-notifications");
+    } catch {
+      notificationsRef.current = null;
+    }
+  }, [isExpoGoAndroid]);
 
   // ─── Menu animation ───────────────────────────────────────────────────────
   function toggleMenu() {
@@ -191,9 +203,11 @@ export default function ChauffeurDashboard() {
 
   // ─── Push notifications ───────────────────────────────────────────────────
   useEffect(() => {
-    if (!chauffeur?.id || Platform.OS === "web") return;
+    if (!chauffeur?.id || Platform.OS === "web" || isExpoGoAndroid) return;
     (async () => {
       try {
+        const Notifications = notificationsRef.current;
+        if (!Notifications) return;
         if (Platform.OS === "android") {
           await Notifications.setNotificationChannelAsync("ride-alerts", {
             name: "Ride Alerts",
@@ -214,10 +228,12 @@ export default function ChauffeurDashboard() {
         console.log("[push] Registration:", e.message);
       }
     })();
-  }, [chauffeur?.id]);
+  }, [chauffeur?.id, isExpoGoAndroid]);
 
   useEffect(() => {
-    if (Platform.OS === "web") return;
+    if (Platform.OS === "web" || isExpoGoAndroid) return;
+    const Notifications = notificationsRef.current;
+    if (!Notifications) return;
     Notifications.setNotificationHandler({
       handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false }),
     });
@@ -226,7 +242,7 @@ export default function ChauffeurDashboard() {
       if (data?.type === "ride:new") setIsOnline(true);
     });
     return () => sub.remove();
-  }, []);
+  }, [isExpoGoAndroid]);
 
   // ─── Polling fallback ─────────────────────────────────────────────────────
   useEffect(() => {
