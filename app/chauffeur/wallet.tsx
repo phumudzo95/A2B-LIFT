@@ -129,6 +129,11 @@ export default function ChauffeurWalletScreen() {
     .reduce((sum, e) => sum + e.amount, 0);
   const totalWithdrawn = withdrawals.filter(w => w.status === "completed").reduce((sum, w) => sum + w.amount, 0);
 
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const todayEarnings = earnings
+    .filter(e => e.createdAt && new Date(e.createdAt) >= todayStart)
+    .reduce((sum, e) => sum + e.amount, 0);
+
   if (loading) {
     return (
       <View style={[styles.container, { alignItems: "center", justifyContent: "center" }]}>
@@ -146,6 +151,11 @@ export default function ChauffeurWalletScreen() {
           <Text style={styles.earningsLabel}>Card Earnings (Withdrawable)</Text>
           <Text style={styles.earningsAmount}>R {earnings_total.toFixed(2)}</Text>
           <View style={styles.statsRow}>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>R {todayEarnings.toFixed(2)}</Text>
+              <Text style={styles.statLabel}>Today</Text>
+            </View>
+            <View style={styles.statDivider} />
             <View style={styles.stat}>
               <Text style={styles.statValue}>R {totalEarned.toFixed(2)}</Text>
               <Text style={styles.statLabel}>Total Earned</Text>

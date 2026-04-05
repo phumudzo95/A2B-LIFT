@@ -51,6 +51,7 @@ export default function ChauffeurDashboard() {
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [availableTrips, setAvailableTrips] = useState<any[]>([]);
   const [acceptingTripId, setAcceptingTripId] = useState<string | null>(null);
+  const [completedTrip, setCompletedTrip] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -449,6 +450,7 @@ export default function ChauffeurDashboard() {
       const res = await apiRequest("PUT", `/api/rides/${currentRide.id}/status`, { status });
       const ride = await res.json();
       if (status === "trip_completed" || status === "cancelled") {
+        if (status === "trip_completed") setCompletedTrip(currentRide);
         setCurrentRide(null);
         setRoutePolyline(null);
         setRideEta(null);
@@ -615,11 +617,11 @@ export default function ChauffeurDashboard() {
         <Text style={styles.pillText}>{isOnline ? "Online" : "Offline"}</Text>
       </Pressable>
 
-      {/* ─── Today's earnings (top-right) ─── */}
-      <View style={[styles.floatEarnings, { top: insets.top + 16 }]}>
+      {/* ─── Today's earnings (top-right, taps to wallet) ─── */}
+      <Pressable style={[styles.floatEarnings, { top: insets.top + 16 }]} onPress={() => router.push("/chauffeur/wallet")}>
         <Text style={styles.earningsLabel}>Today</Text>
         <Text style={styles.earningsAmount}>R {todayEarnings}</Text>
-      </View>
+      </Pressable>
 
       {/* ─── Available trips panel ─── */}
       {isOnline && !currentRide && !incomingRide && (
@@ -757,6 +759,40 @@ export default function ChauffeurDashboard() {
       {/* ─── Menu backdrop ─── */}
       {menuOpen && <Pressable style={StyleSheet.absoluteFill} onPress={closeMenu} />}
 
+      {/* ─── Post-trip payment popup ─── */}
+      <Modal visible={!!completedTrip} transparent animationType="fade" onRequestClose={() => setCompletedTrip(null)}>
+        <View style={styles.payPopupOverlay}>
+          <View style={styles.payPopupCard}>
+            {completedTrip?.paymentMethod === "cash" ? (
+              <>
+                <View style={styles.payPopupIconWrap}>
+                  <Text style={{ fontSize: 40 }}>💵</Text>
+                </View>
+                <Text style={styles.payPopupTitle}>Collect Cash Payment</Text>
+                <Text style={styles.payPopupAmount}>R {completedTrip?.price ?? "0"}</Text>
+                <Text style={styles.payPopupBody}>
+                  Please collect {completedTrip?.clientFirstName ? `R ${completedTrip.price} from ${completedTrip.clientFirstName}` : `R ${completedTrip?.price} from the client`} before they exit the vehicle.
+                </Text>
+              </>
+            ) : (
+              <>
+                <View style={styles.payPopupIconWrap}>
+                  <Text style={{ fontSize: 40 }}>💳</Text>
+                </View>
+                <Text style={styles.payPopupTitle}>Card Payment</Text>
+                <Text style={styles.payPopupAmount}>R {completedTrip?.price ?? "0"}</Text>
+                <Text style={styles.payPopupBody}>
+                  Payment of R {completedTrip?.price} will be processed via card. Your earnings will reflect in your wallet shortly.
+                </Text>
+              </>
+            )}
+            <Pressable style={styles.payPopupBtn} onPress={() => setCompletedTrip(null)}>
+              <Text style={styles.payPopupBtnText}>Got it</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* ─── Animated menu items ─── */}
       {menuItems.map((item, i) => {
         const translateY = menuAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -(i + 1) * 62] });
@@ -889,4 +925,14 @@ const styles = StyleSheet.create({
   navStepMeta: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
   navStepDist: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.success },
   navStepCount: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted },
+
+  // Post-trip payment popup
+  payPopupOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
+  payPopupCard: { width: "100%", backgroundColor: "#1a1a2e", borderRadius: 24, padding: 28, alignItems: "center", gap: 12, borderWidth: 1, borderColor: GLASS_BORDER },
+  payPopupIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.07)", alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  payPopupTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white, textAlign: "center" },
+  payPopupAmount: { fontSize: 36, fontFamily: "Inter_700Bold", color: Colors.accent, textAlign: "center" },
+  payPopupBody: { fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", lineHeight: 22 },
+  payPopupBtn: { marginTop: 8, backgroundColor: Colors.accent, borderRadius: 14, paddingHorizontal: 40, paddingVertical: 14, width: "100%", alignItems: "center" },
+  payPopupBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.primary },
 });
