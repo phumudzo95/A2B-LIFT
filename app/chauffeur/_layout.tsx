@@ -66,6 +66,7 @@ function ClassicTabLayout() {
         options={{
           title: "Dashboard",
           tabBarIcon: ({ color, size }) => <Ionicons name="speedometer" size={size} color={color} />,
+          tabBarStyle: { display: "none" },
         }}
       />
       <Tabs.Screen

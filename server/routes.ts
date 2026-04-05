@@ -298,13 +298,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       io.emit("ride:new", data);
     });
 
-    socket.on("ride:accept", async (data) => {
-      io.emit("ride:accepted", data);
-    });
-
-    socket.on("ride:status", async (data) => {
-      io.emit("ride:statusUpdate", data);
-    });
+    // ride:accept and ride:status are intentionally NOT relayed from socket events.
+    // All ride state changes must go through the authenticated REST endpoints
+    // (PUT /api/rides/:id/accept and PUT /api/rides/:id/status) which enforce
+    // ownership checks and emit the socket events server-side after validation.
 
     socket.on("chat:message", async (data) => {
       io.emit("chat:newMessage", data);
@@ -1872,23 +1869,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/rides/:id/accept", async (req: Request, res: Response) => {
+  app.put("/api/rides/:id/accept", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
       const { chauffeurId } = req.body;
-      const ride = await storage.getRide(req.params.id);
-      if (!ride) return res.status(404).json({ message: "Ride not found" });
-      // Allow accepting rides that are "requested" or "searching"
-      if (ride.status !== "requested" && ride.status !== "searching") {
-        return res.status(400).json({ message: "Ride already assigned" });
+      if (!chauffeurId) return res.status(400).json({ message: "chauffeurId is required" });
+
+      // Verify the authenticated user actually owns this chauffeur profile
+      const chauffeur = await storage.getChauffeur(chauffeurId);
+      if (!chauffeur || chauffeur.userId !== req.auth!.sub) {
+        return res.status(403).json({ message: "Forbidden: chauffeur mismatch" });
       }
-      const updated = await storage.updateRide(req.params.id, {
-        chauffeurId,
-        status: "chauffeur_assigned",
-      });
+
+      // Atomic accept — returns undefined if another driver already claimed the ride
+      const updated = await storage.acceptRideAtomic(req.params.id, chauffeurId);
+      if (!updated) {
+        return res.status(409).json({ message: "Ride already assigned to another driver" });
+      }
+
       io.emit("ride:accepted", updated);
-      if (ride.clientId) {
+      if (updated.clientId) {
         await storage.createNotification({
-          userId: ride.clientId,
+          userId: updated.clientId,
           title: "Driver Assigned",
           body: "Your premium chauffeur has been assigned and is on the way.",
           type: "ride",
@@ -1900,12 +1901,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/rides/:id/status", async (req: Request, res: Response) => {
+  app.put("/api/rides/:id/status", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
       const { status } = req.body;
 
+      // Verify caller is a party to this ride (chauffeur or rider)
+      const existingRide = await storage.getRide(req.params.id);
+      if (!existingRide) return res.status(404).json({ message: "Ride not found" });
+
+      const callerUser = await storage.getUser(req.auth!.sub);
+      if (!callerUser) return res.status(403).json({ message: "Forbidden" });
+
+      const isRider = existingRide.clientId === callerUser.id;
+      let isChauffeur = false;
+      if (existingRide.chauffeurId) {
+        const ch = await storage.getChauffeur(existingRide.chauffeurId);
+        isChauffeur = ch?.userId === callerUser.id;
+      }
+      // Admins bypass ownership check
+      const isAdmin = callerUser.role === "admin";
+      if (!isRider && !isChauffeur && !isAdmin) {
+        return res.status(403).json({ message: "Forbidden: not a party to this ride" });
+      }
+
       // For cancellations, capture the pre-update ride first so we can refund
-      const rideBeforeUpdate = status === "cancelled" ? await storage.getRide(req.params.id) : null;
+      const rideBeforeUpdate = status === "cancelled" ? existingRide : null;
 
       const ride = await storage.updateRide(req.params.id, {
         status,

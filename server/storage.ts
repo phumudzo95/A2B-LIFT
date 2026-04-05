@@ -87,6 +87,9 @@ export interface IStorage {
   createRide(data: any): Promise<Ride>;
   getRide(id: string): Promise<Ride | undefined>;
   updateRide(id: string, data: Partial<Ride>): Promise<Ride | undefined>;
+  /** Atomically accepts a ride only if it is still in "requested" or "searching" status.
+   *  Returns the updated ride, or undefined if the ride was already taken (race condition guard). */
+  acceptRideAtomic(rideId: string, chauffeurId: string): Promise<Ride | undefined>;
   getRidesByClient(clientId: string): Promise<Ride[]>;
   getRidesByChauffeur(chauffeurId: string): Promise<Ride[]>;
   getActiveRides(): Promise<Ride[]>;
@@ -330,6 +333,22 @@ export class DatabaseStorage implements IStorage {
       .where(eq(rides.id, id))
       .returning();
     return ride;
+  }
+
+  /** Atomically accepts a ride — the UPDATE only fires when the ride is still in an
+   *  acceptable state, preventing two drivers from claiming the same trip. */
+  async acceptRideAtomic(rideId: string, chauffeurId: string): Promise<Ride | undefined> {
+    const [ride] = await db
+      .update(rides)
+      .set({ chauffeurId, status: "chauffeur_assigned" })
+      .where(
+        and(
+          eq(rides.id, rideId),
+          sql`${rides.status} IN ('requested', 'searching')`
+        )
+      )
+      .returning();
+    return ride; // undefined means another driver already grabbed it
   }
 
   async getRidesByClient(clientId: string): Promise<Ride[]> {
