@@ -3076,13 +3076,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: 18,
     overflow: "hidden",
-    minHeight: 280,
+    height: 220,
     alignItems: "center",
     justifyContent: "center",
   },
   livenessPreviewImg: {
     width: "100%",
-    height: 320,
+    height: 220,
   },
   livenessPlaceholder: {
     alignItems: "center",
@@ -3101,10 +3101,10 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   livenessActions: {
-    marginTop: "auto",
+    marginTop: 16,
     gap: 10,
-    paddingBottom: 20,
-    paddingTop: 12,
+    paddingBottom: 24,
+    paddingTop: 4,
   },
   livenessBtnSecondary: {
     backgroundColor: Colors.surface,
