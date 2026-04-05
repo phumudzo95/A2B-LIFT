@@ -1532,6 +1532,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Convert any ISO string timestamps sent by the client to Date objects
+      // (Drizzle's node-postgres adapter requires Date, not string, for timestamp columns)
+      if (rideData.livenessVerifiedAt && typeof rideData.livenessVerifiedAt === "string") {
+        (rideData as any).livenessVerifiedAt = new Date(rideData.livenessVerifiedAt);
+      }
+
       // Always create the ride with "searching" status
       const ride = await storage.createRide({
         ...rideData,

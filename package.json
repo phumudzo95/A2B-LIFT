@@ -9,6 +9,7 @@
     "expo:static:build": "npx expo export --platform web --output-dir static-build",
     "build": "npm run server:build",
     "start": "npm run server:prod",
+    "expo:go": "node /Users/mac/A2B-LIFT/node_modules/expo/bin/cli start --lan /Users/mac/A2B-LIFT",
     "db:push": "drizzle-kit push",
     "build:prod": "npm run expo:static:build && npm run server:build"
   },
