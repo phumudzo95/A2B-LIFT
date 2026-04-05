@@ -2222,6 +2222,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Polling fallback: returns the nearest unassigned searching ride for a driver.
   // Used by the driver app when the socket event was missed.
+  // All nearby searching rides (for driver trip list panel)
+  app.get("/api/rides/available/:chauffeurId", async (req: Request, res: Response) => {
+    try {
+      const chauffeur = await storage.getChauffeur(req.params.chauffeurId);
+      if (!chauffeur || !chauffeur.isOnline || !chauffeur.isApproved) {
+        return res.json([]);
+      }
+      const allRides = await storage.getAllRides();
+      const searching = allRides.filter((r) => r.status === "searching");
+      if (!searching.length) return res.json([]);
+
+      let candidates = searching;
+      if (chauffeur.lat && chauffeur.lng) {
+        candidates = searching
+          .map((r) => ({
+            ...r,
+            distKm: haversine(
+              Number(chauffeur.lat), Number(chauffeur.lng),
+              parseFloat(r.pickupLat as any), parseFloat(r.pickupLng as any)
+            ),
+          }))
+          .filter((r: any) => r.distKm <= 15)
+          .sort((a: any, b: any) => a.distKm - b.distKm) as typeof searching;
+      }
+
+      // Enrich with client first name
+      const enriched = await Promise.all(
+        candidates.slice(0, 10).map(async (r: any) => {
+          try {
+            const client = await storage.getUser(r.clientId);
+            const firstName = client?.name ? client.name.split(" ")[0] : "Rider";
+            return { ...r, clientFirstName: firstName };
+          } catch {
+            return { ...r, clientFirstName: "Rider" };
+          }
+        })
+      );
+
+      return res.json(enriched);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/rides/chauffeur-pending/:chauffeurId", async (req: Request, res: Response) => {
     try {
       const chauffeur = await storage.getChauffeur(req.params.chauffeurId);

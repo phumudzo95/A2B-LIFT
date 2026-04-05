@@ -13,6 +13,7 @@ import {
   Linking,
   Animated,
   Dimensions,
+  ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -48,6 +49,8 @@ export default function ChauffeurDashboard() {
   const [rideEta, setRideEta] = useState<{ distanceText: string; durationText: string; distanceKm: number; durationMin: number } | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [todayEarnings, setTodayEarnings] = useState(0);
+  const [availableTrips, setAvailableTrips] = useState<any[]>([]);
+  const [acceptingTripId, setAcceptingTripId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -234,6 +237,26 @@ export default function ChauffeurDashboard() {
     return () => clearInterval(poll);
   }, [isOnline, chauffeur?.isApproved, chauffeur?.id, currentRide, incomingRide]);
 
+  // ─── Available trips list polling ─────────────────────────────────────────
+  useEffect(() => {
+    if (!isOnline || !chauffeur?.isApproved || !chauffeur?.id) {
+      setAvailableTrips([]);
+      return;
+    }
+    async function fetchAvailable() {
+      if (currentRide || incomingRide) { setAvailableTrips([]); return; }
+      try {
+        const res = await apiRequest("GET", `/api/rides/available/${chauffeur!.id}`);
+        if (!res.ok) return;
+        const trips = await res.json();
+        if (Array.isArray(trips)) setAvailableTrips(trips);
+      } catch {}
+    }
+    fetchAvailable();
+    const poll = setInterval(fetchAvailable, 8000);
+    return () => clearInterval(poll);
+  }, [isOnline, chauffeur?.isApproved, chauffeur?.id, currentRide, incomingRide]);
+
   // ─── Auto-advance nav step ────────────────────────────────────────────────
   useEffect(() => {
     if (!myLocation || navSteps.length === 0) return;
@@ -393,6 +416,32 @@ export default function ChauffeurDashboard() {
   }
 
   function declineRide() { setIncomingRide(null); setRideEta(null); }
+
+  async function acceptTripFromList(trip: any) {
+    if (!chauffeur || acceptingTripId) return;
+    setAcceptingTripId(trip.id);
+    try {
+      const res = await apiRequest("PUT", `/api/rides/${trip.id}/accept`, { chauffeurId: chauffeur.id });
+      if (res.status === 409) {
+        Alert.alert("Too Late", "This ride was already taken by another driver.");
+        setAvailableTrips((prev) => prev.filter((t) => t.id !== trip.id));
+        return;
+      }
+      const ride = await res.json();
+      // carry over clientFirstName from list data
+      ride.clientFirstName = trip.clientFirstName;
+      setCurrentRide(ride);
+      setAvailableTrips([]);
+      setIncomingRide(null);
+      if (ride.pickupLat && ride.pickupLng) fetchDriverRoute(parseFloat(ride.pickupLat), parseFloat(ride.pickupLng));
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowNavModal(true);
+    } catch {
+      Alert.alert("Error", "Could not accept this ride. It may have been taken.");
+    } finally {
+      setAcceptingTripId(null);
+    }
+  }
 
   async function updateRideStatus(status: string) {
     if (!currentRide) return;
@@ -572,10 +621,54 @@ export default function ChauffeurDashboard() {
         <Text style={styles.earningsAmount}>R {todayEarnings}</Text>
       </View>
 
-      {/* ─── "Finding trips" pill ─── */}
+      {/* ─── Available trips panel ─── */}
       {isOnline && !currentRide && !incomingRide && (
-        <View style={[styles.findingPill, { bottom: insets.bottom + 90 }]}>
-          <Text style={styles.findingPillText}>Finding trips</Text>
+        <View style={[styles.tripsPanel, { bottom: insets.bottom + 80 }]}>
+          <View style={styles.tripsPanelHeader}>
+            <Ionicons name="search" size={14} color={Colors.accent} />
+            <Text style={styles.tripsPanelTitle}>
+              {availableTrips.length > 0
+                ? `${availableTrips.length} trip${availableTrips.length > 1 ? "s" : ""} available`
+                : "Searching for trips..."}
+            </Text>
+            {availableTrips.length === 0 && <ActivityIndicator size="small" color={Colors.accent} style={{ marginLeft: 4 }} />}
+          </View>
+          {availableTrips.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tripsScroll} contentContainerStyle={styles.tripsScrollContent}>
+              {availableTrips.map((trip) => (
+                <View key={trip.id} style={styles.tripCard}>
+                  <View style={styles.tripCardTop}>
+                    <View style={styles.tripClientRow}>
+                      <Ionicons name="person-circle-outline" size={16} color={Colors.accent} />
+                      <Text style={styles.tripClientName}>{trip.clientFirstName || "Rider"}</Text>
+                    </View>
+                    {trip.price && <Text style={styles.tripPrice}>R {trip.price}</Text>}
+                  </View>
+                  <View style={styles.tripAddrRow}>
+                    <View style={styles.dotGreen} />
+                    <Text style={styles.tripAddrText} numberOfLines={1}>{trip.pickupAddress || "Pickup"}</Text>
+                  </View>
+                  <View style={styles.tripAddrRow}>
+                    <View style={styles.dotRed} />
+                    <Text style={styles.tripAddrText} numberOfLines={1}>{trip.dropoffAddress || "Dropoff"}</Text>
+                  </View>
+                  {trip.distKm != null && (
+                    <Text style={styles.tripDist}>{trip.distKm.toFixed(1)} km away</Text>
+                  )}
+                  <Pressable
+                    style={[styles.tripAcceptBtn, acceptingTripId === trip.id && { opacity: 0.6 }]}
+                    onPress={() => acceptTripFromList(trip)}
+                    disabled={!!acceptingTripId}
+                  >
+                    {acceptingTripId === trip.id
+                      ? <ActivityIndicator size="small" color={Colors.primary} />
+                      : <Text style={styles.tripAcceptBtnText}>Accept</Text>
+                    }
+                  </Pressable>
+                </View>
+              ))}
+            </ScrollView>
+          )}
         </View>
       )}
 
@@ -587,6 +680,12 @@ export default function ChauffeurDashboard() {
             <Text style={styles.rideCardTitle}>{rideStatusLabel}</Text>
             {rideEta && <Text style={styles.etaText}>{rideEta.durationText} · {rideEta.distanceText}</Text>}
           </View>
+          {currentRide.clientFirstName && (
+            <View style={styles.addrRow}>
+              <Ionicons name="person-outline" size={13} color={Colors.textMuted} />
+              <Text style={[styles.addrText, { color: Colors.white }]}>{currentRide.clientFirstName}</Text>
+            </View>
+          )}
           <View style={styles.addrRow}>
             <View style={styles.dotGreen} />
             <Text style={styles.addrText} numberOfLines={1}>{currentRide.pickupAddress || "Pickup"}</Text>
@@ -597,7 +696,7 @@ export default function ChauffeurDashboard() {
           </View>
           {currentRide.price && <Text style={styles.priceText}>R {currentRide.price}</Text>}
           <View style={styles.rideActions}>
-            <Pressable style={styles.rideSecBtn} onPress={() => router.push({ pathname: "/chauffeur/chat", params: { rideId: currentRide.id, riderName: currentRide.clientName || "Rider" } })}>
+            <Pressable style={styles.rideSecBtn} onPress={() => router.push({ pathname: "/chauffeur/chat", params: { rideId: currentRide.id, riderName: currentRide.clientFirstName || currentRide.clientName || "Rider" } })}>
               <Ionicons name="chatbubble-outline" size={15} color={Colors.white} />
               <Text style={styles.rideSecBtnText}>Message</Text>
             </Pressable>
@@ -629,7 +728,9 @@ export default function ChauffeurDashboard() {
           <>
             <View style={styles.incomingHeader}>
               <Ionicons name="flash" size={18} color={Colors.warning} />
-              <Text style={styles.incomingTitle}>New Ride Request</Text>
+              <Text style={styles.incomingTitle}>
+                {incomingRide.clientFirstName ? `Pickup: ${incomingRide.clientFirstName}` : "New Ride Request"}
+              </Text>
               {incomingRide.price && <Text style={styles.incomingPrice}>R {incomingRide.price}</Text>}
             </View>
             <View style={styles.addrRow}>
@@ -717,6 +818,23 @@ const styles = StyleSheet.create({
 
   findingPill: { position: "absolute", alignSelf: "center", backgroundColor: GLASS, borderRadius: 24, paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1, borderColor: GLASS_BORDER, zIndex: 5 },
   findingPillText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.white },
+
+  // Available trips panel
+  tripsPanel: { position: "absolute", left: 0, right: 76, backgroundColor: GLASS, borderRadius: 20, borderWidth: 1, borderColor: GLASS_BORDER, overflow: "hidden", zIndex: 5 },
+  tripsPanelHeader: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: GLASS_BORDER },
+  tripsPanelTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.white, flex: 1 },
+  tripsScroll: { maxHeight: 170 },
+  tripsScrollContent: { flexDirection: "row", gap: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  tripCard: { width: 170, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 12, gap: 6, borderWidth: 1, borderColor: GLASS_BORDER },
+  tripCardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  tripClientRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  tripClientName: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.white },
+  tripPrice: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.accent },
+  tripAddrRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  tripAddrText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
+  tripDist: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
+  tripAcceptBtn: { marginTop: 4, backgroundColor: Colors.white, borderRadius: 10, paddingVertical: 9, alignItems: "center" },
+  tripAcceptBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.primary },
 
   // Bottom cards
   bottomCard: { position: "absolute", left: 16, right: 76, backgroundColor: GLASS, borderRadius: 20, padding: 16, gap: 10, borderWidth: 1, borderColor: GLASS_BORDER, zIndex: 5 },
