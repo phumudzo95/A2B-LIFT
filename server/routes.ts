@@ -848,14 +848,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/chauffeurs/:id/push-token", requireAuth, async (req: Request, res: Response) => {
+  app.put("/api/chauffeurs/:id/push-token", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
       const { pushToken } = req.body;
-      const authedReq = req as AuthedRequest;
       // Verify the chauffeur belongs to the authenticated user
       const chauffeur = await storage.getChauffeur(req.params.id);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
-      if (chauffeur.userId !== authedReq.user.id && authedReq.user.role !== "admin") {
+      if (chauffeur.userId !== req.auth!.sub && req.auth!.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       await storage.updateChauffeur(req.params.id, { pushToken });

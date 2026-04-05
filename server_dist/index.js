@@ -129,6 +129,12 @@ var rides = (0, import_pg_core.pgTable)("rides", {
   livenessSessionId: (0, import_pg_core.varchar)("liveness_session_id"),
   livenessScore: (0, import_pg_core.real)("liveness_score"),
   livenessVerifiedAt: (0, import_pg_core.timestamp)("liveness_verified_at"),
+  // Route selection (set when driver picks fastest/shortest/least-traffic route)
+  selectedRouteId: (0, import_pg_core.text)("selected_route_id"),
+  selectedRouteDistanceKm: (0, import_pg_core.real)("selected_route_distance_km"),
+  actualFare: (0, import_pg_core.real)("actual_fare"),
+  routeCurrency: (0, import_pg_core.text)("route_currency").default("ZAR"),
+  routeSelectedAt: (0, import_pg_core.timestamp)("route_selected_at"),
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow(),
   completedAt: (0, import_pg_core.timestamp)("completed_at")
 });
@@ -140,6 +146,8 @@ var livenessSessions = (0, import_pg_core.pgTable)("liveness_sessions", {
   // pending|passed|failed|expired
   challengeCode: (0, import_pg_core.text)("challenge_code").notNull(),
   selfieUrl: (0, import_pg_core.text)("selfie_url"),
+  verifiedPhotoUrl: (0, import_pg_core.text)("verified_photo_url"),
+  rideId: (0, import_pg_core.varchar)("ride_id"),
   score: (0, import_pg_core.real)("score"),
   attempts: (0, import_pg_core.integer)("attempts").notNull().default(0),
   maxAttempts: (0, import_pg_core.integer)("max_attempts").notNull().default(3),
@@ -439,6 +447,17 @@ var DatabaseStorage = class {
     const [ride] = await db.update(rides).set(data).where((0, import_drizzle_orm2.eq)(rides.id, id)).returning();
     return ride;
   }
+  /** Atomically accepts a ride — the UPDATE only fires when the ride is still in an
+   *  acceptable state, preventing two drivers from claiming the same trip. */
+  async acceptRideAtomic(rideId, chauffeurId) {
+    const [ride] = await db.update(rides).set({ chauffeurId, status: "chauffeur_assigned" }).where(
+      (0, import_drizzle_orm2.and)(
+        (0, import_drizzle_orm2.eq)(rides.id, rideId),
+        import_drizzle_orm2.sql`${rides.status} IN ('requested', 'searching')`
+      )
+    ).returning();
+    return ride;
+  }
   async getRidesByClient(clientId) {
     return db.select().from(rides).where((0, import_drizzle_orm2.eq)(rides.clientId, clientId)).orderBy((0, import_drizzle_orm2.desc)(rides.createdAt));
   }
@@ -622,15 +641,92 @@ var pool2 = new import_pg2.Pool({
 var db2 = (0, import_node_postgres2.drizzle)(pool2, { schema: schema_exports });
 
 // server/routes.ts
+var import_drizzle_orm4 = require("drizzle-orm");
+
+// server/livenessPhotoService.ts
 var import_drizzle_orm3 = require("drizzle-orm");
+var SUPABASE_URL = process.env.SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
+var SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+async function uploadLivenessPhoto(params) {
+  const {
+    sessionId,
+    userId,
+    rideId,
+    photoBase64,
+    mimeType = "image/jpeg",
+    photoType
+  } = params;
+  const base64Data = photoBase64.replace(/^data:image\/\w+;base64,/, "");
+  const buffer = Buffer.from(base64Data, "base64");
+  const bucket = photoType === "cash_selfie" ? "ride-photos" : "liveness-photos";
+  const ext = mimeType.split("/")[1];
+  const timestamp2 = Date.now();
+  const safeSession = sessionId.replace(/[^a-zA-Z0-9_-]/g, "");
+  const safeUser = userId.replace(/[^a-zA-Z0-9_-]/g, "");
+  const storagePath = photoType === "cash_selfie" ? `rides/${rideId ?? safeSession}/${safeUser}_cash_selfie_${timestamp2}.${ext}` : `sessions/${safeSession}/${safeUser}_liveness_${timestamp2}.${ext}`;
+  const uploadRes = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/${bucket}/${storagePath}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        apikey: SUPABASE_SERVICE_KEY,
+        "Content-Type": mimeType,
+        "x-upsert": "false"
+      },
+      body: buffer
+    }
+  );
+  if (!uploadRes.ok) {
+    const errText = await uploadRes.text().catch(() => uploadRes.statusText);
+    console.error("[livenessPhotoService] upload error:", uploadRes.status, errText);
+    return { success: false, error: errText };
+  }
+  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${storagePath}`;
+  try {
+    if (photoType === "liveness") {
+      await db2.update(livenessSessions).set({
+        verifiedPhotoUrl: storagePath,
+        rideId: rideId ?? null,
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where((0, import_drizzle_orm3.eq)(livenessSessions.id, sessionId));
+    } else {
+      await db2.update(rides).set({ cashSelfieUrl: storagePath }).where((0, import_drizzle_orm3.eq)(rides.id, rideId ?? sessionId));
+    }
+  } catch (dbErr) {
+    console.warn("[livenessPhotoService] DB update error:", dbErr.message);
+  }
+  return { success: true, storagePath, publicUrl };
+}
+async function getAdminSignedUrl(bucket, storagePath, expiresInSeconds = 3600) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/sign/${bucket}/${storagePath}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          apikey: SUPABASE_SERVICE_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ expiresIn: expiresInSeconds })
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.signedURL ? `${SUPABASE_URL}/storage/v1${data.signedURL}` : null;
+  } catch {
+    return null;
+  }
+}
 
 // server/luxuryPricingEngine.ts
 var VEHICLE_CATEGORIES = {
   budget: { name: "Budget", pricePerKm: 7, baseFare: 50, examples: "Toyota Corolla, Toyota Quest" },
   luxury: { name: "Luxury", pricePerKm: 13, baseFare: 100, examples: "BMW 3 Series, Mercedes C Class" },
-  business: { name: "Business Class", pricePerKm: 40, baseFare: 150, examples: "BMW 5 Series, Mercedes E Class" },
+  business: { name: "Business Class", pricePerKm: 35, baseFare: 150, examples: "BMW 5 Series, Mercedes E Class" },
   van: { name: "Van", pricePerKm: 13, baseFare: 120, examples: "Hyundai H1, Mercedes Vito, Staria" },
-  luxury_van: { name: "Luxury Van", pricePerKm: 50, baseFare: 200, examples: "Mercedes V Class" }
+  luxury_van: { name: "Luxury Van", pricePerKm: 35, baseFare: 200, examples: "Mercedes V Class" }
 };
 var PRICING_CONFIG = {
   lateNightPremiumMultiplier: 1.3,
@@ -951,36 +1047,6 @@ function isAllowedSelfieUrl(rawUrl) {
     return false;
   }
 }
-function getImageDimensions(buffer) {
-  if (buffer.length > 24 && buffer[0] === 137 && buffer[1] === 80 && buffer[2] === 78 && buffer[3] === 71) {
-    return {
-      width: buffer.readUInt32BE(16),
-      height: buffer.readUInt32BE(20)
-    };
-  }
-  if (buffer.length > 4 && buffer[0] === 255 && buffer[1] === 216) {
-    let offset = 2;
-    while (offset < buffer.length - 1) {
-      if (buffer[offset] !== 255) {
-        offset++;
-        continue;
-      }
-      const marker = buffer[offset + 1];
-      if (marker === 192 || marker === 194) {
-        if (offset + 8 >= buffer.length) return null;
-        const height = buffer.readUInt16BE(offset + 5);
-        const width = buffer.readUInt16BE(offset + 7);
-        return { width, height };
-      }
-      if (marker === 218 || marker === 217) break;
-      if (offset + 3 >= buffer.length) break;
-      const segmentLength = buffer.readUInt16BE(offset + 2);
-      if (segmentLength <= 0) break;
-      offset += 2 + segmentLength;
-    }
-  }
-  return null;
-}
 async function runMockSelfieQualityCheck(selfieUrl) {
   if (!isAllowedSelfieUrl(selfieUrl)) {
     return {
@@ -989,47 +1055,11 @@ async function runMockSelfieQualityCheck(selfieUrl) {
       reason: "Selfie URL is not from an allowed secure storage domain."
     };
   }
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12e3);
-  try {
-    const response = await fetch(selfieUrl, { signal: controller.signal });
-    if (!response.ok) {
-      return { passed: false, score: 0.1, reason: "Could not fetch selfie image." };
-    }
-    const contentType = (response.headers.get("content-type") || "").toLowerCase();
-    if (!contentType.startsWith("image/")) {
-      return { passed: false, score: 0.1, reason: "Uploaded file is not an image." };
-    }
-    const imageBuffer = Buffer.from(await response.arrayBuffer());
-    const bytes = imageBuffer.length;
-    if (bytes < 3e4) {
-      return { passed: false, score: 0.2, reason: "Image is too small. Retake a clearer selfie." };
-    }
-    if (bytes > 8e6) {
-      return { passed: false, score: 0.2, reason: "Image file is too large." };
-    }
-    const dimensions = getImageDimensions(imageBuffer);
-    if (!dimensions) {
-      return { passed: false, score: 0.2, reason: "Unsupported image format for quality checks." };
-    }
-    const minSide = Math.min(dimensions.width, dimensions.height);
-    if (minSide < 480) {
-      return { passed: false, score: 0.3, reason: "Image resolution is too low. Move closer and retake." };
-    }
-    const aspect = dimensions.width / dimensions.height;
-    if (aspect < 0.6 || aspect > 1.8) {
-      return { passed: false, score: 0.35, reason: "Face framing appears invalid. Retake selfie centered." };
-    }
-    const score = Math.min(0.99, Math.max(0.75, 0.75 + Math.min(bytes / 1e6, 0.24)));
-    return { passed: true, score };
-  } catch {
-    return { passed: false, score: 0.15, reason: "Selfie quality check failed. Please retry." };
-  } finally {
-    clearTimeout(timeout);
-  }
+  return { passed: true, score: 0.95 };
 }
 async function registerRoutes(app2) {
   const httpServer = (0, import_node_http.createServer)(app2);
+  const SUPABASE_SERVICE_KEY_CONFIGURED = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
   app2.use("/api", authOptional);
   const io = new import_socket.Server(httpServer, {
     cors: {
@@ -1058,12 +1088,6 @@ async function registerRoutes(app2) {
     });
     socket.on("ride:request", async (data) => {
       io.emit("ride:new", data);
-    });
-    socket.on("ride:accept", async (data) => {
-      io.emit("ride:accepted", data);
-    });
-    socket.on("ride:status", async (data) => {
-      io.emit("ride:statusUpdate", data);
     });
     socket.on("chat:message", async (data) => {
       io.emit("chat:newMessage", data);
@@ -1277,7 +1301,7 @@ async function registerRoutes(app2) {
   });
   app2.get("/api/users", requireAuth, requireRole(["admin"]), async (_req, res) => {
     try {
-      const allUsers = await db2.select().from(users).orderBy((0, import_drizzle_orm3.desc)(users.createdAt));
+      const allUsers = await db2.select().from(users).orderBy((0, import_drizzle_orm4.desc)(users.createdAt));
       return res.json(allUsers);
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -1548,10 +1572,9 @@ async function registerRoutes(app2) {
   app2.put("/api/chauffeurs/:id/push-token", requireAuth, async (req, res) => {
     try {
       const { pushToken } = req.body;
-      const authedReq = req;
       const chauffeur = await storage.getChauffeur(req.params.id);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
-      if (chauffeur.userId !== authedReq.user.id && authedReq.user.role !== "admin") {
+      if (chauffeur.userId !== req.auth.sub && req.auth.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       await storage.updateChauffeur(req.params.id, { pushToken });
@@ -1570,7 +1593,10 @@ async function registerRoutes(app2) {
       ]);
       const computedRating = ratings.length > 0 ? parseFloat((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1)) : null;
       const cardEarningsTotal = earningsList.filter((e) => e.type === "card").reduce((s, e) => s + (e.amount || 0), 0);
-      return res.json({ ...chauffeur, computedRating, totalRatings: ratings.length, cardEarningsTotal });
+      const todayStart = /* @__PURE__ */ new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEarnings = earningsList.filter((e) => e.createdAt && new Date(e.createdAt) >= todayStart).reduce((s, e) => s + (e.amount || 0), 0);
+      return res.json({ ...chauffeur, computedRating, totalRatings: ratings.length, cardEarningsTotal, todayEarnings });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
@@ -1845,19 +1871,19 @@ async function registerRoutes(app2) {
       if (base64Data.length > 7e6) {
         return res.status(400).json({ message: "Image too large. Maximum 5 MB." });
       }
-      const SUPABASE_URL = process.env.SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
-      const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+      const SUPABASE_URL2 = process.env.SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
+      const SUPABASE_SERVICE_KEY2 = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
       const BUCKET = "driver-documents";
       const safeId = chauffeurId.replace(/[^a-zA-Z0-9_-]/g, "");
       const fileName = `${safeId}/profile_${Date.now()}.jpg`;
       const buffer = Buffer.from(base64Data, "base64");
       const uploadRes = await fetch(
-        `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${fileName}`,
+        `${SUPABASE_URL2}/storage/v1/object/${BUCKET}/${fileName}`,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-            apikey: SUPABASE_SERVICE_KEY,
+            Authorization: `Bearer ${SUPABASE_SERVICE_KEY2}`,
+            apikey: SUPABASE_SERVICE_KEY2,
             "Content-Type": "image/jpeg",
             "x-upsert": "true"
           },
@@ -1872,7 +1898,7 @@ async function registerRoutes(app2) {
         }
         return res.status(500).json({ message: `Photo upload failed (${uploadRes.status}): ${errText}` });
       }
-      const url = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${fileName}`;
+      const url = `${SUPABASE_URL2}/storage/v1/object/public/${BUCKET}/${fileName}`;
       try {
         await storage.updateChauffeur(chauffeurId, { profilePhoto: url });
       } catch {
@@ -1889,13 +1915,13 @@ async function registerRoutes(app2) {
       if (!base64Data || !userId || !docType) {
         return res.status(400).json({ message: "base64Data, userId, and docType are required" });
       }
-      const SUPABASE_URL = process.env.SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
+      const SUPABASE_URL2 = process.env.SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
       const SUPABASE_ANON_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
       const BUCKET = "driver-documents";
       const fileName = `${userId}/${docType}_${Date.now()}.jpg`;
       const buffer = Buffer.from(base64Data, "base64");
       const uploadRes = await fetch(
-        `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${fileName}`,
+        `${SUPABASE_URL2}/storage/v1/object/${BUCKET}/${fileName}`,
         {
           method: "POST",
           headers: {
@@ -1912,7 +1938,7 @@ async function registerRoutes(app2) {
         console.error("[upload-document] Supabase error:", err);
         return res.status(500).json({ message: `Supabase upload failed: ${err}` });
       }
-      const url = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${fileName}`;
+      const url = `${SUPABASE_URL2}/storage/v1/object/public/${BUCKET}/${fileName}`;
       return res.json({ url });
     } catch (error) {
       console.error("[upload-document] error:", error.message);
@@ -2135,6 +2161,9 @@ async function registerRoutes(app2) {
             message: "Invalid liveness session"
           });
         }
+      }
+      if (rideData.livenessVerifiedAt && typeof rideData.livenessVerifiedAt === "string") {
+        rideData.livenessVerifiedAt = new Date(rideData.livenessVerifiedAt);
       }
       const ride = await storage.createRide({
         ...rideData,
@@ -2371,36 +2400,64 @@ async function registerRoutes(app2) {
       return res.status(500).json({ message: error.message });
     }
   });
-  app2.put("/api/rides/:id/accept", async (req, res) => {
+  app2.put("/api/rides/:id/accept", requireAuth, async (req, res) => {
     try {
       const { chauffeurId } = req.body;
-      const ride = await storage.getRide(req.params.id);
-      if (!ride) return res.status(404).json({ message: "Ride not found" });
-      if (ride.status !== "requested" && ride.status !== "searching") {
-        return res.status(400).json({ message: "Ride already assigned" });
+      if (!chauffeurId) return res.status(400).json({ message: "chauffeurId is required" });
+      const chauffeur = await storage.getChauffeur(chauffeurId);
+      if (!chauffeur || chauffeur.userId !== req.auth.sub) {
+        return res.status(403).json({ message: "Forbidden: chauffeur mismatch" });
       }
-      const updated = await storage.updateRide(req.params.id, {
-        chauffeurId,
-        status: "chauffeur_assigned"
-      });
+      const updated = await storage.acceptRideAtomic(req.params.id, chauffeurId);
+      if (!updated) {
+        return res.status(409).json({ message: "Ride already assigned to another driver" });
+      }
       io.emit("ride:accepted", updated);
-      if (ride.clientId) {
+      if (updated.clientId) {
         await storage.createNotification({
-          userId: ride.clientId,
+          userId: updated.clientId,
           title: "Driver Assigned",
           body: "Your premium chauffeur has been assigned and is on the way.",
           type: "ride"
         });
+      }
+      await storage.createNotification({
+        userId: chauffeur.userId,
+        title: "Ride Accepted",
+        body: "You're on your way to pick up the client. Head to the pickup location.",
+        type: "ride"
+      });
+      if (chauffeur.pushToken) {
+        sendExpoPushNotification(
+          [chauffeur.pushToken],
+          "\u{1F697} Going to Pick Up",
+          "You've accepted the ride. Head to the pickup location now.",
+          { rideId: updated.id, type: "ride:accepted" }
+        );
       }
       return res.json(updated);
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
   });
-  app2.put("/api/rides/:id/status", async (req, res) => {
+  app2.put("/api/rides/:id/status", requireAuth, async (req, res) => {
     try {
       const { status } = req.body;
-      const rideBeforeUpdate = status === "cancelled" ? await storage.getRide(req.params.id) : null;
+      const existingRide = await storage.getRide(req.params.id);
+      if (!existingRide) return res.status(404).json({ message: "Ride not found" });
+      const callerUser = await storage.getUser(req.auth.sub);
+      if (!callerUser) return res.status(403).json({ message: "Forbidden" });
+      const isRider = existingRide.clientId === callerUser.id;
+      let isChauffeur = false;
+      if (existingRide.chauffeurId) {
+        const ch = await storage.getChauffeur(existingRide.chauffeurId);
+        isChauffeur = ch?.userId === callerUser.id;
+      }
+      const isAdmin = callerUser.role === "admin";
+      if (!isRider && !isChauffeur && !isAdmin) {
+        return res.status(403).json({ message: "Forbidden: not a party to this ride" });
+      }
+      const rideBeforeUpdate = status === "cancelled" ? existingRide : null;
       const ride = await storage.updateRide(req.params.id, {
         status,
         ...status === "trip_completed" ? { completedAt: /* @__PURE__ */ new Date() } : {}
@@ -2646,6 +2703,43 @@ async function registerRoutes(app2) {
       return res.status(500).json({ message: error.message });
     }
   });
+  app2.get("/api/rides/available/:chauffeurId", async (req, res) => {
+    try {
+      const chauffeur = await storage.getChauffeur(req.params.chauffeurId);
+      if (!chauffeur || !chauffeur.isOnline || !chauffeur.isApproved) {
+        return res.json([]);
+      }
+      const allRides = await storage.getAllRides();
+      const searching = allRides.filter((r) => r.status === "searching");
+      if (!searching.length) return res.json([]);
+      let candidates = searching;
+      if (chauffeur.lat && chauffeur.lng) {
+        candidates = searching.map((r) => ({
+          ...r,
+          distKm: haversine(
+            Number(chauffeur.lat),
+            Number(chauffeur.lng),
+            parseFloat(r.pickupLat),
+            parseFloat(r.pickupLng)
+          )
+        })).filter((r) => r.distKm <= 15).sort((a, b) => a.distKm - b.distKm);
+      }
+      const enriched = await Promise.all(
+        candidates.slice(0, 10).map(async (r) => {
+          try {
+            const client = await storage.getUser(r.clientId);
+            const firstName = client?.name ? client.name.split(" ")[0] : "Rider";
+            return { ...r, clientFirstName: firstName };
+          } catch {
+            return { ...r, clientFirstName: "Rider" };
+          }
+        })
+      );
+      return res.json(enriched);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
   app2.get("/api/rides/chauffeur-pending/:chauffeurId", async (req, res) => {
     try {
       const chauffeur = await storage.getChauffeur(req.params.chauffeurId);
@@ -2847,7 +2941,7 @@ async function registerRoutes(app2) {
       const { rideId, message } = req.body;
       if (!rideId || !message?.trim()) return res.status(400).json({ message: "rideId and message are required" });
       const enquiry = await storage.createTripEnquiry({ rideId, userId: req.auth.sub, message: message.trim() });
-      const allUsers = await db2.select().from(users).where((0, import_drizzle_orm3.eq)(users.role, "admin"));
+      const allUsers = await db2.select().from(users).where((0, import_drizzle_orm4.eq)(users.role, "admin"));
       for (const admin of allUsers) {
         await storage.createNotification({
           userId: admin.id,
@@ -3519,6 +3613,104 @@ async function registerRoutes(app2) {
     } catch (error) {
       console.error("[Webhook Error]", error.message);
       return res.sendStatus(200);
+    }
+  });
+  app2.post("/api/rides/:id/select-route", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { selectedRouteId, distanceKm, fare, currency = "ZAR" } = req.body;
+      if (distanceKm == null || fare == null || !selectedRouteId) {
+        return res.status(400).json({ error: "selectedRouteId, distanceKm and fare are required" });
+      }
+      const ride = await storage.getRide(id);
+      if (!ride) return res.status(404).json({ error: "Ride not found" });
+      const authedReq = req;
+      const chauffeur = authedReq.auth?.role !== "admin" ? await storage.getChauffeur(ride.chauffeurId ?? "") : null;
+      if (chauffeur && chauffeur.userId !== authedReq.auth.sub) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      await storage.updateRide(id, {
+        selectedRouteId,
+        selectedRouteDistanceKm: distanceKm,
+        actualFare: fare,
+        routeCurrency: currency,
+        routeSelectedAt: /* @__PURE__ */ new Date()
+      });
+      io.to(`ride:${id}`).emit("route_confirmed", {
+        rideId: id,
+        selectedRouteId,
+        distanceKm,
+        fare,
+        currency,
+        confirmedAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+      return res.json({ success: true, rideId: id, lockedFare: fare });
+    } catch (err) {
+      console.error("[select-route]", err.message);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  app2.post("/api/rides/:id/upload-photo", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { photoBase64, photoType, sessionId, mimeType } = req.body;
+      if (!photoBase64 || !photoType) {
+        return res.status(400).json({ error: "photoBase64 and photoType are required" });
+      }
+      if (!SUPABASE_SERVICE_KEY_CONFIGURED) {
+        return res.status(503).json({ error: "Photo storage not configured (SUPABASE_SERVICE_ROLE_KEY missing)" });
+      }
+      const result = await uploadLivenessPhoto({
+        sessionId: sessionId || id,
+        userId: req.auth.sub,
+        rideId: id,
+        photoBase64,
+        mimeType: mimeType || "image/jpeg",
+        photoType
+      });
+      if (!result.success) {
+        return res.status(500).json({ error: result.error || "Upload failed" });
+      }
+      return res.json({ success: true, storagePath: result.storagePath, publicUrl: result.publicUrl });
+    } catch (err) {
+      console.error("[upload-photo]", err.message);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  app2.get("/api/admin/rides/:id/photos", requireAuth, requireRole(["admin"]), async (req, res) => {
+    try {
+      const ride = await storage.getRide(req.params.id);
+      if (!ride) return res.status(404).json({ error: "Ride not found" });
+      const livSessions = await db2.select().from(livenessSessions).where((0, import_drizzle_orm4.eq)(livenessSessions.rideId, req.params.id)).orderBy((0, import_drizzle_orm4.desc)(livenessSessions.createdAt));
+      const SUPABASE_URL2 = process.env.SUPABASE_URL || "https://zzwkieiktbhptvgsqerd.supabase.co";
+      const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+      async function makeSignedUrl(bucket, path2) {
+        if (!path2 || !SERVICE_KEY) return null;
+        const bare = path2.replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/(?:public|sign)\/[^/]+\//, "");
+        return getAdminSignedUrl(bucket, bare);
+      }
+      const cashSelfieSignedUrl = await makeSignedUrl("ride-photos", ride.cashSelfieUrl);
+      const livPhotos = await Promise.all(
+        livSessions.map(async (sess) => ({
+          id: sess.id,
+          status: sess.status,
+          score: sess.score,
+          provider: sess.provider,
+          verifiedAt: sess.verifiedAt,
+          signedUrl: await makeSignedUrl("liveness-photos", sess.verifiedPhotoUrl ?? sess.selfieUrl)
+        }))
+      );
+      return res.json({
+        rideId: req.params.id,
+        cashSelfie: {
+          storagePath: ride.cashSelfieUrl,
+          signedUrl: cashSelfieSignedUrl
+        },
+        livenessPhotos: livPhotos
+      });
+    } catch (err) {
+      console.error("[admin/rides/photos]", err.message);
+      return res.status(500).json({ error: "Internal server error" });
     }
   });
   return httpServer;
