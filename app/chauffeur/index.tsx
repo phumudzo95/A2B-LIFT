@@ -53,6 +53,7 @@ export default function ChauffeurDashboard() {
   const [acceptingTripId, setAcceptingTripId] = useState<string | null>(null);
   const [completedTrip, setCompletedTrip] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [routeAlternatives, setRouteAlternatives] = useState<any[]>([]);
 
   const soundRef = useRef<Audio.Sound | null>(null);
   const seenRideIdRef = useRef<string | null>(null);
@@ -68,12 +69,20 @@ export default function ChauffeurDashboard() {
         await soundRef.current.replayAsync();
       } else {
         const { sound } = await Audio.Sound.createAsync(
-          require("../../assets/trip-alert.mp3"),
-          { shouldPlay: true, volume: 1.0 }
+          require("../../assets/trip-alert.wav"),
+          { shouldPlay: true, volume: 1.0, isLooping: true }
         );
         soundRef.current = sound;
       }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {}
+  }
+
+  async function stopTripAlert() {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+      }
     } catch {}
   }
 
@@ -394,11 +403,27 @@ export default function ChauffeurDashboard() {
         setNavSteps(data.steps);
         setCurrentStepIdx(0);
       }
+      if (Array.isArray(data.alternatives) && data.alternatives.length > 1) {
+        setRouteAlternatives(data.alternatives);
+      } else {
+        setRouteAlternatives([]);
+      }
     } catch {}
+  }
+
+  function selectRoute(alt: any) {
+    setRoutePolyline(alt.polyline);
+    setRideEta({ distanceText: alt.distanceText, durationText: alt.durationText, distanceKm: alt.distanceKm, durationMin: alt.durationMin });
+    if (Array.isArray(alt.steps) && alt.steps.length > 0) {
+      setNavSteps(alt.steps);
+      setCurrentStepIdx(0);
+    }
+    setRouteAlternatives([]);
   }
 
   async function acceptRide() {
     if (!incomingRide || !chauffeur) return;
+    stopTripAlert();
     try {
       const res = await apiRequest("PUT", `/api/rides/${incomingRide.id}/accept`, { chauffeurId: chauffeur.id });
       if (res.status === 409) {
@@ -418,7 +443,7 @@ export default function ChauffeurDashboard() {
     }
   }
 
-  function declineRide() { setIncomingRide(null); setRideEta(null); }
+  function declineRide() { stopTripAlert(); setIncomingRide(null); setRideEta(null); }
 
   async function acceptTripFromList(trip: any) {
     if (!chauffeur || acceptingTripId) return;
@@ -548,6 +573,24 @@ export default function ChauffeurDashboard() {
                 <View style={styles.dotRed} />
                 <Text style={styles.addrText} numberOfLines={1}>{currentRide.dropoffAddress || "Dropoff"}</Text>
               </View>
+            </View>
+          )}
+          {routeAlternatives.length > 1 && (
+            <View style={styles.routeOptionsContainer}>
+              <Text style={styles.routeOptionsTitle}>Choose Route</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 4 }}>
+                {routeAlternatives.map((alt, i) => (
+                  <Pressable
+                    key={i}
+                    style={[styles.routeOptionCard, routePolyline === alt.polyline && styles.routeOptionCardSelected]}
+                    onPress={() => selectRoute(alt)}
+                  >
+                    <Ionicons name={i === 0 ? "speedometer-outline" : i === 1 ? "navigate-outline" : "analytics-outline"} size={18} color={routePolyline === alt.polyline ? Colors.primary : Colors.accent} />
+                    <Text style={[styles.routeOptionName, routePolyline === alt.polyline && { color: Colors.primary }]}>{alt.summary || `Route ${i + 1}`}</Text>
+                    <Text style={[styles.routeOptionDetail, routePolyline === alt.polyline && { color: Colors.primary }]}>{alt.durationText} · {alt.distanceText}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
             </View>
           )}
           <View style={{ flex: 1 }}>
@@ -773,7 +816,7 @@ export default function ChauffeurDashboard() {
                 <Text style={styles.payPopupTitle}>Collect Cash Payment</Text>
                 <Text style={styles.payPopupAmount}>R {completedTrip?.price ?? "0"}</Text>
                 <Text style={styles.payPopupBody}>
-                  Please collect {completedTrip?.clientFirstName ? `R ${completedTrip.price} from ${completedTrip.clientFirstName}` : `R ${completedTrip?.price} from the client`} before they exit the vehicle.
+                  Please collect R {completedTrip?.price} from {completedTrip?.clientFirstName || "the client"} before they exit the vehicle.
                 </Text>
               </>
             ) : (
@@ -933,8 +976,16 @@ const styles = StyleSheet.create({
   payPopupCard: { width: "100%", backgroundColor: "#1a1a2e", borderRadius: 24, padding: 28, alignItems: "center", gap: 12, borderWidth: 1, borderColor: GLASS_BORDER },
   payPopupIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.07)", alignItems: "center", justifyContent: "center", marginBottom: 4 },
   payPopupTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white, textAlign: "center" },
-  payPopupAmount: { fontSize: 36, fontFamily: "Inter_700Bold", color: Colors.accent, textAlign: "center" },
+  payPopupAmount: { fontSize: 36, fontFamily: "Inter_700Bold", color: Colors.white, textAlign: "center" },
   payPopupBody: { fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", lineHeight: 22 },
-  payPopupBtn: { marginTop: 8, backgroundColor: Colors.accent, borderRadius: 14, paddingHorizontal: 40, paddingVertical: 14, width: "100%", alignItems: "center" },
+  payPopupBtn: { marginTop: 8, backgroundColor: Colors.white, borderRadius: 14, paddingHorizontal: 40, paddingVertical: 14, width: "100%", alignItems: "center" },
   payPopupBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.primary },
+
+  // Route options
+  routeOptionsContainer: { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  routeOptionsTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textMuted, marginBottom: 8 },
+  routeOptionCard: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: "center", gap: 4, minWidth: 120 },
+  routeOptionCardSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  routeOptionName: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.white, textAlign: "center" },
+  routeOptionDetail: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center" },
 });

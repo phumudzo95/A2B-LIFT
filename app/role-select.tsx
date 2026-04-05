@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
 
@@ -31,7 +32,7 @@ export default function RoleSelectScreen() {
         <Animated.View entering={FadeInDown.duration(600).delay(200)}>
           <Pressable
             style={({ pressed }) => [styles.roleCard, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
-            onPress={() => router.push("/client")}
+            onPress={() => { AsyncStorage.setItem("a2b_last_mode", "client"); router.push("/client"); }}
           >
             <View style={styles.roleIconCircle}>
               <Ionicons name="person" size={28} color={Colors.white} />
@@ -47,7 +48,7 @@ export default function RoleSelectScreen() {
         <Animated.View entering={FadeInDown.duration(600).delay(400)}>
           <Pressable
             style={({ pressed }) => [styles.roleCard, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
-            onPress={() => router.push("/chauffeur")}
+            onPress={() => { AsyncStorage.setItem("a2b_last_mode", "chauffeur"); router.push("/chauffeur"); }}
           >
             <View style={[styles.roleIconCircle, { backgroundColor: Colors.surface }]}>
               <Ionicons name="car-sport" size={28} color={Colors.white} />

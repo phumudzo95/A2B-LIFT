@@ -490,28 +490,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(500)
           .json({ message: "Google Maps API key not configured" });
       }
-      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&key=${apiKey}`;
+      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&alternatives=true&key=${apiKey}`;
       const response = await fetch(url);
       const data = (await response.json()) as any;
       if (data.status === "OK" && data.routes?.length > 0) {
-        const route = data.routes[0];
-        const leg = route.legs[0];
-        const steps = (leg.steps || []).map((step: any) => ({
-          instruction: step.html_instructions.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(),
-          distance: step.distance?.text || "",
-          duration: step.duration?.text || "",
-          endLat: step.end_location?.lat,
-          endLng: step.end_location?.lng,
-          maneuver: step.maneuver || "straight",
-        }));
-        return res.json({
-          polyline: route.overview_polyline.points,
-          distanceKm: leg.distance.value / 1000,
-          distanceText: leg.distance.text,
-          durationMin: Math.ceil(leg.duration.value / 60),
-          durationText: leg.duration.text,
-          steps,
-        });
+        const parseRoute = (route: any, idx: number) => {
+          const leg = route.legs[0];
+          const steps = (leg.steps || []).map((step: any) => ({
+            instruction: step.html_instructions.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(),
+            distance: step.distance?.text || "",
+            duration: step.duration?.text || "",
+            endLat: step.end_location?.lat,
+            endLng: step.end_location?.lng,
+            maneuver: step.maneuver || "straight",
+          }));
+          return {
+            polyline: route.overview_polyline.points,
+            distanceKm: leg.distance.value / 1000,
+            distanceText: leg.distance.text,
+            durationMin: Math.ceil(leg.duration.value / 60),
+            durationText: leg.duration.text,
+            summary: route.summary || `Route ${idx + 1}`,
+            steps,
+          };
+        };
+        const primary = parseRoute(data.routes[0], 0);
+        const alternatives = data.routes.map((r: any, i: number) => parseRoute(r, i));
+        return res.json({ ...primary, alternatives });
       }
       return res.status(404).json({ message: "No route found" });
     } catch (error: any) {
@@ -877,13 +882,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? parseFloat((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1))
           : null;
       const cardEarningsTotal = (earningsList as any[])
-        .filter((e: any) => e.type === "card")
+        .filter((e: any) => e.type === "card" || e.type === "wallet")
         .reduce((s: number, e: any) => s + (e.amount || 0), 0);
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const todayEarnings = (earningsList as any[])
-        .filter((e: any) => e.createdAt && new Date(e.createdAt) >= todayStart)
+      // Today's earnings: card/wallet earnings (amount) + cash ride fares (full price collected in hand)
+      const todayCardEarnings = (earningsList as any[])
+        .filter((e: any) => e.createdAt && new Date(e.createdAt) >= todayStart && (e.type === "card" || e.type === "wallet"))
         .reduce((s: number, e: any) => s + (e.amount || 0), 0);
+      // For cash: get today's completed cash rides and sum their prices
+      const chauffeurRides = await storage.getRidesByChauffeur(req.params.id);
+      const todayCashFares = chauffeurRides
+        .filter((r: any) => r.status === "trip_completed" && r.paymentMethod === "cash" && r.completedAt && new Date(r.completedAt) >= todayStart)
+        .reduce((s: number, r: any) => s + (r.price || 0), 0);
+      const todayEarnings = Math.round(todayCardEarnings + todayCashFares);
       return res.json({ ...chauffeur, computedRating, totalRatings: ratings.length, cardEarningsTotal, todayEarnings });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -1559,6 +1571,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...(livenessVerifiedAt ? { livenessVerifiedAt } : {}),
       } as any);
 
+      // Enrich ride with client first name for driver display
+      let clientFirstName = "Rider";
+      try {
+        const clientUser = await storage.getUser(clientId);
+        if (clientUser?.name) clientFirstName = clientUser.name.split(" ")[0];
+      } catch {}
+      const enrichedRide = { ...ride, clientFirstName };
+
       // Send trip only to nearby approved online drivers (within 15 km, sorted by distance)
       const allChauffeurs = await storage.getAllChauffeurs();
       const pickupLat = parseFloat(rideData.pickupLat);
@@ -1581,13 +1601,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const socket of sockets) {
           const socketData = socket.data as any;
           if (socketData?.chauffeurId && nearbyChauffeurs.some(c => c.id === socketData.chauffeurId)) {
-            socket.emit("ride:new", { ...ride, distanceToPickup: nearbyChauffeurs.find(c => c.id === socketData.chauffeurId)?.distKm });
+            socket.emit("ride:new", { ...enrichedRide, distanceToPickup: nearbyChauffeurs.find(c => c.id === socketData.chauffeurId)?.distKm });
             notified++;
           }
         }
         // Fallback: if no sockets matched (drivers not connected via socket), broadcast to all
         if (notified === 0) {
-          io.emit("ride:new", ride);
+          io.emit("ride:new", enrichedRide);
         }
         // Push notification to all nearby drivers (wakes up drivers not in the app)
         const pushTokens = nearbyChauffeurs.map(c => (c as any).pushToken).filter(Boolean);
@@ -1601,7 +1621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         // No nearby drivers — broadcast to all online approved drivers as fallback
-        io.emit("ride:new", ride);
+        io.emit("ride:new", enrichedRide);
         // Push to ALL online approved drivers with tokens
         const allDrivers = (await storage.getAllChauffeurs()).filter(c => c.isOnline && c.isApproved);
         const pushTokens = allDrivers.map(c => (c as any).pushToken).filter(Boolean);

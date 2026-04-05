@@ -8,6 +8,7 @@ import { StatusBar } from "expo-status-bar";
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { SocketProvider } from "@/lib/socket-context";
 
@@ -30,12 +31,22 @@ function AuthGate() {
       pathname === "/role-select";
 
     if (user && isGuestOnly) {
-      // Chauffeurs go straight to their dashboard; everyone else picks a role
-      if (user.role === "chauffeur") {
-        router.replace("/chauffeur");
-      } else {
-        router.replace("/role-select");
-      }
+      // Restore last mode, or default to role-select
+      AsyncStorage.getItem("a2b_last_mode").then(lastMode => {
+        if (lastMode === "client") {
+          router.replace("/client");
+        } else if (lastMode === "chauffeur" || user.role === "chauffeur") {
+          router.replace("/chauffeur");
+        } else {
+          router.replace("/role-select");
+        }
+      }).catch(() => {
+        if (user.role === "chauffeur") {
+          router.replace("/chauffeur");
+        } else {
+          router.replace("/role-select");
+        }
+      });
     } else if (!user && isProtected) {
       // Not logged in but trying to access app — send to landing
       router.replace("/");
