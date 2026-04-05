@@ -262,6 +262,9 @@ tbody tr:hover { background:#fafaf8; }
     <div class="nav-item" onclick="go('payments',this);closeSidebar()">
       <span class="nav-icon">💳</span> Payments
     </div>
+    <div class="nav-item" onclick="go('selfies',this);closeSidebar()">
+      <span class="nav-icon">📸</span> Liveness Selfies
+    </div>
     <div class="nav-item" onclick="go('withdrawals',this);closeSidebar()">
       <span class="nav-icon">🏦</span> Withdrawals
       <span class="nav-badge" id="nb-withdrawals" style="display:none">0</span>
@@ -337,6 +340,13 @@ tbody tr:hover { background:#fafaf8; }
       <div id="pay-summary" class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px"></div>
       <div class="sec-head"><div class="sec-title">Rider Payments</div></div>
       <div class="table-card" id="pay-table"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- LIVENESS SELFIES -->
+    <div class="view" id="view-selfies">
+      <div class="notice">📸 <span>Cash-trip liveness selfies are stored here for review. Admins can open the image full-size and download it for audit purposes.</span></div>
+      <div class="sec-head"><div class="sec-title">Uploaded Liveness Selfies</div></div>
+      <div class="table-card" id="selfies-table"><div class="loading">Loading…</div></div>
     </div>
 
     <!-- WITHDRAWALS -->
@@ -486,8 +496,8 @@ async function doLogout() {
 
 // ── NAV ──
 let curView = 'overview';
-let allChauf = [], allWd = [], allSafe = [], allApps = [], chaufFilter = 'all', wdFilter = 'all', safeFilter = 'all', appsFilter = 'all';
-const VIEW_TITLES = { overview:'Dashboard', chauffeurs:'Chauffeurs', rides:'Rides', payments:'Payments', withdrawals:'Withdrawals', safety:'Safety Reports', users:'All Users' };
+let allChauf = [], allWd = [], allSafe = [], allApps = [], allSelfies = [], chaufFilter = 'all', wdFilter = 'all', safeFilter = 'all', appsFilter = 'all';
+const VIEW_TITLES = { overview:'Dashboard', chauffeurs:'Chauffeurs', rides:'Rides', payments:'Payments', selfies:'Liveness Selfies', withdrawals:'Withdrawals', safety:'Safety Reports', users:'All Users' };
 
 function go(view, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -501,7 +511,7 @@ function go(view, el) {
 }
 
 function loadView() {
-  ({ overview:loadOverview, chauffeurs:loadChauf, rides:loadRides, payments:loadPay, withdrawals:loadWd, safety:loadSafe, users:loadUsers })[curView]?.();
+  ({ overview:loadOverview, chauffeurs:loadChauf, rides:loadRides, payments:loadPay, selfies:loadSelfies, withdrawals:loadWd, safety:loadSafe, users:loadUsers })[curView]?.();
 }
 
 function loadAll() {
@@ -509,6 +519,7 @@ function loadAll() {
   loadChauf();
   loadRides();
   loadPay();
+  loadSelfies();
   loadWd();
   loadSafe();
   loadUsers();
@@ -1158,6 +1169,75 @@ async function loadPay() {
   }
 }
 
+// ── LIVENESS SELFIES ──
+async function loadSelfies() {
+  spin('selfies-table');
+  try {
+    const res = await apiFetch('/api/admin/liveness-selfies');
+    if (!res.ok) throw new Error(res.status);
+    allSelfies = await res.json();
+    if (!Array.isArray(allSelfies) || !allSelfies.length) {
+      document.getElementById('selfies-table').innerHTML = emptyState('📸', 'No selfies yet', 'Cash-trip selfies will appear here after riders complete liveness verification');
+      return;
+    }
+    renderSelfiesTable(allSelfies);
+  } catch(e) {
+    document.getElementById('selfies-table').innerHTML = emptyState('❌', 'Failed to load selfies', e.message);
+  }
+}
+
+function renderSelfiesTable(items) {
+  document.getElementById('selfies-table').innerHTML = `<table>
+    <thead><tr><th>Rider</th><th>Ride</th><th>Liveness</th><th>Fare</th><th>Uploaded</th><th>Actions</th></tr></thead>
+    <tbody>${items.map(item => `<tr>
+      <td>
+        <div style="font-weight:600">${item.riderName || '—'}</div>
+        <div style="font-size:11px;color:var(--muted)">${item.riderEmail || ''}</div>
+        <div style="font-size:11px;color:var(--muted)">Driver: ${item.chauffeurName || 'Unassigned'}</div>
+      </td>
+      <td>
+        <div style="font-size:12px;max-width:220px">${item.pickupAddress || '—'} → ${item.dropoffAddress || '—'}</div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${(item.rideId || '').slice(0, 14)}…</div>
+      </td>
+      <td>
+        <span class="badge ${item.livenessStatus === 'passed' ? 'b-approved' : item.livenessStatus === 'failed' ? 'b-failed' : 'b-pending'}">${item.livenessStatus || 'pending'}</span>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${(item.livenessProvider || 'mock').toUpperCase()}${item.livenessScore ? ' · ' + Number(item.livenessScore).toFixed(2) : ''}</div>
+      </td>
+      <td>
+        <div style="font-weight:700;color:var(--green)">R ${Number(item.price || 0).toFixed(2)}</div>
+        <div style="font-size:11px;color:var(--muted)">${item.paymentMethod || 'cash'} · ${item.paymentStatus || 'unpaid'}</div>
+      </td>
+      <td style="font-size:12px">${fmtFull(item.livenessVerifiedAt || item.createdAt)}</td>
+      <td><div class="action-cell">
+        <button class="btn-sm btn-detail" onclick="viewSelfie('${item.rideId}')">View</button>
+        <a class="btn-sm btn-detail" href="${item.cashSelfieUrl}" target="_blank" download style="text-decoration:none">Download</a>
+      </div></td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function viewSelfie(rideId) {
+  const item = allSelfies.find(x => x.rideId === rideId); if (!item) return;
+  document.getElementById('m-title').textContent = 'Liveness Selfie Review';
+  document.getElementById('m-sub').textContent = `${item.riderName || 'Rider'} · ${item.pickupAddress || 'Unknown pickup'} → ${item.dropoffAddress || 'Unknown dropoff'}`;
+  document.getElementById('m-body').innerHTML = `
+    <div style="display:grid;gap:16px">
+      <img src="${item.cashSelfieUrl}" alt="Liveness selfie" style="width:100%;max-height:420px;object-fit:contain;border:1px solid var(--border);border-radius:10px;background:var(--surface)" />
+      <div class="info-grid">
+        <div class="info-row"><div class="info-label">Rider</div><div class="info-val">${item.riderName || '—'}</div></div>
+        <div class="info-row"><div class="info-label">Driver</div><div class="info-val">${item.chauffeurName || 'Unassigned'}</div></div>
+        <div class="info-row"><div class="info-label">Ride ID</div><div class="info-val" style="font-family:var(--mono);font-size:12px">${item.rideId || '—'}</div></div>
+        <div class="info-row"><div class="info-label">Liveness</div><div class="info-val">${item.livenessStatus || 'pending'}${item.livenessScore ? ' · score ' + Number(item.livenessScore).toFixed(2) : ''}</div></div>
+        <div class="info-row"><div class="info-label">Verified At</div><div class="info-val">${fmtFull(item.livenessVerifiedAt || item.createdAt)}</div></div>
+        <div class="info-row"><div class="info-label">Fare</div><div class="info-val">R ${Number(item.price || 0).toFixed(2)}</div></div>
+      </div>
+    </div>`;
+  document.getElementById('m-foot').innerHTML = `
+    <button class="btn-lg btn-outline" onclick="closeModal()">Close</button>
+    <a class="btn-lg btn-black" href="${item.cashSelfieUrl}" target="_blank" download style="text-decoration:none">Download Selfie</a>`;
+  openModal();
+}
+
 // ── WITHDRAWALS ──
 async function loadWd() {
   spin('wd-table');
@@ -1295,6 +1375,10 @@ function doSearch(q) {
   if (curView === 'chauffeurs') {
     const f = allChauf.filter(c => `${c.userName} ${c.carMake} ${c.vehicleModel} ${c.plateNumber} ${c.carColor}`.toLowerCase().includes(q.toLowerCase()));
     renderChauffeurTable('chauf-table', f, true);
+  }
+  if (curView === 'selfies') {
+    const f = allSelfies.filter(item => `${item.riderName} ${item.riderEmail} ${item.pickupAddress} ${item.dropoffAddress} ${item.rideId}`.toLowerCase().includes(q.toLowerCase()));
+    renderSelfiesTable(f);
   }
 }
 

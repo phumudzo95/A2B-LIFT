@@ -15,6 +15,7 @@ import {
   safetyReports,
   notifications,
   tripEnquiries,
+  livenessSessions,
   savedCards,
   walletTransactions,
   type TripEnquiry,
@@ -33,6 +34,7 @@ import {
   type Notification,
   type SavedCard,
   type WalletTransaction,
+  type LivenessSession,
 } from "../shared/schema";
 
 const dbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
@@ -94,6 +96,15 @@ export interface IStorage {
   getRidesByChauffeur(chauffeurId: string): Promise<Ride[]>;
   getActiveRides(): Promise<Ride[]>;
   getAllRides(): Promise<Ride[]>;
+
+  // Liveness sessions
+  createLivenessSession(data: any): Promise<LivenessSession>;
+  getLivenessSession(id: string): Promise<LivenessSession | undefined>;
+  getLatestPendingLivenessSessionByUser(userId: string): Promise<LivenessSession | undefined>;
+  updateLivenessSession(
+    id: string,
+    data: Partial<LivenessSession>,
+  ): Promise<LivenessSession | undefined>;
 
   // Payments
   createPayment(data: any): Promise<Payment>;
@@ -373,6 +384,42 @@ export class DatabaseStorage implements IStorage {
 
   async getAllRides(): Promise<Ride[]> {
     return db.select().from(rides).orderBy(desc(rides.createdAt));
+  }
+
+  async createLivenessSession(data: any): Promise<LivenessSession> {
+    const [session] = await db.insert(livenessSessions).values(data).returning();
+    return session;
+  }
+
+  async getLivenessSession(id: string): Promise<LivenessSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(livenessSessions)
+      .where(eq(livenessSessions.id, id));
+    return session;
+  }
+
+  async getLatestPendingLivenessSessionByUser(
+    userId: string,
+  ): Promise<LivenessSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(livenessSessions)
+      .where(and(eq(livenessSessions.userId, userId), eq(livenessSessions.status, "pending")))
+      .orderBy(desc(livenessSessions.createdAt));
+    return session;
+  }
+
+  async updateLivenessSession(
+    id: string,
+    data: Partial<LivenessSession>,
+  ): Promise<LivenessSession | undefined> {
+    const [session] = await db
+      .update(livenessSessions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(livenessSessions.id, id))
+      .returning();
+    return session;
   }
 
   async createPayment(data: any): Promise<Payment> {
