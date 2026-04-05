@@ -113,6 +113,150 @@ function getAppBaseUrl(req?: Request): string {
   return "https://api-production-0783.up.railway.app";
 }
 
+function getLivenessProvider(): "mock" | "smile_id" {
+  const raw = (process.env.LIVENESS_PROVIDER || "mock").toLowerCase().trim();
+  return raw === "smile_id" ? "smile_id" : "mock";
+}
+
+function buildChallengeCode(): string {
+  const pool = ["BLINK", "TURN_LEFT", "TURN_RIGHT", "SMILE"];
+  const first = pool[Math.floor(Math.random() * pool.length)];
+  const second = pool[Math.floor(Math.random() * pool.length)];
+  return `${first}-${second}`;
+}
+
+function challengeLabel(code: string): string {
+  const labels: Record<string, string> = {
+    BLINK: "Blink your eyes",
+    TURN_LEFT: "Turn your face left",
+    TURN_RIGHT: "Turn your face right",
+    SMILE: "Give a clear smile",
+  };
+  return code
+    .split("-")
+    .map((part) => labels[part] || part)
+    .join(" then ");
+}
+
+function isAllowedSelfieUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    if (!["https:"].includes(parsed.protocol)) return false;
+
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    if (supabaseUrl) {
+      const supabaseHost = new URL(supabaseUrl).host;
+      if (parsed.host === supabaseHost) return true;
+    }
+
+    // Allow known Supabase storage domains when explicit env is missing.
+    return parsed.host.endsWith("supabase.co");
+  } catch {
+    return false;
+  }
+}
+
+function getImageDimensions(buffer: Buffer): { width: number; height: number } | null {
+  // PNG
+  if (
+    buffer.length > 24 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  ) {
+    return {
+      width: buffer.readUInt32BE(16),
+      height: buffer.readUInt32BE(20),
+    };
+  }
+
+  // JPEG (scan markers for SOF0/SOF2)
+  if (buffer.length > 4 && buffer[0] === 0xff && buffer[1] === 0xd8) {
+    let offset = 2;
+    while (offset < buffer.length - 1) {
+      if (buffer[offset] !== 0xff) {
+        offset++;
+        continue;
+      }
+      const marker = buffer[offset + 1];
+      if (marker === 0xc0 || marker === 0xc2) {
+        if (offset + 8 >= buffer.length) return null;
+        const height = buffer.readUInt16BE(offset + 5);
+        const width = buffer.readUInt16BE(offset + 7);
+        return { width, height };
+      }
+      if (marker === 0xda || marker === 0xd9) break;
+      if (offset + 3 >= buffer.length) break;
+      const segmentLength = buffer.readUInt16BE(offset + 2);
+      if (segmentLength <= 0) break;
+      offset += 2 + segmentLength;
+    }
+  }
+
+  return null;
+}
+
+async function runMockSelfieQualityCheck(selfieUrl: string): Promise<{
+  passed: boolean;
+  score: number;
+  reason?: string;
+}> {
+  if (!isAllowedSelfieUrl(selfieUrl)) {
+    return {
+      passed: false,
+      score: 0.1,
+      reason: "Selfie URL is not from an allowed secure storage domain.",
+    };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(selfieUrl, { signal: controller.signal });
+    if (!response.ok) {
+      return { passed: false, score: 0.1, reason: "Could not fetch selfie image." };
+    }
+
+    const contentType = (response.headers.get("content-type") || "").toLowerCase();
+    if (!contentType.startsWith("image/")) {
+      return { passed: false, score: 0.1, reason: "Uploaded file is not an image." };
+    }
+
+    const imageBuffer = Buffer.from(await response.arrayBuffer());
+    const bytes = imageBuffer.length;
+    if (bytes < 30_000) {
+      return { passed: false, score: 0.2, reason: "Image is too small. Retake a clearer selfie." };
+    }
+    if (bytes > 8_000_000) {
+      return { passed: false, score: 0.2, reason: "Image file is too large." };
+    }
+
+    const dimensions = getImageDimensions(imageBuffer);
+    if (!dimensions) {
+      return { passed: false, score: 0.2, reason: "Unsupported image format for quality checks." };
+    }
+
+    const minSide = Math.min(dimensions.width, dimensions.height);
+    if (minSide < 480) {
+      return { passed: false, score: 0.3, reason: "Image resolution is too low. Move closer and retake." };
+    }
+
+    const aspect = dimensions.width / dimensions.height;
+    if (aspect < 0.6 || aspect > 1.8) {
+      return { passed: false, score: 0.35, reason: "Face framing appears invalid. Retake selfie centered." };
+    }
+
+    // Lightweight quality score for mock mode only.
+    const score = Math.min(0.99, Math.max(0.75, 0.75 + Math.min(bytes / 1_000_000, 0.24)));
+    return { passed: true, score };
+  } catch {
+    return { passed: false, score: 0.15, reason: "Selfie quality check failed. Please retry." };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
@@ -1238,6 +1382,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // -----------------------------
+  // Liveness (Cash Ride Security)
+  // -----------------------------
+  app.post("/api/liveness/session", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const provider = getLivenessProvider();
+      const userId = req.auth!.sub;
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+      const challengeCode = buildChallengeCode();
+
+      const existing = await storage.getLatestPendingLivenessSessionByUser(userId);
+      if (existing && existing.expiresAt && new Date(existing.expiresAt).getTime() > Date.now()) {
+        return res.json({
+          sessionId: existing.id,
+          provider: existing.provider,
+          expiresAt: existing.expiresAt,
+          challenge: challengeLabel(existing.challengeCode),
+          maxAttempts: existing.maxAttempts,
+          attempts: existing.attempts,
+        });
+      }
+
+      const session = await storage.createLivenessSession({
+        userId,
+        provider,
+        status: "pending",
+        challengeCode,
+        maxAttempts: 3,
+        attempts: 0,
+        expiresAt,
+      });
+
+      return res.json({
+        sessionId: session.id,
+        provider: session.provider,
+        expiresAt: session.expiresAt,
+        challenge: challengeLabel(session.challengeCode),
+        maxAttempts: session.maxAttempts,
+        attempts: session.attempts,
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || "Failed to create liveness session" });
+    }
+  });
+
+  app.post("/api/liveness/verify", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const { sessionId, selfieUrl } = req.body as { sessionId?: string; selfieUrl?: string };
+      if (!sessionId || !selfieUrl) {
+        return res.status(400).json({ message: "sessionId and selfieUrl are required" });
+      }
+
+      const session = await storage.getLivenessSession(sessionId);
+      if (!session || session.userId !== req.auth!.sub) {
+        return res.status(404).json({ message: "Liveness session not found" });
+      }
+
+      if (session.status === "passed") {
+        return res.json({
+          passed: true,
+          sessionId: session.id,
+          score: session.score || 0.99,
+          provider: session.provider,
+          selfieUrl: session.selfieUrl || selfieUrl,
+        });
+      }
+
+      if (new Date(session.expiresAt).getTime() <= Date.now()) {
+        await storage.updateLivenessSession(session.id, {
+          status: "expired",
+          errorReason: "Session expired. Please retry liveness.",
+        });
+        return res.status(410).json({ message: "Session expired. Please retry liveness." });
+      }
+
+      const nextAttempts = (session.attempts || 0) + 1;
+      if (nextAttempts > (session.maxAttempts || 3)) {
+        await storage.updateLivenessSession(session.id, {
+          status: "failed",
+          attempts: nextAttempts,
+          errorReason: "Maximum attempts reached",
+        });
+        return res.status(429).json({ message: "Maximum liveness attempts reached" });
+      }
+
+      if (session.provider !== "mock") {
+        await storage.updateLivenessSession(session.id, {
+          attempts: nextAttempts,
+          selfieUrl,
+          errorReason: "Provider integration pending",
+        });
+        return res.status(501).json({
+          message: "Selected liveness provider is not configured yet. Switch LIVENESS_PROVIDER=mock for now.",
+        });
+      }
+
+      const qualityResult = await runMockSelfieQualityCheck(selfieUrl);
+      const passed = qualityResult.passed;
+      const score = qualityResult.score;
+      const status = passed ? "passed" : "failed";
+
+      const updated = await storage.updateLivenessSession(session.id, {
+        attempts: nextAttempts,
+        selfieUrl,
+        score,
+        status,
+        verifiedAt: passed ? new Date() : null,
+        errorReason: passed ? null : (qualityResult.reason || "Selfie quality check failed"),
+      });
+
+      return res.json({
+        passed,
+        sessionId: updated?.id || session.id,
+        score,
+        provider: session.provider,
+        selfieUrl,
+        reason: passed ? null : (qualityResult.reason || "Selfie quality check failed"),
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || "Liveness verification failed" });
+    }
+  });
+
+  // -----------------------------
   // Rides
   // -----------------------------
   app.post("/api/rides", requireAuth, async (req: AuthedRequest, res: Response) => {
@@ -1281,6 +1548,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const categoryId = rideData.vehicleType || "budget";
       const priceEstimate = calculatePrice(distanceKm || 10, categoryId, { isLateNight });
+
+      const paymentMethod = (rideData.paymentMethod || "cash") as string;
+      if (paymentMethod === "cash") {
+        const { livenessSessionId, livenessStatus, cashSelfieUrl } = rideData as any;
+        if (!livenessSessionId || livenessStatus !== "passed" || !cashSelfieUrl) {
+          return res.status(400).json({
+            success: false,
+            message: "Cash rides require completed liveness verification",
+          });
+        }
+
+        const session = await storage.getLivenessSession(livenessSessionId);
+        if (!session || session.userId !== clientId || session.status !== "passed") {
+          return res.status(403).json({
+            success: false,
+            message: "Invalid liveness session",
+          });
+        }
+      }
       
       // Always create the ride with "searching" status
       const ride = await storage.createRide({
@@ -2206,6 +2492,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : p.rideId ? `Ride ${p.rideId.slice(0, 8)}` : "Wallet top-up",
         }));
         return res.json(enriched);
+      } catch (error: any) {
+        return res.status(500).json({ message: error.message });
+      }
+    },
+  );
+
+  app.get(
+    "/api/admin/liveness-selfies",
+    requireAuth,
+    requireRole(["admin"]),
+    async (_req: AuthedRequest, res: Response) => {
+      try {
+        const allRides = await storage.getAllRides();
+        const selfieRides = allRides
+          .filter((ride) => Boolean(ride.cashSelfieUrl))
+          .sort((a, b) => {
+            const left = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const right = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return right - left;
+          });
+
+        const records = await Promise.all(
+          selfieRides.map(async (ride) => {
+            const rider = await storage.getUser(ride.clientId);
+            const chauffeur = ride.chauffeurId
+              ? await storage.getChauffeur(ride.chauffeurId)
+              : undefined;
+            const chauffeurUser = chauffeur?.userId
+              ? await storage.getUser(chauffeur.userId)
+              : undefined;
+
+            return {
+              rideId: ride.id,
+              riderId: ride.clientId,
+              riderName: rider?.name || "Unknown Rider",
+              riderEmail: rider?.username || "",
+              chauffeurId: chauffeur?.id || null,
+              chauffeurName: chauffeurUser?.name || null,
+              pickupAddress: ride.pickupAddress || null,
+              dropoffAddress: ride.dropoffAddress || null,
+              paymentMethod: ride.paymentMethod || "cash",
+              paymentStatus: ride.paymentStatus || "unpaid",
+              rideStatus: ride.status || "requested",
+              price: ride.price || 0,
+              cashSelfieUrl: ride.cashSelfieUrl,
+              livenessStatus: ride.livenessStatus || "not_required",
+              livenessProvider: ride.livenessProvider || "mock",
+              livenessScore: ride.livenessScore,
+              livenessVerifiedAt: ride.livenessVerifiedAt,
+              createdAt: ride.createdAt,
+            };
+          }),
+        );
+
+        return res.json(records);
       } catch (error: any) {
         return res.status(500).json({ message: error.message });
       }
