@@ -2162,8 +2162,12 @@ async function registerRoutes(app2) {
           });
         }
       }
-      if (rideData.livenessVerifiedAt && typeof rideData.livenessVerifiedAt === "string") {
-        rideData.livenessVerifiedAt = new Date(rideData.livenessVerifiedAt);
+      const tsFields = ["livenessVerifiedAt", "routeSelectedAt", "completedAt", "createdAt"];
+      for (const field of tsFields) {
+        const val = rideData[field];
+        if (val && typeof val === "string") {
+          rideData[field] = new Date(val);
+        }
       }
       const ride = await storage.createRide({
         ...rideData,
