@@ -32,8 +32,8 @@ import A2BMap from "@/components/A2BMap";
 const VEHICLE_TYPES = [
   { id: "budget", name: "Budget", desc: "Toyota Corolla, Toyota Quest", icon: "car-outline" as const, pricePerKm: 7, baseFare: 50 },
   { id: "luxury", name: "Luxury", desc: "BMW 3 Series, Mercedes C Class", icon: "car-sport" as const, pricePerKm: 13, baseFare: 100 },
-  { id: "business", name: "Business Class", desc: "BMW 5 Series, Mercedes E Class", icon: "briefcase" as const, pricePerKm: 40, baseFare: 150 },
-  { id: "van", name: "Van", desc: "Hyundai H1, Mercedes Vito, Staria", icon: "bus" as const, pricePerKm: 13, baseFare: 120 },
+  { id: "business", name: "Business Class", desc: "BMW 5 Series, Mercedes E Class", icon: "briefcase" as const, pricePerKm: 35, baseFare: 150 },
+  { id: "van", name: "Van", desc: "Hyundai H1, Mercedes Vito, Staria", icon: "bus" as const, pricePerKm: 35, baseFare: 120 },
   { id: "luxury_van", name: "Luxury Van", desc: "Mercedes V Class", icon: "car" as const, pricePerKm: 50, baseFare: 200 },
 ];
 
@@ -1599,7 +1599,7 @@ export default function ClientHomeScreen() {
         animationType="slide"
         onRequestClose={() => resetCashLiveness(true)}
       >
-        <View style={[styles.livenessContainer, { paddingTop: insets.top + 8 }]}> 
+        <ScrollView style={{ flex: 1, backgroundColor: Colors.primary }} contentContainerStyle={[styles.livenessContainer, { paddingTop: insets.top + 8, flexGrow: 1 }]} keyboardShouldPersistTaps="handled">
           <View style={styles.livenessHeader}>
             <Pressable onPress={() => resetCashLiveness(true)} hitSlop={12}>
               <Ionicons name="arrow-back" size={24} color={Colors.white} />
@@ -1665,7 +1665,7 @@ export default function ClientHomeScreen() {
               <Text style={styles.livenessBtnPrimaryText}>Continue With Cash Ride</Text>
             </Pressable>
           </View>
-        </View>
+        </ScrollView>
       </Modal>
 
       {/* Location Picker Modal */}
