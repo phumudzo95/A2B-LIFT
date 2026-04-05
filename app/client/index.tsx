@@ -747,7 +747,6 @@ export default function ClientHomeScreen() {
         livenessSessionId,
         livenessStatus: "passed",
         livenessProvider: "mock",
-        livenessVerifiedAt: new Date().toISOString(),
         cashSelfieUrl: livenessSelfieUrl,
       });
       if (!ride) return;

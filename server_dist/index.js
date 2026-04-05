@@ -2162,11 +2162,15 @@ async function registerRoutes(app2) {
           });
         }
       }
-      const tsFields = ["livenessVerifiedAt", "routeSelectedAt", "completedAt", "createdAt"];
-      for (const field of tsFields) {
+      if (rideData.livenessStatus === "passed") {
+        rideData.livenessVerifiedAt = /* @__PURE__ */ new Date();
+      }
+      for (const field of ["routeSelectedAt", "completedAt", "createdAt"]) {
         const val = rideData[field];
         if (val && typeof val === "string") {
           rideData[field] = new Date(val);
+        } else if (val !== void 0 && !(val instanceof Date)) {
+          delete rideData[field];
         }
       }
       const ride = await storage.createRide({

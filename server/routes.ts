@@ -1531,13 +1531,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Convert any ISO string timestamps sent by the client to Date objects
-      // (Drizzle's node-postgres adapter requires Date, not string, for timestamp columns)
-      const tsFields = ["livenessVerifiedAt", "routeSelectedAt", "completedAt", "createdAt"] as const;
-      for (const field of tsFields) {
+      // Set livenessVerifiedAt on server side (Date object, never trust client strings for timestamps)
+      if ((rideData as any).livenessStatus === "passed") {
+        (rideData as any).livenessVerifiedAt = new Date();
+      }
+      // Sanitize: remove any other string timestamps to avoid Drizzle mapToDriverValue errors
+      for (const field of ["routeSelectedAt", "completedAt", "createdAt"] as const) {
         const val = (rideData as any)[field];
         if (val && typeof val === "string") {
           (rideData as any)[field] = new Date(val);
+        } else if (val !== undefined && !(val instanceof Date)) {
+          delete (rideData as any)[field];
         }
       }
 
