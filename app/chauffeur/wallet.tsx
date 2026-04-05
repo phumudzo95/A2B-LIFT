@@ -216,7 +216,7 @@ export default function ChauffeurWalletScreen() {
                 const method = e.type || (e.amount < 0 ? "cash" : "card");
                 const isCash = method === "cash";
                 const isWallet = method === "wallet";
-                const icon = isCash ? "💵" : isWallet ? "👛" : "💳";
+                const icon = isCash ? "�" : isWallet ? "👛" : "💳";
                 const label = isCash ? "Cash Trip Commission" : isWallet ? "Wallet Trip Earnings" : "Card Trip Earnings";
                 const sub = isCash
                   ? `Commission charged: R${e.commission.toFixed(2)} (cash collected)`
