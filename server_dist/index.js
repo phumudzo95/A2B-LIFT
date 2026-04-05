@@ -100983,7 +100983,13 @@ async function registerRoutes(app2) {
           { rideId: updated.id, type: "ride:accepted" }
         );
       }
-      return res.json(updated);
+      let clientFirstName = "Rider";
+      try {
+        const client = await storage.getUser(updated.clientId);
+        if (client?.name) clientFirstName = client.name.split(" ")[0];
+      } catch {
+      }
+      return res.json({ ...updated, clientFirstName });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
@@ -101334,6 +101340,15 @@ async function registerRoutes(app2) {
       const allRides = await storage.getAllRides();
       const searching = allRides.filter((r) => r.status === "searching");
       if (!searching.length) return res.status(204).end();
+      async function enrichRide(r) {
+        try {
+          const client = await storage.getUser(r.clientId);
+          const firstName = client?.name ? client.name.split(" ")[0] : "Rider";
+          return { ...r, clientFirstName: firstName };
+        } catch {
+          return { ...r, clientFirstName: "Rider" };
+        }
+      }
       if (chauffeur.lat && chauffeur.lng) {
         const withDist = searching.map((r) => ({
           ...r,
@@ -101345,9 +101360,9 @@ async function registerRoutes(app2) {
           )
         })).filter((r) => r.distKm <= 15).sort((a, b) => a.distKm - b.distKm);
         if (!withDist.length) return res.status(204).end();
-        return res.json(withDist[0]);
+        return res.json(await enrichRide(withDist[0]));
       }
-      return res.json(searching[searching.length - 1]);
+      return res.json(await enrichRide(searching[searching.length - 1]));
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }

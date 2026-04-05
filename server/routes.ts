@@ -1913,7 +1913,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           { rideId: updated.id, type: "ride:accepted" }
         );
       }
-      return res.json(updated);
+      // Enrich response with client first name
+      let clientFirstName = "Rider";
+      try {
+        const client = await storage.getUser(updated.clientId);
+        if (client?.name) clientFirstName = client.name.split(" ")[0];
+      } catch {}
+      return res.json({ ...updated, clientFirstName });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
@@ -2314,6 +2320,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const searching = allRides.filter((r) => r.status === "searching");
       if (!searching.length) return res.status(204).end();
 
+      // Helper to enrich a ride with clientFirstName
+      async function enrichRide(r: any) {
+        try {
+          const client = await storage.getUser(r.clientId);
+          const firstName = client?.name ? client.name.split(" ")[0] : "Rider";
+          return { ...r, clientFirstName: firstName };
+        } catch {
+          return { ...r, clientFirstName: "Rider" };
+        }
+      }
+
       // If driver has a location, return the nearest searching ride within 15km
       if (chauffeur.lat && chauffeur.lng) {
         const withDist = searching
@@ -2327,11 +2344,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .filter((r) => r.distKm <= 15)
           .sort((a, b) => a.distKm - b.distKm);
         if (!withDist.length) return res.status(204).end();
-        return res.json(withDist[0]);
+        return res.json(await enrichRide(withDist[0]));
       }
 
       // No location on file — return the most recent searching ride
-      return res.json(searching[searching.length - 1]);
+      return res.json(await enrichRide(searching[searching.length - 1]));
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }

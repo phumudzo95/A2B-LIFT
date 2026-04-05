@@ -432,6 +432,8 @@ export default function ChauffeurDashboard() {
         return;
       }
       const ride = await res.json();
+      // Carry over clientFirstName from incoming ride
+      ride.clientFirstName = incomingRide.clientFirstName || ride.clientFirstName;
       setCurrentRide(ride);
       setIncomingRide(null);
       if (ride.pickupLat && ride.pickupLng) fetchDriverRoute(parseFloat(ride.pickupLat), parseFloat(ride.pickupLng));
@@ -447,6 +449,7 @@ export default function ChauffeurDashboard() {
 
   async function acceptTripFromList(trip: any) {
     if (!chauffeur || acceptingTripId) return;
+    stopTripAlert();
     setAcceptingTripId(trip.id);
     try {
       const res = await apiRequest("PUT", `/api/rides/${trip.id}/accept`, { chauffeurId: chauffeur.id });
@@ -542,10 +545,11 @@ export default function ChauffeurDashboard() {
     { icon: "notifications-outline", label: unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications", onPress: () => { router.push("/chauffeur/notifications"); closeMenu(); }, color: unreadCount > 0 ? Colors.warning : Colors.white },
   ];
 
+  const clientDisplayName = currentRide?.clientFirstName || "Rider";
   const rideStatusLabel =
-    currentRide?.status === "chauffeur_assigned" ? "Navigate to Pickup" :
-    currentRide?.status === "chauffeur_arriving" ? "Arriving at Pickup" :
-    currentRide?.status === "trip_started" ? "Trip in Progress" : "Active Ride";
+    currentRide?.status === "chauffeur_assigned" ? `On the way to pick up ${clientDisplayName}` :
+    currentRide?.status === "chauffeur_arriving" ? `Arriving at ${clientDisplayName}'s pickup` :
+    currentRide?.status === "trip_started" ? `Trip in progress — ${clientDisplayName}` : "Active Ride";
 
   return (
     <>
@@ -555,7 +559,7 @@ export default function ChauffeurDashboard() {
           <View style={[styles.navModalHeader, { paddingTop: insets.top + 16 }]}>
             <View>
               <Text style={styles.navModalTitle}>
-                {currentRide?.status === "trip_started" ? "Navigating to Dropoff" : "Navigate to Pickup"}
+                {currentRide?.status === "trip_started" ? `Dropping off ${clientDisplayName}` : `Picking up ${clientDisplayName}`}
               </Text>
               {rideEta && <Text style={styles.navModalEta}>{rideEta.durationText} · {rideEta.distanceText}</Text>}
             </View>
@@ -607,21 +611,29 @@ export default function ChauffeurDashboard() {
           {navSteps.length > 0 && (
             <View style={styles.navStepBox}>
               <View style={styles.navStepRow}>
-                <Ionicons
-                  name={
-                    navSteps[currentStepIdx]?.maneuver?.includes("left") ? "arrow-back" :
-                    navSteps[currentStepIdx]?.maneuver?.includes("right") ? "arrow-forward" :
-                    navSteps[currentStepIdx]?.maneuver?.includes("uturn") ? "return-down-back" : "arrow-up"
-                  }
-                  size={28} color={Colors.white}
-                />
-                <Text style={styles.navStepInstruction} numberOfLines={2}>
-                  {navSteps[currentStepIdx]?.instruction || "Follow the route"}
-                </Text>
+                <View style={styles.navArrowCircle}>
+                  <Ionicons
+                    name={
+                      navSteps[currentStepIdx]?.maneuver?.includes("left") ? "arrow-back" :
+                      navSteps[currentStepIdx]?.maneuver?.includes("right") ? "arrow-forward" :
+                      navSteps[currentStepIdx]?.maneuver?.includes("uturn") ? "return-down-back" :
+                      navSteps[currentStepIdx]?.maneuver?.includes("roundabout") ? "sync" : "arrow-up"
+                    }
+                    size={28} color={Colors.white}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.navStepInstruction} numberOfLines={2}>
+                    {navSteps[currentStepIdx]?.instruction || "Follow the route"}
+                  </Text>
+                  <Text style={styles.navStepStreet}>
+                    {navSteps[currentStepIdx]?.distance} {navSteps[currentStepIdx + 1]?.instruction ? `· then ${navSteps[currentStepIdx + 1]?.instruction.split(' ').slice(0, 4).join(' ')}` : ""}
+                  </Text>
+                </View>
               </View>
               <View style={styles.navStepMeta}>
-                <Text style={styles.navStepDist}>{navSteps[currentStepIdx]?.distance}</Text>
-                <Text style={styles.navStepCount}>{currentStepIdx + 1} / {navSteps.length}</Text>
+                <Text style={styles.navStepDist}>{rideEta?.durationText || ""} · {rideEta?.distanceText || ""}</Text>
+                <Text style={styles.navStepCount}>Step {currentStepIdx + 1} of {navSteps.length}</Text>
               </View>
             </View>
           )}
@@ -654,6 +666,34 @@ export default function ChauffeurDashboard() {
       </View>
 
       {/* ─── Online pill (top-left) ─── */}
+
+      {/* ─── Floating turn-by-turn nav bar ─── */}
+      {currentRide && navSteps.length > 0 && !showNavModal && (
+        <Pressable style={[styles.floatNavBar, { top: insets.top + 60 }]} onPress={() => setShowNavModal(true)}>
+          <View style={styles.floatNavArrow}>
+            <Ionicons
+              name={
+                navSteps[currentStepIdx]?.maneuver?.includes("left") ? "arrow-back" :
+                navSteps[currentStepIdx]?.maneuver?.includes("right") ? "arrow-forward" :
+                navSteps[currentStepIdx]?.maneuver?.includes("uturn") ? "return-down-back" :
+                navSteps[currentStepIdx]?.maneuver?.includes("roundabout") ? "sync" : "arrow-up"
+              }
+              size={24} color={Colors.white}
+            />
+          </View>
+          <View style={styles.floatNavContent}>
+            <Text style={styles.floatNavInstruction} numberOfLines={1}>
+              {navSteps[currentStepIdx]?.instruction || "Follow the route"}
+            </Text>
+            <View style={styles.floatNavMeta}>
+              <Text style={styles.floatNavDist}>{navSteps[currentStepIdx]?.distance}</Text>
+              <Text style={styles.floatNavStep}>{currentStepIdx + 1}/{navSteps.length}</Text>
+              {rideEta && <Text style={styles.floatNavEta}>{rideEta.durationText}</Text>}
+            </View>
+          </View>
+          <Ionicons name="expand-outline" size={18} color={Colors.textMuted} />
+        </Pressable>
+      )}
       <Pressable
         style={[styles.onlinePill, { top: insets.top + 16 }, isOnline ? styles.onlinePillOn : styles.onlinePillOff]}
         onPress={toggleOnline}
@@ -966,10 +1006,22 @@ const styles = StyleSheet.create({
   navModalFooter: { paddingHorizontal: 20, paddingTop: 12, gap: 10 },
   navStepBox: { backgroundColor: Colors.primary, paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: Colors.border },
   navStepRow: { flexDirection: "row", alignItems: "center", gap: 14 },
-  navStepInstruction: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.white, lineHeight: 22 },
+  navArrowCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center" },
+  navStepInstruction: { fontSize: 17, fontFamily: "Inter_600SemiBold", color: Colors.white, lineHeight: 22 },
+  navStepStreet: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: 2 },
   navStepMeta: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
   navStepDist: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.success },
   navStepCount: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted },
+
+  // Floating nav bar (main map overlay)
+  floatNavBar: { position: "absolute", left: 16, right: 76, backgroundColor: GLASS, borderRadius: 16, borderWidth: 1, borderColor: GLASS_BORDER, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, gap: 10, zIndex: 10 },
+  floatNavArrow: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center" },
+  floatNavContent: { flex: 1 },
+  floatNavInstruction: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  floatNavMeta: { flexDirection: "row", gap: 8, marginTop: 2 },
+  floatNavDist: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.success },
+  floatNavStep: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
+  floatNavEta: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.accent },
 
   // Post-trip payment popup
   payPopupOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
