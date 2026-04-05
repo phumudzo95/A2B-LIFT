@@ -2162,25 +2162,29 @@ async function registerRoutes(app2) {
           });
         }
       }
-      if (rideData.livenessStatus === "passed") {
-        rideData.livenessVerifiedAt = /* @__PURE__ */ new Date();
-      }
-      for (const field of ["routeSelectedAt", "completedAt", "createdAt"]) {
-        const val = rideData[field];
-        if (val && typeof val === "string") {
-          rideData[field] = new Date(val);
-        } else if (val !== void 0 && !(val instanceof Date)) {
-          delete rideData[field];
-        }
-      }
+      const livenessVerifiedAt = rideData.livenessStatus === "passed" ? /* @__PURE__ */ new Date() : void 0;
       const ride = await storage.createRide({
-        ...rideData,
+        clientId,
+        pickupLat: rideData.pickupLat,
+        pickupLng: rideData.pickupLng,
+        pickupAddress: rideData.pickupAddress || null,
+        dropoffLat: rideData.dropoffLat,
+        dropoffLng: rideData.dropoffLng,
+        dropoffAddress: rideData.dropoffAddress || null,
+        vehicleType: rideData.vehicleType || "budget",
+        paymentMethod: rideData.paymentMethod || "cash",
         price: priceEstimate.totalPrice,
         distanceKm: distanceKm || 10,
         pricePerKm: priceEstimate.pricePerKm,
         baseFare: priceEstimate.baseFare,
         status: "searching",
-        paymentStatus: "unpaid"
+        paymentStatus: "unpaid",
+        cashSelfieUrl: rideData.cashSelfieUrl || null,
+        livenessStatus: rideData.livenessStatus || "not_required",
+        livenessProvider: rideData.livenessProvider || null,
+        livenessSessionId: rideData.livenessSessionId || null,
+        livenessScore: rideData.livenessScore || null,
+        ...livenessVerifiedAt ? { livenessVerifiedAt } : {}
       });
       const allChauffeurs = await storage.getAllChauffeurs();
       const pickupLat = parseFloat(rideData.pickupLat);

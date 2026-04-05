@@ -1532,29 +1532,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Set livenessVerifiedAt on server side (Date object, never trust client strings for timestamps)
-      if ((rideData as any).livenessStatus === "passed") {
-        (rideData as any).livenessVerifiedAt = new Date();
-      }
-      // Sanitize: remove any other string timestamps to avoid Drizzle mapToDriverValue errors
-      for (const field of ["routeSelectedAt", "completedAt", "createdAt"] as const) {
-        const val = (rideData as any)[field];
-        if (val && typeof val === "string") {
-          (rideData as any)[field] = new Date(val);
-        } else if (val !== undefined && !(val instanceof Date)) {
-          delete (rideData as any)[field];
-        }
-      }
+      const livenessVerifiedAt = (rideData as any).livenessStatus === "passed" ? new Date() : undefined;
 
-      // Always create the ride with "searching" status
+      // Whitelist only valid ride columns — never spread raw client body into Drizzle
       const ride = await storage.createRide({
-        ...rideData,
+        clientId,
+        pickupLat: rideData.pickupLat,
+        pickupLng: rideData.pickupLng,
+        pickupAddress: rideData.pickupAddress || null,
+        dropoffLat: rideData.dropoffLat,
+        dropoffLng: rideData.dropoffLng,
+        dropoffAddress: rideData.dropoffAddress || null,
+        vehicleType: rideData.vehicleType || "budget",
+        paymentMethod: rideData.paymentMethod || "cash",
         price: priceEstimate.totalPrice,
         distanceKm: distanceKm || 10,
         pricePerKm: priceEstimate.pricePerKm,
         baseFare: priceEstimate.baseFare,
         status: "searching",
         paymentStatus: "unpaid",
-      });
+        cashSelfieUrl: rideData.cashSelfieUrl || null,
+        livenessStatus: rideData.livenessStatus || "not_required",
+        livenessProvider: rideData.livenessProvider || null,
+        livenessSessionId: rideData.livenessSessionId || null,
+        livenessScore: rideData.livenessScore || null,
+        ...(livenessVerifiedAt ? { livenessVerifiedAt } : {}),
+      } as any);
 
       // Send trip only to nearby approved online drivers (within 15 km, sorted by distance)
       const allChauffeurs = await storage.getAllChauffeurs();
