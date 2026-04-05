@@ -2123,6 +2123,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       io.emit("ride:statusUpdate", ride);
+
+      // ── Notify rider for key status transitions ──
+      try {
+        if (status === "chauffeur_arriving" && ride.clientId) {
+          await storage.createNotification({
+            userId: ride.clientId,
+            title: "Driver Arriving",
+            body: "Your chauffeur is arriving at your pickup location. Please be ready.",
+            type: "ride",
+          });
+          const riderUser = await storage.getUser(ride.clientId);
+          if ((riderUser as any)?.pushToken) {
+            sendExpoPushNotification(
+              [(riderUser as any).pushToken],
+              "🚗 Driver Arriving",
+              "Your chauffeur is arriving at your pickup. Please be ready!",
+              { rideId: ride.id, type: "ride:arriving" }
+            );
+          }
+        } else if (status === "trip_started" && ride.clientId) {
+          await storage.createNotification({
+            userId: ride.clientId,
+            title: "Trip Started",
+            body: `Your trip is underway to ${ride.dropoffAddress || "your destination"}.`,
+            type: "ride",
+          });
+          const riderUser = await storage.getUser(ride.clientId);
+          if ((riderUser as any)?.pushToken) {
+            sendExpoPushNotification(
+              [(riderUser as any).pushToken],
+              "🚀 Trip Started",
+              `Your ride is underway to ${ride.dropoffAddress || "your destination"}.`,
+              { rideId: ride.id, type: "ride:started" }
+            );
+          }
+        }
+      } catch (notifErr: any) {
+        console.error("rider status notification failed (non-fatal):", notifErr.message);
+      }
+
       return res.json(ride);
     } catch (error: any) {
       console.error("ride status update error:", error.message, error.stack);

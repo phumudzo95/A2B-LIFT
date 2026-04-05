@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS liveness_sessions (
   status text NOT NULL DEFAULT 'pending',
   challenge_code text NOT NULL,
   selfie_url text,
+  verified_photo_url text,
+  ride_id varchar,
   score real,
   attempts integer NOT NULL DEFAULT 0,
   max_attempts integer NOT NULL DEFAULT 3,
@@ -24,6 +26,10 @@ CREATE TABLE IF NOT EXISTS liveness_sessions (
   created_at timestamp DEFAULT now(),
   updated_at timestamp DEFAULT now()
 );
+
+-- Add columns if table already exists (idempotent)
+ALTER TABLE liveness_sessions ADD COLUMN IF NOT EXISTS verified_photo_url text;
+ALTER TABLE liveness_sessions ADD COLUMN IF NOT EXISTS ride_id varchar;
 
 CREATE INDEX IF NOT EXISTS idx_liveness_sessions_user_status
   ON liveness_sessions (user_id, status);

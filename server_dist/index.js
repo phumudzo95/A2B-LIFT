@@ -483,7 +483,13 @@ var DatabaseStorage = class {
     return session;
   }
   async updateLivenessSession(id, data) {
-    const [session] = await db.update(livenessSessions).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm2.eq)(livenessSessions.id, id)).returning();
+    const safe = { ...data };
+    for (const key of ["verifiedAt", "expiresAt", "createdAt", "updatedAt"]) {
+      if (safe[key] !== null && safe[key] !== void 0 && !(safe[key] instanceof Date)) {
+        safe[key] = new Date(safe[key]);
+      }
+    }
+    const [session] = await db.update(livenessSessions).set({ ...safe, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm2.eq)(livenessSessions.id, id)).returning();
     return session;
   }
   async createPayment(data) {
@@ -2651,6 +2657,43 @@ async function registerRoutes(app2) {
         }
       }
       io.emit("ride:statusUpdate", ride);
+      try {
+        if (status === "chauffeur_arriving" && ride.clientId) {
+          await storage.createNotification({
+            userId: ride.clientId,
+            title: "Driver Arriving",
+            body: "Your chauffeur is arriving at your pickup location. Please be ready.",
+            type: "ride"
+          });
+          const riderUser = await storage.getUser(ride.clientId);
+          if (riderUser?.pushToken) {
+            sendExpoPushNotification(
+              [riderUser.pushToken],
+              "\u{1F697} Driver Arriving",
+              "Your chauffeur is arriving at your pickup. Please be ready!",
+              { rideId: ride.id, type: "ride:arriving" }
+            );
+          }
+        } else if (status === "trip_started" && ride.clientId) {
+          await storage.createNotification({
+            userId: ride.clientId,
+            title: "Trip Started",
+            body: `Your trip is underway to ${ride.dropoffAddress || "your destination"}.`,
+            type: "ride"
+          });
+          const riderUser = await storage.getUser(ride.clientId);
+          if (riderUser?.pushToken) {
+            sendExpoPushNotification(
+              [riderUser.pushToken],
+              "\u{1F680} Trip Started",
+              `Your ride is underway to ${ride.dropoffAddress || "your destination"}.`,
+              { rideId: ride.id, type: "ride:started" }
+            );
+          }
+        }
+      } catch (notifErr) {
+        console.error("rider status notification failed (non-fatal):", notifErr.message);
+      }
       return res.json(ride);
     } catch (error) {
       console.error("ride status update error:", error.message, error.stack);

@@ -268,6 +268,7 @@ export default function A2BMap({
         showsIndoors={false}
         toolbarEnabled={false}
         mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
+        legalLabelInsets={{ bottom: -999, left: 0, top: 0, right: 0 }}
         googleMapsApiKey={GOOGLE_MAPS_API_KEY}
       >
         {pickupLocation && (

@@ -296,6 +296,7 @@ export default function ChauffeurDashboard() {
         const cached = JSON.parse(stored);
         setChauffeur(cached);
         setIsOnline(cached.isOnline || false);
+        if (typeof cached.todayEarnings === "number") setTodayEarnings(cached.todayEarnings);
         setLoading(false);
         refreshChauffeur(cached.id);
         restoreActiveRide();
@@ -306,6 +307,7 @@ export default function ChauffeurDashboard() {
       const c = await res.json();
       setChauffeur(c);
       setIsOnline(c.isOnline || false);
+      if (typeof c.todayEarnings === "number") setTodayEarnings(c.todayEarnings);
       await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(c));
       restoreActiveRide();
     } catch {

@@ -414,9 +414,17 @@ export class DatabaseStorage implements IStorage {
     id: string,
     data: Partial<LivenessSession>,
   ): Promise<LivenessSession | undefined> {
+    // Drizzle's PgTimestamp requires real Date objects — coerce any strings that
+    // may have leaked through JSON serialisation back to Date instances.
+    const safe: Record<string, unknown> = { ...data };
+    for (const key of ["verifiedAt", "expiresAt", "createdAt", "updatedAt"] as const) {
+      if (safe[key] !== null && safe[key] !== undefined && !(safe[key] instanceof Date)) {
+        safe[key] = new Date(safe[key] as string);
+      }
+    }
     const [session] = await db
       .update(livenessSessions)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...safe, updatedAt: new Date() })
       .where(eq(livenessSessions.id, id))
       .returning();
     return session;
