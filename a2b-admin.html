@@ -92,6 +92,7 @@ th { padding:11px 16px; text-align:left; font-size:11px; font-weight:700; text-t
 td { padding:13px 16px; border-bottom:1px solid rgba(232,232,228,0.6); color:var(--text); vertical-align:middle; }
 tr:last-child td { border-bottom:none; }
 tbody tr:hover { background:#fafaf8; }
+tbody tr[style*="cursor:pointer"]:hover { background:#f0f0ee; }
 
 /* BADGES */
 .badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; }
@@ -497,7 +498,7 @@ async function doLogout() {
 
 // ── NAV ──
 let curView = 'overview';
-let allChauf = [], allWd = [], allSafe = [], chaufFilter = 'all', wdFilter = 'all', safeFilter = 'all';
+let allChauf = [], allWd = [], allSafe = [], allRides = [], allPayments = [], chaufFilter = 'all', wdFilter = 'all', safeFilter = 'all';
 const VIEW_TITLES = { overview:'Dashboard', chauffeurs:'Chauffeurs', rides:'Rides', payments:'Payments', withdrawals:'Withdrawals', safety:'Safety Reports', users:'All Users' };
 
 function go(view, el) {
@@ -745,16 +746,16 @@ async function loadRides() {
       document.getElementById('rides-table').innerHTML = emptyState('🗺', 'No rides yet', 'Rides appear here once users book them');
       return;
     }
+    allRides = rides;
     document.getElementById('rides-table').innerHTML = `<table>
-      <thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th><th></th></tr></thead>
-      <tbody>${rides.map(r => `<tr>
+      <thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th></tr></thead>
+      <tbody>${rides.map(r => `<tr style="cursor:pointer" onclick="rideDetail('${r.id}')">
         <td style="max-width:160px;font-size:13px">${r.pickupAddress || 'N/A'}</td>
         <td style="max-width:160px;font-size:13px">${r.dropoffAddress || 'N/A'}</td>
         <td><span class="badge ${r.status === 'trip_completed' ? 'b-completed' : r.status === 'cancelled' ? 'b-cancelled' : 'b-pending'}">${r.status || '—'}</span></td>
         <td style="font-weight:700;color:var(--green)">R ${r.actualFare != null ? r.actualFare : (r.price || '—')}</td>
         <td><span class="badge ${r.paymentStatus === 'paid' ? 'b-paid' : 'b-pending'}">${r.paymentStatus || 'unpaid'}</span></td>
         <td style="font-size:12px">${fmt(r.createdAt)}</td>
-        <td><button class="btn-sm btn-detail" onclick="rideDetail('${r.id}','${(r.pickupAddress||'').replace(/'/g,"\\'").slice(0,30)}')">📷 Photos</button></td>
       </tr>`).join('')}
       </tbody></table>`;
   } catch(e) {
@@ -762,11 +763,35 @@ async function loadRides() {
   }
 }
 
-// ── RIDE PHOTO DETAIL (TripPhotoViewer) ──
-async function rideDetail(rideId, label) {
-  openModal('Trip Photos', label || rideId);
-  document.getElementById('m-body').innerHTML = '<div class="loading">Loading photos…</div>';
-  document.getElementById('m-foot').innerHTML = '';
+// ── RIDE DETAIL POPUP ──
+async function rideDetail(rideId) {
+  const r = allRides.find(x => x.id === rideId);
+  document.getElementById('m-title').textContent = 'Trip Details';
+  document.getElementById('m-sub').textContent = r ? `${(r.pickupAddress||'').slice(0,30)} → ${(r.dropoffAddress||'').slice(0,30)}` : rideId;
+  document.getElementById('m-body').innerHTML = '<div class="loading">Loading…</div>';
+  document.getElementById('m-foot').innerHTML = `<button class="btn-lg btn-outline" onclick="closeModal()">Close</button>`;
+  openModal();
+
+  // Build trip info section
+  let infoHtml = '';
+  if (r) {
+    infoHtml = `<div class="info-grid" style="margin-bottom:20px">
+      <div class="info-row"><div class="info-label">Ride ID</div><div class="info-val" style="font-family:var(--mono);font-size:12px">${r.id}</div></div>
+      <div class="info-row"><div class="info-label">Status</div><div class="info-val"><span class="badge ${r.status==='trip_completed'?'b-completed':r.status==='cancelled'?'b-cancelled':'b-pending'}">${r.status||'—'}</span></div></div>
+      <div class="info-row"><div class="info-label">Pickup</div><div class="info-val">${r.pickupAddress||'—'}</div></div>
+      <div class="info-row"><div class="info-label">Dropoff</div><div class="info-val">${r.dropoffAddress||'—'}</div></div>
+      <div class="info-row"><div class="info-label">Price</div><div class="info-val" style="font-weight:700;color:var(--green)">R ${r.actualFare!=null?r.actualFare:(r.price||'—')}</div></div>
+      <div class="info-row"><div class="info-label">Payment Method</div><div class="info-val"><span class="badge b-${r.paymentMethod||'cash'}">${(r.paymentMethod||'cash').toUpperCase()}</span></div></div>
+      <div class="info-row"><div class="info-label">Payment Status</div><div class="info-val"><span class="badge ${r.paymentStatus==='paid'?'b-paid':'b-pending'}">${r.paymentStatus||'unpaid'}</span></div></div>
+      <div class="info-row"><div class="info-label">Distance</div><div class="info-val">${r.distanceKm ? Number(r.distanceKm).toFixed(1)+' km' : '—'}</div></div>
+      <div class="info-row"><div class="info-label">Duration</div><div class="info-val">${r.durationMin ? r.durationMin+' min' : '—'}</div></div>
+      <div class="info-row"><div class="info-label">Client ID</div><div class="info-val" style="font-family:var(--mono);font-size:12px">${r.clientId||'—'}</div></div>
+      <div class="info-row"><div class="info-label">Chauffeur ID</div><div class="info-val" style="font-family:var(--mono);font-size:12px">${r.chauffeurId||'—'}</div></div>
+      <div class="info-row"><div class="info-label">Date</div><div class="info-val">${fmtFull(r.createdAt)}</div></div>
+    </div>`;
+  }
+
+  // Load photos
   try {
     const res = await apiFetch(`/api/admin/rides/${rideId}/photos`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -785,10 +810,10 @@ async function rideDetail(rideId, label) {
         : '';
       const metaHtml = meta ? `<div class="photo-meta">${meta}</div>` : '';
       const dlBtn = signedUrl
-        ? `<button class="photo-btn-dl" onclick="downloadPhoto('${signedUrl}','${label.replace(/'/g,"\\'")}')">⬇ Download</button>`
+        ? `<button class="photo-btn-dl" onclick="event.stopPropagation();downloadPhoto('${signedUrl}','${label.replace(/'/g,"\\'")}')">⬇ Download</button>`
         : '';
       const viewBtn = signedUrl
-        ? `<button class="photo-btn-view" onclick="openLightbox('${signedUrl}','${label.replace(/'/g,"\\'")}')">🔍 View Full</button>`
+        ? `<button class="photo-btn-view" onclick="event.stopPropagation();openLightbox('${signedUrl}','${label.replace(/'/g,"\\'")}')">🔍 View Full</button>`
         : '';
       return `<div class="photo-card">
         <div class="photo-card-head"><span class="photo-card-label">${label}</span>${badgeHtml}</div>
@@ -799,12 +824,9 @@ async function rideDetail(rideId, label) {
     }
 
     const cards = [];
-
-    // Cash payment selfie
     const cashBadge = data.cashSelfie?.signedUrl ? { text: 'UPLOADED' } : { text: 'NONE' };
     cards.push(photoCard('Cash Payment Selfie', data.cashSelfie?.signedUrl, cashBadge, null));
 
-    // Liveness photos
     if (data.livenessPhotos?.length) {
       data.livenessPhotos.forEach((ph, i) => {
         const lbl = `Liveness Photo${data.livenessPhotos.length > 1 ? ` #${i+1}` : ''}`;
@@ -820,12 +842,12 @@ async function rideDetail(rideId, label) {
       cards.push(photoCard('Liveness Photo', null, { text: 'NOT REQUIRED' }, null));
     }
 
-    document.getElementById('m-body').innerHTML = `
-      <h3 style="font-size:14px;font-weight:700;margin:0 0 4px;color:var(--text)">📷 Trip Photos</h3>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Ride ID: ${rideId}</p>
+    document.getElementById('m-body').innerHTML = infoHtml + `
+      <h3 style="font-size:14px;font-weight:700;margin:0 0 4px;color:var(--text)">📷 Trip Photos & Liveness</h3>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">View and download trip verification photos</p>
       <div class="photo-grid">${cards.join('')}</div>`;
   } catch(e) {
-    document.getElementById('m-body').innerHTML = `<div style="color:var(--red);font-size:13px">Failed to load photos: ${e.message}</div>`;
+    document.getElementById('m-body').innerHTML = infoHtml + `<div style="color:var(--muted);font-size:13px;margin-top:12px">📷 Photos not available: ${e.message}</div>`;
   }
 }
 
@@ -869,6 +891,7 @@ async function loadPay() {
         riderEmail: r.riderEmail || '',
         rideRoute: `${r.pickupAddress || '?'} → ${r.dropoffAddress || '?'}`,
         paystackReference: r.paystackReference || null,
+        rideId: r.id || null,
         createdAt: r.createdAt,
       }));
     }
@@ -888,9 +911,10 @@ async function loadPay() {
       document.getElementById('pay-table').innerHTML = emptyState('💳', 'No payments yet', 'Payment records appear here');
       return;
     }
+    allPayments = payments;
     document.getElementById('pay-table').innerHTML = `<table>
       <thead><tr><th>Rider</th><th>Route</th><th>Method</th><th>Amount</th><th>Status</th><th>Reference</th><th>Date</th></tr></thead>
-      <tbody>${payments.map(p => `<tr>
+      <tbody>${payments.map((p, idx) => `<tr style="cursor:pointer" onclick="payDetail(${idx})">
         <td><div style="font-weight:600">${p.riderName || '—'}</div><div style="font-size:11px;color:var(--muted)">${p.riderEmail || ''}</div></td>
         <td style="font-size:12px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.rideRoute||'').replace(/"/g,'&quot;')}">${p.rideRoute || '—'}</td>
         <td><span class="badge b-${p.method || 'cash'}">${(p.method || 'cash').toUpperCase()}</span></td>
@@ -903,6 +927,26 @@ async function loadPay() {
   } catch(e) {
     document.getElementById('pay-table').innerHTML = emptyState('❌', 'Failed to load payments', e.message);
   }
+}
+
+// ── PAYMENT DETAIL POPUP ──
+function payDetail(idx) {
+  const p = allPayments[idx]; if (!p) return;
+  document.getElementById('m-title').textContent = 'Payment Details';
+  document.getElementById('m-sub').textContent = p.riderName || 'Payment';
+  document.getElementById('m-body').innerHTML = `<div class="info-grid">
+    <div class="info-row"><div class="info-label">Rider</div><div class="info-val" style="font-weight:600">${p.riderName || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Email</div><div class="info-val">${p.riderEmail || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Amount</div><div class="info-val" style="font-weight:700;color:var(--green);font-size:20px">R ${Number(p.amount||0).toFixed(2)}</div></div>
+    <div class="info-row"><div class="info-label">Method</div><div class="info-val"><span class="badge b-${p.method||'cash'}">${(p.method||'cash').toUpperCase()}</span></div></div>
+    <div class="info-row"><div class="info-label">Status</div><div class="info-val"><span class="badge b-${p.status==='paid'?'paid':p.status==='failed'?'failed':'pending'}">${p.status||'—'}</span></div></div>
+    <div class="info-row"><div class="info-label">Paystack Reference</div><div class="info-val" style="font-family:var(--mono);font-size:12px">${p.paystackReference || '—'}</div></div>
+    <div class="info-row" style="grid-column:1/-1"><div class="info-label">Route</div><div class="info-val">${p.rideRoute || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Date</div><div class="info-val">${fmtFull(p.paidAt || p.createdAt)}</div></div>
+    ${p.rideId ? `<div class="info-row"><div class="info-label">Ride ID</div><div class="info-val" style="font-family:var(--mono);font-size:12px">${p.rideId}</div></div>` : ''}
+  </div>`;
+  document.getElementById('m-foot').innerHTML = `<button class="btn-lg btn-outline" onclick="closeModal()">Close</button>`;
+  openModal();
 }
 
 // ── WITHDRAWALS ──
@@ -929,21 +973,45 @@ function renderFilteredWd() {
   const w = document.getElementById('wd-table');
   if (!list.length) { w.innerHTML = emptyState('🏦', 'No withdrawal requests', 'Driver withdrawal requests appear here'); return; }
   w.innerHTML = `<table>
-    <thead><tr><th>Driver</th><th>Bank</th><th>Account</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
-    <tbody>${list.map(wd => `<tr>
+    <thead><tr><th>Driver</th><th>Bank</th><th>Account</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+    <tbody>${list.map(wd => `<tr style="cursor:pointer" onclick="wdDetail('${wd.id}')">
       <td style="font-size:13px;font-weight:600">${wd.accountHolder || ('ID …' + (wd.chauffeurId||'').slice(-6))}</td>
       <td>${wd.bankName || '—'}</td>
       <td style="font-family:var(--mono);font-size:12px">${wd.accountNumber ? '•••• ' + String(wd.accountNumber).slice(-4) : '—'}</td>
       <td style="font-weight:700;color:var(--green)">R ${Number(wd.amount||0).toFixed(2)}</td>
       <td><span class="badge b-${wd.status}">${wd.status}</span></td>
       <td style="font-size:12px">${fmt(wd.processedAt || wd.createdAt)}</td>
-      <td><div class="action-cell">
-        ${wd.status === 'pending' ? `<button class="btn-sm btn-approve" onclick="actWd('${wd.id}','approved')">✓ Approve</button><button class="btn-sm btn-reject" onclick="actWd('${wd.id}','rejected')">✕ Reject</button>` : ''}
-        ${wd.status === 'approved' ? `<button class="btn-sm btn-paid" onclick="actWd('${wd.id}','paid')">Mark Paid</button>` : ''}
-        ${wd.status === 'paid' || wd.status === 'rejected' ? '<span style="font-size:12px;color:var(--muted-light)">Done</span>' : ''}
-      </div></td>
     </tr>`).join('')}
     </tbody></table>`;
+}
+
+function wdDetail(id) {
+  const wd = allWd.find(x => x.id === id); if (!wd) return;
+  document.getElementById('m-title').textContent = 'Withdrawal Request';
+  document.getElementById('m-sub').textContent = wd.accountHolder || ('Chauffeur …' + (wd.chauffeurId||'').slice(-6));
+  document.getElementById('m-body').innerHTML = `<div class="info-grid">
+    <div class="info-row"><div class="info-label">Withdrawal ID</div><div class="info-val" style="font-family:var(--mono);font-size:12px">${wd.id}</div></div>
+    <div class="info-row"><div class="info-label">Status</div><div class="info-val"><span class="badge b-${wd.status}">${wd.status}</span></div></div>
+    <div class="info-row"><div class="info-label">Amount</div><div class="info-val" style="font-weight:700;color:var(--green);font-size:20px">R ${Number(wd.amount||0).toFixed(2)}</div></div>
+    <div class="info-row"><div class="info-label">Account Holder</div><div class="info-val">${wd.accountHolder || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Bank</div><div class="info-val">${wd.bankName || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Branch Code</div><div class="info-val" style="font-family:var(--mono)">${wd.branchCode || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Account Number</div><div class="info-val" style="font-family:var(--mono)">${wd.accountNumber || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Account Type</div><div class="info-val">${wd.accountType || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Chauffeur ID</div><div class="info-val" style="font-family:var(--mono);font-size:12px">${wd.chauffeurId || '—'}</div></div>
+    <div class="info-row"><div class="info-label">Requested</div><div class="info-val">${fmtFull(wd.createdAt)}</div></div>
+    ${wd.processedAt ? `<div class="info-row"><div class="info-label">Processed</div><div class="info-val">${fmtFull(wd.processedAt)}</div></div>` : ''}
+    ${wd.notes ? `<div class="info-row" style="grid-column:1/-1"><div class="info-label">Notes</div><div class="info-val">${wd.notes}</div></div>` : ''}
+  </div>`;
+  let footHtml = `<button class="btn-lg btn-outline" onclick="closeModal()">Close</button>`;
+  if (wd.status === 'pending') {
+    footHtml += `<button class="btn-lg btn-red" onclick="actWd('${wd.id}','rejected');closeModal()">✕ Decline</button>`;
+    footHtml += `<button class="btn-lg btn-green" onclick="actWd('${wd.id}','approved');closeModal()">✓ Approve</button>`;
+  } else if (wd.status === 'approved') {
+    footHtml += `<button class="btn-lg btn-black" onclick="actWd('${wd.id}','paid');closeModal()">Mark Paid</button>`;
+  }
+  document.getElementById('m-foot').innerHTML = footHtml;
+  openModal();
 }
 
 async function actWd(id, status) {
