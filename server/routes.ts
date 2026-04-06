@@ -5,7 +5,7 @@ import axios from "axios";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { storage } from "./storage";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { users, livenessSessions, rides as ridesTable } from "../shared/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import { uploadLivenessPhoto, getAdminSignedUrl } from "./livenessPhotoService";
@@ -311,6 +311,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     return fallback;
+  }
+
+  let clientRatingsReady: Promise<void> | null = null;
+  function ensureClientRatingsTable() {
+    if (!clientRatingsReady) {
+      clientRatingsReady = (async () => {
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS client_ratings (
+            id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+            ride_id varchar NOT NULL REFERENCES rides(id) ON DELETE CASCADE,
+            client_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            chauffeur_id varchar NOT NULL REFERENCES chauffeurs(id) ON DELETE CASCADE,
+            rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
+            comment text,
+            created_at timestamp DEFAULT now()
+          )
+        `);
+        await pool.query(`
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_client_ratings_ride_chauffeur_unique
+          ON client_ratings (ride_id, chauffeur_id)
+        `);
+        await pool.query(`
+          CREATE INDEX IF NOT EXISTS idx_client_ratings_client_id
+          ON client_ratings (client_id)
+        `);
+      })().catch((error) => {
+        clientRatingsReady = null;
+        throw error;
+      });
+    }
+    return clientRatingsReady;
   }
 
   // -----------------------------
@@ -996,6 +1027,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
         plateNumber: chauffeur.plateNumber,
         vehicleCategory: chauffeur.vehicleCategory,
         ratings: ratingsWithNames,
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/clients/:id/profile", async (req: Request, res: Response) => {
+    try {
+      await ensureClientRatingsTable();
+
+      const client = await storage.getUser(req.params.id);
+      if (!client) return res.status(404).json({ message: "Client not found" });
+
+      const rides = await storage.getRidesByClient(req.params.id);
+      const completedTrips = rides.filter((ride) => ride.status === "trip_completed").length;
+
+      const [summaryResult, distributionResult, reviewsResult] = await Promise.all([
+        pool.query(
+          `
+            SELECT ROUND(AVG(rating)::numeric, 2) AS avg_rating,
+                   COUNT(*)::int AS total_ratings
+            FROM client_ratings
+            WHERE client_id = $1
+          `,
+          [req.params.id]
+        ),
+        pool.query(
+          `
+            SELECT rating, COUNT(*)::int AS count
+            FROM client_ratings
+            WHERE client_id = $1
+            GROUP BY rating
+          `,
+          [req.params.id]
+        ),
+        pool.query(
+          `
+            SELECT
+              cr.id,
+              cr.rating,
+              cr.comment,
+              cr.created_at AS "createdAt",
+              COALESCE(u.name, 'Chauffeur') AS "reviewerName"
+            FROM client_ratings cr
+            JOIN chauffeurs ch ON ch.id = cr.chauffeur_id
+            JOIN users u ON u.id = ch.user_id
+            WHERE cr.client_id = $1
+            ORDER BY cr.created_at DESC
+            LIMIT 30
+          `,
+          [req.params.id]
+        ),
+      ]);
+
+      const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      for (const row of distributionResult.rows) {
+        distribution[Number(row.rating)] = Number(row.count);
+      }
+
+      const avgRating = summaryResult.rows[0]?.avg_rating != null
+        ? Number(summaryResult.rows[0].avg_rating)
+        : null;
+      const totalRatings = Number(summaryResult.rows[0]?.total_ratings || 0);
+
+      return res.json({
+        id: client.id,
+        clientName: client.name || getUserFirstName(client, "Client"),
+        clientPhone: client.phone || null,
+        clientRating: avgRating,
+        totalRatings,
+        completedTrips,
+        memberSince: client.createdAt,
+        distribution,
+        ratings: reviewsResult.rows,
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -2297,6 +2402,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     return res.json(rr);
+  });
+
+  app.post("/api/rides/:id/rate-client", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      await ensureClientRatingsTable();
+
+      const { rating, comment } = req.body;
+      const numericRating = Number(rating);
+      if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
+        return res.status(400).json({ message: "Rating must be an integer between 1 and 5" });
+      }
+
+      const ride = await storage.getRide(req.params.id);
+      if (!ride) return res.status(404).json({ message: "Ride not found" });
+      if (!ride.chauffeurId) return res.status(400).json({ message: "Ride has no chauffeur" });
+      if (ride.status !== "trip_completed") return res.status(400).json({ message: "Ride not completed" });
+
+      const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+      if (!chauffeur || chauffeur.userId !== req.auth!.sub) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const result = await pool.query(
+        `
+          INSERT INTO client_ratings (ride_id, client_id, chauffeur_id, rating, comment)
+          VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (ride_id, chauffeur_id)
+          DO UPDATE SET
+            rating = EXCLUDED.rating,
+            comment = EXCLUDED.comment,
+            created_at = now()
+          RETURNING
+            id,
+            ride_id AS "rideId",
+            client_id AS "clientId",
+            chauffeur_id AS "chauffeurId",
+            rating,
+            comment,
+            created_at AS "createdAt"
+        `,
+        [ride.id, ride.clientId, ride.chauffeurId, numericRating, comment || null]
+      );
+
+      const averageResult = await pool.query(
+        `SELECT ROUND(AVG(rating)::numeric, 2) AS avg_rating FROM client_ratings WHERE client_id = $1`,
+        [ride.clientId]
+      );
+      const average = averageResult.rows[0]?.avg_rating != null ? Number(averageResult.rows[0].avg_rating) : null;
+      if (average != null) {
+        await storage.updateUser(ride.clientId, { rating: average });
+      }
+
+      return res.json(result.rows[0]);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
   });
 
   app.get("/api/rides/client/:clientId", async (req: Request, res: Response) => {

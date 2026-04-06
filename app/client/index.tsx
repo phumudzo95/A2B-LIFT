@@ -998,7 +998,9 @@ export default function ClientHomeScreen() {
               </View>
               <View style={styles.liveNotifInfo}>
                 <Text style={styles.liveNotifTitle} numberOfLines={1}>
-                  {rideStatus === "arriving" ? "Driver arriving now" : "Driver on the way"}
+                  {rideStatus === "arriving"
+                    ? `${chauffeurDetails.driverName || "Driver"} is arriving now`
+                    : `${chauffeurDetails.driverName || "Driver"} is on the way`}
                 </Text>
                 <Text style={styles.liveNotifVehicle} numberOfLines={1}>
                   {[chauffeurDetails.carMake, chauffeurDetails.vehicleModel].filter(Boolean).join(" ") || "Your Vehicle"}
@@ -1207,7 +1209,11 @@ export default function ClientHomeScreen() {
           <View style={styles.statusBadge}>
             <View style={[styles.statusDot, { backgroundColor: Colors.success }]} />
             <Text style={styles.statusText}>
-              {rideStatus === "assigned" ? "Driver Assigned" : rideStatus === "arriving" ? "Driver Arriving" : "Trip In Progress"}
+              {rideStatus === "assigned"
+                ? `${chauffeurDetails?.driverName || "Driver"} is on the way`
+                : rideStatus === "arriving"
+                  ? `${chauffeurDetails?.driverName || "Driver"} is arriving`
+                  : "Trip In Progress"}
             </Text>
           </View>
 
@@ -1228,7 +1234,7 @@ export default function ClientHomeScreen() {
                 <Ionicons name="eye" size={9} color={Colors.white} />
               </View>
             </Pressable>
-            <View style={styles.chauffeurInfo}>
+            <Pressable style={styles.chauffeurInfo} onPress={openDriverProfile}>
               <Text style={styles.chauffeurName}>{chauffeurDetails?.driverName || "Your Driver"}</Text>
               {/* Show exact vehicle — make + model */}
               <Text style={styles.chauffeurVehicle}>
@@ -1257,7 +1263,8 @@ export default function ClientHomeScreen() {
                   ) : null}
                 </View>
               )}
-            </View>
+              <Text style={styles.chauffeurTapHint}>Tap to view full profile and rating</Text>
+            </Pressable>
             <View style={styles.chauffeurActions}>
               <Pressable
                 style={styles.actionBtn}
@@ -2767,6 +2774,12 @@ const styles = StyleSheet.create({
   chauffeurInfo: {
     flex: 1,
     gap: 2,
+  },
+  chauffeurTapHint: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+    marginTop: 4,
   },
   chauffeurName: {
     fontSize: 16,

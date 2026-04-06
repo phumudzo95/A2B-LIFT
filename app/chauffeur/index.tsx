@@ -13,6 +13,7 @@ import {
   Animated,
   Dimensions,
   ScrollView,
+  TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,6 +30,26 @@ import Colors from "@/constants/colors";
 import A2BMap from "@/components/A2BMap";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+interface ClientReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  reviewerName: string;
+}
+
+interface ClientProfile {
+  id: string;
+  clientName: string;
+  clientPhone: string | null;
+  clientRating: number | null;
+  totalRatings: number;
+  completedTrips: number;
+  memberSince: string;
+  distribution: Record<number, number>;
+  ratings: ClientReview[];
+}
 
 export default function ChauffeurDashboard() {
   const insets = useSafeAreaInsets();
@@ -52,8 +73,16 @@ export default function ChauffeurDashboard() {
   const [availableTrips, setAvailableTrips] = useState<any[]>([]);
   const [acceptingTripId, setAcceptingTripId] = useState<string | null>(null);
   const [completedTrip, setCompletedTrip] = useState<any>(null);
+  const [clientRatingRide, setClientRatingRide] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [routeAlternatives, setRouteAlternatives] = useState<any[]>([]);
+  const [showClientProfile, setShowClientProfile] = useState(false);
+  const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
+  const [clientProfileLoading, setClientProfileLoading] = useState(false);
+  const [showClientRating, setShowClientRating] = useState(false);
+  const [clientRating, setClientRating] = useState(0);
+  const [clientRatingComment, setClientRatingComment] = useState("");
+  const [submittingClientRating, setSubmittingClientRating] = useState(false);
 
   const soundRef = useRef<Audio.Sound | null>(null);
   const seenRideIdRef = useRef<string | null>(null);
@@ -496,6 +525,63 @@ export default function ChauffeurDashboard() {
     setRouteAlternatives([]);
   }
 
+  async function openClientProfile(clientId?: string) {
+    const resolvedClientId = clientId || currentRide?.clientId || incomingRide?.clientId;
+    if (!resolvedClientId) return;
+    setClientProfile(null);
+    setClientProfileLoading(true);
+    setShowClientProfile(true);
+    try {
+      const res = await apiRequest("GET", `/api/clients/${resolvedClientId}/profile`);
+      const data = await res.json();
+      setClientProfile(data);
+    } catch {
+      Alert.alert("Error", "Could not load client profile.");
+      setShowClientProfile(false);
+    } finally {
+      setClientProfileLoading(false);
+    }
+  }
+
+  function beginClientRating() {
+    if (!completedTrip?.clientId) {
+      setCompletedTrip(null);
+      return;
+    }
+    setClientRatingRide(completedTrip);
+    setClientRating(0);
+    setClientRatingComment("");
+    setCompletedTrip(null);
+    setShowClientRating(true);
+  }
+
+  function closeClientRating() {
+    setShowClientRating(false);
+    setClientRating(0);
+    setClientRatingComment("");
+    setClientRatingRide(null);
+  }
+
+  async function submitClientRating() {
+    if (!clientRatingRide || clientRating === 0) {
+      Alert.alert("Rating Required", "Please select a rating for this client.");
+      return;
+    }
+    try {
+      setSubmittingClientRating(true);
+      await apiRequest("POST", `/api/rides/${clientRatingRide.id}/rate-client`, {
+        rating: clientRating,
+        comment: clientRatingComment.trim() || null,
+      });
+      closeClientRating();
+      Alert.alert("Rating Saved", "The client rating has been submitted.");
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to submit client rating.");
+    } finally {
+      setSubmittingClientRating(false);
+    }
+  }
+
   async function acceptRide() {
     if (!incomingRide || !chauffeur) return;
     stopTripAlert();
@@ -819,10 +905,11 @@ export default function ChauffeurDashboard() {
               {availableTrips.map((trip) => (
                 <View key={trip.id} style={styles.tripCard}>
                   <View style={styles.tripCardTop}>
-                    <View style={styles.tripClientRow}>
+                    <Pressable style={styles.tripClientRow} onPress={() => openClientProfile(trip.clientId)}>
                       <Ionicons name="person-circle-outline" size={16} color={Colors.accent} />
                       <Text style={styles.tripClientName}>{trip.clientFirstName || (trip.clientName ? String(trip.clientName).split(" ")[0] : "Client")}</Text>
-                    </View>
+                      <Ionicons name="chevron-forward" size={12} color={Colors.textMuted} />
+                    </Pressable>
                     {trip.price && <Text style={styles.tripPrice}>R {trip.price}</Text>}
                   </View>
                   <View style={styles.tripAddrRow}>
@@ -861,12 +948,13 @@ export default function ChauffeurDashboard() {
             <Text style={styles.rideCardTitle}>{rideStatusLabel}</Text>
             {rideEta && <Text style={styles.etaText}>{rideEta.durationText} · {rideEta.distanceText}</Text>}
           </View>
-          {currentRide.clientFirstName && (
+          <Pressable style={styles.clientInfoButton} onPress={() => openClientProfile(currentRide.clientId)}>
             <View style={styles.addrRow}>
               <Ionicons name="person-outline" size={13} color={Colors.textMuted} />
-              <Text style={[styles.addrText, { color: Colors.white }]}>{currentRide.clientFirstName}</Text>
+              <Text style={[styles.addrText, { color: Colors.white }]}>{clientDisplayName}</Text>
             </View>
-          )}
+            <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+          </Pressable>
           <View style={styles.addrRow}>
             <View style={styles.dotGreen} />
             <Text style={styles.addrText} numberOfLines={1}>{currentRide.pickupAddress || "Pickup"}</Text>
@@ -909,9 +997,12 @@ export default function ChauffeurDashboard() {
           <>
             <View style={styles.incomingHeader}>
               <Ionicons name="flash" size={18} color={Colors.warning} />
-              <Text style={styles.incomingTitle}>
-                {incomingRide.clientFirstName ? `Pickup: ${incomingRide.clientFirstName}` : "New Ride Request"}
-              </Text>
+              <Pressable style={styles.incomingClientButton} onPress={() => openClientProfile(incomingRide.clientId)}>
+                <Text style={styles.incomingTitle}>
+                  {incomingRide.clientFirstName ? `Pickup: ${incomingRide.clientFirstName}` : "New Ride Request"}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+              </Pressable>
               {incomingRide.price && <Text style={styles.incomingPrice}>R {incomingRide.price}</Text>}
             </View>
             <View style={styles.addrRow}>
@@ -937,6 +1028,116 @@ export default function ChauffeurDashboard() {
 
       {/* ─── Menu backdrop ─── */}
       {menuOpen && <Pressable style={StyleSheet.absoluteFill} onPress={closeMenu} />}
+
+      {/* ─── Client profile modal ─── */}
+      <Modal visible={showClientProfile} transparent animationType="slide" onRequestClose={() => setShowClientProfile(false)}>
+        <View style={styles.profileModalOverlay}>
+          <View style={styles.profileModalCard}>
+            <View style={styles.profileHeader}>
+              <Text style={styles.profileTitle}>Client Profile</Text>
+              <Pressable onPress={() => setShowClientProfile(false)} style={styles.profileCloseBtn}>
+                <Ionicons name="close" size={22} color={Colors.white} />
+              </Pressable>
+            </View>
+
+            {clientProfileLoading ? (
+              <View style={styles.profileLoadingWrap}>
+                <ActivityIndicator size="large" color={Colors.accent} />
+              </View>
+            ) : clientProfile ? (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.profileScrollContent}>
+                <View style={styles.profileHero}>
+                  <View style={styles.profileAvatar}>
+                    <Text style={styles.profileAvatarText}>{clientProfile.clientName.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <Text style={styles.profilePersonName}>{clientProfile.clientName}</Text>
+                  <Text style={styles.profileSubtext}>{clientProfile.clientPhone || "Phone not available"}</Text>
+                  <Text style={styles.profileSubtext}>
+                    Member since {new Date(clientProfile.memberSince).toLocaleDateString("en-ZA", { year: "numeric", month: "short" })}
+                  </Text>
+                </View>
+
+                <View style={styles.profileStatsRow}>
+                  <View style={styles.profileStatBox}>
+                    <Text style={styles.profileStatValue}>
+                      {clientProfile.clientRating !== null ? clientProfile.clientRating.toFixed(1) : "—"}
+                    </Text>
+                    <View style={styles.profileStarsRow}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Ionicons
+                          key={star}
+                          name={star <= Math.round(clientProfile.clientRating ?? 0) ? "star" : "star-outline"}
+                          size={11}
+                          color={Colors.warning}
+                        />
+                      ))}
+                    </View>
+                    <Text style={styles.profileStatLabel}>{clientProfile.totalRatings} ratings</Text>
+                  </View>
+                  <View style={styles.profileStatDivider} />
+                  <View style={styles.profileStatBox}>
+                    <Text style={styles.profileStatValue}>{clientProfile.completedTrips}</Text>
+                    <Text style={styles.profileStatLabel}>Trips Completed</Text>
+                  </View>
+                </View>
+
+                {clientProfile.totalRatings > 0 && (
+                  <View style={styles.profileDistribution}>
+                    <Text style={styles.profileSectionTitle}>Rating Breakdown</Text>
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const count = clientProfile.distribution[star] || 0;
+                      const pct = clientProfile.totalRatings > 0 ? count / clientProfile.totalRatings : 0;
+                      return (
+                        <View key={star} style={styles.distRow}>
+                          <Text style={styles.distLabel}>{star}</Text>
+                          <Ionicons name="star" size={10} color={Colors.warning} />
+                          <View style={styles.distBarBg}>
+                            <View style={[styles.distBarFill, { flex: pct }]} />
+                            <View style={{ flex: 1 - pct }} />
+                          </View>
+                          <Text style={styles.distCount}>{count}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {clientProfile.ratings.length > 0 ? (
+                  <View style={styles.profileReviews}>
+                    <Text style={styles.profileSectionTitle}>Recent Reviews</Text>
+                    {clientProfile.ratings.map((review) => (
+                      <View key={review.id} style={styles.reviewCard}>
+                        <View style={styles.reviewHeader}>
+                          <View style={styles.reviewAvatar}>
+                            <Text style={styles.reviewAvatarText}>{review.reviewerName.charAt(0).toUpperCase()}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.reviewerName}>{review.reviewerName}</Text>
+                            <Text style={styles.reviewDate}>
+                              {new Date(review.createdAt).toLocaleDateString("en-ZA", { year: "numeric", month: "short", day: "numeric" })}
+                            </Text>
+                          </View>
+                          <View style={styles.reviewStars}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Ionicons key={star} name={star <= review.rating ? "star" : "star-outline"} size={12} color={Colors.warning} />
+                            ))}
+                          </View>
+                        </View>
+                        {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.noReviewsContainer}>
+                    <Ionicons name="chatbubble-outline" size={32} color={Colors.textMuted} />
+                    <Text style={styles.noReviewsText}>No reviews yet</Text>
+                  </View>
+                )}
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
 
       {/* ─── Post-trip payment popup ─── */}
       <Modal visible={!!completedTrip} transparent animationType="fade" onRequestClose={() => setCompletedTrip(null)}>
@@ -965,9 +1166,55 @@ export default function ChauffeurDashboard() {
                 </Text>
               </>
             )}
-            <Pressable style={styles.payPopupBtn} onPress={() => setCompletedTrip(null)}>
-              <Text style={styles.payPopupBtnText}>Got it</Text>
+            <Pressable style={styles.payPopupBtn} onPress={beginClientRating}>
+              <Text style={styles.payPopupBtnText}>Continue</Text>
             </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─── Post-trip client rating modal ─── */}
+      <Modal visible={showClientRating} transparent animationType="fade" onRequestClose={closeClientRating}>
+        <View style={styles.ratingModalOverlay}>
+          <View style={styles.ratingModalCard}>
+            <Text style={styles.ratingModalTitle}>
+              Rate {clientRatingRide?.clientFirstName || (clientRatingRide?.clientName ? String(clientRatingRide.clientName).split(" ")[0] : "Client")}
+            </Text>
+            <Text style={styles.ratingModalSubtitle}>This rating updates the client's profile and overall score.</Text>
+
+            <View style={styles.ratingStarsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Pressable key={star} onPress={() => setClientRating(star)} hitSlop={8}>
+                  <Ionicons name={star <= clientRating ? "star" : "star-outline"} size={34} color={Colors.warning} />
+                </Pressable>
+              ))}
+            </View>
+
+            <TextInput
+              value={clientRatingComment}
+              onChangeText={setClientRatingComment}
+              placeholder="Optional feedback"
+              placeholderTextColor={Colors.textMuted}
+              multiline
+              style={styles.ratingCommentInput}
+            />
+
+            <View style={styles.ratingActionsRow}>
+              <Pressable style={styles.ratingSecondaryBtn} onPress={closeClientRating} disabled={submittingClientRating}>
+                <Text style={styles.ratingSecondaryBtnText}>Skip</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.ratingPrimaryBtn, (clientRating === 0 || submittingClientRating) && { opacity: 0.6 }]}
+                onPress={submitClientRating}
+                disabled={clientRating === 0 || submittingClientRating}
+              >
+                {submittingClientRating ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <Text style={styles.ratingPrimaryBtnText}>Submit</Text>
+                )}
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1058,6 +1305,7 @@ const styles = StyleSheet.create({
   rideCardTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white, flex: 1 },
   etaText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   priceText: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white },
+  clientInfoButton: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
 
   rideActions: { flexDirection: "row", gap: 8 },
   rideSecBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, backgroundColor: "rgba(255,255,255,0.09)", borderRadius: 10, paddingVertical: 9, borderWidth: 1, borderColor: GLASS_BORDER },
@@ -1067,6 +1315,7 @@ const styles = StyleSheet.create({
   // Incoming
   incomingCard: { position: "absolute", left: 16, right: 76, backgroundColor: GLASS, borderRadius: 20, padding: 16, gap: 10, borderWidth: 1, borderColor: "rgba(255,183,77,0.3)", zIndex: 5 },
   incomingHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  incomingClientButton: { flex: 1, flexDirection: "row", alignItems: "center", gap: 4 },
   incomingTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.warning, flex: 1 },
   incomingPrice: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.white },
   incomingActions: { flexDirection: "row", gap: 10, marginTop: 2 },
@@ -1117,6 +1366,44 @@ const styles = StyleSheet.create({
   floatNavStep: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   floatNavEta: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.accent },
 
+  // Profile modal
+  profileModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
+  profileModalCard: { backgroundColor: Colors.primary, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28, minHeight: "76%", maxHeight: "88%" },
+  profileHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  profileTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white },
+  profileCloseBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center" },
+  profileLoadingWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 32 },
+  profileScrollContent: { paddingBottom: 24 },
+  profileHero: { alignItems: "center", paddingVertical: 10 },
+  profileAvatar: { width: 82, height: 82, borderRadius: 41, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  profileAvatarText: { fontSize: 30, fontFamily: "Inter_700Bold", color: Colors.white },
+  profilePersonName: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.white, textAlign: "center" },
+  profileSubtext: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", marginTop: 4 },
+  profileStatsRow: { flexDirection: "row", alignItems: "stretch", backgroundColor: Colors.surface, borderRadius: 18, paddingVertical: 18, paddingHorizontal: 12, marginTop: 18 },
+  profileStatBox: { flex: 1, alignItems: "center", justifyContent: "center" },
+  profileStatValue: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.white },
+  profileStatLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: 4, textAlign: "center" },
+  profileStatDivider: { width: 1, backgroundColor: Colors.border, marginHorizontal: 12 },
+  profileStarsRow: { flexDirection: "row", gap: 2, justifyContent: "center", marginTop: 4 },
+  profileDistribution: { marginTop: 24, gap: 10 },
+  profileSectionTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.white, marginBottom: 4 },
+  distRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  distLabel: { width: 10, fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textMuted },
+  distBarBg: { flex: 1, height: 8, borderRadius: 999, backgroundColor: Colors.surface, overflow: "hidden", flexDirection: "row" },
+  distBarFill: { backgroundColor: Colors.warning, borderRadius: 999 },
+  distCount: { width: 22, fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textMuted, textAlign: "right" },
+  profileReviews: { marginTop: 24, gap: 12 },
+  reviewCard: { backgroundColor: Colors.surface, borderRadius: 16, padding: 14, gap: 10 },
+  reviewHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  reviewAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center" },
+  reviewAvatarText: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.white },
+  reviewerName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  reviewDate: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: 2 },
+  reviewStars: { flexDirection: "row", gap: 2 },
+  reviewComment: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 20, paddingLeft: 44 },
+  noReviewsContainer: { paddingVertical: 32, alignItems: "center", gap: 8 },
+  noReviewsText: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textMuted },
+
   // Post-trip payment popup
   payPopupOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
   payPopupCard: { width: "100%", backgroundColor: "#1a1a2e", borderRadius: 24, padding: 28, alignItems: "center", gap: 12, borderWidth: 1, borderColor: GLASS_BORDER },
@@ -1126,6 +1413,19 @@ const styles = StyleSheet.create({
   payPopupBody: { fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", lineHeight: 22 },
   payPopupBtn: { marginTop: 8, backgroundColor: Colors.white, borderRadius: 14, paddingHorizontal: 40, paddingVertical: 14, width: "100%", alignItems: "center" },
   payPopupBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.primary },
+
+  // Rating modal
+  ratingModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", alignItems: "center", justifyContent: "center", paddingHorizontal: 20 },
+  ratingModalCard: { width: "100%", backgroundColor: "#1a1a2e", borderRadius: 24, padding: 24, borderWidth: 1, borderColor: GLASS_BORDER, gap: 16 },
+  ratingModalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white, textAlign: "center" },
+  ratingModalSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", lineHeight: 19 },
+  ratingStarsRow: { flexDirection: "row", justifyContent: "center", gap: 10 },
+  ratingCommentInput: { minHeight: 96, borderRadius: 16, backgroundColor: Colors.surface, color: Colors.white, fontFamily: "Inter_400Regular", paddingHorizontal: 14, paddingVertical: 12, textAlignVertical: "top", borderWidth: 1, borderColor: Colors.border },
+  ratingActionsRow: { flexDirection: "row", gap: 10 },
+  ratingSecondaryBtn: { flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderWidth: 1, borderColor: GLASS_BORDER },
+  ratingSecondaryBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  ratingPrimaryBtn: { flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: "center", backgroundColor: Colors.white },
+  ratingPrimaryBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.primary },
 
   // Route options
   routeOptionsContainer: { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
