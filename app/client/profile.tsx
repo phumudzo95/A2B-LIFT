@@ -1,18 +1,71 @@
-import React from "react";
-import { View, Text, StyleSheet, Pressable, Platform, ScrollView } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, Pressable, Platform, ScrollView, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAuth } from "@/lib/auth-context";
+import { apiRequest } from "@/lib/query-client";
 import Colors from "@/constants/colors";
+
+interface ClientReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  reviewerName: string;
+}
+
+interface ClientProfileDetails {
+  clientRating: number | null;
+  totalRatings: number;
+  completedTrips: number;
+  ratings: ClientReview[];
+}
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
+  const [profileDetails, setProfileDetails] = useState<ClientProfileDetails | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let cancelled = false;
+
+    async function loadProfileDetails() {
+      try {
+        setProfileLoading(true);
+        const res = await apiRequest("GET", `/api/clients/${user.id}/profile`);
+        const data = await res.json();
+        if (!cancelled) {
+          setProfileDetails(data);
+        }
+      } catch {
+        if (!cancelled) {
+          setProfileDetails(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setProfileLoading(false);
+        }
+      }
+    }
+
+    loadProfileDetails();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   async function handleLogout() {
     await logout();
   }
+
+  const averageRating = profileDetails?.clientRating ?? (user?.rating != null ? Number(user.rating) : null);
+  const totalRatings = profileDetails?.totalRatings ?? 0;
+  const completedTrips = profileDetails?.completedTrips ?? 0;
+  const recentReviews = profileDetails?.ratings?.slice(0, 3) ?? [];
 
   return (
     <ScrollView
@@ -32,7 +85,51 @@ export default function ProfileScreen() {
         {user?.createdAt && (
           <Text style={styles.profilePhone}>Member since {new Date(user.createdAt).getFullYear()}</Text>
         )}
+        <View style={styles.ratingRow}>
+          <Ionicons name="star" size={14} color={Colors.warning} />
+          {profileLoading ? (
+            <ActivityIndicator size="small" color={Colors.warning} />
+          ) : (
+            <Text style={styles.ratingText}>
+              {averageRating !== null ? `${averageRating.toFixed(1)} • ${totalRatings} ratings` : "No ratings yet"}
+            </Text>
+          )}
+        </View>
       </View>
+
+      <View style={styles.statsCard}>
+        <View style={styles.statsRow}>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{averageRating !== null ? averageRating.toFixed(1) : "—"}</Text>
+            <Text style={styles.statLabel}>Average Rating</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{totalRatings}</Text>
+            <Text style={styles.statLabel}>Reviews</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{completedTrips}</Text>
+            <Text style={styles.statLabel}>Trips</Text>
+          </View>
+        </View>
+      </View>
+
+      {recentReviews.length > 0 && (
+        <View style={styles.reviewsCard}>
+          <Text style={styles.reviewsTitle}>Recent Ratings</Text>
+          {recentReviews.map((review) => (
+            <View key={review.id} style={styles.reviewItem}>
+              <View style={styles.reviewHeader}>
+                <Text style={styles.reviewName}>{review.reviewerName}</Text>
+                <Text style={styles.reviewMeta}>{review.rating.toFixed(1)} ★</Text>
+              </View>
+              {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}
+            </View>
+          ))}
+        </View>
+      )}
 
       <View style={styles.menuGroup}>
         <Pressable style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]} onPress={() => router.push("/client/notifications")}>
@@ -110,6 +207,19 @@ const styles = StyleSheet.create({
   profilePhone: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
   ratingText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  statsCard: { backgroundColor: Colors.card, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: Colors.border, marginBottom: 16 },
+  statsRow: { flexDirection: "row", alignItems: "center" },
+  statBox: { flex: 1, alignItems: "center", gap: 4 },
+  statValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white },
+  statLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center" },
+  statDivider: { width: 1, alignSelf: "stretch", backgroundColor: Colors.border },
+  reviewsCard: { backgroundColor: Colors.card, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: Colors.border, marginBottom: 16, gap: 12 },
+  reviewsTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  reviewItem: { backgroundColor: Colors.surface, borderRadius: 14, padding: 12, gap: 6, borderWidth: 1, borderColor: Colors.border },
+  reviewHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  reviewName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.white, flex: 1 },
+  reviewMeta: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.warning },
+  reviewComment: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 18 },
   menuGroup: { backgroundColor: Colors.card, borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: Colors.border, marginBottom: 16 },
   menuItem: { flexDirection: "row", alignItems: "center", padding: 16, gap: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   menuIconCircle: { width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center" },

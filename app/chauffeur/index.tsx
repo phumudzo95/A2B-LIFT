@@ -21,6 +21,7 @@ import { router } from "expo-router";
 import Constants from "expo-constants";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
+import * as Speech from "expo-speech";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
 import { useAuth } from "@/lib/auth-context";
@@ -51,6 +52,15 @@ interface ClientProfile {
   ratings: ClientReview[];
 }
 
+interface ClientSummary {
+  id: string;
+  fullName: string;
+  firstName: string;
+  phone: string | null;
+  rating: number | null;
+  createdAt: string | null;
+}
+
 export default function ChauffeurDashboard() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -76,6 +86,7 @@ export default function ChauffeurDashboard() {
   const [clientRatingRide, setClientRatingRide] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [routeAlternatives, setRouteAlternatives] = useState<any[]>([]);
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
   const [clientProfileLoading, setClientProfileLoading] = useState(false);
@@ -86,10 +97,140 @@ export default function ChauffeurDashboard() {
 
   const soundRef = useRef<Audio.Sound | null>(null);
   const seenRideIdRef = useRef<string | null>(null);
+  const suppressedRideAlertIdRef = useRef<string | null>(null);
+  const clientSummaryCacheRef = useRef<Record<string, ClientSummary>>({});
+  const lastSpokenNavKeyRef = useRef<string | null>(null);
+  const routeContextRef = useRef<string | null>(null);
   const menuAnim = useRef(new Animated.Value(0)).current;
   const incomingSlide = useRef(new Animated.Value(300)).current;
   const notificationsRef = useRef<any>(null);
   const isExpoGoAndroid = Platform.OS === "android" && Constants.appOwnership === "expo";
+
+  function getClientFirstName(name?: string | null, fallback = "Client") {
+    const cleaned = String(name || "").trim();
+    if (!cleaned) return fallback;
+    return cleaned.split(/\s+/)[0] || fallback;
+  }
+
+  function isPlaceholderClientName(name?: string | null) {
+    const normalized = String(name || "").trim().toLowerCase();
+    return !normalized || ["client", "rider", "a2b", "a2b client"].includes(normalized);
+  }
+
+  function getRouteOptionTitle(index: number, summary?: string | null) {
+    const cleanedSummary = String(summary || "").trim();
+    if (cleanedSummary) return cleanedSummary;
+    if (index === 0) return "Recommended";
+    return `Route ${index + 1}`;
+  }
+
+  function getRouteAlternatives(routes: any[], fallbackRoute?: any) {
+    const sourceRoutes = Array.isArray(routes) && routes.length > 0
+      ? routes
+      : fallbackRoute?.polyline
+        ? [fallbackRoute]
+        : [];
+
+    const seen = new Set<string>();
+    const uniqueRoutes: any[] = [];
+
+    for (const route of sourceRoutes) {
+      if (!route?.polyline || seen.has(route.polyline)) continue;
+      seen.add(route.polyline);
+      uniqueRoutes.push(route);
+      if (uniqueRoutes.length === 3) break;
+    }
+
+    return uniqueRoutes;
+  }
+
+  async function getClientSummary(clientId?: string): Promise<ClientSummary | null> {
+    if (!clientId) return null;
+    const cached = clientSummaryCacheRef.current[clientId];
+    if (cached) return cached;
+    try {
+      const res = await apiRequest("GET", `/api/users/${clientId}`);
+      const user = await res.json();
+      const summary: ClientSummary = {
+        id: user.id,
+        fullName: user.name || user.username || "Client",
+        firstName: getClientFirstName(user.name || user.username, "Client"),
+        phone: user.phone || null,
+        rating: user.rating != null ? Number(user.rating) : null,
+        createdAt: user.createdAt ? String(user.createdAt) : null,
+      };
+      clientSummaryCacheRef.current[clientId] = summary;
+      return summary;
+    } catch {
+      return null;
+    }
+  }
+
+  async function enrichRideClientDetails<T extends Record<string, any> | null>(ride: T, fallback = "Client"): Promise<T> {
+    if (!ride) return ride;
+
+    const seededFirstName = getClientFirstName(ride.clientFirstName || ride.clientName, fallback);
+    if (!ride.clientId) {
+      return {
+        ...ride,
+        clientFirstName: seededFirstName,
+      } as T;
+    }
+
+    const summary = await getClientSummary(ride.clientId);
+    if (!summary) {
+      return {
+        ...ride,
+        clientFirstName: seededFirstName,
+      } as T;
+    }
+
+    return {
+      ...ride,
+      clientFirstName: isPlaceholderClientName(ride.clientFirstName) ? summary.firstName : seededFirstName,
+      clientName: ride.clientName || summary.fullName,
+      clientPhone: ride.clientPhone || summary.phone,
+    } as T;
+  }
+
+  async function buildFallbackClientProfile(clientId: string): Promise<ClientProfile | null> {
+    try {
+      const [userRes, ridesRes] = await Promise.all([
+        apiRequest("GET", `/api/users/${clientId}`),
+        apiRequest("GET", `/api/rides/client/${clientId}`),
+      ]);
+      const user = await userRes.json();
+      const rides = await ridesRes.json();
+      const completedTrips = Array.isArray(rides)
+        ? rides.filter((ride: any) => ride.status === "trip_completed").length
+        : 0;
+
+      const fallbackProfile: ClientProfile = {
+        id: user.id,
+        clientName: user.name || user.username || "Client",
+        clientPhone: user.phone || null,
+        clientRating: user.rating != null ? Number(user.rating) : null,
+        totalRatings: 0,
+        completedTrips,
+        memberSince: user.createdAt ? String(user.createdAt) : new Date().toISOString(),
+        distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        ratings: [],
+      };
+
+      clientSummaryCacheRef.current[clientId] = {
+        id: fallbackProfile.id,
+        fullName: fallbackProfile.clientName,
+        firstName: getClientFirstName(fallbackProfile.clientName, "Client"),
+        phone: fallbackProfile.clientPhone,
+        rating: fallbackProfile.clientRating,
+        createdAt: fallbackProfile.memberSince,
+      };
+
+      return fallbackProfile;
+    } catch {
+      return null;
+    }
+  }
 
   // ─── Sound ───────────────────────────────────────────────────────────────
   async function playTripAlert() {
@@ -120,6 +261,12 @@ export default function ChauffeurDashboard() {
   }
 
   useEffect(() => { return () => { soundRef.current?.unloadAsync(); }; }, []);
+
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
 
   useEffect(() => {
     if (Platform.OS === "web" || isExpoGoAndroid) return;
@@ -172,8 +319,13 @@ export default function ChauffeurDashboard() {
   useEffect(() => {
     const handleNewRide = (ride: any) => {
       if (isOnline && chauffeur?.isApproved && !currentRide) {
-        setIncomingRide(ride);
-        playTripAlert();
+        seenRideIdRef.current = ride.id || null;
+        void enrichRideClientDetails(ride, "Client").then((enrichedRide) => {
+          setIncomingRide(enrichedRide);
+        });
+        if (ride?.id !== suppressedRideAlertIdRef.current) {
+          playTripAlert();
+        }
       }
     };
     on("ride:new", handleNewRide);
@@ -186,9 +338,13 @@ export default function ChauffeurDashboard() {
       setCurrentRide((prev: any) => {
         if (prev && ride.id === prev.id && ride.status === "cancelled") {
           setRoutePolyline(null);
+          setRouteAlternatives([]);
+          setSelectedRouteIndex(0);
           setRideEta(null);
           setShowNavModal(false);
           setNavSteps([]);
+          setCurrentStepIdx(0);
+          routeContextRef.current = null;
           AsyncStorage.removeItem("a2b_current_ride").catch(() => {});
           Alert.alert("Ride Cancelled", "The rider has cancelled this trip.");
           return null;
@@ -286,8 +442,11 @@ export default function ChauffeurDashboard() {
         const ride = await res.json();
         if (ride?.id && ride.id !== seenRideIdRef.current) {
           seenRideIdRef.current = ride.id;
-          setIncomingRide(ride);
-          playTripAlert();
+          const enrichedRide = await enrichRideClientDetails(ride, "Client");
+          setIncomingRide(enrichedRide);
+          if (ride.id !== suppressedRideAlertIdRef.current) {
+            playTripAlert();
+          }
         }
       } catch {}
     }, 6000);
@@ -306,7 +465,10 @@ export default function ChauffeurDashboard() {
         const res = await apiRequest("GET", `/api/rides/available/${chauffeur!.id}`);
         if (!res.ok) return;
         const trips = await res.json();
-        if (Array.isArray(trips)) setAvailableTrips(trips);
+        if (Array.isArray(trips)) {
+          const enrichedTrips = await Promise.all(trips.map((trip: any) => enrichRideClientDetails(trip, "Client")));
+          setAvailableTrips(enrichedTrips);
+        }
       } catch {}
     }
     fetchAvailable();
@@ -328,9 +490,41 @@ export default function ChauffeurDashboard() {
   }, [myLocation?.lat, myLocation?.lng]);
 
   useEffect(() => {
-    if (currentRide || !incomingRide) return;
-    stopTripAlert();
+    if (currentRide || !incomingRide) {
+      stopTripAlert();
+    }
   }, [currentRide?.id, incomingRide?.id]);
+
+  useEffect(() => {
+    if (!currentRide || navSteps.length === 0) return;
+    const step = navSteps[currentStepIdx];
+    const instruction = step?.instruction?.trim();
+    if (!instruction) return;
+
+    const navKey = `${currentRide.id}:${currentRide.status}:${currentStepIdx}:${instruction}`;
+    if (lastSpokenNavKeyRef.current === navKey) return;
+    lastSpokenNavKeyRef.current = navKey;
+
+    if (Platform.OS !== "web") {
+      Haptics.selectionAsync().catch(() => {});
+      try {
+        Speech.stop();
+      } catch {}
+      Speech.speak(instruction, {
+        language: "en-ZA",
+        rate: 0.95,
+        pitch: 1,
+      });
+    }
+  }, [currentRide?.id, currentRide?.status, currentStepIdx, navSteps]);
+
+  useEffect(() => {
+    if (!currentRide) {
+      lastSpokenNavKeyRef.current = null;
+      routeContextRef.current = null;
+      Speech.stop();
+    }
+  }, [currentRide?.id]);
 
   useEffect(() => {
     if (!currentRide || !myLocation) return;
@@ -351,12 +545,12 @@ export default function ChauffeurDashboard() {
       const ride = JSON.parse(saved);
       const rideRes = await apiRequest("GET", `/api/rides/${ride.id}`);
       if (!rideRes.ok) { await AsyncStorage.removeItem("a2b_current_ride"); return; }
-      const freshRide = await rideRes.json();
-      freshRide.clientFirstName =
-        freshRide.clientFirstName ||
-        ride.clientFirstName ||
-        (ride.clientName ? String(ride.clientName).split(" ")[0] : null) ||
-        "Client";
+      const fetchedRide = await rideRes.json();
+      const freshRide = await enrichRideClientDetails({
+        ...fetchedRide,
+        clientFirstName: fetchedRide.clientFirstName || ride.clientFirstName,
+        clientName: fetchedRide.clientName || ride.clientName,
+      }, "Client");
       if (freshRide.status === "trip_completed" || freshRide.status === "cancelled") {
         await AsyncStorage.removeItem("a2b_current_ride");
       } else {
@@ -499,30 +693,73 @@ export default function ChauffeurDashboard() {
         `/api/directions?originLat=${myLocation.lat}&originLng=${myLocation.lng}&destLat=${destLat}&destLng=${destLng}`
       );
       const data = await res.json();
-      if (data.polyline) setRoutePolyline(data.polyline);
-      if (data.distanceText && data.durationText) {
-        setRideEta({ distanceText: data.distanceText, durationText: data.durationText, distanceKm: data.distanceKm, durationMin: data.durationMin });
+      const fallbackRoute = data?.polyline
+        ? {
+            polyline: data.polyline,
+            distanceText: data.distanceText,
+            durationText: data.durationText,
+            distanceKm: data.distanceKm,
+            durationMin: data.durationMin,
+            summary: data.summary,
+            steps: Array.isArray(data.steps) ? data.steps : [],
+          }
+        : null;
+      const alternatives = getRouteAlternatives(data.alternatives, fallbackRoute);
+      const routeContextKey = [
+        currentRide?.id || "route",
+        currentRide?.status || "pickup",
+        Number(destLat).toFixed(5),
+        Number(destLng).toFixed(5),
+      ].join(":");
+      const hasContextChanged = routeContextRef.current !== routeContextKey;
+      routeContextRef.current = routeContextKey;
+
+      const nextSelectedIndex = hasContextChanged
+        ? 0
+        : Math.min(selectedRouteIndex, Math.max(alternatives.length - 1, 0));
+      const activeRoute = alternatives[nextSelectedIndex] || alternatives[0] || fallbackRoute;
+
+      setRouteAlternatives(alternatives);
+      setSelectedRouteIndex(nextSelectedIndex);
+
+      if (activeRoute?.polyline) {
+        setRoutePolyline(activeRoute.polyline);
       }
-      if (Array.isArray(data.steps) && data.steps.length > 0) {
-        setNavSteps(data.steps);
+
+      if (activeRoute?.distanceText && activeRoute?.durationText) {
+        setRideEta({
+          distanceText: activeRoute.distanceText,
+          durationText: activeRoute.durationText,
+          distanceKm: activeRoute.distanceKm,
+          durationMin: activeRoute.durationMin,
+        });
+      }
+
+      if (Array.isArray(activeRoute?.steps) && activeRoute.steps.length > 0) {
+        setNavSteps(activeRoute.steps);
+        setCurrentStepIdx((prev) => (hasContextChanged ? 0 : Math.min(prev, activeRoute.steps.length - 1)));
+      } else if (hasContextChanged) {
+        setNavSteps([]);
         setCurrentStepIdx(0);
-      }
-      if (Array.isArray(data.alternatives) && data.alternatives.length > 1) {
-        setRouteAlternatives(data.alternatives);
-      } else {
-        setRouteAlternatives([]);
       }
     } catch {}
   }
 
-  function selectRoute(alt: any) {
+  function selectRoute(alt: any, index: number) {
+    setSelectedRouteIndex(index);
     setRoutePolyline(alt.polyline);
     setRideEta({ distanceText: alt.distanceText, durationText: alt.durationText, distanceKm: alt.distanceKm, durationMin: alt.durationMin });
     if (Array.isArray(alt.steps) && alt.steps.length > 0) {
       setNavSteps(alt.steps);
       setCurrentStepIdx(0);
     }
-    setRouteAlternatives([]);
+    setShowNavModal(true);
+  }
+
+  async function startTripToDestination() {
+    if (!currentRide) return;
+    setShowNavModal(true);
+    await updateRideStatus("trip_started");
   }
 
   async function openClientProfile(clientId?: string) {
@@ -536,8 +773,13 @@ export default function ChauffeurDashboard() {
       const data = await res.json();
       setClientProfile(data);
     } catch {
-      Alert.alert("Error", "Could not load client profile.");
-      setShowClientProfile(false);
+      const fallbackProfile = await buildFallbackClientProfile(resolvedClientId);
+      if (fallbackProfile) {
+        setClientProfile(fallbackProfile);
+      } else {
+        Alert.alert("Error", "Could not load client profile.");
+        setShowClientProfile(false);
+      }
     } finally {
       setClientProfileLoading(false);
     }
@@ -576,7 +818,12 @@ export default function ChauffeurDashboard() {
       closeClientRating();
       Alert.alert("Rating Saved", "The client rating has been submitted.");
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to submit client rating.");
+      const message = String(error?.message || "");
+      if (message.includes("Cannot POST") || message.includes("404:")) {
+        Alert.alert("Backend Update Needed", "Client rating is not live on the server yet. The app changes are ready, but Railway still needs the updated backend route.");
+      } else {
+        Alert.alert("Error", error.message || "Failed to submit client rating.");
+      }
     } finally {
       setSubmittingClientRating(false);
     }
@@ -584,36 +831,46 @@ export default function ChauffeurDashboard() {
 
   async function acceptRide() {
     if (!incomingRide || !chauffeur) return;
+    const pendingRide = incomingRide;
+    suppressedRideAlertIdRef.current = pendingRide.id || null;
+    setIncomingRide(null);
     stopTripAlert();
     try {
-      const res = await apiRequest("PUT", `/api/rides/${incomingRide.id}/accept`, { chauffeurId: chauffeur.id });
+      const res = await apiRequest("PUT", `/api/rides/${pendingRide.id}/accept`, { chauffeurId: chauffeur.id });
       if (res.status === 409) {
         Alert.alert("Too Late", "This ride was already taken by another driver.");
         setIncomingRide(null);
         return;
       }
       const ride = await res.json();
-      // Carry over clientFirstName from incoming ride
-      ride.clientFirstName =
-        ride.clientFirstName ||
-        incomingRide.clientFirstName ||
-        (incomingRide.clientName ? String(incomingRide.clientName).split(" ")[0] : null) ||
-        "Client";
-      setCurrentRide(ride);
+      const enrichedRide = await enrichRideClientDetails({
+        ...ride,
+        clientFirstName: ride.clientFirstName || pendingRide.clientFirstName,
+        clientName: ride.clientName || pendingRide.clientName,
+        clientPhone: ride.clientPhone || pendingRide.clientPhone,
+      }, "Client");
+      setCurrentRide(enrichedRide);
       setIncomingRide(null);
-      if (ride.pickupLat && ride.pickupLng) fetchDriverRoute(parseFloat(ride.pickupLat), parseFloat(ride.pickupLng));
+      if (enrichedRide.pickupLat && enrichedRide.pickupLng) fetchDriverRoute(parseFloat(enrichedRide.pickupLat), parseFloat(enrichedRide.pickupLng));
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowNavModal(true);
     } catch {
       Alert.alert("Error", "Ride may have been taken by another chauffeur");
-      setIncomingRide(null);
+      const restoredRide = await enrichRideClientDetails(pendingRide, "Client");
+      setIncomingRide(restoredRide);
     }
   }
 
-  function declineRide() { stopTripAlert(); setIncomingRide(null); setRideEta(null); }
+  function declineRide() {
+    suppressedRideAlertIdRef.current = incomingRide?.id || null;
+    stopTripAlert();
+    setIncomingRide(null);
+    setRideEta(null);
+  }
 
   async function acceptTripFromList(trip: any) {
     if (!chauffeur || acceptingTripId) return;
+    suppressedRideAlertIdRef.current = trip.id || null;
     stopTripAlert();
     setAcceptingTripId(trip.id);
     try {
@@ -624,16 +881,16 @@ export default function ChauffeurDashboard() {
         return;
       }
       const ride = await res.json();
-      // carry over clientFirstName from list data
-      ride.clientFirstName =
-        ride.clientFirstName ||
-        trip.clientFirstName ||
-        (trip.clientName ? String(trip.clientName).split(" ")[0] : null) ||
-        "Client";
-      setCurrentRide(ride);
+      const enrichedRide = await enrichRideClientDetails({
+        ...ride,
+        clientFirstName: ride.clientFirstName || trip.clientFirstName,
+        clientName: ride.clientName || trip.clientName,
+        clientPhone: ride.clientPhone || trip.clientPhone,
+      }, "Client");
+      setCurrentRide(enrichedRide);
       setAvailableTrips([]);
       setIncomingRide(null);
-      if (ride.pickupLat && ride.pickupLng) fetchDriverRoute(parseFloat(ride.pickupLat), parseFloat(ride.pickupLng));
+      if (enrichedRide.pickupLat && enrichedRide.pickupLng) fetchDriverRoute(parseFloat(enrichedRide.pickupLat), parseFloat(enrichedRide.pickupLng));
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowNavModal(true);
     } catch {
@@ -648,26 +905,34 @@ export default function ChauffeurDashboard() {
     try {
       const res = await apiRequest("PUT", `/api/rides/${currentRide.id}/status`, { status });
       const ride = await res.json();
-      const rideWithName = {
+      const rideWithName = await enrichRideClientDetails({
         ...ride,
         clientFirstName:
           ride?.clientFirstName ||
           currentRide?.clientFirstName ||
           (currentRide?.clientName ? String(currentRide.clientName).split(" ")[0] : null) ||
           "Client",
-      };
+        clientName: ride?.clientName || currentRide?.clientName,
+        clientPhone: ride?.clientPhone || currentRide?.clientPhone,
+      }, "Client");
       if (status === "trip_completed" || status === "cancelled") {
         if (status === "trip_completed") setCompletedTrip(rideWithName);
         setCurrentRide(null);
         setRoutePolyline(null);
+        setRouteAlternatives([]);
+        setSelectedRouteIndex(0);
         setRideEta(null);
         setShowNavModal(false);
+        setNavSteps([]);
+        setCurrentStepIdx(0);
+        routeContextRef.current = null;
         if (chauffeur) refreshChauffeur(chauffeur.id);
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         setCurrentRide(rideWithName);
         if (status === "trip_started" && ride.dropoffLat && ride.dropoffLng) {
           fetchDriverRoute(parseFloat(ride.dropoffLat), parseFloat(ride.dropoffLng));
+          setShowNavModal(true);
         }
       }
     } catch { Alert.alert("Error", "Failed to update ride status"); }
@@ -730,6 +995,7 @@ export default function ChauffeurDashboard() {
     currentRide?.status === "chauffeur_assigned" ? `On the way to pick up ${clientDisplayName}` :
     currentRide?.status === "chauffeur_arriving" ? `Arriving at ${clientDisplayName}'s pickup` :
     currentRide?.status === "trip_started" ? `Trip in progress — ${clientDisplayName}` : "Active Ride";
+  const routeOptionsHeading = currentRide?.status === "trip_started" ? "Destination routes" : "Pickup routes";
 
   return (
     <>
@@ -761,17 +1027,17 @@ export default function ChauffeurDashboard() {
           )}
           {routeAlternatives.length > 1 && (
             <View style={styles.routeOptionsContainer}>
-              <Text style={styles.routeOptionsTitle}>Choose Route</Text>
+              <Text style={styles.routeOptionsTitle}>{routeOptionsHeading}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 4 }}>
                 {routeAlternatives.map((alt, i) => (
                   <Pressable
                     key={i}
-                    style={[styles.routeOptionCard, routePolyline === alt.polyline && styles.routeOptionCardSelected]}
-                    onPress={() => selectRoute(alt)}
+                    style={[styles.routeOptionCard, selectedRouteIndex === i && styles.routeOptionCardSelected]}
+                    onPress={() => selectRoute(alt, i)}
                   >
-                    <Ionicons name={i === 0 ? "speedometer-outline" : i === 1 ? "navigate-outline" : "analytics-outline"} size={18} color={routePolyline === alt.polyline ? Colors.primary : Colors.accent} />
-                    <Text style={[styles.routeOptionName, routePolyline === alt.polyline && { color: Colors.primary }]}>{alt.summary || `Route ${i + 1}`}</Text>
-                    <Text style={[styles.routeOptionDetail, routePolyline === alt.polyline && { color: Colors.primary }]}>{alt.durationText} · {alt.distanceText}</Text>
+                    <Ionicons name={i === 0 ? "speedometer-outline" : i === 1 ? "navigate-outline" : "analytics-outline"} size={18} color={selectedRouteIndex === i ? Colors.primary : Colors.accent} />
+                    <Text style={[styles.routeOptionName, selectedRouteIndex === i && { color: Colors.primary }]}>{getRouteOptionTitle(i, alt.summary)}</Text>
+                    <Text style={[styles.routeOptionDetail, selectedRouteIndex === i && { color: Colors.primary }]}>{alt.durationText} · {alt.distanceText}</Text>
                   </Pressable>
                 ))}
               </ScrollView>
@@ -819,7 +1085,7 @@ export default function ChauffeurDashboard() {
           )}
           <View style={[styles.navModalFooter, { paddingBottom: insets.bottom + 16 }]}>
             {(currentRide?.status === "chauffeur_assigned" || currentRide?.status === "chauffeur_arriving") && (
-              <Pressable style={styles.actionBtn} onPress={() => { updateRideStatus("trip_started"); setShowNavModal(false); fetchDriverRoute(parseFloat(currentRide!.dropoffLat), parseFloat(currentRide!.dropoffLng)); }}>
+              <Pressable style={styles.actionBtn} onPress={startTripToDestination}>
                 <Text style={styles.actionBtnText}>Start Trip — Rider On Board</Text>
               </Pressable>
             )}
@@ -963,6 +1229,27 @@ export default function ChauffeurDashboard() {
             <View style={styles.dotRed} />
             <Text style={styles.addrText} numberOfLines={1}>{currentRide.dropoffAddress || "Dropoff"}</Text>
           </View>
+          {routeAlternatives.length > 1 && (
+            <View style={styles.cardRouteOptionsWrap}>
+              <Text style={styles.cardRouteOptionsTitle}>{routeOptionsHeading}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cardRouteOptionsScroll}>
+                {routeAlternatives.map((alt, i) => (
+                  <Pressable
+                    key={`${alt.polyline}-${i}`}
+                    style={[styles.cardRouteOptionChip, selectedRouteIndex === i && styles.cardRouteOptionChipSelected]}
+                    onPress={() => selectRoute(alt, i)}
+                  >
+                    <Text style={[styles.cardRouteOptionTitle, selectedRouteIndex === i && styles.cardRouteOptionTitleSelected]}>
+                      {getRouteOptionTitle(i, alt.summary)}
+                    </Text>
+                    <Text style={[styles.cardRouteOptionMeta, selectedRouteIndex === i && styles.cardRouteOptionMetaSelected]}>
+                      {alt.durationText} · {alt.distanceText}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
           {currentRide.price && <Text style={styles.priceText}>R {currentRide.price}</Text>}
           <View style={styles.rideActions}>
             <Pressable style={styles.rideSecBtn} onPress={() => router.push({ pathname: "/chauffeur/chat", params: { rideId: currentRide.id, riderName: currentRide.clientFirstName || currentRide.clientName || "Client" } })}>
@@ -979,7 +1266,7 @@ export default function ChauffeurDashboard() {
             </Pressable>
           </View>
           {(currentRide.status === "chauffeur_assigned" || currentRide.status === "chauffeur_arriving") && (
-            <Pressable style={styles.actionBtn} onPress={() => { updateRideStatus("trip_started"); fetchDriverRoute(parseFloat(currentRide.dropoffLat), parseFloat(currentRide.dropoffLng)); }}>
+            <Pressable style={styles.actionBtn} onPress={startTripToDestination}>
               <Text style={styles.actionBtnText}>Start Trip — Rider On Board</Text>
             </Pressable>
           )}
@@ -1434,4 +1721,13 @@ const styles = StyleSheet.create({
   routeOptionCardSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   routeOptionName: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.white, textAlign: "center" },
   routeOptionDetail: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center" },
+  cardRouteOptionsWrap: { gap: 8 },
+  cardRouteOptionsTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textMuted },
+  cardRouteOptionsScroll: { gap: 8 },
+  cardRouteOptionChip: { minWidth: 118, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: GLASS_BORDER, gap: 2 },
+  cardRouteOptionChipSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  cardRouteOptionTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  cardRouteOptionTitleSelected: { color: Colors.primary },
+  cardRouteOptionMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
+  cardRouteOptionMetaSelected: { color: Colors.primary },
 });

@@ -11,6 +11,21 @@ import { uploadDocument } from "@/lib/supabase-storage";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 
+interface DriverReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  reviewerName: string;
+  createdAt: string;
+}
+
+interface DriverProfileSummary {
+  driverRating: number | null;
+  totalRatings: number;
+  completedTrips: number;
+  ratings: DriverReview[];
+}
+
 export default function ChauffeurSettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
@@ -21,6 +36,8 @@ export default function ChauffeurSettingsScreen() {
   const [showApplicationStatus, setShowApplicationStatus] = useState(false);
   const [chauffeur, setChauffeur] = useState<any>(null);
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
+  const [driverProfile, setDriverProfile] = useState<DriverProfileSummary | null>(null);
+  const [driverProfileLoading, setDriverProfileLoading] = useState(false);
 
   // Fetch driver application status
   const { data: application, refetch: refetchApplication } = useQuery({
@@ -46,12 +63,28 @@ export default function ChauffeurSettingsScreen() {
         const res = await apiRequest("GET", `/api/chauffeurs/${c.id}`);
         const data = await res.json();
         setChauffeur(data);
+        void loadDriverProfile(data.id);
       } else if (user) {
         const res = await apiRequest("GET", `/api/chauffeurs/user/${user.id}`);
         const data = await res.json();
         setChauffeur(data);
+        void loadDriverProfile(data.id);
       }
     } catch {}
+  }
+
+  async function loadDriverProfile(chauffeurId?: string) {
+    if (!chauffeurId) return;
+    try {
+      setDriverProfileLoading(true);
+      const res = await apiRequest("GET", `/api/chauffeurs/${chauffeurId}/profile`);
+      const data = await res.json();
+      setDriverProfile(data);
+    } catch {
+      setDriverProfile(null);
+    } finally {
+      setDriverProfileLoading(false);
+    }
   }
 
   async function handleLogout() {
@@ -149,7 +182,61 @@ export default function ChauffeurSettingsScreen() {
         <Text style={styles.profileName}>{user?.name || "Driver"}</Text>
         {user?.email && <Text style={styles.profileEmail}>{user.email}</Text>}
         <Text style={styles.profileRole}>Professional Driver</Text>
+        <View style={styles.ratingRow}>
+          <Ionicons name="star" size={14} color={Colors.warning} />
+          {driverProfileLoading ? (
+            <ActivityIndicator size="small" color={Colors.warning} />
+          ) : (
+            <Text style={styles.ratingText}>
+              {driverProfile?.driverRating !== null && driverProfile?.driverRating !== undefined
+                ? `${driverProfile.driverRating.toFixed(1)} • ${driverProfile.totalRatings} ratings`
+                : chauffeur?.computedRating != null
+                  ? `${Number(chauffeur.computedRating).toFixed(1)} rating`
+                  : "No ratings yet"}
+            </Text>
+          )}
+        </View>
       </View>
+
+      <View style={styles.statsCard}>
+        <View style={styles.statsRow}>
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>
+              {driverProfile?.driverRating !== null && driverProfile?.driverRating !== undefined
+                ? driverProfile.driverRating.toFixed(1)
+                : chauffeur?.computedRating != null
+                  ? Number(chauffeur.computedRating).toFixed(1)
+                  : "—"}
+            </Text>
+            <Text style={styles.statLabel}>Average Rating</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{driverProfile?.totalRatings ?? chauffeur?.totalRatings ?? 0}</Text>
+            <Text style={styles.statLabel}>Reviews</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBox}>
+            <Text style={styles.statValue}>{driverProfile?.completedTrips ?? 0}</Text>
+            <Text style={styles.statLabel}>Trips Completed</Text>
+          </View>
+        </View>
+      </View>
+
+      {!!driverProfile?.ratings?.length && (
+        <View style={styles.reviewsCard}>
+          <Text style={styles.reviewsTitle}>Recent Ratings</Text>
+          {driverProfile.ratings.slice(0, 3).map((review) => (
+            <View key={review.id} style={styles.reviewItem}>
+              <View style={styles.reviewHeader}>
+                <Text style={styles.reviewName}>{review.reviewerName}</Text>
+                <Text style={styles.reviewMeta}>{review.rating.toFixed(1)} ★</Text>
+              </View>
+              {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}
+            </View>
+          ))}
+        </View>
+      )}
 
       <View style={styles.menuGroup}>
         <Pressable style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]} onPress={() => setShowVehicle(true)}>
@@ -482,6 +569,21 @@ const styles = StyleSheet.create({
   profileName: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white },
   profileEmail: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   profileRole: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+  ratingText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  statsCard: { backgroundColor: Colors.card, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: Colors.border, marginBottom: 16 },
+  statsRow: { flexDirection: "row", alignItems: "center" },
+  statBox: { flex: 1, alignItems: "center", gap: 4 },
+  statValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white, textAlign: "center" },
+  statLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center" },
+  statDivider: { width: 1, alignSelf: "stretch", backgroundColor: Colors.border },
+  reviewsCard: { backgroundColor: Colors.card, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: Colors.border, marginBottom: 16, gap: 12 },
+  reviewsTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  reviewItem: { backgroundColor: Colors.surface, borderRadius: 14, padding: 12, gap: 6, borderWidth: 1, borderColor: Colors.border },
+  reviewHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  reviewName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.white, flex: 1 },
+  reviewMeta: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.warning },
+  reviewComment: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 18 },
   menuGroup: { backgroundColor: Colors.card, borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: Colors.border, marginBottom: 16 },
   menuItem: { flexDirection: "row", alignItems: "center", padding: 16, gap: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   menuIconCircle: { width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center" },
