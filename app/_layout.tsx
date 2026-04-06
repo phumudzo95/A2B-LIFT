@@ -1,7 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router, usePathname, useRootNavigationState } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { StatusBar } from "expo-status-bar";
@@ -80,14 +80,23 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+  const [fontLoadTimedOut, setFontLoadTimedOut] = useState(false);
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
+    if (fontsLoaded || fontError) return;
+    const timeout = setTimeout(() => {
+      setFontLoadTimedOut(true);
+    }, 4000);
+    return () => clearTimeout(timeout);
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) return null;
+  useEffect(() => {
+    if (fontsLoaded || fontError || fontLoadTimedOut) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError, fontLoadTimedOut]);
+
+  if (!fontsLoaded && !fontError && !fontLoadTimedOut) return null;
 
   return (
     <ErrorBoundary>
