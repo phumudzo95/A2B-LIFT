@@ -100,6 +100,8 @@ export default function ClientHomeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { on, off } = useSocket();
+  const bottomPanelOffset = Platform.OS === "ios" ? 72 : 8;
+  const bottomPanelPadding = insets.bottom + 20;
 
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
@@ -900,9 +902,9 @@ export default function ClientHomeScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.brandName}>A2B LIFT</Text>
-          <Text style={styles.brandSlogan}>Premium Ride Experience</Text>
+        <View style={styles.headerBrand}>
+          <Text style={styles.brandName} numberOfLines={1}>A2B LIFT</Text>
+          <Text style={styles.brandSlogan} numberOfLines={1}>Premium Ride Experience</Text>
         </View>
         <View style={styles.headerRight}>
           {/* Notification bell */}
@@ -1034,7 +1036,7 @@ export default function ClientHomeScreen() {
       </View>
 
       {rideStatus === "idle" && (
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.bottomSheet}>
+        <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
           <View style={styles.sheetHandle} />
           <Text style={styles.sheetTitle}>Where to?</Text>
 
@@ -1090,7 +1092,7 @@ export default function ClientHomeScreen() {
       )}
 
       {rideStatus === "confirming" && (
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.confirmingSheet}>
+        <Animated.View entering={FadeInDown.duration(400)} style={[styles.confirmingSheet, { marginBottom: bottomPanelOffset }]}>
           <View style={styles.sheetHandle} />
 
           {/* Header row with dismiss button */}
@@ -1105,7 +1107,7 @@ export default function ClientHomeScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.confirmingScroll,
-              { paddingBottom: insets.bottom + 100 },
+              { paddingBottom: bottomPanelOffset + bottomPanelPadding + 8 },
             ]}
             keyboardShouldPersistTaps="handled"
           >
@@ -1172,7 +1174,7 @@ export default function ClientHomeScreen() {
       )}
 
       {rideStatus === "requested" && (
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.searchingBottomSheet}>
+        <Animated.View entering={FadeInDown.duration(400)} style={[styles.searchingBottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.searchingContainer}>
             <ActivityIndicator size="small" color={Colors.white} />
@@ -1188,7 +1190,7 @@ export default function ClientHomeScreen() {
       )}
 
       {rideStatus === "no_drivers" && (
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.bottomSheet}>
+        <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.noDriversContainer}>
             <Ionicons name="car-outline" size={48} color={Colors.textSecondary} />
@@ -1204,7 +1206,7 @@ export default function ClientHomeScreen() {
       )}
 
       {(rideStatus === "assigned" || rideStatus === "arriving" || rideStatus === "in_trip") && (
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.bottomSheet}>
+        <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.statusBadge}>
             <View style={[styles.statusDot, { backgroundColor: Colors.success }]} />
@@ -1320,7 +1322,7 @@ export default function ClientHomeScreen() {
       )}
 
       {rideStatus === "completed" && !showRating && (
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.bottomSheet}>
+        <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.completedContainer}>
             <View style={styles.checkCircle}>
@@ -1342,9 +1344,9 @@ export default function ClientHomeScreen() {
       {showRating && (
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "position" : undefined}
-          style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}
+          style={{ position: "absolute", bottom: bottomPanelOffset, left: 0, right: 0 }}
         >
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.bottomSheet}>
+          <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { paddingBottom: bottomPanelPadding }]}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Rate Your Driver</Text>
 
@@ -1802,6 +1804,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     zIndex: 10,
   },
+  headerBrand: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 12,
+  },
   brandName: {
     fontSize: 18,
     fontFamily: "Inter_700Bold",
@@ -1818,6 +1825,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    flexShrink: 0,
+    paddingLeft: 8,
   },
   bellBtn: {
     width: 36,

@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/query-client";
 import Colors from "@/constants/colors";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -114,61 +115,67 @@ export default function LoginScreen() {
         <Ionicons name="chevron-back" size={24} color={Colors.white} />
       </Pressable>
 
-      <View style={styles.header}>
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to your A2B LIFT account</Text>
-      </View>
-
-      <View style={styles.form}>
-        {!!error && (
-          <View style={styles.errorBox}>
-            <Ionicons name="alert-circle" size={16} color={Colors.error} />
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="mail-outline" size={18} color={Colors.textMuted} />
-            <TextInput style={styles.input} placeholder="Enter your email address" placeholderTextColor={Colors.textMuted}
-              value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false}
-              keyboardType="email-address" textContentType="emailAddress" />
-          </View>
+      <KeyboardAwareScrollViewCompat
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 16) }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>Sign in to your A2B LIFT account</Text>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={18} color={Colors.textMuted} />
-            <TextInput style={styles.input} placeholder="Enter password" placeholderTextColor={Colors.textMuted}
-              value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
-            <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
-              <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={18} color={Colors.textMuted} />
-            </Pressable>
+        <View style={styles.form}>
+          {!!error && (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={16} color={Colors.error} />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="mail-outline" size={18} color={Colors.textMuted} />
+              <TextInput style={styles.input} placeholder="Enter your email address" placeholderTextColor={Colors.textMuted}
+                value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false}
+                keyboardType="email-address" textContentType="emailAddress" />
+            </View>
           </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={18} color={Colors.textMuted} />
+              <TextInput style={styles.input} placeholder="Enter password" placeholderTextColor={Colors.textMuted}
+                value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
+              <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={18} color={Colors.textMuted} />
+              </Pressable>
+            </View>
+          </View>
+
+          <Pressable style={({ pressed }) => [styles.loginBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }, loading && { opacity: 0.7 }]}
+            onPress={handleLogin} disabled={loading}>
+            {loading ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.loginBtnText}>Sign In</Text>}
+          </Pressable>
         </View>
 
-        <Pressable style={({ pressed }) => [styles.loginBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }, loading && { opacity: 0.7 }]}
-          onPress={handleLogin} disabled={loading}>
-          {loading ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.loginBtnText}>Sign In</Text>}
-        </Pressable>
-
-
-      </View>
-
-      <View style={[styles.footer, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 16) }]}>
-        <Text style={styles.footerText}>Don't have an account?</Text>
-        <Pressable onPress={() => router.replace("/register")}>
-          <Text style={styles.footerLink}>Create Account</Text>
-        </Pressable>
-      </View>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Don't have an account?</Text>
+          <Pressable onPress={() => router.replace("/register")}> 
+            <Text style={styles.footerLink}>Create Account</Text>
+          </Pressable>
+        </View>
+      </KeyboardAwareScrollViewCompat>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.primary, paddingHorizontal: 24 },
+  scroll: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: "space-between" },
   backBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center", marginLeft: -8 },
   header: { marginTop: 20, marginBottom: 36 },
   title: { fontSize: 28, fontFamily: "Inter_700Bold", color: Colors.white, marginBottom: 8 },
@@ -191,7 +198,7 @@ const styles = StyleSheet.create({
   googleBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#1a1a1a" },
   googleIconWrap: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e0e0e0", alignItems: "center", justifyContent: "center" },
   googleG: { fontSize: 13, fontWeight: "700", color: "#4285F4" },
-  footer: { flex: 1, justifyContent: "flex-end", flexDirection: "row", alignItems: "flex-end", gap: 4, paddingTop: 24 },
+  footer: { flexDirection: "row", alignItems: "flex-end", gap: 4, paddingTop: 24 },
   footerText: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   footerLink: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
 });
