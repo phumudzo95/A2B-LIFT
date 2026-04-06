@@ -290,6 +290,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
+  function getUserFirstName(user: { name?: string | null; username?: string | null } | null | undefined, fallback = "Rider"): string {
+    const candidates = [user?.name, user?.username]
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .map((value) => value.trim());
+
+    for (const candidate of candidates) {
+      const normalized = candidate.includes("@") ? candidate.split("@")[0] : candidate;
+      const first = normalized
+        .replace(/[._-]+/g, " ")
+        .split(/\s+/)
+        .find(Boolean);
+
+      if (!first) continue;
+
+      const lowered = first.toLowerCase();
+      if (["a2b", "client", "rider", "user", "oauth"].includes(lowered)) continue;
+
+      return first.charAt(0).toUpperCase() + first.slice(1);
+    }
+
+    return fallback;
+  }
+
   // -----------------------------
   // Auth (JWT)
   // -----------------------------
@@ -1519,6 +1542,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         }
+      } else {
+        const claimedName = typeof req.auth!.name === "string" ? req.auth!.name.trim() : "";
+        const storedName = typeof clientUser.name === "string" ? clientUser.name.trim() : "";
+        if (claimedName && getUserFirstName({ name: storedName }, "") !== getUserFirstName({ name: claimedName }, "")) {
+          const storedLooksGeneric = ["", "a2b client", "client", "rider"].includes(storedName.toLowerCase());
+          if (storedLooksGeneric) {
+            clientUser = await storage.updateUser(clientUser.id, { name: claimedName }) as any;
+          }
+        }
       }
 
       const categoryId = rideData.vehicleType || "budget";
@@ -1575,7 +1607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let clientFirstName = "Rider";
       try {
         const clientUser = await storage.getUser(clientId);
-        if (clientUser?.name) clientFirstName = clientUser.name.split(" ")[0];
+        clientFirstName = getUserFirstName(clientUser, "Rider");
       } catch {}
       const enrichedRide = { ...ride, clientFirstName };
 
@@ -1858,7 +1890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let clientFirstName = "Client";
       try {
         const client = await storage.getUser(ride.clientId);
-        if (client?.name) clientFirstName = client.name.split(" ")[0];
+        clientFirstName = getUserFirstName(client, "Client");
       } catch {}
       return res.json({ ...ride, clientFirstName });
     } catch (error: any) {
@@ -1873,12 +1905,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let clientFirstName = "Client";
       try {
         const client = await storage.getUser(ride.clientId);
-        if (client?.name) clientFirstName = client.name.split(" ")[0];
+        clientFirstName = getUserFirstName(client, "Client");
       } catch {}
       const rideWithClientName = { ...ride, clientFirstName };
 
       io.emit("ride:statusUpdate", rideWithClientName);
-      return res.json(ride);
+      return res.json(rideWithClientName);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
@@ -1905,7 +1937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let clientFirstName = "Rider";
       try {
         const client = await storage.getUser(updated.clientId);
-        if (client?.name) clientFirstName = client.name.split(" ")[0];
+        clientFirstName = getUserFirstName(client, "Rider");
       } catch {}
       const enrichedAccepted = { ...updated, clientFirstName };
 
@@ -2162,7 +2194,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      io.emit("ride:statusUpdate", ride);
+      let clientFirstName = "Client";
+      try {
+        const client = await storage.getUser(ride.clientId);
+        clientFirstName = getUserFirstName(client, "Client");
+      } catch {}
+      const rideWithClientName = { ...ride, clientFirstName };
+
+      io.emit("ride:statusUpdate", rideWithClientName);
 
       // ── Notify rider for key status transitions ──
       try {
@@ -2310,7 +2349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         candidates.slice(0, 10).map(async (r: any) => {
           try {
             const client = await storage.getUser(r.clientId);
-            const firstName = client?.name ? client.name.split(" ")[0] : "Rider";
+            const firstName = getUserFirstName(client, "Rider");
             return { ...r, clientFirstName: firstName };
           } catch {
             return { ...r, clientFirstName: "Rider" };
@@ -2338,7 +2377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       async function enrichRide(r: any) {
         try {
           const client = await storage.getUser(r.clientId);
-          const firstName = client?.name ? client.name.split(" ")[0] : "Rider";
+          const firstName = getUserFirstName(client, "Rider");
           return { ...r, clientFirstName: firstName };
         } catch {
           return { ...r, clientFirstName: "Rider" };

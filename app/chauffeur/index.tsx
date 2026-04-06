@@ -84,6 +84,8 @@ export default function ChauffeurDashboard() {
     try {
       if (soundRef.current) {
         await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
       }
     } catch {}
   }
@@ -296,6 +298,22 @@ export default function ChauffeurDashboard() {
     if (dist < 30 && currentStepIdx < navSteps.length - 1) setCurrentStepIdx(i => i + 1);
   }, [myLocation?.lat, myLocation?.lng]);
 
+  useEffect(() => {
+    if (currentRide || !incomingRide) return;
+    stopTripAlert();
+  }, [currentRide?.id, incomingRide?.id]);
+
+  useEffect(() => {
+    if (!currentRide || !myLocation) return;
+    const destination = currentRide.status === "trip_started"
+      ? { lat: currentRide.dropoffLat, lng: currentRide.dropoffLng }
+      : { lat: currentRide.pickupLat, lng: currentRide.pickupLng };
+
+    if (!destination.lat || !destination.lng) return;
+
+    fetchDriverRoute(parseFloat(destination.lat), parseFloat(destination.lng));
+  }, [currentRide?.id, currentRide?.status, myLocation?.lat, myLocation?.lng]);
+
   // ─── Data ─────────────────────────────────────────────────────────────────
   async function restoreActiveRide() {
     try {
@@ -324,26 +342,34 @@ export default function ChauffeurDashboard() {
       const stored = await AsyncStorage.getItem("a2b_chauffeur");
       if (stored) {
         const cached = JSON.parse(stored);
-        setChauffeur(cached);
-        setIsOnline(cached.isOnline || false);
-        if (typeof cached.todayEarnings === "number") setTodayEarnings(cached.todayEarnings);
-        setLoading(false);
-        refreshChauffeur(cached.id);
-        restoreActiveRide();
-        return;
+        const refreshed = cached?.id ? await refreshChauffeur(cached.id) : null;
+        if (refreshed) {
+          restoreActiveRide();
+          return;
+        }
+        await AsyncStorage.removeItem("a2b_chauffeur");
       }
-      const res = await apiRequest("GET", `/api/chauffeurs/user/${user.id}`);
-      if (!res.ok) throw new Error("not found");
-      const c = await res.json();
-      setChauffeur(c);
-      setIsOnline(c.isOnline || false);
-      if (typeof c.todayEarnings === "number") setTodayEarnings(c.todayEarnings);
-      await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(c));
+      const c = await fetchChauffeurForUser(user.id);
+      if (!c) throw new Error("not found");
       restoreActiveRide();
     } catch {
       router.replace("/chauffeur-register");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchChauffeurForUser(userId: string) {
+    try {
+      const res = await apiRequest("GET", `/api/chauffeurs/user/${userId}`);
+      const c = await res.json();
+      setChauffeur(c);
+      setIsOnline(c.isOnline || false);
+      if (typeof c.todayEarnings === "number") setTodayEarnings(c.todayEarnings);
+      await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(c));
+      return c;
+    } catch {
+      return null;
     }
   }
 
@@ -355,7 +381,10 @@ export default function ChauffeurDashboard() {
       setIsOnline(c.isOnline || false);
       if (typeof c.todayEarnings === "number") setTodayEarnings(c.todayEarnings);
       await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(c));
-    } catch {}
+      return c;
+    } catch {
+      return null;
+    }
   }
 
   useEffect(() => {
@@ -366,15 +395,36 @@ export default function ChauffeurDashboard() {
 
   // ─── Actions ──────────────────────────────────────────────────────────────
   async function toggleOnline() {
-    if (!chauffeur) return;
+    let activeChauffeur = chauffeur;
+    if (!activeChauffeur?.id && user?.id) {
+      activeChauffeur = await fetchChauffeurForUser(user.id);
+    }
+    if (!activeChauffeur?.id) {
+      Alert.alert("Error", "Unable to load driver profile");
+      closeMenu();
+      return;
+    }
     try {
-      const res = await apiRequest("PUT", `/api/chauffeurs/${chauffeur.id}/toggle-online`);
+      const res = await apiRequest("PUT", `/api/chauffeurs/${activeChauffeur.id}/toggle-online`);
       const updated = await res.json();
       setChauffeur(updated);
       setIsOnline(updated.isOnline);
       await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(updated));
       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch {
+      const recovered = user?.id ? await fetchChauffeurForUser(user.id) : null;
+      if (recovered?.id) {
+        try {
+          const retryRes = await apiRequest("PUT", `/api/chauffeurs/${recovered.id}/toggle-online`);
+          const updated = await retryRes.json();
+          setChauffeur(updated);
+          setIsOnline(updated.isOnline);
+          await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(updated));
+          if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          closeMenu();
+          return;
+        } catch {}
+      }
       Alert.alert("Error", "Failed to update status");
     }
     closeMenu();
@@ -586,7 +636,10 @@ export default function ChauffeurDashboard() {
     { icon: "notifications-outline", label: unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications", onPress: () => { router.push("/chauffeur/notifications"); closeMenu(); }, color: unreadCount > 0 ? Colors.warning : Colors.white },
   ];
 
-  const clientDisplayName = currentRide?.clientFirstName || "Client";
+  const clientDisplayName =
+    currentRide?.clientFirstName ||
+    (currentRide?.clientName ? String(currentRide.clientName).split(" ")[0] : null) ||
+    "Client";
   const rideStatusLabel =
     currentRide?.status === "chauffeur_assigned" ? `On the way to pick up ${clientDisplayName}` :
     currentRide?.status === "chauffeur_arriving" ? `Arriving at ${clientDisplayName}'s pickup` :
