@@ -305,6 +305,11 @@ export default function ChauffeurDashboard() {
       const rideRes = await apiRequest("GET", `/api/rides/${ride.id}`);
       if (!rideRes.ok) { await AsyncStorage.removeItem("a2b_current_ride"); return; }
       const freshRide = await rideRes.json();
+      freshRide.clientFirstName =
+        freshRide.clientFirstName ||
+        ride.clientFirstName ||
+        (ride.clientName ? String(ride.clientName).split(" ")[0] : null) ||
+        "Client";
       if (freshRide.status === "trip_completed" || freshRide.status === "cancelled") {
         await AsyncStorage.removeItem("a2b_current_ride");
       } else {
@@ -449,7 +454,11 @@ export default function ChauffeurDashboard() {
       }
       const ride = await res.json();
       // Carry over clientFirstName from incoming ride
-      ride.clientFirstName = incomingRide.clientFirstName || ride.clientFirstName;
+      ride.clientFirstName =
+        ride.clientFirstName ||
+        incomingRide.clientFirstName ||
+        (incomingRide.clientName ? String(incomingRide.clientName).split(" ")[0] : null) ||
+        "Client";
       setCurrentRide(ride);
       setIncomingRide(null);
       if (ride.pickupLat && ride.pickupLng) fetchDriverRoute(parseFloat(ride.pickupLat), parseFloat(ride.pickupLng));
@@ -476,7 +485,11 @@ export default function ChauffeurDashboard() {
       }
       const ride = await res.json();
       // carry over clientFirstName from list data
-      ride.clientFirstName = trip.clientFirstName;
+      ride.clientFirstName =
+        ride.clientFirstName ||
+        trip.clientFirstName ||
+        (trip.clientName ? String(trip.clientName).split(" ")[0] : null) ||
+        "Client";
       setCurrentRide(ride);
       setAvailableTrips([]);
       setIncomingRide(null);
@@ -495,8 +508,16 @@ export default function ChauffeurDashboard() {
     try {
       const res = await apiRequest("PUT", `/api/rides/${currentRide.id}/status`, { status });
       const ride = await res.json();
+      const rideWithName = {
+        ...ride,
+        clientFirstName:
+          ride?.clientFirstName ||
+          currentRide?.clientFirstName ||
+          (currentRide?.clientName ? String(currentRide.clientName).split(" ")[0] : null) ||
+          "Client",
+      };
       if (status === "trip_completed" || status === "cancelled") {
-        if (status === "trip_completed") setCompletedTrip(currentRide);
+        if (status === "trip_completed") setCompletedTrip(rideWithName);
         setCurrentRide(null);
         setRoutePolyline(null);
         setRideEta(null);
@@ -504,7 +525,7 @@ export default function ChauffeurDashboard() {
         if (chauffeur) refreshChauffeur(chauffeur.id);
         if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        setCurrentRide(ride);
+        setCurrentRide(rideWithName);
         if (status === "trip_started" && ride.dropoffLat && ride.dropoffLng) {
           fetchDriverRoute(parseFloat(ride.dropoffLat), parseFloat(ride.dropoffLng));
         }
@@ -561,7 +582,7 @@ export default function ChauffeurDashboard() {
     { icon: "notifications-outline", label: unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications", onPress: () => { router.push("/chauffeur/notifications"); closeMenu(); }, color: unreadCount > 0 ? Colors.warning : Colors.white },
   ];
 
-  const clientDisplayName = currentRide?.clientFirstName || "Rider";
+  const clientDisplayName = currentRide?.clientFirstName || "Client";
   const rideStatusLabel =
     currentRide?.status === "chauffeur_assigned" ? `On the way to pick up ${clientDisplayName}` :
     currentRide?.status === "chauffeur_arriving" ? `Arriving at ${clientDisplayName}'s pickup` :
@@ -743,7 +764,7 @@ export default function ChauffeurDashboard() {
                   <View style={styles.tripCardTop}>
                     <View style={styles.tripClientRow}>
                       <Ionicons name="person-circle-outline" size={16} color={Colors.accent} />
-                      <Text style={styles.tripClientName}>{trip.clientFirstName || "Rider"}</Text>
+                      <Text style={styles.tripClientName}>{trip.clientFirstName || (trip.clientName ? String(trip.clientName).split(" ")[0] : "Client")}</Text>
                     </View>
                     {trip.price && <Text style={styles.tripPrice}>R {trip.price}</Text>}
                   </View>
@@ -799,7 +820,7 @@ export default function ChauffeurDashboard() {
           </View>
           {currentRide.price && <Text style={styles.priceText}>R {currentRide.price}</Text>}
           <View style={styles.rideActions}>
-            <Pressable style={styles.rideSecBtn} onPress={() => router.push({ pathname: "/chauffeur/chat", params: { rideId: currentRide.id, riderName: currentRide.clientFirstName || currentRide.clientName || "Rider" } })}>
+            <Pressable style={styles.rideSecBtn} onPress={() => router.push({ pathname: "/chauffeur/chat", params: { rideId: currentRide.id, riderName: currentRide.clientFirstName || currentRide.clientName || "Client" } })}>
               <Ionicons name="chatbubble-outline" size={15} color={Colors.white} />
               <Text style={styles.rideSecBtnText}>Message</Text>
             </Pressable>
@@ -872,7 +893,7 @@ export default function ChauffeurDashboard() {
                 <Text style={styles.payPopupTitle}>Collect Cash Payment</Text>
                 <Text style={styles.payPopupAmount}>R {completedTrip?.price ?? "0"}</Text>
                 <Text style={styles.payPopupBody}>
-                  Please collect R {completedTrip?.price} from {completedTrip?.clientFirstName || "the client"} before they exit the vehicle.
+                  Please collect R {completedTrip?.price} from {completedTrip?.clientFirstName || (completedTrip?.clientName ? String(completedTrip.clientName).split(" ")[0] : "the client")} before they exit the vehicle.
                 </Text>
               </>
             ) : (

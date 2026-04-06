@@ -100933,7 +100933,13 @@ async function registerRoutes(app2) {
     try {
       const ride = await storage.getRide(req.params.id);
       if (!ride) return res.status(404).json({ message: "Ride not found" });
-      return res.json(ride);
+      let clientFirstName = "Client";
+      try {
+        const client = await storage.getUser(ride.clientId);
+        if (client?.name) clientFirstName = client.name.split(" ")[0];
+      } catch {
+      }
+      return res.json({ ...ride, clientFirstName });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
@@ -100942,7 +100948,14 @@ async function registerRoutes(app2) {
     try {
       const ride = await storage.updateRide(req.params.id, req.body);
       if (!ride) return res.status(404).json({ message: "Ride not found" });
-      io2.emit("ride:statusUpdate", ride);
+      let clientFirstName = "Client";
+      try {
+        const client = await storage.getUser(ride.clientId);
+        if (client?.name) clientFirstName = client.name.split(" ")[0];
+      } catch {
+      }
+      const rideWithClientName2 = { ...ride, clientFirstName };
+      io2.emit("ride:statusUpdate", rideWithClientName2);
       return res.json(ride);
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -101230,7 +101243,7 @@ async function registerRoutes(app2) {
       } catch (notifErr) {
         console.error("rider status notification failed (non-fatal):", notifErr.message);
       }
-      return res.json(ride);
+      return res.json(rideWithClientName);
     } catch (error) {
       console.error("ride status update error:", error.message, error.stack);
       return res.status(500).json({ message: error.message });
