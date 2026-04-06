@@ -22,6 +22,7 @@ import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/query-client";
 import { useSocket } from "@/lib/socket-context";
@@ -170,6 +171,8 @@ export default function ClientHomeScreen() {
 
   useEffect(() => {
     requestLocation();
+    // Persist mode so app reopens to the correct screen
+    AsyncStorage.setItem("a2b_last_mode", "client").catch(() => {});
   }, []);
 
   // Poll unread notification count for badge

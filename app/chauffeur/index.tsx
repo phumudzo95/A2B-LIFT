@@ -358,7 +358,11 @@ export default function ChauffeurDashboard() {
     } catch {}
   }
 
-  useEffect(() => { loadChauffeur(); }, []);
+  useEffect(() => {
+    loadChauffeur();
+    // Persist mode so app reopens to the correct screen
+    AsyncStorage.setItem("a2b_last_mode", "chauffeur").catch(() => {});
+  }, []);
 
   // ─── Actions ──────────────────────────────────────────────────────────────
   async function toggleOnline() {

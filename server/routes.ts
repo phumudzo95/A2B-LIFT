@@ -1901,7 +1901,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: "Ride already assigned to another driver" });
       }
 
-      io.emit("ride:accepted", updated);
+      // Enrich with client first name before emitting — nav modal uses it immediately
+      let clientFirstName = "Rider";
+      try {
+        const client = await storage.getUser(updated.clientId);
+        if (client?.name) clientFirstName = client.name.split(" ")[0];
+      } catch {}
+      const enrichedAccepted = { ...updated, clientFirstName };
+
+      io.emit("ride:accepted", enrichedAccepted);
       if (updated.clientId) {
         await storage.createNotification({
           userId: updated.clientId,
@@ -1925,13 +1933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           { rideId: updated.id, type: "ride:accepted" }
         );
       }
-      // Enrich response with client first name
-      let clientFirstName = "Rider";
-      try {
-        const client = await storage.getUser(updated.clientId);
-        if (client?.name) clientFirstName = client.name.split(" ")[0];
-      } catch {}
-      return res.json({ ...updated, clientFirstName });
+      return res.json(enrichedAccepted);
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
