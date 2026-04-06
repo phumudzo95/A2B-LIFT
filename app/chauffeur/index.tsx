@@ -96,6 +96,8 @@ export default function ChauffeurDashboard() {
   const [submittingClientRating, setSubmittingClientRating] = useState(false);
 
   const soundRef = useRef<Audio.Sound | null>(null);
+  const tripAlertTokenRef = useRef(0);
+  const tripAlertEnabledRef = useRef(false);
   const seenRideIdRef = useRef<string | null>(null);
   const suppressedRideAlertIdRef = useRef<string | null>(null);
   const clientSummaryCacheRef = useRef<Record<string, ClientSummary>>({});
@@ -234,23 +236,40 @@ export default function ChauffeurDashboard() {
 
   // ─── Sound ───────────────────────────────────────────────────────────────
   async function playTripAlert() {
+    const alertToken = tripAlertTokenRef.current + 1;
+    tripAlertTokenRef.current = alertToken;
+    tripAlertEnabledRef.current = true;
     try {
       if (Platform.OS === "web") return;
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      if (tripAlertTokenRef.current !== alertToken || !tripAlertEnabledRef.current) {
+        return;
+      }
       if (soundRef.current) {
+        await soundRef.current.setIsLoopingAsync(true);
+        if (tripAlertTokenRef.current !== alertToken || !tripAlertEnabledRef.current) {
+          return;
+        }
         await soundRef.current.replayAsync();
       } else {
         const { sound } = await Audio.Sound.createAsync(
           require("../../assets/trip-alert.wav"),
-          { shouldPlay: true, volume: 1.0, isLooping: true }
+          { shouldPlay: false, volume: 1.0, isLooping: true }
         );
+        if (tripAlertTokenRef.current !== alertToken || !tripAlertEnabledRef.current) {
+          await sound.unloadAsync();
+          return;
+        }
         soundRef.current = sound;
+        await sound.playAsync();
       }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
   }
 
   async function stopTripAlert() {
+    tripAlertEnabledRef.current = false;
+    tripAlertTokenRef.current += 1;
     try {
       if (soundRef.current) {
         await soundRef.current.stopAsync();
@@ -260,7 +279,7 @@ export default function ChauffeurDashboard() {
     } catch {}
   }
 
-  useEffect(() => { return () => { soundRef.current?.unloadAsync(); }; }, []);
+  useEffect(() => { return () => { void stopTripAlert(); }; }, []);
 
   useEffect(() => {
     return () => {
@@ -1025,7 +1044,7 @@ export default function ChauffeurDashboard() {
               </View>
             </View>
           )}
-          {routeAlternatives.length > 1 && (
+          {routeAlternatives.length > 0 && (
             <View style={styles.routeOptionsContainer}>
               <Text style={styles.routeOptionsTitle}>{routeOptionsHeading}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 4 }}>
@@ -1229,7 +1248,7 @@ export default function ChauffeurDashboard() {
             <View style={styles.dotRed} />
             <Text style={styles.addrText} numberOfLines={1}>{currentRide.dropoffAddress || "Dropoff"}</Text>
           </View>
-          {routeAlternatives.length > 1 && (
+          {routeAlternatives.length > 0 && (
             <View style={styles.cardRouteOptionsWrap}>
               <Text style={styles.cardRouteOptionsTitle}>{routeOptionsHeading}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cardRouteOptionsScroll}>
