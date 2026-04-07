@@ -34,6 +34,7 @@ export default function ChauffeurSettingsScreen() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showApplicationStatus, setShowApplicationStatus] = useState(false);
+  const [showAllRatings, setShowAllRatings] = useState(false);
   const [chauffeur, setChauffeur] = useState<any>(null);
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [driverProfile, setDriverProfile] = useState<DriverProfileSummary | null>(null);
@@ -163,6 +164,8 @@ export default function ChauffeurSettingsScreen() {
     }
   }
 
+  const ratingPreview = driverProfile?.ratings?.slice(0, 2) ?? [];
+
   return (
     <ScrollView
       style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16) }]}
@@ -225,8 +228,14 @@ export default function ChauffeurSettingsScreen() {
 
       {!!driverProfile?.ratings?.length && (
         <View style={styles.reviewsCard}>
-          <Text style={styles.reviewsTitle}>Recent Ratings</Text>
-          {driverProfile.ratings.slice(0, 3).map((review) => (
+          <Pressable style={styles.reviewsHeader} onPress={() => setShowAllRatings(true)}>
+            <Text style={styles.reviewsTitle}>Recent Ratings</Text>
+            <View style={styles.reviewsAction}>
+              <Text style={styles.reviewsActionText}>All ratings</Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+            </View>
+          </Pressable>
+          {ratingPreview.map((review) => (
             <View key={review.id} style={styles.reviewItem}>
               <View style={styles.reviewHeader}>
                 <Text style={styles.reviewName}>{review.reviewerName}</Text>
@@ -555,6 +564,49 @@ export default function ChauffeurSettingsScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      <Modal visible={showAllRatings} transparent animationType="slide" onRequestClose={() => setShowAllRatings(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowAllRatings(false)}>
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 16) }]} onStartShouldSetResponder={() => true}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>All Ratings</Text>
+            {driverProfile ? (
+              <>
+                <View style={styles.ratingsSummaryRow}>
+                  <View style={styles.ratingsSummaryCard}>
+                    <Text style={styles.ratingsSummaryValue}>
+                      {driverProfile.driverRating !== null && driverProfile.driverRating !== undefined
+                        ? driverProfile.driverRating.toFixed(1)
+                        : "—"}
+                    </Text>
+                    <Text style={styles.ratingsSummaryLabel}>Average Rating</Text>
+                  </View>
+                  <View style={styles.ratingsSummaryCard}>
+                    <Text style={styles.ratingsSummaryValue}>{driverProfile.totalRatings}</Text>
+                    <Text style={styles.ratingsSummaryLabel}>Total Reviews</Text>
+                  </View>
+                </View>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.ratingsList}>
+                  {driverProfile.ratings.map((review) => (
+                    <View key={review.id} style={styles.reviewItem}>
+                      <View style={styles.reviewHeader}>
+                        <Text style={styles.reviewName}>{review.reviewerName}</Text>
+                        <Text style={styles.reviewMeta}>{review.rating.toFixed(1)} ★</Text>
+                      </View>
+                      <Text style={styles.reviewDate}>
+                        {new Date(review.createdAt).toLocaleDateString("en-ZA", { year: "numeric", month: "short", day: "numeric" })}
+                      </Text>
+                      {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : <Text style={styles.reviewCommentMuted}>No written feedback</Text>}
+                    </View>
+                  ))}
+                </ScrollView>
+              </>
+            ) : (
+              <Text style={styles.noDataText}>Loading ratings...</Text>
+            )}
+          </View>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -578,12 +630,17 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center" },
   statDivider: { width: 1, alignSelf: "stretch", backgroundColor: Colors.border },
   reviewsCard: { backgroundColor: Colors.card, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: Colors.border, marginBottom: 16, gap: 12 },
+  reviewsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   reviewsTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  reviewsAction: { flexDirection: "row", alignItems: "center", gap: 4 },
+  reviewsActionText: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.textMuted },
   reviewItem: { backgroundColor: Colors.surface, borderRadius: 14, padding: 12, gap: 6, borderWidth: 1, borderColor: Colors.border },
   reviewHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   reviewName: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.white, flex: 1 },
   reviewMeta: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.warning },
+  reviewDate: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   reviewComment: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 18 },
+  reviewCommentMuted: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted, lineHeight: 18 },
   menuGroup: { backgroundColor: Colors.card, borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: Colors.border, marginBottom: 16 },
   menuItem: { flexDirection: "row", alignItems: "center", padding: 16, gap: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   menuIconCircle: { width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center" },
@@ -596,6 +653,11 @@ const styles = StyleSheet.create({
   modalSheet: { backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 14, maxHeight: "80%" },
   sheetHandle: { width: 36, height: 4, backgroundColor: Colors.accent, borderRadius: 2, alignSelf: "center" },
   sheetTitle: { fontSize: 20, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  ratingsSummaryRow: { flexDirection: "row", gap: 12 },
+  ratingsSummaryCard: { flex: 1, backgroundColor: Colors.surface, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 12, alignItems: "center", borderWidth: 1, borderColor: Colors.border },
+  ratingsSummaryValue: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.white },
+  ratingsSummaryLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", marginTop: 4 },
+  ratingsList: { gap: 12, paddingBottom: 8 },
   detailsList: { gap: 0 },
   detailRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
   detailLabel: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary },

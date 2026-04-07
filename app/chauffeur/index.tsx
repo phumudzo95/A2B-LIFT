@@ -14,6 +14,7 @@ import {
   Dimensions,
   ScrollView,
   TextInput,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -1052,18 +1053,6 @@ export default function ChauffeurDashboard() {
               <Ionicons name="chevron-down" size={22} color={Colors.white} />
             </Pressable>
           </View>
-          {currentRide && (
-            <View style={styles.navModalAddresses}>
-              <View style={styles.addrRow}>
-                <View style={styles.dotGreen} />
-                <Text style={styles.addrText} numberOfLines={1}>{currentRide.pickupAddress || "Pickup"}</Text>
-              </View>
-              <View style={styles.addrRow}>
-                <View style={styles.dotRed} />
-                <Text style={styles.addrText} numberOfLines={1}>{currentRide.dropoffAddress || "Dropoff"}</Text>
-              </View>
-            </View>
-          )}
           {routeAlternatives.length > 0 && (
             <View style={styles.routeOptionsContainer}>
               <Text style={styles.routeOptionsTitle}>{routeOptionsHeading}</Text>
@@ -1509,48 +1498,59 @@ export default function ChauffeurDashboard() {
 
       {/* ─── Post-trip client rating modal ─── */}
       <Modal visible={showClientRating} transparent animationType="fade" onRequestClose={closeClientRating}>
-        <View style={styles.ratingModalOverlay}>
-          <View style={styles.ratingModalCard}>
-            <Text style={styles.ratingModalTitle}>
-              Rate {clientRatingRide?.clientFirstName || (clientRatingRide?.clientName ? String(clientRatingRide.clientName).split(" ")[0] : "Client")}
-            </Text>
-            <Text style={styles.ratingModalSubtitle}>This rating updates the client's profile and overall score.</Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 16 : 0}
+          style={styles.ratingModalOverlay}
+        >
+          <ScrollView
+            bounces={false}
+            contentContainerStyle={styles.ratingModalScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.ratingModalCard}>
+              <Text style={styles.ratingModalTitle}>
+                Rate {clientRatingRide?.clientFirstName || (clientRatingRide?.clientName ? String(clientRatingRide.clientName).split(" ")[0] : "Client")}
+              </Text>
+              <Text style={styles.ratingModalSubtitle}>This rating updates the client's profile and overall score.</Text>
 
-            <View style={styles.ratingStarsRow}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Pressable key={star} onPress={() => setClientRating(star)} hitSlop={8}>
-                  <Ionicons name={star <= clientRating ? "star" : "star-outline"} size={34} color={Colors.warning} />
+              <View style={styles.ratingStarsRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Pressable key={star} onPress={() => setClientRating(star)} hitSlop={8}>
+                    <Ionicons name={star <= clientRating ? "star" : "star-outline"} size={34} color={Colors.warning} />
+                  </Pressable>
+                ))}
+              </View>
+
+              <TextInput
+                value={clientRatingComment}
+                onChangeText={setClientRatingComment}
+                placeholder="Optional feedback"
+                placeholderTextColor={Colors.textMuted}
+                multiline
+                style={styles.ratingCommentInput}
+              />
+
+              <View style={styles.ratingActionsRow}>
+                <Pressable style={styles.ratingSecondaryBtn} onPress={closeClientRating} disabled={submittingClientRating}>
+                  <Text style={styles.ratingSecondaryBtnText}>Skip</Text>
                 </Pressable>
-              ))}
+                <Pressable
+                  style={[styles.ratingPrimaryBtn, (clientRating === 0 || submittingClientRating) && { opacity: 0.6 }]}
+                  onPress={submitClientRating}
+                  disabled={clientRating === 0 || submittingClientRating}
+                >
+                  {submittingClientRating ? (
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                  ) : (
+                    <Text style={styles.ratingPrimaryBtnText}>Submit</Text>
+                  )}
+                </Pressable>
+              </View>
             </View>
-
-            <TextInput
-              value={clientRatingComment}
-              onChangeText={setClientRatingComment}
-              placeholder="Optional feedback"
-              placeholderTextColor={Colors.textMuted}
-              multiline
-              style={styles.ratingCommentInput}
-            />
-
-            <View style={styles.ratingActionsRow}>
-              <Pressable style={styles.ratingSecondaryBtn} onPress={closeClientRating} disabled={submittingClientRating}>
-                <Text style={styles.ratingSecondaryBtnText}>Skip</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.ratingPrimaryBtn, (clientRating === 0 || submittingClientRating) && { opacity: 0.6 }]}
-                onPress={submitClientRating}
-                disabled={clientRating === 0 || submittingClientRating}
-              >
-                {submittingClientRating ? (
-                  <ActivityIndicator size="small" color={Colors.primary} />
-                ) : (
-                  <Text style={styles.ratingPrimaryBtnText}>Submit</Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ─── Animated menu items ─── */}
@@ -1608,15 +1608,15 @@ const styles = StyleSheet.create({
   bellBadge: { position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.error, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
   bellBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: Colors.white },
 
-  floatEarnings: { position: "absolute", right: 76, minWidth: 72, borderRadius: 16, backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_BORDER, alignItems: "center", justifyContent: "center", paddingHorizontal: 12, paddingVertical: 8, zIndex: 5 },
-  earningsLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
-  earningsAmount: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.accent },
+  floatEarnings: { position: "absolute", right: 16, minWidth: 86, borderRadius: 16, backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_BORDER, alignItems: "center", justifyContent: "center", paddingHorizontal: 12, paddingVertical: 8, zIndex: 5 },
+  earningsLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: Colors.white, textTransform: "uppercase", letterSpacing: 0.5 },
+  earningsAmount: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.white },
 
   findingPill: { position: "absolute", alignSelf: "center", backgroundColor: GLASS, borderRadius: 24, paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1, borderColor: GLASS_BORDER, zIndex: 5 },
   findingPillText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.white },
 
   // Available trips panel
-  tripsPanel: { position: "absolute", left: 0, right: 76, backgroundColor: GLASS, borderRadius: 20, borderWidth: 1, borderColor: GLASS_BORDER, overflow: "hidden", zIndex: 5 },
+  tripsPanel: { position: "absolute", left: 16, right: 16, backgroundColor: GLASS, borderRadius: 20, borderWidth: 1, borderColor: GLASS_BORDER, overflow: "hidden", zIndex: 5 },
   tripsPanelHeader: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: GLASS_BORDER },
   tripsPanelTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.white, flex: 1 },
   tripsScroll: { maxHeight: 170 },
@@ -1633,7 +1633,7 @@ const styles = StyleSheet.create({
   tripAcceptBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.primary },
 
   // Bottom cards
-  bottomCard: { position: "absolute", left: 16, right: 76, backgroundColor: GLASS, borderRadius: 20, padding: 16, gap: 10, borderWidth: 1, borderColor: GLASS_BORDER, zIndex: 5 },
+  bottomCard: { position: "absolute", left: 16, right: 16, backgroundColor: GLASS, borderRadius: 20, padding: 16, gap: 10, borderWidth: 1, borderColor: GLASS_BORDER, zIndex: 5 },
   rideCardHeader: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   rideCardTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white, flex: 1 },
@@ -1647,7 +1647,7 @@ const styles = StyleSheet.create({
   cancelStyle: { backgroundColor: "rgba(255,77,77,0.08)", borderColor: "rgba(255,77,77,0.2)" },
 
   // Incoming
-  incomingCard: { position: "absolute", left: 16, right: 76, backgroundColor: GLASS, borderRadius: 20, padding: 16, gap: 10, borderWidth: 1, borderColor: "rgba(255,183,77,0.3)", zIndex: 5 },
+  incomingCard: { position: "absolute", left: 16, right: 16, backgroundColor: GLASS, borderRadius: 20, padding: 16, gap: 10, borderWidth: 1, borderColor: "rgba(255,183,77,0.3)", zIndex: 5 },
   incomingHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   incomingClientButton: { flex: 1, flexDirection: "row", alignItems: "center", gap: 4 },
   incomingTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.warning, flex: 1 },
@@ -1679,7 +1679,6 @@ const styles = StyleSheet.create({
   navModalTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.white },
   navModalEta: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: 2 },
   navModalClose: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center" },
-  navModalAddresses: { paddingHorizontal: 20, paddingVertical: 14, gap: 8, borderBottomWidth: 1, borderBottomColor: Colors.border },
   navModalFooter: { paddingHorizontal: 20, paddingTop: 12, gap: 10 },
   navStepBox: { backgroundColor: Colors.primary, paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: Colors.border },
   navStepRow: { flexDirection: "row", alignItems: "center", gap: 14 },
@@ -1691,7 +1690,7 @@ const styles = StyleSheet.create({
   navStepCount: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted },
 
   // Floating nav bar (main map overlay)
-  floatNavBar: { position: "absolute", left: 16, right: 76, backgroundColor: GLASS, borderRadius: 16, borderWidth: 1, borderColor: GLASS_BORDER, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, gap: 10, zIndex: 10 },
+  floatNavBar: { position: "absolute", left: 16, right: 16, backgroundColor: GLASS, borderRadius: 16, borderWidth: 1, borderColor: GLASS_BORDER, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, gap: 10, zIndex: 10 },
   floatNavArrow: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center" },
   floatNavContent: { flex: 1 },
   floatNavInstruction: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
@@ -1749,7 +1748,8 @@ const styles = StyleSheet.create({
   payPopupBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: Colors.primary },
 
   // Rating modal
-  ratingModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", alignItems: "center", justifyContent: "center", paddingHorizontal: 20 },
+  ratingModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)" },
+  ratingModalScrollContent: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 20, paddingVertical: 24 },
   ratingModalCard: { width: "100%", backgroundColor: "#1a1a2e", borderRadius: 24, padding: 24, borderWidth: 1, borderColor: GLASS_BORDER, gap: 16 },
   ratingModalTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white, textAlign: "center" },
   ratingModalSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", lineHeight: 19 },
