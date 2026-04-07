@@ -1380,74 +1380,84 @@ export default function ClientHomeScreen() {
 
       {showRating && (
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "position" : undefined}
-          style={{ position: "absolute", bottom: bottomPanelOffset, left: 0, right: 0 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+          style={styles.ratingSheetKeyboard}
         >
-          <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { paddingBottom: bottomPanelPadding }]}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Rate Your Driver</Text>
+          <View style={styles.ratingSheetOverlay}>
+            <ScrollView
+              bounces={false}
+              contentContainerStyle={[styles.ratingSheetScrollContent, { paddingBottom: bottomPanelOffset }]}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, styles.ratingSheetCard, { paddingBottom: bottomPanelPadding }]}> 
+                <View style={styles.sheetHandle} />
+                <Text style={styles.sheetTitle}>Rate Your Driver</Text>
 
-            <View style={styles.ratingContainer}>
-              <Text style={styles.ratingLabel}>How was your ride?</Text>
-              <View style={styles.starsContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
+                <View style={styles.ratingContainer}>
+                  <Text style={styles.ratingLabel}>How was your ride?</Text>
+                  <View style={styles.starsContainer}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Pressable
+                        key={star}
+                        onPress={() => setRating(star)}
+                        style={({ pressed }) => [styles.starButton, pressed && { opacity: 0.7 }]}
+                      >
+                        <Ionicons
+                          name={star <= rating ? "star" : "star-outline"}
+                          size={40}
+                          color={star <= rating ? Colors.warning : Colors.textMuted}
+                        />
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.commentContainer}>
+                  <Text style={styles.commentLabel}>Optional: Add a comment</Text>
+                  <TextInput
+                    style={styles.commentInput}
+                    placeholder="Share your experience..."
+                    placeholderTextColor={Colors.textMuted}
+                    value={ratingComment}
+                    onChangeText={setRatingComment}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    scrollEnabled={false}
+                  />
+                </View>
+
+                <View style={[styles.ratingActions, { paddingBottom: insets.bottom + 8 }]}> 
                   <Pressable
-                    key={star}
-                    onPress={() => setRating(star)}
-                    style={({ pressed }) => [styles.starButton, pressed && { opacity: 0.7 }]}
+                    style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.8 }]}
+                    onPress={() => {
+                      setShowRating(false);
+                      resetAfterComplete();
+                    }}
                   >
-                    <Ionicons
-                      name={star <= rating ? "star" : "star-outline"}
-                      size={40}
-                      color={star <= rating ? Colors.warning : Colors.textMuted}
-                    />
+                    <Text style={styles.skipButtonText}>Skip</Text>
                   </Pressable>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.commentContainer}>
-              <Text style={styles.commentLabel}>Optional: Add a comment</Text>
-              <TextInput
-                style={styles.commentInput}
-                placeholder="Share your experience..."
-                placeholderTextColor={Colors.textMuted}
-                value={ratingComment}
-                onChangeText={setRatingComment}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-                scrollEnabled={false}
-              />
-            </View>
-
-            <View style={[styles.ratingActions, { paddingBottom: insets.bottom + 8 }]}>
-              <Pressable
-                style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.8 }]}
-                onPress={() => {
-                  setShowRating(false);
-                  resetAfterComplete();
-                }}
-              >
-                <Text style={styles.skipButtonText}>Skip</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.submitRatingButton,
-                  rating === 0 && styles.submitRatingButtonDisabled,
-                  pressed && { opacity: 0.9 },
-                ]}
-                onPress={submitRating}
-                disabled={rating === 0 || submittingRating}
-              >
-                {submittingRating ? (
-                  <ActivityIndicator size="small" color={Colors.white} />
-                ) : (
-                  <Text style={styles.submitRatingButtonText}>Submit</Text>
-                )}
-              </Pressable>
-            </View>
-          </Animated.View>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.submitRatingButton,
+                      rating === 0 && styles.submitRatingButtonDisabled,
+                      pressed && { opacity: 0.9 },
+                    ]}
+                    onPress={submitRating}
+                    disabled={rating === 0 || submittingRating}
+                  >
+                    {submittingRating ? (
+                      <ActivityIndicator size="small" color={Colors.white} />
+                    ) : (
+                      <Text style={styles.submitRatingButtonText}>Submit</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </Animated.View>
+            </ScrollView>
+          </View>
         </KeyboardAvoidingView>
       )}
 
@@ -1513,84 +1523,72 @@ export default function ClientHomeScreen() {
                     <View style={{ flexDirection: "row", gap: 2, justifyContent: "center", marginBottom: 2 }}>
                       {[1, 2, 3, 4, 5].map((s) => (
                         <Ionicons
-                          behavior={Platform.OS === "ios" ? "padding" : "height"}
-                          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-                          style={styles.ratingSheetKeyboard}
+                          key={s}
+                          name={s <= Math.round(driverProfile.driverRating ?? 0) ? "star" : "star-outline"}
                           size={11}
-                          <View style={styles.ratingSheetOverlay}>
-                            <ScrollView
-                              bounces={false}
-                              contentContainerStyle={[styles.ratingSheetScrollContent, { paddingBottom: bottomPanelOffset }]}
-                              keyboardShouldPersistTaps="handled"
-                              showsVerticalScrollIndicator={false}
-                            >
-                              <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, styles.ratingSheetCard, { paddingBottom: bottomPanelPadding }]}> 
-                                <View style={styles.sheetHandle} />
-                                <Text style={styles.sheetTitle}>Rate Your Driver</Text>
+                          color={Colors.warning}
+                        />
+                      ))}
+                    </View>
+                    <Text style={styles.profileStatLabel}>{driverProfile.totalRatings} ratings</Text>
+                  </View>
+                  <View style={styles.profileStatDivider} />
+                  <View style={styles.profileStatBox}>
+                    <Text style={styles.profileStatValue}>{driverProfile.completedTrips}</Text>
+                    <Text style={styles.profileStatLabel}>Trips Completed</Text>
+                  </View>
+                </View>
 
-                                <View style={styles.ratingContainer}>
-                                  <Text style={styles.ratingLabel}>How was your ride?</Text>
-                                  <View style={styles.starsContainer}>
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                      <Pressable
-                                        key={star}
-                                        onPress={() => setRating(star)}
-                                        style={({ pressed }) => [styles.starButton, pressed && { opacity: 0.7 }]}
-                                      >
-                                        <Ionicons
-                                          name={star <= rating ? "star" : "star-outline"}
-                                          size={40}
-                                          color={star <= rating ? Colors.warning : Colors.textMuted}
-                                        />
-                                      </Pressable>
-                                    ))}
-                                  </View>
-                                </View>
-
-                                <View style={styles.commentContainer}>
-                                  <Text style={styles.commentLabel}>Optional: Add a comment</Text>
-                                  <TextInput
-                                    style={styles.commentInput}
-                                    placeholder="Share your experience..."
-                                    placeholderTextColor={Colors.textMuted}
-                                    value={ratingComment}
-                                    onChangeText={setRatingComment}
-                                    multiline
-                                    numberOfLines={3}
-                                    textAlignVertical="top"
-                                    scrollEnabled={false}
-                                  />
-                                </View>
-
-                                <View style={[styles.ratingActions, { paddingBottom: insets.bottom + 8 }]}> 
-                                  <Pressable
-                                    style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.8 }]}
-                                    onPress={() => {
-                                      setShowRating(false);
-                                      resetAfterComplete();
-                                    }}
-                                  >
-                                    <Text style={styles.skipButtonText}>Skip</Text>
-                                  </Pressable>
-                                  <Pressable
-                                    style={({ pressed }) => [
-                                      styles.submitRatingButton,
-                                      rating === 0 && styles.submitRatingButtonDisabled,
-                                      pressed && { opacity: 0.9 },
-                                    ]}
-                                    onPress={submitRating}
-                                    disabled={rating === 0 || submittingRating}
-                                  >
-                                    {submittingRating ? (
-                                      <ActivityIndicator size="small" color={Colors.white} />
-                                    ) : (
-                                      <Text style={styles.submitRatingButtonText}>Submit</Text>
-                                    )}
-                                  </Pressable>
-                                </View>
-                              </Animated.View>
-                            </ScrollView>
+                {driverProfile.totalRatings > 0 && (
+                  <View style={styles.profileDistribution}>
+                    <Text style={styles.profileSectionTitle}>Rating Breakdown</Text>
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const count = driverProfile.distribution[star] || 0;
+                      const pct = driverProfile.totalRatings > 0 ? count / driverProfile.totalRatings : 0;
+                      return (
+                        <View key={star} style={styles.distRow}>
+                          <Text style={styles.distLabel}>{star}</Text>
+                          <Ionicons name="star" size={10} color={Colors.warning} />
+                          <View style={styles.distBarBg}>
+                            <View style={[styles.distBarFill, { flex: pct }]} />
+                            <View style={{ flex: 1 - pct }} />
                           </View>
+                          <Text style={styles.distCount}>{count}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {driverProfile.ratings.length > 0 ? (
+                  <View style={styles.profileReviews}>
+                    <Text style={styles.profileSectionTitle}>Recent Reviews</Text>
+                    {driverProfile.ratings.map((review) => (
+                      <View key={review.id} style={styles.reviewCard}>
+                        <View style={styles.reviewHeader}>
+                          <View style={styles.reviewAvatar}>
+                            <Text style={styles.reviewAvatarText}>{review.reviewerName.charAt(0).toUpperCase()}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.reviewerName}>{review.reviewerName}</Text>
+                            <Text style={styles.reviewDate}>
+                              {new Date(review.createdAt).toLocaleDateString("en-ZA", { year: "numeric", month: "short", day: "numeric" })}
+                            </Text>
+                          </View>
+                          <View style={styles.reviewStars}>
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Ionicons key={s} name={s <= review.rating ? "star" : "star-outline"} size={12} color={Colors.warning} />
+                            ))}
+                          </View>
+                        </View>
+                        {review.comment ? (
+                          <Text style={styles.reviewComment}>{review.comment}</Text>
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.noReviewsContainer}>
                     <Ionicons name="chatbubble-outline" size={32} color={Colors.textMuted} />
                     <Text style={styles.noReviewsText}>No reviews yet</Text>
                   </View>
@@ -1652,7 +1650,7 @@ export default function ClientHomeScreen() {
               </Pressable>
             )}
             <Pressable style={styles.payMethodRow} onPress={() => handlePayAndRide("cash")}>
-              <View style={[styles.payMethodIcon, { backgroundColor: Colors.accent }]}>
+              <View style={[styles.payMethodIcon, { backgroundColor: Colors.accent }]}> 
                 <Ionicons name="cash" size={20} color="#fff" />
               </View>
               <View style={{ flex: 1 }}>

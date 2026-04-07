@@ -59,7 +59,8 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.INTERNET",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO"
       ],
       "config": {
         "googleMaps": {
@@ -108,6 +109,12 @@
       "eas": {
         "projectId": "f282a582-7512-48d6-b563-13aa571d9115"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f282a582-7512-48d6-b563-13aa571d9115"
     }
   }
 }
