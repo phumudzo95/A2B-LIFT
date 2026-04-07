@@ -146,6 +146,21 @@ export default function ChauffeurDashboard() {
     return uniqueRoutes;
   }
 
+  /** Estimate the fare for a given route distance using the ride's vehicle type */
+  function calcRoutePrice(distanceKm: number | undefined): string {
+    if (!distanceKm || !currentRide) return "";
+    const rates: Record<string, { pricePerKm: number; baseFare: number }> = {
+      budget:      { pricePerKm: 7,  baseFare: 50  },
+      luxury:      { pricePerKm: 13, baseFare: 100 },
+      business:    { pricePerKm: 35, baseFare: 150 },
+      van:         { pricePerKm: 13, baseFare: 120 },
+      luxury_van:  { pricePerKm: 35, baseFare: 200 },
+    };
+    const cat = rates[currentRide.vehicleType || "budget"] || rates.budget;
+    const total = Math.round(cat.baseFare + distanceKm * cat.pricePerKm);
+    return `R ${total}`;
+  }
+
   async function getClientSummary(clientId?: string): Promise<ClientSummary | null> {
     if (!clientId) return null;
     const cached = clientSummaryCacheRef.current[clientId];
@@ -705,8 +720,8 @@ export default function ChauffeurDashboard() {
     if (locationInterval) { clearInterval(locationInterval); setLocationIntervalId(null); }
   }
 
-  async function fetchDriverRoute(destLat: number, destLng: number) {
-    if (!myLocation) return;
+  async function fetchDriverRoute(destLat: number, destLng: number): Promise<boolean> {
+    if (!myLocation) return false;
     try {
       const res = await apiRequest("GET",
         `/api/directions?originLat=${myLocation.lat}&originLng=${myLocation.lng}&destLat=${destLat}&destLng=${destLng}`
@@ -761,7 +776,8 @@ export default function ChauffeurDashboard() {
         setNavSteps([]);
         setCurrentStepIdx(0);
       }
-    } catch {}
+      return true;
+    } catch { return false; }
   }
 
   function selectRoute(alt: any, index: number) {
@@ -777,8 +793,8 @@ export default function ChauffeurDashboard() {
 
   async function startTripToDestination() {
     if (!currentRide) return;
-    setShowNavModal(true);
     await updateRideStatus("trip_started");
+    // Route to dropoff is fetched inside updateRideStatus after trip_started
   }
 
   async function openClientProfile(clientId?: string) {
@@ -870,7 +886,9 @@ export default function ChauffeurDashboard() {
       }, "Client");
       setCurrentRide(enrichedRide);
       setIncomingRide(null);
-      if (enrichedRide.pickupLat && enrichedRide.pickupLng) fetchDriverRoute(parseFloat(enrichedRide.pickupLat), parseFloat(enrichedRide.pickupLng));
+      if (enrichedRide.pickupLat && enrichedRide.pickupLng) {
+        await fetchDriverRoute(parseFloat(enrichedRide.pickupLat), parseFloat(enrichedRide.pickupLng));
+      }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowNavModal(true);
     } catch {
@@ -909,7 +927,9 @@ export default function ChauffeurDashboard() {
       setCurrentRide(enrichedRide);
       setAvailableTrips([]);
       setIncomingRide(null);
-      if (enrichedRide.pickupLat && enrichedRide.pickupLng) fetchDriverRoute(parseFloat(enrichedRide.pickupLat), parseFloat(enrichedRide.pickupLng));
+      if (enrichedRide.pickupLat && enrichedRide.pickupLng) {
+        await fetchDriverRoute(parseFloat(enrichedRide.pickupLat), parseFloat(enrichedRide.pickupLng));
+      }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowNavModal(true);
     } catch {
@@ -950,7 +970,7 @@ export default function ChauffeurDashboard() {
       } else {
         setCurrentRide(rideWithName);
         if (status === "trip_started" && ride.dropoffLat && ride.dropoffLng) {
-          fetchDriverRoute(parseFloat(ride.dropoffLat), parseFloat(ride.dropoffLng));
+          await fetchDriverRoute(parseFloat(ride.dropoffLat), parseFloat(ride.dropoffLng));
           setShowNavModal(true);
         }
       }
@@ -1057,6 +1077,9 @@ export default function ChauffeurDashboard() {
                     <Ionicons name={i === 0 ? "speedometer-outline" : i === 1 ? "navigate-outline" : "analytics-outline"} size={18} color={selectedRouteIndex === i ? Colors.primary : Colors.accent} />
                     <Text style={[styles.routeOptionName, selectedRouteIndex === i && { color: Colors.primary }]}>{getRouteOptionTitle(i, alt.summary)}</Text>
                     <Text style={[styles.routeOptionDetail, selectedRouteIndex === i && { color: Colors.primary }]}>{alt.durationText} · {alt.distanceText}</Text>
+                    {calcRoutePrice(alt.distanceKm) ? (
+                      <Text style={[styles.routeOptionPrice, selectedRouteIndex === i && { color: Colors.primary }]}>{calcRoutePrice(alt.distanceKm)}</Text>
+                    ) : null}
                   </Pressable>
                 ))}
               </ScrollView>
@@ -1264,6 +1287,11 @@ export default function ChauffeurDashboard() {
                     <Text style={[styles.cardRouteOptionMeta, selectedRouteIndex === i && styles.cardRouteOptionMetaSelected]}>
                       {alt.durationText} · {alt.distanceText}
                     </Text>
+                    {calcRoutePrice(alt.distanceKm) ? (
+                      <Text style={[styles.cardRouteOptionPrice, selectedRouteIndex === i && styles.cardRouteOptionTitleSelected]}>
+                        {calcRoutePrice(alt.distanceKm)}
+                      </Text>
+                    ) : null}
                   </Pressable>
                 ))}
               </ScrollView>
@@ -1740,6 +1768,7 @@ const styles = StyleSheet.create({
   routeOptionCardSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   routeOptionName: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.white, textAlign: "center" },
   routeOptionDetail: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center" },
+  routeOptionPrice: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.accent, textAlign: "center", marginTop: 2 },
   cardRouteOptionsWrap: { gap: 8 },
   cardRouteOptionsTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textMuted },
   cardRouteOptionsScroll: { gap: 8 },
@@ -1749,4 +1778,5 @@ const styles = StyleSheet.create({
   cardRouteOptionTitleSelected: { color: Colors.primary },
   cardRouteOptionMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   cardRouteOptionMetaSelected: { color: Colors.primary },
+  cardRouteOptionPrice: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.accent, marginTop: 2 },
 });
