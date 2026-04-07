@@ -375,7 +375,23 @@ export default function ClientHomeScreen() {
 
   // Apply a ride status update received from socket or polling
   const applyRideUpdate = useCallback((ride: any) => {
-    if (ride.status === "cancelled") return;
+    if (ride.status === "cancelled") {
+      // Driver or server cancelled — reset client UI and notify
+      setCurrentRide(null);
+      setRideStatus("idle");
+      setRoutePolyline(null);
+      setDriverLocation(null);
+      setEtaText(null);
+      setLiveEtaMin(null);
+      setInitialEtaMin(null);
+      setChauffeurDetails(null);
+      Alert.alert(
+        "Ride Cancelled",
+        "Your ride has been cancelled by the driver. Please request a new ride.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
     setCurrentRide(ride);
     if (ride.status === "chauffeur_assigned") {
       setRideStatus("assigned");
@@ -435,7 +451,7 @@ export default function ClientHomeScreen() {
     };
   }, []); // register once — uses ref internally
 
-  // Polling fallback: while searching, poll every 4s in case socket event is missed
+  // Polling fallback: while searching, poll every 2s in case socket event is missed
   useEffect(() => {
     if (rideStatus !== "requested" || !currentRide?.id) return;
 
@@ -448,6 +464,27 @@ export default function ClientHomeScreen() {
         }
       } catch {}
     }, 2000);
+
+    return () => clearInterval(pollId);
+  }, [rideStatus, currentRide?.id]);
+
+  // Polling fallback: while ride is active, poll every 5s to catch driver cancellations
+  // that may have been missed by the socket (network blip, reconnect, etc.)
+  useEffect(() => {
+    const activeStatuses = ["assigned", "arriving", "in_trip"];
+    if (!activeStatuses.includes(rideStatus) || !currentRide?.id) return;
+
+    const pollId = setInterval(async () => {
+      try {
+        const res = await apiRequest("GET", `/api/rides/${currentRideRef.current?.id}`);
+        if (!res.ok) return;
+        const ride = await res.json();
+        // Only act on terminal or unexpected status changes
+        if (ride.status === "cancelled" || ride.status === "trip_completed") {
+          applyRideUpdate(ride);
+        }
+      } catch {}
+    }, 5000);
 
     return () => clearInterval(pollId);
   }, [rideStatus, currentRide?.id]);
