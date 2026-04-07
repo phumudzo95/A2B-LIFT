@@ -34,8 +34,8 @@ const VEHICLE_TYPES = [
   { id: "budget", name: "Budget", desc: "Toyota Corolla, Toyota Quest", icon: "car-outline" as const, pricePerKm: 7, baseFare: 50 },
   { id: "luxury", name: "Luxury", desc: "BMW 3 Series, Mercedes C Class", icon: "car-sport" as const, pricePerKm: 13, baseFare: 100 },
   { id: "business", name: "Business Class", desc: "BMW 5 Series, Mercedes E Class", icon: "briefcase" as const, pricePerKm: 35, baseFare: 150 },
-  { id: "van", name: "Van", desc: "Hyundai H1, Mercedes Vito, Staria", icon: "bus" as const, pricePerKm: 35, baseFare: 120 },
-  { id: "luxury_van", name: "Luxury Van", desc: "Mercedes V Class", icon: "car" as const, pricePerKm: 50, baseFare: 200 },
+  { id: "van", name: "Van", desc: "Hyundai H1, Mercedes Vito, Staria", icon: "bus" as const, pricePerKm: 13, baseFare: 120 },
+  { id: "luxury_van", name: "Luxury Van", desc: "Mercedes V Class", icon: "car" as const, pricePerKm: 35, baseFare: 200 },
 ];
 
 type RideStatus = "idle" | "selecting" | "confirming" | "requested" | "assigned" | "arriving" | "in_trip" | "completed" | "no_drivers";
@@ -78,6 +78,136 @@ interface DriverProfile {
   ratings: DriverReview[];
 }
 
+interface DirectionStep {
+  instruction: string;
+  distance: string;
+  duration?: string;
+  endLat?: number;
+  endLng?: number;
+  maneuver?: string;
+}
+
+interface DirectionRoute {
+  polyline: string;
+  distanceKm: number;
+  distanceText: string;
+  durationMin: number;
+  durationText: string;
+  summary?: string;
+  steps?: DirectionStep[];
+}
+
+type RouteChoiceId = "gps_preferred" | "faster_route" | "safest_route";
+
+interface RouteChoice extends DirectionRoute {
+  id: RouteChoiceId;
+  title: string;
+  subtitle: string;
+  badge: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  fare: number;
+  baseFare: number;
+  pricePerKm: number;
+  lateNightPremium: number;
+  currency: string;
+}
+
+const ROUTE_CHOICE_META: Record<RouteChoiceId, { title: string; subtitle: string; badge: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  gps_preferred: {
+    title: "GPS Choice",
+    subtitle: "Balanced route from maps",
+    badge: "Recommended",
+    icon: "navigate-circle-outline",
+  },
+  faster_route: {
+    title: "Faster Route",
+    subtitle: "Lowest ETA right now",
+    badge: "Fastest",
+    icon: "flash-outline",
+  },
+  safest_route: {
+    title: "Safer Route",
+    subtitle: "Simpler drive with fewer turns",
+    badge: "Calmer",
+    icon: "shield-checkmark-outline",
+  },
+};
+
+function getRoutePreferenceLabel(routeId?: string | null): string {
+  if (routeId === "faster_route") return "Faster Route";
+  if (routeId === "safest_route") return "Safer Route";
+  return "GPS Choice";
+}
+
+function getPaymentMethodLabel(method?: string | null): string {
+  if (method === "card") return "Card";
+  if (method === "wallet") return "Wallet";
+  return "Cash";
+}
+
+function calculateRouteSafetyScore(route: DirectionRoute): number {
+  const stepsCount = Array.isArray(route.steps) ? route.steps.length : 0;
+  const averageSpeed = route.durationMin > 0 ? route.distanceKm / (route.durationMin / 60) : route.distanceKm;
+  const highwayPenalty = /\b(M|N)\d+\b|highway|freeway|motorway/i.test(route.summary || "") ? 5 : 0;
+  return stepsCount + averageSpeed * 1.4 + highwayPenalty;
+}
+
+function dedupeDirectionRoutes(routes: DirectionRoute[]): DirectionRoute[] {
+  const seen = new Set<string>();
+  const unique: DirectionRoute[] = [];
+  for (const route of routes) {
+    if (!route?.polyline || seen.has(route.polyline)) continue;
+    seen.add(route.polyline);
+    unique.push(route);
+  }
+  return unique;
+}
+
+function buildRouteChoiceDescriptors(routes: DirectionRoute[]) {
+  const uniqueRoutes = dedupeDirectionRoutes(routes);
+  const descriptors: Array<{ id: RouteChoiceId; sorter: (a: DirectionRoute, b: DirectionRoute) => number }> = [
+    { id: "gps_preferred", sorter: () => 0 },
+    { id: "faster_route", sorter: (a, b) => a.durationMin - b.durationMin || a.distanceKm - b.distanceKm },
+    { id: "safest_route", sorter: (a, b) => calculateRouteSafetyScore(a) - calculateRouteSafetyScore(b) || a.durationMin - b.durationMin },
+  ];
+
+  const selected: Array<{ id: RouteChoiceId; route: DirectionRoute }> = [];
+  const usedPolylines = new Set<string>();
+
+  for (const descriptor of descriptors) {
+    const sorted = descriptor.id === "gps_preferred" ? uniqueRoutes : [...uniqueRoutes].sort(descriptor.sorter);
+    const route = sorted.find((item) => !usedPolylines.has(item.polyline));
+    if (!route) continue;
+    usedPolylines.add(route.polyline);
+    selected.push({ id: descriptor.id, route });
+  }
+
+  return selected;
+}
+
+function calculateFallbackEstimate(distanceKm: number, vehicle: { baseFare: number; pricePerKm: number }, isLateNight: boolean) {
+  const baseFare = Math.round(vehicle.baseFare);
+  const distanceFare = Math.round(distanceKm * vehicle.pricePerKm);
+  let totalPrice = baseFare + distanceFare;
+  let lateNightPremium = 0;
+  if (isLateNight) {
+    lateNightPremium = Math.round(totalPrice * 0.3);
+    totalPrice += lateNightPremium;
+  }
+  return {
+    totalPrice,
+    baseFare,
+    pricePerKm: vehicle.pricePerKm,
+    lateNightPremium,
+    currency: "ZAR",
+  };
+}
+
+function isLateNightWindow() {
+  const hour = new Date().getHours();
+  return hour >= 22 || hour < 5;
+}
+
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -113,6 +243,8 @@ export default function ClientHomeScreen() {
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
   const [estimatedDistance, setEstimatedDistance] = useState<number | null>(null);
   const [lateNightPremium, setLateNightPremium] = useState<number>(0);
+  const [routeChoices, setRouteChoices] = useState<RouteChoice[]>([]);
+  const [selectedRouteId, setSelectedRouteId] = useState<RouteChoiceId | null>(null);
   const [currentRide, setCurrentRide] = useState<any>(null);
   const [showVehicleSheet, setShowVehicleSheet] = useState(false);
   const [chauffeurDetails, setChauffeurDetails] = useState<ChauffeurDetails | null>(null);
@@ -167,6 +299,8 @@ export default function ClientHomeScreen() {
 
   // Keep a ref so socket callbacks always see the latest ride without stale closure
   const currentRideRef = useRef<any>(null);
+  const selectedRouteChoice = routeChoices.find((choice) => choice.id === selectedRouteId) || routeChoices[0] || null;
+
   useEffect(() => {
     currentRideRef.current = currentRide;
   }, [currentRide]);
@@ -553,6 +687,92 @@ export default function ClientHomeScreen() {
     } catch {}
   }
 
+  function applyRouteChoice(choice: RouteChoice) {
+    setSelectedRouteId(choice.id);
+    setEstimatedPrice(choice.fare);
+    setEstimatedDistance(Math.round(choice.distanceKm * 10) / 10);
+    setLateNightPremium(choice.lateNightPremium);
+    setRoutePolyline(choice.polyline);
+    setTripDurationText(choice.durationText);
+    setTripDurationMin(choice.durationMin);
+    setEtaText(`ETA: ${choice.durationText}`);
+  }
+
+  async function fetchRouteChoices(origin: { lat: number; lng: number }, dest: { lat: number; lng: number }) {
+    const res = await apiRequest(
+      "GET",
+      `/api/directions?originLat=${origin.lat}&originLng=${origin.lng}&destLat=${dest.lat}&destLng=${dest.lng}`
+    );
+    const data = await res.json();
+
+    const fallbackRoute = data.polyline
+      ? [{
+          polyline: data.polyline,
+          distanceKm: Number(data.distanceKm || 0),
+          distanceText: data.distanceText || "",
+          durationMin: Number(data.durationMin || 0),
+          durationText: data.durationText || "",
+          summary: data.summary || "",
+          steps: Array.isArray(data.steps) ? data.steps : [],
+        }]
+      : [];
+
+    const sourceRoutes = Array.isArray(data.alternatives) && data.alternatives.length > 0
+      ? data.alternatives
+      : fallbackRoute;
+    const choiceDescriptors = buildRouteChoiceDescriptors(sourceRoutes);
+    if (choiceDescriptors.length === 0) {
+      throw new Error("No route options available");
+    }
+
+    const lateNightRide = isLateNightWindow();
+    const choices = await Promise.all(
+      choiceDescriptors.map(async ({ id, route }) => {
+        const fallbackEstimate = calculateFallbackEstimate(route.distanceKm, selectedVehicle, lateNightRide);
+
+        try {
+          const estimateRes = await apiRequest("POST", "/api/pricing/estimate", {
+            distanceKm: route.distanceKm,
+            categoryId: selectedVehicle.id,
+            isLateNight: lateNightRide,
+          });
+          const estimate = await estimateRes.json();
+          return {
+            ...route,
+            id,
+            title: ROUTE_CHOICE_META[id].title,
+            subtitle: ROUTE_CHOICE_META[id].subtitle,
+            badge: ROUTE_CHOICE_META[id].badge,
+            icon: ROUTE_CHOICE_META[id].icon,
+            fare: Number(estimate.totalPrice ?? fallbackEstimate.totalPrice),
+            baseFare: Number(estimate.baseFare ?? fallbackEstimate.baseFare),
+            pricePerKm: Number(estimate.pricePerKm ?? fallbackEstimate.pricePerKm),
+            lateNightPremium: Number(estimate.lateNightPremium ?? fallbackEstimate.lateNightPremium),
+            currency: estimate.currency || fallbackEstimate.currency,
+          } as RouteChoice;
+        } catch {
+          return {
+            ...route,
+            id,
+            title: ROUTE_CHOICE_META[id].title,
+            subtitle: ROUTE_CHOICE_META[id].subtitle,
+            badge: ROUTE_CHOICE_META[id].badge,
+            icon: ROUTE_CHOICE_META[id].icon,
+            fare: fallbackEstimate.totalPrice,
+            baseFare: fallbackEstimate.baseFare,
+            pricePerKm: fallbackEstimate.pricePerKm,
+            lateNightPremium: fallbackEstimate.lateNightPremium,
+            currency: fallbackEstimate.currency,
+          } as RouteChoice;
+        }
+      })
+    );
+
+    setRouteChoices(choices);
+    applyRouteChoice(choices[0]);
+    return choices;
+  }
+
   async function requestLocation() {
     try {
       if (Platform.OS === "web") {
@@ -633,22 +853,11 @@ export default function ClientHomeScreen() {
         return;
       }
       setDropoffCoords(dest);
-      const distanceKm = haversineDistance(location.lat, location.lng, dest.lat, dest.lng) * 1.3;
-      const finalDistance = Math.max(distanceKm, 2);
-      setEstimatedDistance(Math.round(finalDistance * 10) / 10);
-
-      const res = await apiRequest("POST", "/api/pricing/estimate", {
-        distanceKm: finalDistance,
-        categoryId: selectedVehicle.id,
-        isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
-      });
-      const data = await res.json();
-      setEstimatedPrice(data.totalPrice);
-      setLateNightPremium(data.lateNightPremium || 0);
-      setRideStatus("confirming");
-      if (location && dest) {
-        fetchRoute(location, dest);
+      const choices = await fetchRouteChoices(location, dest);
+      if (choices.length === 0) {
+        throw new Error("No route choices available");
       }
+      setRideStatus("confirming");
     } catch (e) {
       Alert.alert("Error", "Failed to get estimate");
     }
@@ -656,6 +865,10 @@ export default function ClientHomeScreen() {
 
   async function requestRide() {
     if (!user || !location || !dropoffCoords) return;
+    if (!selectedRouteChoice) {
+      Alert.alert("Choose a Route", "Select a route option before requesting your ride.");
+      return;
+    }
     try {
       const res = await apiRequest("GET", "/api/payments/cards");
       const cards = await res.json();
@@ -671,7 +884,8 @@ export default function ClientHomeScreen() {
     extras: Record<string, unknown> = {},
   ) {
     if (!user || !location || !dropoffCoords) return null;
-    const distanceKm = estimatedDistance || 10;
+    const activeRouteChoice = selectedRouteChoice;
+    const distanceKm = activeRouteChoice?.distanceKm || estimatedDistance || 10;
     const res = await apiRequest("POST", "/api/rides", {
       clientId: user.id,
       pickupLat: location.lat,
@@ -684,6 +898,11 @@ export default function ClientHomeScreen() {
       distanceKm,
       paymentMethod: method,
       paymentStatus: method === "cash" ? "unpaid" : "pending",
+      durationMin: activeRouteChoice?.durationMin || tripDurationMin || undefined,
+      selectedRouteId: activeRouteChoice?.id || undefined,
+      selectedRouteDistanceKm: activeRouteChoice?.distanceKm || undefined,
+      actualFare: activeRouteChoice?.fare || estimatedPrice || undefined,
+      routeCurrency: activeRouteChoice?.currency || "ZAR",
       isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
       ...extras,
     });
@@ -805,6 +1024,7 @@ export default function ClientHomeScreen() {
 
   async function handlePayAndRide(method: "cash" | "card" | "wallet") {
     if (!user || !location || !dropoffCoords) return;
+    setPaymentMethod(method);
     setShowPaymentPicker(false);
 
     if (method === "cash") {
@@ -890,6 +1110,9 @@ export default function ClientHomeScreen() {
     setCurrentRide(null);
     setEstimatedPrice(null);
     setEstimatedDistance(null);
+    setRouteChoices([]);
+    setSelectedRouteId(null);
+    setPaymentMethod("cash");
     setDropoffAddress("");
     setDropoffCoords(null);
     setRoutePolyline(null);
@@ -925,6 +1148,9 @@ export default function ClientHomeScreen() {
     setCurrentRide(null);
     setEstimatedPrice(null);
     setEstimatedDistance(null);
+    setRouteChoices([]);
+    setSelectedRouteId(null);
+    setPaymentMethod("cash");
     setDropoffAddress("");
     setDropoffCoords(null);
     setChauffeurDetails(null);
@@ -1150,8 +1376,8 @@ export default function ClientHomeScreen() {
           >
             <View style={styles.priceCard}>
               <Text style={styles.priceLabel}>{selectedVehicle.name}</Text>
-              <Text style={styles.priceValue}>R {estimatedPrice}</Text>
-              <Text style={styles.priceCurrency}>ZAR</Text>
+              <Text style={styles.priceValue}>R {selectedRouteChoice?.fare ?? estimatedPrice}</Text>
+              <Text style={styles.priceCurrency}>{selectedRouteChoice?.currency || "ZAR"}</Text>
               {(estimatedDistance || tripDurationText) && (
                 <View style={styles.tripInfoPill}>
                   {estimatedDistance && (
@@ -1165,16 +1391,61 @@ export default function ClientHomeScreen() {
                   )}
                 </View>
               )}
+              {selectedRouteChoice ? (
+                <View style={styles.estimateBadgeRow}>
+                  <View style={styles.estimateBadge}>
+                    <Ionicons name={selectedRouteChoice.icon} size={14} color={Colors.primary} />
+                    <Text style={styles.estimateBadgeText}>{selectedRouteChoice.badge}</Text>
+                  </View>
+                  <View style={styles.estimateBadgeMuted}>
+                    <Text style={styles.estimateBadgeMutedText}>{selectedRouteChoice.title}</Text>
+                  </View>
+                </View>
+              ) : null}
             </View>
+
+            {routeChoices.length > 0 && (
+              <View style={styles.routeChoiceSection}>
+                <View style={styles.routeChoiceHeader}>
+                  <Text style={styles.routeChoiceTitle}>Choose your route</Text>
+                  <Text style={styles.routeChoiceHeaderText}>Price updates with each option</Text>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.routeChoiceScroller}>
+                  {routeChoices.map((choice) => {
+                    const isSelected = choice.id === selectedRouteChoice?.id;
+                    return (
+                      <Pressable
+                        key={choice.id}
+                        style={[styles.routeChoiceCard, isSelected && styles.routeChoiceCardSelected]}
+                        onPress={() => applyRouteChoice(choice)}
+                      >
+                        <View style={styles.routeChoiceTopRow}>
+                          <View style={[styles.routeChoiceIconWrap, isSelected && styles.routeChoiceIconWrapSelected]}>
+                            <Ionicons name={choice.icon} size={16} color={isSelected ? Colors.primary : Colors.white} />
+                          </View>
+                          <View style={[styles.routeChoiceBadge, isSelected && styles.routeChoiceBadgeSelected]}>
+                            <Text style={[styles.routeChoiceBadgeText, isSelected && styles.routeChoiceBadgeTextSelected]}>{choice.badge}</Text>
+                          </View>
+                        </View>
+                        <Text style={[styles.routeChoiceCardTitle, isSelected && styles.routeChoiceCardTitleSelected]}>{choice.title}</Text>
+                        <Text style={[styles.routeChoiceCardSubtitle, isSelected && styles.routeChoiceCardSubtitleSelected]}>{choice.subtitle}</Text>
+                        <Text style={[styles.routeChoiceMeta, isSelected && styles.routeChoiceMetaSelected]}>{choice.durationText} · {choice.distanceText}</Text>
+                        <Text style={[styles.routeChoiceFare, isSelected && styles.routeChoiceFareSelected]}>R {choice.fare}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
 
             <View style={styles.fareBreakdown}>
               <View style={styles.fareRow}>
                 <Text style={styles.fareLabel}>Base fare</Text>
-                <Text style={styles.fareValue}>R {selectedVehicle.baseFare}</Text>
+                <Text style={styles.fareValue}>R {selectedRouteChoice?.baseFare ?? selectedVehicle.baseFare}</Text>
               </View>
               <View style={styles.fareRow}>
-                <Text style={styles.fareLabel}>Distance ({estimatedDistance} km × R{selectedVehicle.pricePerKm})</Text>
-                <Text style={styles.fareValue}>R {Math.round((estimatedDistance || 0) * selectedVehicle.pricePerKm)}</Text>
+                <Text style={styles.fareLabel}>Distance ({estimatedDistance} km × R{selectedRouteChoice?.pricePerKm ?? selectedVehicle.pricePerKm})</Text>
+                <Text style={styles.fareValue}>R {Math.round((estimatedDistance || 0) * (selectedRouteChoice?.pricePerKm ?? selectedVehicle.pricePerKm))}</Text>
               </View>
               {lateNightPremium > 0 && (
                 <View style={styles.fareRow}>
@@ -1195,6 +1466,23 @@ export default function ClientHomeScreen() {
                 <Text style={styles.routeText} numberOfLines={2}>{dropoffAddress}</Text>
               </View>
             </View>
+
+            {selectedRouteChoice ? (
+              <View style={styles.selectionMetaRow}>
+                <View style={styles.selectionMetaChip}>
+                  <Ionicons name={selectedRouteChoice.icon} size={14} color={Colors.primary} />
+                  <Text style={styles.selectionMetaText}>{selectedRouteChoice.title}</Text>
+                </View>
+                <View style={styles.selectionMetaChip}>
+                  <Ionicons
+                    name={paymentMethod === "cash" ? "cash-outline" : paymentMethod === "card" ? "card-outline" : "wallet-outline"}
+                    size={14}
+                    color={Colors.primary}
+                  />
+                  <Text style={styles.selectionMetaText}>{getPaymentMethodLabel(paymentMethod)}</Text>
+                </View>
+              </View>
+            ) : null}
 
             <Pressable
               style={({ pressed }) => [styles.requestBtn, pressed && { opacity: 0.9 }]}
@@ -1217,7 +1505,9 @@ export default function ClientHomeScreen() {
             <ActivityIndicator size="small" color={Colors.white} />
             <View style={{ flex: 1 }}>
               <Text style={styles.searchingText}>Searching for {selectedVehicle.name}...</Text>
-              <Text style={styles.searchingSubtext}>{selectedVehicle.desc?.split(",")[0]} nearby</Text>
+              <Text style={styles.searchingSubtext}>
+                {getRoutePreferenceLabel(currentRide?.selectedRouteId || selectedRouteChoice?.id)} · {getPaymentMethodLabel(currentRide?.paymentMethod || paymentMethod)}
+              </Text>
             </View>
           </View>
           <Pressable style={styles.cancelFullBtn} onPress={cancelRide}>
@@ -1336,6 +1626,20 @@ export default function ClientHomeScreen() {
               <Text style={styles.tripPriceValue}>R {currentRide.price}</Text>
             </View>
           )}
+          <View style={styles.selectionMetaRow}>
+            <View style={styles.selectionMetaChip}>
+              <Ionicons name="navigate-circle-outline" size={14} color={Colors.primary} />
+              <Text style={styles.selectionMetaText}>{getRoutePreferenceLabel(currentRide?.selectedRouteId)}</Text>
+            </View>
+            <View style={styles.selectionMetaChip}>
+              <Ionicons
+                name={currentRide?.paymentMethod === "card" ? "card-outline" : currentRide?.paymentMethod === "wallet" ? "wallet-outline" : "cash-outline"}
+                size={14}
+                color={Colors.primary}
+              />
+              <Text style={styles.selectionMetaText}>{getPaymentMethodLabel(currentRide?.paymentMethod)}</Text>
+            </View>
+          </View>
           {(rideStatus === "assigned" || rideStatus === "arriving" || rideStatus === "in_trip") && (
             <Pressable
               style={styles.cancelRideActiveBtn}
@@ -1606,8 +1910,20 @@ export default function ClientHomeScreen() {
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>How would you like to pay?</Text>
             <Text style={{ fontSize: 13, color: Colors.textMuted, fontFamily: "Inter_400Regular", marginBottom: 8 }}>
-              Fare: R {estimatedPrice}
+              Fare: R {selectedRouteChoice?.fare ?? estimatedPrice}
             </Text>
+            {selectedRouteChoice ? (
+              <View style={styles.paymentContextRow}>
+                <View style={styles.paymentContextChip}>
+                  <Ionicons name={selectedRouteChoice.icon} size={14} color={Colors.primary} />
+                  <Text style={styles.paymentContextText}>{selectedRouteChoice.title}</Text>
+                </View>
+                <View style={styles.paymentContextChip}>
+                  <Ionicons name="time-outline" size={14} color={Colors.primary} />
+                  <Text style={styles.paymentContextText}>{selectedRouteChoice.durationText}</Text>
+                </View>
+              </View>
+            ) : null}
             {(() => {
               const defaultCard = savedCards.find(c => c.isDefault) || savedCards[0];
               return (
@@ -2223,6 +2539,141 @@ const styles = StyleSheet.create({
     color: "#276EF1",
     opacity: 0.6,
   },
+  estimateBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  estimateBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(39,110,241,0.12)",
+  },
+  estimateBadgeText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.primary,
+  },
+  estimateBadgeMuted: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  estimateBadgeMutedText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.white,
+  },
+  routeChoiceSection: {
+    gap: 10,
+  },
+  routeChoiceHeader: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  routeChoiceTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  routeChoiceHeaderText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+  },
+  routeChoiceScroller: {
+    gap: 10,
+    paddingRight: 8,
+  },
+  routeChoiceCard: {
+    width: 188,
+    borderRadius: 16,
+    padding: 14,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    gap: 8,
+  },
+  routeChoiceCardSelected: {
+    backgroundColor: "rgba(39,110,241,0.14)",
+    borderColor: "rgba(39,110,241,0.5)",
+  },
+  routeChoiceTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  routeChoiceIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  routeChoiceIconWrapSelected: {
+    backgroundColor: "rgba(255,255,255,0.92)",
+  },
+  routeChoiceBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  routeChoiceBadgeSelected: {
+    backgroundColor: "rgba(255,255,255,0.92)",
+  },
+  routeChoiceBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.textMuted,
+  },
+  routeChoiceBadgeTextSelected: {
+    color: Colors.primary,
+  },
+  routeChoiceCardTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  routeChoiceCardTitleSelected: {
+    color: Colors.white,
+  },
+  routeChoiceCardSubtitle: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+    minHeight: 32,
+  },
+  routeChoiceCardSubtitleSelected: {
+    color: "rgba(255,255,255,0.72)",
+  },
+  routeChoiceMeta: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.white,
+  },
+  routeChoiceMetaSelected: {
+    color: Colors.white,
+  },
+  routeChoiceFare: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+  },
+  routeChoiceFareSelected: {
+    color: Colors.white,
+  },
   fareBreakdown: {
     backgroundColor: Colors.surface,
     borderRadius: 12,
@@ -2264,6 +2715,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     color: Colors.textSecondary,
+  },
+  selectionMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  selectionMetaChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  selectionMetaText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
   },
   btnRow: {
     flexDirection: "row",
@@ -3125,6 +3598,26 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  paymentContextRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  paymentContextChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  paymentContextText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.white,
   },
   livenessContainer: {
     flex: 1,

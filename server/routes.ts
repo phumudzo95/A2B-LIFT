@@ -1659,7 +1659,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const categoryId = rideData.vehicleType || "budget";
-      const priceEstimate = calculatePrice(distanceKm || 10, categoryId, { isLateNight });
+      const normalizedDistanceKm = Number(rideData.selectedRouteDistanceKm ?? distanceKm ?? 10);
+      const safeDistanceKm = Number.isFinite(normalizedDistanceKm) && normalizedDistanceKm > 0 ? normalizedDistanceKm : 10;
+      const normalizedDurationMin = Number(rideData.durationMin ?? 0);
+      const safeDurationMin = Number.isFinite(normalizedDurationMin) && normalizedDurationMin > 0 ? normalizedDurationMin : null;
+      const selectedRouteId = typeof rideData.selectedRouteId === "string" && rideData.selectedRouteId.trim()
+        ? rideData.selectedRouteId.trim()
+        : null;
+      const priceEstimate = calculatePrice(safeDistanceKm, categoryId, { isLateNight });
+      const requestedFare = Number(rideData.actualFare);
+      const safeFare = Number.isFinite(requestedFare) && requestedFare > 0 ? requestedFare : priceEstimate.totalPrice;
+      const routeCurrency = typeof rideData.routeCurrency === "string" && rideData.routeCurrency.trim()
+        ? rideData.routeCurrency.trim().toUpperCase()
+        : priceEstimate.currency;
 
       const paymentMethod = (rideData.paymentMethod || "cash") as string;
       if (paymentMethod === "cash") {
@@ -1694,17 +1706,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dropoffAddress: rideData.dropoffAddress || null,
         vehicleType: rideData.vehicleType || "budget",
         paymentMethod: rideData.paymentMethod || "cash",
-        price: priceEstimate.totalPrice,
-        distanceKm: distanceKm || 10,
+        price: safeFare,
+        distanceKm: safeDistanceKm,
+        durationMin: safeDurationMin,
         pricePerKm: priceEstimate.pricePerKm,
         baseFare: priceEstimate.baseFare,
         status: "searching",
-        paymentStatus: "unpaid",
+        paymentStatus: paymentMethod === "cash" ? "unpaid" : (rideData.paymentStatus || "pending"),
         cashSelfieUrl: rideData.cashSelfieUrl || null,
         livenessStatus: rideData.livenessStatus || "not_required",
         livenessProvider: rideData.livenessProvider || null,
         livenessSessionId: rideData.livenessSessionId || null,
         livenessScore: rideData.livenessScore || null,
+        selectedRouteId,
+        selectedRouteDistanceKm: selectedRouteId ? safeDistanceKm : null,
+        actualFare: selectedRouteId ? safeFare : null,
+        routeCurrency,
+        routeSelectedAt: selectedRouteId ? new Date() : null,
         ...(livenessVerifiedAt ? { livenessVerifiedAt } : {}),
       } as any);
 

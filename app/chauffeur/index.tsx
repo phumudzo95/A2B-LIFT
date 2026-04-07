@@ -162,6 +162,34 @@ export default function ChauffeurDashboard() {
     return `R ${total}`;
   }
 
+  function getRideRouteLabel(routeId?: string | null) {
+    if (routeId === "faster_route") return "Faster Route";
+    if (routeId === "safest_route") return "Safer Route";
+    return "GPS Choice";
+  }
+
+  function getRideRouteIcon(routeId?: string | null): keyof typeof Ionicons.glyphMap {
+    if (routeId === "faster_route") return "flash-outline";
+    if (routeId === "safest_route") return "shield-checkmark-outline";
+    return "navigate-circle-outline";
+  }
+
+  function getRidePaymentLabel(method?: string | null) {
+    if (method === "card") return "Card";
+    if (method === "wallet") return "Wallet";
+    return "Cash";
+  }
+
+  function getRidePaymentIcon(method?: string | null): keyof typeof Ionicons.glyphMap {
+    if (method === "card") return "card-outline";
+    if (method === "wallet") return "wallet-outline";
+    return "cash-outline";
+  }
+
+  function getRideFare(ride: any) {
+    return ride?.actualFare || ride?.price || 0;
+  }
+
   async function getClientSummary(clientId?: string): Promise<ClientSummary | null> {
     if (!clientId) return null;
     const cached = clientSummaryCacheRef.current[clientId];
@@ -1036,6 +1064,8 @@ export default function ChauffeurDashboard() {
     currentRide?.status === "chauffeur_arriving" ? `Arriving at ${clientDisplayName}'s pickup` :
     currentRide?.status === "trip_started" ? `Trip in progress — ${clientDisplayName}` : "Active Ride";
   const routeOptionsHeading = currentRide?.status === "trip_started" ? "Destination routes" : "Pickup routes";
+  const clientRouteLabel = getRideRouteLabel(currentRide?.selectedRouteId);
+  const clientPaymentLabel = getRidePaymentLabel(currentRide?.paymentMethod);
 
   return (
     <>
@@ -1048,6 +1078,9 @@ export default function ChauffeurDashboard() {
                 {currentRide?.status === "trip_started" ? `Dropping off ${clientDisplayName}` : `Picking up ${clientDisplayName}`}
               </Text>
               {rideEta && <Text style={styles.navModalEta}>{rideEta.durationText} · {rideEta.distanceText}</Text>}
+              {currentRide && (
+                <Text style={styles.navModalRouteHint}>Client selected {clientRouteLabel} · {clientPaymentLabel}</Text>
+              )}
             </View>
             <Pressable style={styles.navModalClose} onPress={() => setShowNavModal(false)}>
               <Ionicons name="chevron-down" size={22} color={Colors.white} />
@@ -1207,7 +1240,7 @@ export default function ChauffeurDashboard() {
                       <Text style={styles.tripClientName}>{trip.clientFirstName || (trip.clientName ? String(trip.clientName).split(" ")[0] : "Client")}</Text>
                       <Ionicons name="chevron-forward" size={12} color={Colors.textMuted} />
                     </Pressable>
-                    {trip.price && <Text style={styles.tripPrice}>R {trip.price}</Text>}
+                    {getRideFare(trip) ? <Text style={styles.tripPrice}>R {getRideFare(trip)}</Text> : null}
                   </View>
                   <View style={styles.tripAddrRow}>
                     <View style={styles.dotGreen} />
@@ -1216,6 +1249,16 @@ export default function ChauffeurDashboard() {
                   <View style={styles.tripAddrRow}>
                     <View style={styles.dotRed} />
                     <Text style={styles.tripAddrText} numberOfLines={1}>{trip.dropoffAddress || "Dropoff"}</Text>
+                  </View>
+                  <View style={styles.rideInfoPills}>
+                    <View style={styles.rideInfoPill}>
+                      <Ionicons name={getRidePaymentIcon(trip.paymentMethod)} size={12} color={Colors.accent} />
+                      <Text style={styles.rideInfoPillText}>{getRidePaymentLabel(trip.paymentMethod)}</Text>
+                    </View>
+                    <View style={styles.rideInfoPill}>
+                      <Ionicons name={getRideRouteIcon(trip.selectedRouteId)} size={12} color={Colors.accent} />
+                      <Text style={styles.rideInfoPillText}>{getRideRouteLabel(trip.selectedRouteId)}</Text>
+                    </View>
                   </View>
                   {trip.distKm != null && (
                     <Text style={styles.tripDist}>{trip.distKm.toFixed(1)} km away</Text>
@@ -1260,6 +1303,22 @@ export default function ChauffeurDashboard() {
             <View style={styles.dotRed} />
             <Text style={styles.addrText} numberOfLines={1}>{currentRide.dropoffAddress || "Dropoff"}</Text>
           </View>
+          <View style={styles.rideInfoPills}>
+            <View style={styles.rideInfoPill}>
+              <Ionicons name={getRidePaymentIcon(currentRide.paymentMethod)} size={12} color={Colors.accent} />
+              <Text style={styles.rideInfoPillText}>{getRidePaymentLabel(currentRide.paymentMethod)}</Text>
+            </View>
+            <View style={styles.rideInfoPill}>
+              <Ionicons name={getRideRouteIcon(currentRide.selectedRouteId)} size={12} color={Colors.accent} />
+              <Text style={styles.rideInfoPillText}>{getRideRouteLabel(currentRide.selectedRouteId)}</Text>
+            </View>
+            {currentRide.durationMin ? (
+              <View style={styles.rideInfoPill}>
+                <Ionicons name="time-outline" size={12} color={Colors.accent} />
+                <Text style={styles.rideInfoPillText}>{Math.round(Number(currentRide.durationMin))} min</Text>
+              </View>
+            ) : null}
+          </View>
           {routeAlternatives.length > 0 && (
             <View style={styles.cardRouteOptionsWrap}>
               <Text style={styles.cardRouteOptionsTitle}>{routeOptionsHeading}</Text>
@@ -1286,7 +1345,7 @@ export default function ChauffeurDashboard() {
               </ScrollView>
             </View>
           )}
-          {currentRide.price && <Text style={styles.priceText}>R {currentRide.price}</Text>}
+          {getRideFare(currentRide) ? <Text style={styles.priceText}>R {getRideFare(currentRide)}</Text> : null}
           <View style={styles.rideActions}>
             <Pressable style={styles.rideSecBtn} onPress={() => router.push({ pathname: "/chauffeur/chat", params: { rideId: currentRide.id, riderName: currentRide.clientFirstName || currentRide.clientName || "Client" } })}>
               <Ionicons name="chatbubble-outline" size={15} color={Colors.white} />
@@ -1326,7 +1385,7 @@ export default function ChauffeurDashboard() {
                 </Text>
                 <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
               </Pressable>
-              {incomingRide.price && <Text style={styles.incomingPrice}>R {incomingRide.price}</Text>}
+              {getRideFare(incomingRide) ? <Text style={styles.incomingPrice}>R {getRideFare(incomingRide)}</Text> : null}
             </View>
             <View style={styles.addrRow}>
               <View style={styles.dotGreen} />
@@ -1335,6 +1394,16 @@ export default function ChauffeurDashboard() {
             <View style={styles.addrRow}>
               <View style={styles.dotRed} />
               <Text style={styles.addrText} numberOfLines={1}>{incomingRide.dropoffAddress || "Dropoff"}</Text>
+            </View>
+            <View style={styles.rideInfoPills}>
+              <View style={styles.rideInfoPill}>
+                <Ionicons name={getRidePaymentIcon(incomingRide.paymentMethod)} size={12} color={Colors.accent} />
+                <Text style={styles.rideInfoPillText}>{getRidePaymentLabel(incomingRide.paymentMethod)}</Text>
+              </View>
+              <View style={styles.rideInfoPill}>
+                <Ionicons name={getRideRouteIcon(incomingRide.selectedRouteId)} size={12} color={Colors.accent} />
+                <Text style={styles.rideInfoPillText}>{getRideRouteLabel(incomingRide.selectedRouteId)}</Text>
+              </View>
             </View>
             <View style={styles.incomingActions}>
               <Pressable style={styles.declineBtn} onPress={declineRide}>
@@ -1621,13 +1690,16 @@ const styles = StyleSheet.create({
   tripsPanelTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.white, flex: 1 },
   tripsScroll: { maxHeight: 170 },
   tripsScrollContent: { flexDirection: "row", gap: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  tripCard: { width: 170, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 12, gap: 6, borderWidth: 1, borderColor: GLASS_BORDER },
+  tripCard: { width: 176, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 12, gap: 8, borderWidth: 1, borderColor: GLASS_BORDER },
   tripCardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   tripClientRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   tripClientName: { fontSize: 14, fontFamily: "Inter_700Bold", color: Colors.white },
   tripPrice: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.accent },
   tripAddrRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   tripAddrText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
+  rideInfoPills: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  rideInfoPill: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
+  rideInfoPillText: { color: Colors.white, fontFamily: "Inter_600SemiBold", fontSize: 11 },
   tripDist: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   tripAcceptBtn: { marginTop: 4, backgroundColor: Colors.white, borderRadius: 10, paddingVertical: 9, alignItems: "center" },
   tripAcceptBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.primary },
@@ -1678,6 +1750,7 @@ const styles = StyleSheet.create({
   navModalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
   navModalTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.white },
   navModalEta: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: 2 },
+  navModalRouteHint: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.accent, marginTop: 4 },
   navModalClose: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center" },
   navModalFooter: { paddingHorizontal: 20, paddingTop: 12, gap: 10 },
   navStepBox: { backgroundColor: Colors.primary, paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: Colors.border },
