@@ -940,15 +940,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .reduce((s: number, e: any) => s + (e.amount || 0), 0);
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      // Today's earnings: card/wallet earnings (amount) + cash ride fares (full price collected in hand)
+      // Today's earnings: digital earnings already store the driver's net share,
+      // while cash trips contribute the driver's net take-home after commission.
       const todayCardEarnings = (earningsList as any[])
         .filter((e: any) => e.createdAt && new Date(e.createdAt) >= todayStart && (e.type === "card" || e.type === "wallet"))
         .reduce((s: number, e: any) => s + (e.amount || 0), 0);
-      // For cash: get today's completed cash rides and sum their prices
+      // For cash: convert each completed fare into the driver's net share.
       const chauffeurRides = await storage.getRidesByChauffeur(req.params.id);
       const todayCashFares = chauffeurRides
         .filter((r: any) => r.status === "trip_completed" && r.paymentMethod === "cash" && r.completedAt && new Date(r.completedAt) >= todayStart)
-        .reduce((s: number, r: any) => s + (r.price || 0), 0);
+        .reduce((s: number, r: any) => s + calculateChauffeurEarnings(r.price || 0).chauffeurEarnings, 0);
       const todayEarnings = Math.round(todayCardEarnings + todayCashFares);
       return res.json({ ...chauffeur, computedRating, totalRatings: ratings.length, cardEarningsTotal, todayEarnings });
     } catch (error: any) {
@@ -2240,8 +2241,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const paymentMethod = ride.paymentMethod || "cash";
           if (!alreadyRecorded) {
             if (paymentMethod === "cash") {
-              // Cash trips: driver collects full fare in cash.
-              // Platform deducts 20% commission from driver's digital balance.
+              // Cash trips: driver collects the gross fare in hand,
+              // while the platform records the 15% commission digitally.
               await storage.createEarning({
                 chauffeurId: ride.chauffeurId,
                 rideId: ride.id,
@@ -2257,7 +2258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
               }
             } else {
-              // Card / wallet trips: add 80% earnings to digital wallet balance.
+              // Card / wallet trips: add the driver's 85% share to the digital wallet balance.
               await storage.createEarning({
                 chauffeurId: ride.chauffeurId,
                 rideId: ride.id,
@@ -2954,7 +2955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalRevenue: Math.round(totalRevenue),
           totalPlatformCommission: Math.round(totalPlatformCommission),
           totalDriverEarnings: Math.round(totalDriverEarnings),
-          commissionRate: 20,
+          commissionRate: 15,
           totalChauffeurs: allChauffeurs.length,
           onlineChauffeurs: allChauffeurs.filter((c) => c.isOnline).length,
           pendingApprovals: pendingApprovals.length,

@@ -108,7 +108,7 @@ export default function EarningsScreen() {
       <View style={styles.totalCard}>
         <Text style={styles.totalLabel}>Card Trip Earnings</Text>
         <Text style={styles.totalValue}>R {totalEarnings.toFixed(0)}</Text>
-        <Text style={styles.totalSub}>Commission paid: R {totalCommission.toFixed(0)} (20%)</Text>
+        <Text style={styles.totalSub}>Commission paid: R {totalCommission.toFixed(0)} (15%)</Text>
         <Pressable
           style={({ pressed }) => [styles.withdrawBtn, pressed && { opacity: 0.9 }]}
           onPress={() => setShowWithdraw(true)}

@@ -60,7 +60,7 @@ shared/
 
 Fare formula: `base_fare + (distance × price_per_km)`
 Late night premium (22:00-05:00): 30% surcharge
-Commission rate: 20%
+Commission rate: 15%
 
 ## Maps
 - Platform-specific map components: `A2BMap.web.tsx` (Google Maps JS API) and `A2BMap.native.tsx` (react-native-maps pinned to 1.18.0)
@@ -77,7 +77,7 @@ Commission rate: 20%
 - Driver GPS location tracking with live map on both client and driver screens
 - Haversine distance calculation with Nominatim geocoding (server-side fallback for web)
 - Late-night premium (30% surcharge 22:00-05:00) shown in fare breakdown
-- Earnings tracking with 20% commission
+- Earnings tracking with 15% commission
 - Withdrawal system
 - Payment methods with card form (persisted via AsyncStorage), EFT, and cash
 - In-app chat and phone calling
@@ -134,7 +134,7 @@ Commission rate: 20%
 - Card payments: initialize via `/api/paystack/initialize` → Paystack hosted page → webhook `charge.success`
 - Wallet payments: deducted from user wallet balance on trip completion
 - Cash payments: auto-marked as paid when trip status → `trip_completed`
-- Commission: 20% platform fee tracked per trip in `earnings` table
+- Commission: 15% platform fee tracked per trip in `earnings` table
 - Paystack webhook URL (must register in Paystack dashboard): `https://api-production-0783.up.railway.app/api/paystack/webhook`
 
 ## Driver Withdrawals
@@ -145,7 +145,7 @@ Commission rate: 20%
 - Withdrawal history tracked in `withdrawals` table
 
 ## Commission Tracking
-- Every completed trip: `earnings` table stores `amount` (driver's 80%) and `commission` (platform's 20%)
+- Every completed trip: `earnings` table stores `amount` (driver's 85%) and `commission` (platform's 15%)
 - `chauffeurs.earningsTotal` tracks running driver balance
 - Admin dashboard shows: Total Revenue, Platform Commission, Driver Earnings
 - Webhook deduplication prevents double-counting earnings per ride

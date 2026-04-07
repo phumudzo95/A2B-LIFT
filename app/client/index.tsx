@@ -112,31 +112,10 @@ interface RouteChoice extends DirectionRoute {
   currency: string;
 }
 
-const ROUTE_CHOICE_META: Record<RouteChoiceId, { title: string; subtitle: string; badge: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  gps_preferred: {
-    title: "GPS Choice",
-    subtitle: "Balanced route from maps",
-    badge: "Recommended",
-    icon: "navigate-circle-outline",
-  },
-  faster_route: {
-    title: "Faster Route",
-    subtitle: "Lowest ETA right now",
-    badge: "Fastest",
-    icon: "flash-outline",
-  },
-  safest_route: {
-    title: "Safer Route",
-    subtitle: "Simpler drive with fewer turns",
-    badge: "Calmer",
-    icon: "shield-checkmark-outline",
-  },
-};
-
 function getRoutePreferenceLabel(routeId?: string | null): string {
   if (routeId === "faster_route") return "Faster Route";
   if (routeId === "safest_route") return "Safer Route";
-  return "GPS Choice";
+  return "Recommended Route";
 }
 
 function getPaymentMethodLabel(method?: string | null): string {
@@ -165,21 +144,49 @@ function dedupeDirectionRoutes(routes: DirectionRoute[]): DirectionRoute[] {
 
 function buildRouteChoiceDescriptors(routes: DirectionRoute[]) {
   const uniqueRoutes = dedupeDirectionRoutes(routes);
-  const descriptors: Array<{ id: RouteChoiceId; sorter: (a: DirectionRoute, b: DirectionRoute) => number }> = [
-    { id: "gps_preferred", sorter: () => 0 },
-    { id: "faster_route", sorter: (a, b) => a.durationMin - b.durationMin || a.distanceKm - b.distanceKm },
-    { id: "safest_route", sorter: (a, b) => calculateRouteSafetyScore(a) - calculateRouteSafetyScore(b) || a.durationMin - b.durationMin },
+  const recommendedRoute = uniqueRoutes[0];
+  if (!recommendedRoute) return [];
+
+  const selected: Array<{ id: RouteChoiceId; route: DirectionRoute; title: string; subtitle: string; badge: string; icon: keyof typeof Ionicons.glyphMap }> = [
+    {
+      id: "gps_preferred",
+      route: recommendedRoute,
+      title: "Recommended Route",
+      subtitle: "Balanced route from maps",
+      badge: "Recommended",
+      icon: "navigate-circle-outline",
+    },
   ];
 
-  const selected: Array<{ id: RouteChoiceId; route: DirectionRoute }> = [];
-  const usedPolylines = new Set<string>();
+  const alternativeRoutes = uniqueRoutes.filter((route) => route.polyline !== recommendedRoute.polyline);
+  const fastestRoute = [...alternativeRoutes].sort((a, b) => a.durationMin - b.durationMin || a.distanceKm - b.distanceKm)[0];
 
-  for (const descriptor of descriptors) {
-    const sorted = descriptor.id === "gps_preferred" ? uniqueRoutes : [...uniqueRoutes].sort(descriptor.sorter);
-    const route = sorted.find((item) => !usedPolylines.has(item.polyline));
-    if (!route) continue;
-    usedPolylines.add(route.polyline);
-    selected.push({ id: descriptor.id, route });
+  if (fastestRoute) {
+    const isActuallyFaster = fastestRoute.durationMin < recommendedRoute.durationMin;
+    selected.push({
+      id: "faster_route",
+      route: fastestRoute,
+      title: isActuallyFaster ? "Faster Route" : "Alternate Route",
+      subtitle: isActuallyFaster ? "Lower ETA than recommended" : "Another route option for this trip",
+      badge: isActuallyFaster ? "Fastest" : "Alternate",
+      icon: isActuallyFaster ? "flash-outline" : "swap-horizontal-outline",
+    });
+  }
+
+  const usedPolylines = new Set(selected.map((item) => item.route.polyline));
+  const safestRoute = [...alternativeRoutes]
+    .filter((route) => !usedPolylines.has(route.polyline))
+    .sort((a, b) => calculateRouteSafetyScore(a) - calculateRouteSafetyScore(b) || a.durationMin - b.durationMin)[0];
+
+  if (safestRoute) {
+    selected.push({
+      id: "safest_route",
+      route: safestRoute,
+      title: "Safer Route",
+      subtitle: "Simpler drive with fewer turns",
+      badge: "Calmer",
+      icon: "shield-checkmark-outline",
+    });
   }
 
   return selected;
@@ -727,7 +734,7 @@ export default function ClientHomeScreen() {
 
     const lateNightRide = isLateNightWindow();
     const choices = await Promise.all(
-      choiceDescriptors.map(async ({ id, route }) => {
+      choiceDescriptors.map(async ({ id, route, title, subtitle, badge, icon }) => {
         const fallbackEstimate = calculateFallbackEstimate(route.distanceKm, selectedVehicle, lateNightRide);
 
         try {
@@ -740,10 +747,10 @@ export default function ClientHomeScreen() {
           return {
             ...route,
             id,
-            title: ROUTE_CHOICE_META[id].title,
-            subtitle: ROUTE_CHOICE_META[id].subtitle,
-            badge: ROUTE_CHOICE_META[id].badge,
-            icon: ROUTE_CHOICE_META[id].icon,
+            title,
+            subtitle,
+            badge,
+            icon,
             fare: Number(estimate.totalPrice ?? fallbackEstimate.totalPrice),
             baseFare: Number(estimate.baseFare ?? fallbackEstimate.baseFare),
             pricePerKm: Number(estimate.pricePerKm ?? fallbackEstimate.pricePerKm),
@@ -754,10 +761,10 @@ export default function ClientHomeScreen() {
           return {
             ...route,
             id,
-            title: ROUTE_CHOICE_META[id].title,
-            subtitle: ROUTE_CHOICE_META[id].subtitle,
-            badge: ROUTE_CHOICE_META[id].badge,
-            icon: ROUTE_CHOICE_META[id].icon,
+            title,
+            subtitle,
+            badge,
+            icon,
             fare: fallbackEstimate.totalPrice,
             baseFare: fallbackEstimate.baseFare,
             pricePerKm: fallbackEstimate.pricePerKm,

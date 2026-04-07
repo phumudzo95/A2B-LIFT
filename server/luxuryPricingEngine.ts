@@ -8,7 +8,7 @@ export const VEHICLE_CATEGORIES: Record<string, { name: string; pricePerKm: numb
 
 const PRICING_CONFIG = {
   lateNightPremiumMultiplier: 1.3,
-  commissionRate: 0.20,
+  commissionRate: 0.15,
 };
 
 export interface PriceEstimate {

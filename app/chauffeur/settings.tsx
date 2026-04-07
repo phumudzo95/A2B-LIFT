@@ -551,7 +551,7 @@ export default function ChauffeurSettingsScreen() {
             </View>
             <View style={styles.faqItem}>
               <Text style={styles.faqQ}>How are earnings calculated?</Text>
-              <Text style={styles.faqA}>You receive 80% of each ride fare. A2B LIFT retains 20% as a commission. Earnings are credited after each completed trip.</Text>
+              <Text style={styles.faqA}>You receive 85% of each ride fare. A2B LIFT retains 15% as a commission. Earnings are credited after each completed trip.</Text>
             </View>
             <View style={styles.faqItem}>
               <Text style={styles.faqQ}>How do withdrawals work?</Text>

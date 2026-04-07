@@ -16,6 +16,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 
+const DRIVER_SHARE = 0.85;
+
+function getGrossFare(ride: any) {
+  return Number(ride?.actualFare || ride?.price || 0);
+}
+
+function getDriverFare(ride: any) {
+  const grossFare = getGrossFare(ride);
+  return grossFare > 0 ? grossFare * DRIVER_SHARE : 0;
+}
+
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
@@ -64,9 +75,11 @@ function DetailRow({ icon, label, value }: { icon: any; label: string; value: st
 function RideDetail({ ride, onBack }: { ride: any; onBack: () => void }) {
   const insets = useSafeAreaInsets();
   const statusColor = getStatusColor(ride.status);
+  const grossFare = getGrossFare(ride);
+  const driverFare = getDriverFare(ride);
 
-  const earningsCalc = ride.price
-    ? { chauffeur: (ride.price * 0.8).toFixed(2), commission: (ride.price * 0.2).toFixed(2) }
+  const earningsCalc = grossFare
+    ? { chauffeur: driverFare.toFixed(2), commission: (grossFare - driverFare).toFixed(2) }
     : null;
 
   return (
@@ -131,7 +144,7 @@ function RideDetail({ ride, onBack }: { ride: any; onBack: () => void }) {
           <Text style={styles.detailCardTitle}>Earnings</Text>
           <View style={styles.earningsRow}>
             <View style={styles.earningsItem}>
-              <Text style={styles.earningsAmount}>R {ride.price ? Number(ride.price).toFixed(2) : "—"}</Text>
+              <Text style={styles.earningsAmount}>R {grossFare ? grossFare.toFixed(2) : "—"}</Text>
               <Text style={styles.earningsLabel}>Total Fare</Text>
             </View>
             {earningsCalc && (
@@ -200,7 +213,7 @@ export default function ChauffeurRidesScreen() {
           </View>
           <Text style={styles.rideDate}>{formatDate(item.createdAt)}</Text>
         </View>
-        <Text style={styles.ridePrice}>R {item.price || "—"}</Text>
+        <Text style={styles.ridePrice}>R {getDriverFare(item).toFixed(0)}</Text>
       </View>
     </Pressable>
   ), []);

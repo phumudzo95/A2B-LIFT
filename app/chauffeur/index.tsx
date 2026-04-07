@@ -32,6 +32,7 @@ import Colors from "@/constants/colors";
 import A2BMap from "@/components/A2BMap";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const DRIVER_SHARE = 0.85;
 
 interface ClientReview {
   id: string;
@@ -165,7 +166,7 @@ export default function ChauffeurDashboard() {
   function getRideRouteLabel(routeId?: string | null) {
     if (routeId === "faster_route") return "Faster Route";
     if (routeId === "safest_route") return "Safer Route";
-    return "GPS Choice";
+    return "Recommended Route";
   }
 
   function getRideRouteIcon(routeId?: string | null): keyof typeof Ionicons.glyphMap {
@@ -186,8 +187,13 @@ export default function ChauffeurDashboard() {
     return "cash-outline";
   }
 
+  function getRideClientFare(ride: any) {
+    return Number(ride?.actualFare || ride?.price || 0);
+  }
+
   function getRideFare(ride: any) {
-    return ride?.actualFare || ride?.price || 0;
+    const grossFare = getRideClientFare(ride);
+    return grossFare > 0 ? Math.round(grossFare * DRIVER_SHARE) : 0;
   }
 
   async function getClientSummary(clientId?: string): Promise<ClientSummary | null> {
@@ -1541,9 +1547,9 @@ export default function ChauffeurDashboard() {
                   <Ionicons name="cash-outline" size={40} color={Colors.success} />
                 </View>
                 <Text style={styles.payPopupTitle}>Collect Cash Payment</Text>
-                <Text style={styles.payPopupAmount}>R {completedTrip?.price ?? "0"}</Text>
+                <Text style={styles.payPopupAmount}>R {getRideClientFare(completedTrip).toFixed(0)}</Text>
                 <Text style={styles.payPopupBody}>
-                  Please collect R {completedTrip?.price} from {completedTrip?.clientFirstName || (completedTrip?.clientName ? String(completedTrip.clientName).split(" ")[0] : "the client")} before they exit the vehicle.
+                  Please collect R {getRideClientFare(completedTrip).toFixed(0)} from {completedTrip?.clientFirstName || (completedTrip?.clientName ? String(completedTrip.clientName).split(" ")[0] : "the client")} before they exit the vehicle. Your net after 15% commission is R {getRideFare(completedTrip).toFixed(0)}.
                 </Text>
               </>
             ) : (
@@ -1552,9 +1558,9 @@ export default function ChauffeurDashboard() {
                   <Text style={{ fontSize: 40 }}>💳</Text>
                 </View>
                 <Text style={styles.payPopupTitle}>Card Payment</Text>
-                <Text style={styles.payPopupAmount}>R {completedTrip?.price ?? "0"}</Text>
+                <Text style={styles.payPopupAmount}>R {getRideFare(completedTrip).toFixed(0)}</Text>
                 <Text style={styles.payPopupBody}>
-                  Payment of R {completedTrip?.price} will be processed via card. Your earnings will reflect in your wallet shortly.
+                  Client fare is R {getRideClientFare(completedTrip).toFixed(0)}. Your net after 15% commission is R {getRideFare(completedTrip).toFixed(0)}, which will reflect in your wallet shortly.
                 </Text>
               </>
             )}
