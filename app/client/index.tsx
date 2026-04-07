@@ -1616,14 +1616,14 @@ export default function ClientHomeScreen() {
           )}
           <View style={styles.selectionMetaRow}>
             <View style={styles.selectionMetaChip}>
-              <Ionicons name="navigate-circle-outline" size={14} color={Colors.primary} />
+              <Ionicons name="navigate-circle-outline" size={14} color={Colors.white} />
               <Text style={styles.selectionMetaText}>{getRoutePreferenceLabel(currentRide?.selectedRouteId)}</Text>
             </View>
             <View style={styles.selectionMetaChip}>
               <Ionicons
                 name={currentRide?.paymentMethod === "card" ? "card-outline" : currentRide?.paymentMethod === "wallet" ? "wallet-outline" : "cash-outline"}
                 size={14}
-                color={Colors.primary}
+                color={Colors.white}
               />
               <Text style={styles.selectionMetaText}>{getPaymentMethodLabel(currentRide?.paymentMethod)}</Text>
             </View>

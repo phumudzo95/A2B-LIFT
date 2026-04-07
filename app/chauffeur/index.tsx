@@ -1316,11 +1316,11 @@ export default function ChauffeurDashboard() {
                   </View>
                   <View style={styles.rideInfoPills}>
                     <View style={styles.rideInfoPill}>
-                      <Ionicons name={getRidePaymentIcon(trip.paymentMethod)} size={12} color={Colors.accent} />
+                      <Ionicons name={getRidePaymentIcon(trip.paymentMethod)} size={12} color={Colors.white} />
                       <Text style={styles.rideInfoPillText}>{getRidePaymentLabel(trip.paymentMethod)}</Text>
                     </View>
                     <View style={styles.rideInfoPill}>
-                      <Ionicons name={getRideRouteIcon(trip.selectedRouteId)} size={12} color={Colors.accent} />
+                      <Ionicons name={getRideRouteIcon(trip.selectedRouteId)} size={12} color={Colors.white} />
                       <Text style={styles.rideInfoPillText}>{getRideRouteLabel(trip.selectedRouteId)}</Text>
                     </View>
                   </View>
@@ -1370,16 +1370,16 @@ export default function ChauffeurDashboard() {
           </View>
           <View style={styles.rideInfoPills}>
             <View style={styles.rideInfoPill}>
-              <Ionicons name={getRidePaymentIcon(currentRide.paymentMethod)} size={12} color={Colors.accent} />
+              <Ionicons name={getRidePaymentIcon(currentRide.paymentMethod)} size={12} color={Colors.white} />
               <Text style={styles.rideInfoPillText}>{getRidePaymentLabel(currentRide.paymentMethod)}</Text>
             </View>
             <View style={styles.rideInfoPill}>
-              <Ionicons name={getRideRouteIcon(currentRide.selectedRouteId)} size={12} color={Colors.accent} />
+              <Ionicons name={getRideRouteIcon(currentRide.selectedRouteId)} size={12} color={Colors.white} />
               <Text style={styles.rideInfoPillText}>{getRideRouteLabel(currentRide.selectedRouteId)}</Text>
             </View>
             {currentRide.durationMin ? (
               <View style={styles.rideInfoPill}>
-                <Ionicons name="time-outline" size={12} color={Colors.accent} />
+                <Ionicons name="time-outline" size={12} color={Colors.white} />
                 <Text style={styles.rideInfoPillText}>{Math.round(Number(currentRide.durationMin))} min</Text>
               </View>
             ) : null}
@@ -1463,11 +1463,11 @@ export default function ChauffeurDashboard() {
             </View>
             <View style={styles.rideInfoPills}>
               <View style={styles.rideInfoPill}>
-                <Ionicons name={getRidePaymentIcon(incomingRide.paymentMethod)} size={12} color={Colors.accent} />
+                <Ionicons name={getRidePaymentIcon(incomingRide.paymentMethod)} size={12} color={Colors.white} />
                 <Text style={styles.rideInfoPillText}>{getRidePaymentLabel(incomingRide.paymentMethod)}</Text>
               </View>
               <View style={styles.rideInfoPill}>
-                <Ionicons name={getRideRouteIcon(incomingRide.selectedRouteId)} size={12} color={Colors.accent} />
+                <Ionicons name={getRideRouteIcon(incomingRide.selectedRouteId)} size={12} color={Colors.white} />
                 <Text style={styles.rideInfoPillText}>{getRideRouteLabel(incomingRide.selectedRouteId)}</Text>
               </View>
             </View>
