@@ -132,6 +132,15 @@ export default function ChauffeurDashboard() {
     return `Route ${index + 1}`;
   }
 
+  function getRouteOptionIcon(index: number): keyof typeof Ionicons.glyphMap {
+    if (currentRide?.status === "trip_started" && index === 0) {
+      return getRideRouteIcon(currentRide?.selectedRouteId);
+    }
+    if (index === 0) return "speedometer-outline";
+    if (index === 1) return "navigate-outline";
+    return "analytics-outline";
+  }
+
   function calculateRouteSafetyScore(route: any): number {
     const stepsCount = Array.isArray(route?.steps) ? route.steps.length : 0;
     const averageSpeed = route?.durationMin > 0 ? Number(route.distanceKm || 0) / (Number(route.durationMin || 0) / 60) : Number(route.distanceKm || 0);
@@ -1154,11 +1163,11 @@ export default function ChauffeurDashboard() {
                     style={[styles.routeOptionCard, selectedRouteIndex === i && styles.routeOptionCardSelected]}
                     onPress={() => selectRoute(alt, i)}
                   >
-                    <Ionicons name={i === 0 ? "speedometer-outline" : i === 1 ? "navigate-outline" : "analytics-outline"} size={18} color={selectedRouteIndex === i ? Colors.primary : Colors.accent} />
-                    <Text style={[styles.routeOptionName, selectedRouteIndex === i && { color: Colors.primary }]}>{getRouteOptionTitle(i, alt.summary)}</Text>
-                    <Text style={[styles.routeOptionDetail, selectedRouteIndex === i && { color: Colors.primary }]}>{alt.durationText} · {alt.distanceText}</Text>
+                    <Ionicons name={getRouteOptionIcon(i)} size={18} color={Colors.white} />
+                    <Text style={styles.routeOptionName}>{getRouteOptionTitle(i, alt.summary)}</Text>
+                    <Text style={[styles.routeOptionDetail, selectedRouteIndex === i && styles.routeOptionDetailSelected]}>{alt.durationText} · {alt.distanceText}</Text>
                     {calcRoutePrice(alt.distanceKm) ? (
-                      <Text style={[styles.routeOptionPrice, selectedRouteIndex === i && { color: Colors.primary }]}>{calcRoutePrice(alt.distanceKm)}</Text>
+                      <Text style={styles.routeOptionPrice}>{calcRoutePrice(alt.distanceKm)}</Text>
                     ) : null}
                   </Pressable>
                 ))}
@@ -1899,15 +1908,16 @@ const styles = StyleSheet.create({
   routeOptionCardSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   routeOptionName: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.white, textAlign: "center" },
   routeOptionDetail: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center" },
-  routeOptionPrice: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.accent, textAlign: "center", marginTop: 2 },
+  routeOptionDetailSelected: { color: "rgba(255,255,255,0.82)" },
+  routeOptionPrice: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.white, textAlign: "center", marginTop: 2 },
   cardRouteOptionsWrap: { gap: 8 },
   cardRouteOptionsTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.textMuted },
   cardRouteOptionsScroll: { gap: 8 },
   cardRouteOptionChip: { minWidth: 118, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: GLASS_BORDER, gap: 2 },
   cardRouteOptionChipSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   cardRouteOptionTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.white },
-  cardRouteOptionTitleSelected: { color: Colors.primary },
+  cardRouteOptionTitleSelected: { color: Colors.white },
   cardRouteOptionMeta: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
-  cardRouteOptionMetaSelected: { color: Colors.primary },
-  cardRouteOptionPrice: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.accent, marginTop: 2 },
+  cardRouteOptionMetaSelected: { color: "rgba(255,255,255,0.82)" },
+  cardRouteOptionPrice: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.white, marginTop: 2 },
 });
