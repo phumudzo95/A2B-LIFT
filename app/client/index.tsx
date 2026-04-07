@@ -115,7 +115,7 @@ interface RouteChoice extends DirectionRoute {
 function getRoutePreferenceLabel(routeId?: string | null): string {
   if (routeId === "faster_route") return "Faster Route";
   if (routeId === "safest_route") return "Safer Route";
-  return "Recommended Route";
+  return "Balanced Route";
 }
 
 function getPaymentMethodLabel(method?: string | null): string {
@@ -144,37 +144,35 @@ function dedupeDirectionRoutes(routes: DirectionRoute[]): DirectionRoute[] {
 
 function buildRouteChoiceDescriptors(routes: DirectionRoute[]) {
   const uniqueRoutes = dedupeDirectionRoutes(routes);
-  const recommendedRoute = uniqueRoutes[0];
-  if (!recommendedRoute) return [];
+  const fastestRoute = [...uniqueRoutes].sort((a, b) => a.durationMin - b.durationMin || a.distanceKm - b.distanceKm)[0];
+  if (!fastestRoute) return [];
 
   const selected: Array<{ id: RouteChoiceId; route: DirectionRoute; title: string; subtitle: string; badge: string; icon: keyof typeof Ionicons.glyphMap }> = [
     {
-      id: "gps_preferred",
-      route: recommendedRoute,
-      title: "Recommended Route",
-      subtitle: "Balanced route from maps",
+      id: "faster_route",
+      route: fastestRoute,
+      title: "Faster Route",
+      subtitle: "Quickest arrival time",
       badge: "Recommended",
-      icon: "navigate-circle-outline",
+      icon: "flash-outline",
     },
   ];
 
-  const alternativeRoutes = uniqueRoutes.filter((route) => route.polyline !== recommendedRoute.polyline);
-  const fastestRoute = [...alternativeRoutes].sort((a, b) => a.durationMin - b.durationMin || a.distanceKm - b.distanceKm)[0];
+  const balancedRoute = uniqueRoutes.find((route) => route.polyline !== fastestRoute.polyline);
 
-  if (fastestRoute) {
-    const isActuallyFaster = fastestRoute.durationMin < recommendedRoute.durationMin;
+  if (balancedRoute) {
     selected.push({
-      id: "faster_route",
-      route: fastestRoute,
-      title: isActuallyFaster ? "Faster Route" : "Alternate Route",
-      subtitle: isActuallyFaster ? "Lower ETA than recommended" : "Another route option for this trip",
-      badge: isActuallyFaster ? "Fastest" : "Alternate",
-      icon: isActuallyFaster ? "flash-outline" : "swap-horizontal-outline",
+      id: "gps_preferred",
+      route: balancedRoute,
+      title: "Balanced Route",
+      subtitle: "A well-rounded option from maps",
+      badge: "Balanced",
+      icon: "navigate-circle-outline",
     });
   }
 
   const usedPolylines = new Set(selected.map((item) => item.route.polyline));
-  const safestRoute = [...alternativeRoutes]
+  const safestRoute = [...uniqueRoutes]
     .filter((route) => !usedPolylines.has(route.polyline))
     .sort((a, b) => calculateRouteSafetyScore(a) - calculateRouteSafetyScore(b) || a.durationMin - b.durationMin)[0];
 

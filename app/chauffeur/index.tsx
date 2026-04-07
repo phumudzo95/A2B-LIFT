@@ -123,9 +123,58 @@ export default function ChauffeurDashboard() {
 
   function getRouteOptionTitle(index: number, summary?: string | null) {
     const cleanedSummary = String(summary || "").trim();
+    if (currentRide?.status === "trip_started" && index === 0) {
+      return getRideRouteLabel(currentRide?.selectedRouteId);
+    }
     if (cleanedSummary) return cleanedSummary;
-    if (index === 0) return "Recommended";
+    if (index === 0) return "Suggested Route";
+    if (index === 1) return "Backup Route";
     return `Route ${index + 1}`;
+  }
+
+  function calculateRouteSafetyScore(route: any): number {
+    const stepsCount = Array.isArray(route?.steps) ? route.steps.length : 0;
+    const averageSpeed = route?.durationMin > 0 ? Number(route.distanceKm || 0) / (Number(route.durationMin || 0) / 60) : Number(route.distanceKm || 0);
+    const highwayPenalty = /\b(M|N)\d+\b|highway|freeway|motorway/i.test(String(route?.summary || "")) ? 5 : 0;
+    return stepsCount + averageSpeed * 1.4 + highwayPenalty;
+  }
+
+  function getClientSelectedRouteIndex(routes: any[], ride: any) {
+    if (!Array.isArray(routes) || routes.length === 0 || !ride || ride.status !== "trip_started") return 0;
+
+    if (ride.selectedRouteId === "faster_route") {
+      return routes.reduce((bestIdx, route, index) => {
+        const bestRoute = routes[bestIdx];
+        return Number(route.durationMin || 0) < Number(bestRoute.durationMin || 0) ? index : bestIdx;
+      }, 0);
+    }
+
+    if (ride.selectedRouteId === "safest_route") {
+      return routes.reduce((bestIdx, route, index) => {
+        const bestRoute = routes[bestIdx];
+        return calculateRouteSafetyScore(route) < calculateRouteSafetyScore(bestRoute) ? index : bestIdx;
+      }, 0);
+    }
+
+    const selectedDistanceKm = Number(ride.selectedRouteDistanceKm || 0);
+    if (selectedDistanceKm > 0) {
+      return routes.reduce((bestIdx, route, index) => {
+        const bestRoute = routes[bestIdx];
+        const currentGap = Math.abs(Number(route.distanceKm || 0) - selectedDistanceKm);
+        const bestGap = Math.abs(Number(bestRoute.distanceKm || 0) - selectedDistanceKm);
+        return currentGap < bestGap ? index : bestIdx;
+      }, 0);
+    }
+
+    return 0;
+  }
+
+  function reorderRoutesForClientSelection(routes: any[], ride: any) {
+    if (!Array.isArray(routes) || routes.length === 0 || !ride || ride.status !== "trip_started") return routes;
+    const selectedIndex = getClientSelectedRouteIndex(routes, ride);
+    if (selectedIndex === 0) return routes;
+    const selectedRoute = routes[selectedIndex];
+    return [selectedRoute, ...routes.filter((_, index) => index !== selectedIndex)];
   }
 
   function getRouteAlternatives(routes: any[], fallbackRoute?: any) {
@@ -145,12 +194,15 @@ export default function ChauffeurDashboard() {
       if (uniqueRoutes.length === 3) break;
     }
 
-    return uniqueRoutes;
+    return reorderRoutesForClientSelection(uniqueRoutes, currentRide);
   }
 
   /** Estimate the fare for a given route distance using the ride's vehicle type */
   function calcRoutePrice(distanceKm: number | undefined): string {
     if (!distanceKm || !currentRide) return "";
+    if (currentRide?.status === "trip_started" && getRideClientFare(currentRide) > 0 && Math.abs(Number(currentRide.selectedRouteDistanceKm || 0) - Number(distanceKm || 0)) < 0.35) {
+      return `R ${getRideClientFare(currentRide).toFixed(0)}`;
+    }
     const rates: Record<string, { pricePerKm: number; baseFare: number }> = {
       budget:      { pricePerKm: 7,  baseFare: 50  },
       luxury:      { pricePerKm: 13, baseFare: 100 },
@@ -166,7 +218,7 @@ export default function ChauffeurDashboard() {
   function getRideRouteLabel(routeId?: string | null) {
     if (routeId === "faster_route") return "Faster Route";
     if (routeId === "safest_route") return "Safer Route";
-    return "Recommended Route";
+    return "Balanced Route";
   }
 
   function getRideRouteIcon(routeId?: string | null): keyof typeof Ionicons.glyphMap {
@@ -194,6 +246,12 @@ export default function ChauffeurDashboard() {
   function getRideFare(ride: any) {
     const grossFare = getRideClientFare(ride);
     return grossFare > 0 ? Math.round(grossFare * DRIVER_SHARE) : 0;
+  }
+
+  function getRideRouteFareNote(ride: any) {
+    const clientFare = getRideClientFare(ride);
+    if (!clientFare) return null;
+    return `${getRideRouteLabel(ride?.selectedRouteId)} · Client fare R ${clientFare.toFixed(0)}`;
   }
 
   async function getClientSummary(clientId?: string): Promise<ClientSummary | null> {
@@ -1085,7 +1143,7 @@ export default function ChauffeurDashboard() {
               </Text>
               {rideEta && <Text style={styles.navModalEta}>{rideEta.durationText} · {rideEta.distanceText}</Text>}
               {currentRide && (
-                <Text style={styles.navModalRouteHint}>Client selected {clientRouteLabel} · {clientPaymentLabel}</Text>
+                <Text style={styles.navModalRouteHint}>Client selected {clientRouteLabel} · Client fare R {getRideClientFare(currentRide).toFixed(0)} · {clientPaymentLabel}</Text>
               )}
             </View>
             <Pressable style={styles.navModalClose} onPress={() => setShowNavModal(false)}>
@@ -1266,6 +1324,7 @@ export default function ChauffeurDashboard() {
                       <Text style={styles.rideInfoPillText}>{getRideRouteLabel(trip.selectedRouteId)}</Text>
                     </View>
                   </View>
+                  {getRideRouteFareNote(trip) ? <Text style={styles.routeFareNote}>{getRideRouteFareNote(trip)}</Text> : null}
                   {trip.distKm != null && (
                     <Text style={styles.tripDist}>{trip.distKm.toFixed(1)} km away</Text>
                   )}
@@ -1325,6 +1384,7 @@ export default function ChauffeurDashboard() {
               </View>
             ) : null}
           </View>
+          {getRideRouteFareNote(currentRide) ? <Text style={styles.routeFareNote}>{getRideRouteFareNote(currentRide)}</Text> : null}
           {routeAlternatives.length > 0 && (
             <View style={styles.cardRouteOptionsWrap}>
               <Text style={styles.cardRouteOptionsTitle}>{routeOptionsHeading}</Text>
@@ -1411,6 +1471,7 @@ export default function ChauffeurDashboard() {
                 <Text style={styles.rideInfoPillText}>{getRideRouteLabel(incomingRide.selectedRouteId)}</Text>
               </View>
             </View>
+            {getRideRouteFareNote(incomingRide) ? <Text style={styles.routeFareNote}>{getRideRouteFareNote(incomingRide)}</Text> : null}
             <View style={styles.incomingActions}>
               <Pressable style={styles.declineBtn} onPress={declineRide}>
                 <Ionicons name="close" size={24} color={Colors.error} />
@@ -1706,6 +1767,7 @@ const styles = StyleSheet.create({
   rideInfoPills: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   rideInfoPill: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
   rideInfoPillText: { color: Colors.white, fontFamily: "Inter_600SemiBold", fontSize: 11 },
+  routeFareNote: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textMuted, marginTop: 8 },
   tripDist: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   tripAcceptBtn: { marginTop: 4, backgroundColor: Colors.white, borderRadius: 10, paddingVertical: 9, alignItems: "center" },
   tripAcceptBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.primary },
