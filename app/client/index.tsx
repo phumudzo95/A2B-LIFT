@@ -1474,23 +1474,6 @@ export default function ClientHomeScreen() {
               </View>
             </View>
 
-            {selectedRouteChoice ? (
-              <View style={styles.selectionMetaRow}>
-                <View style={styles.selectionMetaChip}>
-                  <Ionicons name={selectedRouteChoice.icon} size={14} color={Colors.primary} />
-                  <Text style={styles.selectionMetaText}>{selectedRouteChoice.title}</Text>
-                </View>
-                <View style={styles.selectionMetaChip}>
-                  <Ionicons
-                    name={paymentMethod === "cash" ? "cash-outline" : paymentMethod === "card" ? "card-outline" : "wallet-outline"}
-                    size={14}
-                    color={Colors.primary}
-                  />
-                  <Text style={styles.selectionMetaText}>{getPaymentMethodLabel(paymentMethod)}</Text>
-                </View>
-              </View>
-            ) : null}
-
             <Pressable
               style={({ pressed }) => [styles.requestBtn, pressed && { opacity: 0.9 }]}
               onPress={requestRide}
