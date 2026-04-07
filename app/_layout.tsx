@@ -2,6 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router, usePathname, useRootNavigationState } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { StatusBar } from "expo-status-bar";
@@ -98,18 +99,20 @@ export default function RootLayout() {
 
   if (!fontsLoaded && !fontError && !fontLoadTimedOut) return null;
 
+  const appTree = (
+    <AuthProvider>
+      <SocketProvider>
+        <StatusBar style="light" />
+        <RootLayoutNav />
+      </SocketProvider>
+    </AuthProvider>
+  );
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <KeyboardProvider>
-            <AuthProvider>
-              <SocketProvider>
-                <StatusBar style="light" />
-                <RootLayoutNav />
-              </SocketProvider>
-            </AuthProvider>
-          </KeyboardProvider>
+          {Platform.OS === "ios" ? <KeyboardProvider>{appTree}</KeyboardProvider> : appTree}
         </GestureHandlerRootView>
       </QueryClientProvider>
     </ErrorBoundary>

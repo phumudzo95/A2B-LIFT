@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+const API_REQUEST_TIMEOUT_MS = 12000;
+
 /**
  * Gets the base URL for the Express API server.
  * EXPO_PUBLIC_DOMAIN can be a full URL (https://host:port) or just a host/host:port.
@@ -49,6 +51,29 @@ async function getAuthHeader(): Promise<Record<string, string>> {
   return {};
 }
 
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit = {},
+  timeoutMs = API_REQUEST_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (error: any) {
+    if (error?.name === "AbortError") {
+      throw new Error("Request timeout");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function apiRequest(
   method: string,
   route: string,
@@ -63,7 +88,7 @@ export async function apiRequest(
     ...authHeader,
   };
 
-  const res = await fetch(url.toString(), {
+  const res = await fetchWithTimeout(url.toString(), {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
@@ -84,7 +109,7 @@ export const getQueryFn: <T>(options: {
     const url = new URL(queryKey.join("/") as string, baseUrl);
 
     const authHeader = await getAuthHeader();
-    const res = await fetch(url.toString(), {
+    const res = await fetchWithTimeout(url.toString(), {
       headers: authHeader,
     });
 

@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { io, Socket } from "socket.io-client";
 import { getApiUrl } from "@/lib/query-client";
+import { useAuth } from "@/lib/auth-context";
 
 type EventCallback = (...args: any[]) => void;
 
@@ -22,11 +23,18 @@ interface SocketContextValue {
 const SocketContext = createContext<SocketContextValue | null>(null);
 
 export function SocketProvider({ children }: { children: ReactNode }) {
+  const { user, accessToken } = useAuth();
   const socketRef = useRef<Socket | null>(null);
   // Local listeners map — used to re-attach after reconnect and for triggerEvent
   const listenersRef = useRef<Map<string, Set<EventCallback>>>(new Map());
 
   useEffect(() => {
+    if (!user || !accessToken) {
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      return;
+    }
+
     let baseUrl: string;
     try {
       baseUrl = getApiUrl();
@@ -36,10 +44,11 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     }
 
     const socket = io(baseUrl, {
-      transports: ["websocket", "polling"],
-      reconnectionAttempts: 10,
+      transports: ["polling", "websocket"],
+      auth: { token: accessToken },
+      reconnectionAttempts: 5,
       reconnectionDelay: 2000,
-      timeout: 10000,
+      timeout: 8000,
     });
 
     socketRef.current = socket;
@@ -64,7 +73,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, []);
+  }, [user, accessToken]);
 
   const on = useCallback((event: string, callback: EventCallback) => {
     if (!listenersRef.current.has(event)) {

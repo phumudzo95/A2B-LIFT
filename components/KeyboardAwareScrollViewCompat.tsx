@@ -12,7 +12,7 @@ export function KeyboardAwareScrollViewCompat({
   keyboardShouldPersistTaps = "handled",
   ...props
 }: Props) {
-  if (Platform.OS === "web") {
+  if (Platform.OS !== "ios") {
     return (
       <ScrollView keyboardShouldPersistTaps={keyboardShouldPersistTaps} {...props}>
         {children}
