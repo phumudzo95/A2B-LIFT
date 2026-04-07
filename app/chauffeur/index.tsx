@@ -450,6 +450,7 @@ export default function ChauffeurDashboard() {
     const handleNewRide = (ride: any) => {
       if (isOnline && chauffeur?.isApproved && !currentRide) {
         seenRideIdRef.current = ride.id || null;
+        setAvailableTrips((prev) => prev.filter((trip) => trip.id !== ride.id));
         void enrichRideClientDetails(ride, "Client").then((enrichedRide) => {
           setIncomingRide(enrichedRide);
         });
@@ -464,7 +465,29 @@ export default function ChauffeurDashboard() {
 
   // ─── Socket: rider cancellation ───────────────────────────────────────────
   useEffect(() => {
+    const clearRideFromDiscovery = (ride: any) => {
+      if (!ride?.id) return;
+      let clearedIncomingRide = false;
+      setAvailableTrips((prev) => prev.filter((trip) => trip.id !== ride.id));
+      setIncomingRide((prev: any) => {
+        if (!prev || prev.id !== ride.id) return prev;
+        if (ride.status === "cancelled") {
+          clearedIncomingRide = true;
+          return null;
+        }
+        if (ride.chauffeurId && ride.chauffeurId !== chauffeur?.id) {
+          clearedIncomingRide = true;
+          return null;
+        }
+        return prev;
+      });
+      if (clearedIncomingRide) {
+        void stopTripAlert();
+      }
+    };
+
     const handleRideUpdate = (ride: any) => {
+      clearRideFromDiscovery(ride);
       setCurrentRide((prev: any) => {
         if (prev && ride.id === prev.id && ride.status === "cancelled") {
           setRoutePolyline(null);
@@ -482,9 +505,21 @@ export default function ChauffeurDashboard() {
         return prev;
       });
     };
+
+    const handleRideAccepted = (ride: any) => {
+      clearRideFromDiscovery(ride);
+      if (ride?.chauffeurId === chauffeur?.id) {
+        void stopTripAlert();
+      }
+    };
+
     on("ride:statusUpdate", handleRideUpdate);
-    return () => off("ride:statusUpdate", handleRideUpdate);
-  }, []);
+    on("ride:accepted", handleRideAccepted);
+    return () => {
+      off("ride:statusUpdate", handleRideUpdate);
+      off("ride:accepted", handleRideAccepted);
+    };
+  }, [chauffeur?.id]);
 
   // ─── Persist current ride ─────────────────────────────────────────────────
   useEffect(() => {
