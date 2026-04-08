@@ -736,7 +736,7 @@ var VEHICLE_CATEGORIES = {
 };
 var PRICING_CONFIG = {
   lateNightPremiumMultiplier: 1.3,
-  commissionRate: 0.2
+  commissionRate: 0.15
 };
 function calculatePrice(distanceKm, categoryId, options) {
   const category = VEHICLE_CATEGORIES[categoryId] || VEHICLE_CATEGORIES.budget;
@@ -939,16 +939,29 @@ var ExternalApiService = class {
 var externalApiService = new ExternalApiService();
 
 // server/routes.ts
-async function sendExpoPushNotification(tokens, title, body, data) {
+var RIDE_MATCH_RADIUS_KM = 25;
+var CHAUFFEUR_LOCATION_STALE_WINDOW_MS = 10 * 60 * 1e3;
+function hasFreshChauffeurLocation(chauffeur) {
+  if (chauffeur.lat == null || chauffeur.lng == null) return false;
+  if (!chauffeur.locationUpdatedAt) return true;
+  const timestamp2 = new Date(chauffeur.locationUpdatedAt).getTime();
+  if (!Number.isFinite(timestamp2)) return true;
+  return Date.now() - timestamp2 <= CHAUFFEUR_LOCATION_STALE_WINDOW_MS;
+}
+async function sendExpoPushNotification(tokens, title, body, data, options) {
+  const urgent = options?.urgent ?? false;
   const messages2 = tokens.filter((t) => t && t.startsWith("ExponentPushToken[")).map((to) => ({
     to,
     sound: "default",
     title,
     body,
     data: data || {},
-    priority: "high",
-    channelId: "ride-alerts",
-    android: { channelId: "ride-alerts", priority: "max", sound: "default" }
+    badge: urgent ? 1 : void 0,
+    priority: urgent ? "high" : "default",
+    ttl: urgent ? 0 : void 0,
+    channelId: urgent ? "ride-alerts" : void 0,
+    interruptionLevel: urgent ? "time-sensitive" : void 0,
+    android: urgent ? { channelId: "ride-alerts", sound: "default" } : void 0
   }));
   if (messages2.length === 0) return;
   try {
@@ -1220,17 +1233,118 @@ async function registerRoutes(app2) {
     const { password: _pw, ...safeUser } = user;
     return res.json(safeUser);
   });
-  const GOOGLE_KEY = process.env.GOOGLE_API_KEY || "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0";
+  const GOOGLE_KEY = process.env.GOOGLE_API_KEY || "";
+  const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
+  const MAPS_USER_AGENT = "A2B-LIFT/1.0 (support@a2blift.app)";
+  const DIRECTIONS_CACHE_TTL_MS = 5 * 60 * 1e3;
+  const DIRECTIONS_CACHE_MAX_ENTRIES = 250;
+  const directionsCache = /* @__PURE__ */ new Map();
+  async function fetchMapsJson(url) {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "en-ZA,en;q=0.9",
+        "User-Agent": MAPS_USER_AGENT
+      }
+    });
+    return response.json();
+  }
+  function normalizeCoordinate(raw) {
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return null;
+    return Number(value.toFixed(4));
+  }
+  function buildDirectionsCacheKey(originLat, originLng, destLat, destLng) {
+    const normalized = [originLat, originLng, destLat, destLng].map(normalizeCoordinate);
+    if (normalized.some((value) => value == null)) return null;
+    return normalized.join(":");
+  }
+  function getDirectionsCacheEntry(cacheKey) {
+    const cached = directionsCache.get(cacheKey);
+    if (!cached) return null;
+    if (cached.expiresAt <= Date.now()) {
+      directionsCache.delete(cacheKey);
+      return null;
+    }
+    return cached.payload;
+  }
+  function setDirectionsCacheEntry(cacheKey, payload) {
+    directionsCache.set(cacheKey, {
+      expiresAt: Date.now() + DIRECTIONS_CACHE_TTL_MS,
+      payload
+    });
+    if (directionsCache.size <= DIRECTIONS_CACHE_MAX_ENTRIES) return;
+    for (const [key, entry] of directionsCache) {
+      if (entry.expiresAt <= Date.now()) {
+        directionsCache.delete(key);
+      }
+    }
+    while (directionsCache.size > DIRECTIONS_CACHE_MAX_ENTRIES) {
+      const oldestKey = directionsCache.keys().next().value;
+      if (!oldestKey) break;
+      directionsCache.delete(oldestKey);
+    }
+  }
+  function formatNominatimAddress(address, fallbackDisplayName) {
+    const primary = [address?.house_number, address?.road].filter(Boolean).join(" ").trim();
+    const locality = [
+      address?.suburb,
+      address?.city || address?.town || address?.village,
+      address?.state
+    ].filter(Boolean).join(", ").trim();
+    const description = [primary, locality].filter(Boolean).join(", ") || fallbackDisplayName || "";
+    return {
+      description,
+      mainText: primary || fallbackDisplayName?.split(",")[0] || "Pinned location",
+      secondaryText: locality || fallbackDisplayName?.split(",").slice(1).join(", ").trim() || "South Africa"
+    };
+  }
+  async function nominatimSearch(query, limit = 6) {
+    const url = `${NOMINATIM_BASE_URL}/search?format=jsonv2&addressdetails=1&limit=${limit}&countrycodes=za&q=${encodeURIComponent(query)}`;
+    const results = await fetchMapsJson(url);
+    if (!Array.isArray(results)) return [];
+    return results.map((result) => {
+      const formatted = formatNominatimAddress(result.address, result.display_name);
+      return {
+        placeId: `nominatim:${result.place_id}`,
+        description: formatted.description || result.display_name,
+        mainText: formatted.mainText,
+        secondaryText: formatted.secondaryText,
+        lat: result.lat ? Number(result.lat) : null,
+        lng: result.lon ? Number(result.lon) : null
+      };
+    });
+  }
+  async function nominatimReverse(lat, lng) {
+    const url = `${NOMINATIM_BASE_URL}/reverse?format=jsonv2&addressdetails=1&lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lng))}&zoom=18`;
+    const result = await fetchMapsJson(url);
+    if (!result || !result.address) return null;
+    const formatted = formatNominatimAddress(result.address, result.display_name);
+    return {
+      placeId: `nominatim:${result.place_id || `${lat},${lng}`}`,
+      description: formatted.description || result.display_name,
+      mainText: formatted.mainText,
+      secondaryText: formatted.secondaryText,
+      lat: parseFloat(String(lat)),
+      lng: parseFloat(String(lng))
+    };
+  }
   app2.get("/api/geocode", async (req, res) => {
     try {
       const address = req.query.address;
       if (!address) return res.status(400).json({ message: "Address is required" });
-      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&components=country:ZA&key=${GOOGLE_KEY}`;
-      const r = await (await fetch(url)).json();
-      if (r.status === "OK" && r.results.length > 0) {
-        const loc = r.results[0].geometry.location;
-        return res.json({ lat: loc.lat, lng: loc.lng });
+      if (GOOGLE_KEY) {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&components=country:ZA&key=${GOOGLE_KEY}`;
+        const r = await fetchMapsJson(url);
+        if (r.status === "OK" && r.results.length > 0) {
+          const loc = r.results[0].geometry.location;
+          return res.json({ lat: loc.lat, lng: loc.lng });
+        }
+        console.warn("[maps] Google geocode fallback engaged:", r.status || "unknown");
+      }
+      const osmResults = await nominatimSearch(address, 1);
+      if (osmResults.length > 0 && osmResults[0].lat != null && osmResults[0].lng != null) {
+        return res.json({ lat: osmResults[0].lat, lng: osmResults[0].lng });
       }
       return res.status(404).json({ message: "Location not found" });
     } catch (error) {
@@ -1240,23 +1354,43 @@ async function registerRoutes(app2) {
   app2.get("/api/places/autocomplete", async (req, res) => {
     try {
       const input = req.query.input;
+      const sessionToken = typeof req.query.sessionToken === "string" ? req.query.sessionToken : typeof req.query.sessiontoken === "string" ? req.query.sessiontoken : "";
       if (!input || input.trim().length < 2) return res.json({ predictions: [] });
-      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
-      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en&key=${GOOGLE_KEY}`;
-      const r = await (await fetch(url)).json();
-      if (r.status === "OK" && r.predictions.length > 0) {
-        return res.json({
-          predictions: r.predictions.slice(0, 6).map((p) => ({
-            placeId: p.place_id,
-            description: p.description,
-            mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
-            secondaryText: p.structured_formatting?.secondary_text || "",
-            lat: null,
-            lng: null
-          }))
-        });
+      if (GOOGLE_KEY) {
+        const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
+        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en${tokenQuery}&key=${GOOGLE_KEY}`;
+        const r = await fetchMapsJson(url);
+        const mappedPredictions = Array.isArray(r.predictions) ? r.predictions.slice(0, 6).map((p) => ({
+          placeId: p.place_id,
+          description: p.description,
+          mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
+          secondaryText: p.structured_formatting?.secondary_text || "",
+          lat: null,
+          lng: null
+        })) : [];
+        if (r.status === "OK" && r.predictions.length > 0) {
+          return res.json({ predictions: mappedPredictions });
+        }
+        if (input.trim().length >= 3) {
+          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input)}&components=country:ZA&key=${GOOGLE_KEY}`;
+          const geocodeResponse = await fetchMapsJson(geocodeUrl);
+          if (geocodeResponse.status === "OK" && Array.isArray(geocodeResponse.results) && geocodeResponse.results.length > 0) {
+            return res.json({
+              predictions: geocodeResponse.results.slice(0, 5).map((result) => ({
+                placeId: result.place_id,
+                description: result.formatted_address,
+                mainText: result.address_components?.[0]?.long_name || result.formatted_address.split(",")[0],
+                secondaryText: result.formatted_address.split(",").slice(1).join(", ").trim(),
+                lat: result.geometry?.location?.lat ?? null,
+                lng: result.geometry?.location?.lng ?? null
+              }))
+            });
+          }
+        }
+        console.warn("[maps] Google autocomplete fallback engaged:", r.status || "unknown");
       }
-      return res.json({ predictions: [] });
+      const osmPredictions = await nominatimSearch(input, 6);
+      return res.json({ predictions: osmPredictions });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
@@ -1264,9 +1398,11 @@ async function registerRoutes(app2) {
   app2.get("/api/places/details", async (req, res) => {
     try {
       const placeId = req.query.placeId;
+      const sessionToken = typeof req.query.sessionToken === "string" ? req.query.sessionToken : typeof req.query.sessiontoken === "string" ? req.query.sessiontoken : "";
       if (!placeId) return res.status(400).json({ message: "placeId is required" });
       if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
-      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address,name&key=${GOOGLE_KEY}`;
+      const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
+      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address,name${tokenQuery}&key=${GOOGLE_KEY}`;
       const r = await (await fetch(url)).json();
       if (r.status === "OK") {
         const loc = r.result.geometry.location;
@@ -1281,29 +1417,33 @@ async function registerRoutes(app2) {
     try {
       const { lat, lng } = req.query;
       if (!lat || !lng) return res.status(400).json({ message: "lat and lng are required" });
-      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY}`;
-      const r = await (await fetch(url)).json();
-      if (r.status === "OK" && r.results.length > 0) {
-        const best = r.results[0];
-        const components = best.address_components;
-        const get = (type) => components.find((c) => c.types.includes(type))?.long_name || "";
-        const streetNumber = get("street_number");
-        const route = get("route");
-        const suburb = get("sublocality_level_1") || get("sublocality") || get("neighborhood");
-        const city = get("locality") || get("administrative_area_level_2");
-        const province = get("administrative_area_level_1");
-        const mainText = route ? `${streetNumber ? streetNumber + " " : ""}${route}` : best.formatted_address.split(",")[0];
-        const secondaryParts = [suburb, city, province].filter(Boolean);
-        return res.json({
-          placeId: best.place_id,
-          description: best.formatted_address,
-          mainText,
-          secondaryText: secondaryParts.join(", "),
-          lat: parseFloat(lat),
-          lng: parseFloat(lng)
-        });
+      if (GOOGLE_KEY) {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY}`;
+        const r = await fetchMapsJson(url);
+        if (r.status === "OK" && r.results.length > 0) {
+          const best = r.results[0];
+          const components = best.address_components;
+          const get = (type) => components.find((c) => c.types.includes(type))?.long_name || "";
+          const streetNumber = get("street_number");
+          const route = get("route");
+          const suburb = get("sublocality_level_1") || get("sublocality") || get("neighborhood");
+          const city = get("locality") || get("administrative_area_level_2");
+          const province = get("administrative_area_level_1");
+          const mainText = route ? `${streetNumber ? streetNumber + " " : ""}${route}` : best.formatted_address.split(",")[0];
+          const secondaryParts = [suburb, city, province].filter(Boolean);
+          return res.json({
+            placeId: best.place_id,
+            description: best.formatted_address,
+            mainText,
+            secondaryText: secondaryParts.join(", "),
+            lat: parseFloat(lat),
+            lng: parseFloat(lng)
+          });
+        }
+        console.warn("[maps] Google reverse geocode fallback engaged:", r.status || "unknown");
       }
+      const osmResult = await nominatimReverse(lat, lng);
+      if (osmResult) return res.json(osmResult);
       return res.status(404).json({ message: "Location not found" });
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -1311,13 +1451,23 @@ async function registerRoutes(app2) {
   });
   app2.get("/api/directions", async (req, res) => {
     try {
-      const { originLat, originLng, destLat, destLng } = req.query;
+      const originLat = typeof req.query.originLat === "string" ? req.query.originLat : "";
+      const originLng = typeof req.query.originLng === "string" ? req.query.originLng : "";
+      const destLat = typeof req.query.destLat === "string" ? req.query.destLat : "";
+      const destLng = typeof req.query.destLng === "string" ? req.query.destLng : "";
       if (!originLat || !originLng || !destLat || !destLng) {
         return res.status(400).json({ message: "Origin and destination coordinates are required" });
       }
       const apiKey = process.env.GOOGLE_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ message: "Google Maps API key not configured" });
+      }
+      const cacheKey = buildDirectionsCacheKey(originLat, originLng, destLat, destLng);
+      if (cacheKey) {
+        const cached = getDirectionsCacheEntry(cacheKey);
+        if (cached) {
+          return res.json(cached);
+        }
       }
       const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&alternatives=true&key=${apiKey}`;
       const response = await fetch(url);
@@ -1345,7 +1495,11 @@ async function registerRoutes(app2) {
         };
         const primary = parseRoute(data.routes[0], 0);
         const alternatives = data.routes.map((r, i) => parseRoute(r, i));
-        return res.json({ ...primary, alternatives });
+        const payload = { ...primary, alternatives };
+        if (cacheKey) {
+          setDirectionsCacheEntry(cacheKey, payload);
+        }
+        return res.json(payload);
       }
       return res.status(404).json({ message: "No route found" });
     } catch (error) {
@@ -1650,7 +1804,7 @@ async function registerRoutes(app2) {
       todayStart.setHours(0, 0, 0, 0);
       const todayCardEarnings = earningsList.filter((e) => e.createdAt && new Date(e.createdAt) >= todayStart && (e.type === "card" || e.type === "wallet")).reduce((s, e) => s + (e.amount || 0), 0);
       const chauffeurRides = await storage.getRidesByChauffeur(req.params.id);
-      const todayCashFares = chauffeurRides.filter((r) => r.status === "trip_completed" && r.paymentMethod === "cash" && r.completedAt && new Date(r.completedAt) >= todayStart).reduce((s, r) => s + (r.price || 0), 0);
+      const todayCashFares = chauffeurRides.filter((r) => r.status === "trip_completed" && r.paymentMethod === "cash" && r.completedAt && new Date(r.completedAt) >= todayStart).reduce((s, r) => s + calculateChauffeurEarnings(r.price || 0).chauffeurEarnings, 0);
       const todayEarnings = Math.round(todayCardEarnings + todayCashFares);
       return res.json({ ...chauffeur, computedRating, totalRatings: ratings.length, cardEarningsTotal, todayEarnings });
     } catch (error) {
@@ -2274,7 +2428,15 @@ async function registerRoutes(app2) {
         }
       }
       const categoryId = rideData.vehicleType || "budget";
-      const priceEstimate = calculatePrice(distanceKm || 10, categoryId, { isLateNight });
+      const normalizedDistanceKm = Number(rideData.selectedRouteDistanceKm ?? distanceKm ?? 10);
+      const safeDistanceKm = Number.isFinite(normalizedDistanceKm) && normalizedDistanceKm > 0 ? normalizedDistanceKm : 10;
+      const normalizedDurationMin = Number(rideData.durationMin ?? 0);
+      const safeDurationMin = Number.isFinite(normalizedDurationMin) && normalizedDurationMin > 0 ? normalizedDurationMin : null;
+      const selectedRouteId = typeof rideData.selectedRouteId === "string" && rideData.selectedRouteId.trim() ? rideData.selectedRouteId.trim() : null;
+      const priceEstimate = calculatePrice(safeDistanceKm, categoryId, { isLateNight });
+      const requestedFare = Number(rideData.actualFare);
+      const safeFare = Number.isFinite(requestedFare) && requestedFare > 0 ? requestedFare : priceEstimate.totalPrice;
+      const routeCurrency = typeof rideData.routeCurrency === "string" && rideData.routeCurrency.trim() ? rideData.routeCurrency.trim().toUpperCase() : priceEstimate.currency;
       const paymentMethod = rideData.paymentMethod || "cash";
       if (paymentMethod === "cash") {
         const { livenessSessionId, livenessStatus, cashSelfieUrl } = rideData;
@@ -2303,17 +2465,23 @@ async function registerRoutes(app2) {
         dropoffAddress: rideData.dropoffAddress || null,
         vehicleType: rideData.vehicleType || "budget",
         paymentMethod: rideData.paymentMethod || "cash",
-        price: priceEstimate.totalPrice,
-        distanceKm: distanceKm || 10,
+        price: safeFare,
+        distanceKm: safeDistanceKm,
+        durationMin: safeDurationMin,
         pricePerKm: priceEstimate.pricePerKm,
         baseFare: priceEstimate.baseFare,
         status: "searching",
-        paymentStatus: "unpaid",
+        paymentStatus: paymentMethod === "cash" ? "unpaid" : rideData.paymentStatus || "pending",
         cashSelfieUrl: rideData.cashSelfieUrl || null,
         livenessStatus: rideData.livenessStatus || "not_required",
         livenessProvider: rideData.livenessProvider || null,
         livenessSessionId: rideData.livenessSessionId || null,
         livenessScore: rideData.livenessScore || null,
+        selectedRouteId,
+        selectedRouteDistanceKm: selectedRouteId ? safeDistanceKm : null,
+        actualFare: selectedRouteId ? safeFare : null,
+        routeCurrency,
+        routeSelectedAt: selectedRouteId ? /* @__PURE__ */ new Date() : null,
         ...livenessVerifiedAt ? { livenessVerifiedAt } : {}
       });
       let clientFirstName = "Rider";
@@ -2326,10 +2494,10 @@ async function registerRoutes(app2) {
       const allChauffeurs = await storage.getAllChauffeurs();
       const pickupLat = parseFloat(rideData.pickupLat);
       const pickupLng = parseFloat(rideData.pickupLng);
-      const nearbyChauffeurs = allChauffeurs.filter((c) => c.isOnline && c.isApproved && c.lat && c.lng).map((c) => ({
+      const nearbyChauffeurs = allChauffeurs.filter((c) => c.isOnline && c.isApproved && hasFreshChauffeurLocation(c)).map((c) => ({
         ...c,
         distKm: haversine(pickupLat, pickupLng, Number(c.lat), Number(c.lng))
-      })).filter((c) => c.distKm <= 15).sort((a, b) => a.distKm - b.distKm).slice(0, 5);
+      })).filter((c) => c.distKm <= RIDE_MATCH_RADIUS_KM).sort((a, b) => a.distKm - b.distKm).slice(0, 10);
       if (nearbyChauffeurs.length > 0) {
         const sockets = await io.fetchSockets();
         let notified = 0;
@@ -2349,19 +2517,21 @@ async function registerRoutes(app2) {
             pushTokens,
             "\u{1F697} New Ride Request",
             `Pickup: ${ride.pickupAddress || "Nearby"} \u2014 tap to accept`,
-            { rideId: ride.id, type: "ride:new" }
+            { rideId: ride.id, type: "ride:new" },
+            { urgent: true }
           );
         }
       } else {
         io.emit("ride:new", enrichedRide);
-        const allDrivers = (await storage.getAllChauffeurs()).filter((c) => c.isOnline && c.isApproved);
+        const allDrivers = (await storage.getAllChauffeurs()).filter((c) => c.isOnline && c.isApproved && hasFreshChauffeurLocation(c));
         const pushTokens = allDrivers.map((c) => c.pushToken).filter(Boolean);
         if (pushTokens.length > 0) {
           sendExpoPushNotification(
             pushTokens,
             "\u{1F697} New Ride Request",
             `Pickup: ${ride.pickupAddress || "Nearby"} \u2014 tap to accept`,
-            { rideId: ride.id, type: "ride:new" }
+            { rideId: ride.id, type: "ride:new" },
+            { urgent: true }
           );
         }
       }
@@ -2984,7 +3154,7 @@ async function registerRoutes(app2) {
             parseFloat(r.pickupLat),
             parseFloat(r.pickupLng)
           )
-        })).filter((r) => r.distKm <= 15).sort((a, b) => a.distKm - b.distKm);
+        })).filter((r) => r.distKm <= RIDE_MATCH_RADIUS_KM).sort((a, b) => a.distKm - b.distKm);
       }
       const enriched = await Promise.all(
         candidates.slice(0, 10).map(async (r) => {
@@ -3020,7 +3190,7 @@ async function registerRoutes(app2) {
           return { ...r, clientFirstName: "Rider" };
         }
       }
-      if (chauffeur.lat && chauffeur.lng) {
+      if (hasFreshChauffeurLocation(chauffeur)) {
         const withDist = searching.map((r) => ({
           ...r,
           distKm: haversine(
@@ -3029,7 +3199,7 @@ async function registerRoutes(app2) {
             parseFloat(r.pickupLat),
             parseFloat(r.pickupLng)
           )
-        })).filter((r) => r.distKm <= 15).sort((a, b) => a.distKm - b.distKm);
+        })).filter((r) => r.distKm <= RIDE_MATCH_RADIUS_KM).sort((a, b) => a.distKm - b.distKm);
         if (!withDist.length) return res.status(204).end();
         return res.json(await enrichRide(withDist[0]));
       }
@@ -3351,7 +3521,7 @@ async function registerRoutes(app2) {
           totalRevenue: Math.round(totalRevenue),
           totalPlatformCommission: Math.round(totalPlatformCommission),
           totalDriverEarnings: Math.round(totalDriverEarnings),
-          commissionRate: 20,
+          commissionRate: 15,
           totalChauffeurs: allChauffeurs.length,
           onlineChauffeurs: allChauffeurs.filter((c) => c.isOnline).length,
           pendingApprovals: pendingApprovals.length,

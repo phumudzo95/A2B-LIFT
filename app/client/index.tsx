@@ -232,6 +232,11 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 const CURRENT_LOCATION_LABEL = "Current Location";
 const SIGNIFICANT_LOCATION_SHIFT_KM = 0.03;
 const DRIVER_MARKER_SHIFT_KM = 0.01;
+const AUTOCOMPLETE_DEBOUNCE_MS = 400;
+
+function createPlacesSessionToken() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function hasLocationShift(
   previous: { lat: number; lng: number } | null | undefined,
@@ -410,6 +415,7 @@ export default function ClientHomeScreen() {
   const locationWatchRef = useRef<Location.LocationSubscription | null>(null);
   const pickupFollowsDeviceRef = useRef(true);
   const lastResolvedPickupRef = useRef<{ lat: number; lng: number } | null>(null);
+  const placesSessionTokenRef = useRef<string | null>(null);
 
   // Keep a ref so socket callbacks always see the latest ride without stale closure
   const currentRideRef = useRef<any>(null);
@@ -562,6 +568,7 @@ export default function ClientHomeScreen() {
     setLocationPickerTarget(target);
     setLocationPickerQuery(current === CURRENT_LOCATION_LABEL ? "" : current);
     setLocationSuggestions([]);
+    placesSessionTokenRef.current = null;
     setLocationPickerVisible(true);
   }
 
@@ -570,14 +577,20 @@ export default function ClientHomeScreen() {
     // Clear previously resolved coords when user edits the query
     if (locationPickerTarget === "dropoff") setDropoffCoords(null);
     if (autocompleteTimerRef.current) clearTimeout(autocompleteTimerRef.current);
-    if (text.trim().length < 2) {
+    const query = text.trim();
+    if (query.length < 2) {
+      if (query.length === 0) {
+        placesSessionTokenRef.current = null;
+      }
       setLocationSuggestions([]);
       return;
     }
+    const sessionToken = placesSessionTokenRef.current || createPlacesSessionToken();
+    placesSessionTokenRef.current = sessionToken;
     autocompleteTimerRef.current = setTimeout(async () => {
       setSuggestionsLoading(true);
       try {
-        const res = await apiRequest("GET", `/api/places/autocomplete?input=${encodeURIComponent(text)}`);
+        const res = await apiRequest("GET", `/api/places/autocomplete?input=${encodeURIComponent(query)}&sessionToken=${encodeURIComponent(sessionToken)}`);
         const data = await res.json();
         const predictions = Array.isArray(data.predictions) ? data.predictions : [];
         if (predictions.length > 0) {
@@ -586,7 +599,7 @@ export default function ClientHomeScreen() {
         }
 
         if (Platform.OS !== "web") {
-          const nativeSuggestions = await buildNativeLocationSuggestions(text);
+          const nativeSuggestions = await buildNativeLocationSuggestions(query);
           setLocationSuggestions(nativeSuggestions);
           return;
         }
@@ -594,7 +607,7 @@ export default function ClientHomeScreen() {
         setLocationSuggestions([]);
       } catch {
         if (Platform.OS !== "web") {
-          const nativeSuggestions = await buildNativeLocationSuggestions(text);
+          const nativeSuggestions = await buildNativeLocationSuggestions(query);
           setLocationSuggestions(nativeSuggestions);
         } else {
           setLocationSuggestions([]);
@@ -602,18 +615,20 @@ export default function ClientHomeScreen() {
       } finally {
         setSuggestionsLoading(false);
       }
-    }, 350);
+    }, AUTOCOMPLETE_DEBOUNCE_MS);
   }
 
   async function selectSuggestion(suggestion: { placeId: string; description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }) {
     try {
       setSuggestionsLoading(true);
+      const sessionToken = placesSessionTokenRef.current;
       let coords = (suggestion.lat && suggestion.lng) ? { lat: suggestion.lat, lng: suggestion.lng } : null;
 
       if (!coords) {
         // Try API details endpoint first
         try {
-          const res = await apiRequest("GET", `/api/places/details?placeId=${encodeURIComponent(suggestion.placeId)}`);
+          const tokenQuery = sessionToken ? `&sessionToken=${encodeURIComponent(sessionToken)}` : "";
+          const res = await apiRequest("GET", `/api/places/details?placeId=${encodeURIComponent(suggestion.placeId)}${tokenQuery}`);
           const data = await res.json();
           if (data.lat && data.lng) {
             coords = { lat: data.lat, lng: data.lng };
@@ -660,6 +675,7 @@ export default function ClientHomeScreen() {
       }
       setLocationPickerVisible(false);
       setLocationSuggestions([]);
+      placesSessionTokenRef.current = null;
     } catch {
       Alert.alert("Error", "Could not load location details. Try again.");
     } finally {
@@ -671,6 +687,7 @@ export default function ClientHomeScreen() {
     setLocationPickerVisible(false);
     setLocationLoading(true);
     pickupFollowsDeviceRef.current = true;
+    placesSessionTokenRef.current = null;
     await requestLocation();
   }
 

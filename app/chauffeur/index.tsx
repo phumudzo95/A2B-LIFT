@@ -39,6 +39,8 @@ import A2BMap from "@/components/A2BMap";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const DRIVER_SHARE = 0.85;
+const ROUTE_REFRESH_MIN_DISTANCE_KM = 0.2;
+const ROUTE_REFRESH_MAX_AGE_MS = 5 * 60 * 1000;
 
 interface ClientReview {
   id: string;
@@ -67,6 +69,14 @@ interface ClientSummary {
   phone: string | null;
   rating: number | null;
   createdAt: string | null;
+}
+
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 export default function ChauffeurDashboard() {
@@ -111,6 +121,11 @@ export default function ChauffeurDashboard() {
   const clientSummaryCacheRef = useRef<Record<string, ClientSummary>>({});
   const lastSpokenNavKeyRef = useRef<string | null>(null);
   const routeContextRef = useRef<string | null>(null);
+  const lastRouteFetchRef = useRef<{
+    routeKey: string;
+    origin: { lat: number; lng: number };
+    fetchedAt: number;
+  } | null>(null);
   const menuAnim = useRef(new Animated.Value(0)).current;
   const incomingSlide = useRef(new Animated.Value(300)).current;
   const notificationsRef = useRef<any>(null);
@@ -719,6 +734,7 @@ export default function ChauffeurDashboard() {
     if (!currentRide) {
       lastSpokenNavKeyRef.current = null;
       routeContextRef.current = null;
+      lastRouteFetchRef.current = null;
       Speech.stop();
     }
   }, [currentRide?.id]);
@@ -731,7 +747,28 @@ export default function ChauffeurDashboard() {
 
     if (!destination.lat || !destination.lng) return;
 
-    fetchDriverRoute(parseFloat(destination.lat), parseFloat(destination.lng));
+    const parsedDestLat = parseFloat(destination.lat);
+    const parsedDestLng = parseFloat(destination.lng);
+    const routeKey = [
+      currentRide.id || "route",
+      currentRide.status || "pickup",
+      parsedDestLat.toFixed(5),
+      parsedDestLng.toFixed(5),
+    ].join(":");
+    const lastFetch = lastRouteFetchRef.current;
+    const movedDistanceKm = lastFetch
+      ? haversineDistance(lastFetch.origin.lat, lastFetch.origin.lng, myLocation.lat, myLocation.lng)
+      : Infinity;
+    const elapsedMs = lastFetch ? Date.now() - lastFetch.fetchedAt : Infinity;
+    const shouldRefresh =
+      !lastFetch ||
+      lastFetch.routeKey !== routeKey ||
+      movedDistanceKm >= ROUTE_REFRESH_MIN_DISTANCE_KM ||
+      elapsedMs >= ROUTE_REFRESH_MAX_AGE_MS;
+
+    if (!shouldRefresh) return;
+
+    fetchDriverRoute(parsedDestLat, parsedDestLng, { routeKey });
   }, [currentRide?.id, currentRide?.status, myLocation?.lat, myLocation?.lng]);
 
   // ─── Data ─────────────────────────────────────────────────────────────────
@@ -894,7 +931,7 @@ export default function ChauffeurDashboard() {
     if (locationInterval) { clearInterval(locationInterval); setLocationIntervalId(null); }
   }
 
-  async function fetchDriverRoute(destLat: number, destLng: number): Promise<boolean> {
+  async function fetchDriverRoute(destLat: number, destLng: number, options?: { routeKey?: string }): Promise<boolean> {
     if (!myLocation) return false;
     try {
       const res = await apiRequest("GET",
@@ -950,6 +987,11 @@ export default function ChauffeurDashboard() {
         setNavSteps([]);
         setCurrentStepIdx(0);
       }
+      lastRouteFetchRef.current = {
+        routeKey: options?.routeKey || routeContextKey,
+        origin: { lat: myLocation.lat, lng: myLocation.lng },
+        fetchedAt: Date.now(),
+      };
       return true;
     } catch { return false; }
   }
@@ -1061,7 +1103,14 @@ export default function ChauffeurDashboard() {
       setCurrentRide(enrichedRide);
       setIncomingRide(null);
       if (enrichedRide.pickupLat && enrichedRide.pickupLng) {
-        await fetchDriverRoute(parseFloat(enrichedRide.pickupLat), parseFloat(enrichedRide.pickupLng));
+        await fetchDriverRoute(parseFloat(enrichedRide.pickupLat), parseFloat(enrichedRide.pickupLng), {
+          routeKey: [
+            enrichedRide.id || "route",
+            enrichedRide.status || "pickup",
+            Number(enrichedRide.pickupLat).toFixed(5),
+            Number(enrichedRide.pickupLng).toFixed(5),
+          ].join(":"),
+        });
       }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowNavModal(true);
@@ -1102,7 +1151,14 @@ export default function ChauffeurDashboard() {
       setAvailableTrips([]);
       setIncomingRide(null);
       if (enrichedRide.pickupLat && enrichedRide.pickupLng) {
-        await fetchDriverRoute(parseFloat(enrichedRide.pickupLat), parseFloat(enrichedRide.pickupLng));
+        await fetchDriverRoute(parseFloat(enrichedRide.pickupLat), parseFloat(enrichedRide.pickupLng), {
+          routeKey: [
+            enrichedRide.id || "route",
+            enrichedRide.status || "pickup",
+            Number(enrichedRide.pickupLat).toFixed(5),
+            Number(enrichedRide.pickupLng).toFixed(5),
+          ].join(":"),
+        });
       }
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowNavModal(true);
@@ -1144,7 +1200,14 @@ export default function ChauffeurDashboard() {
       } else {
         setCurrentRide(rideWithName);
         if (status === "trip_started" && ride.dropoffLat && ride.dropoffLng) {
-          await fetchDriverRoute(parseFloat(ride.dropoffLat), parseFloat(ride.dropoffLng));
+          await fetchDriverRoute(parseFloat(ride.dropoffLat), parseFloat(ride.dropoffLng), {
+            routeKey: [
+              rideWithName.id || "route",
+              rideWithName.status || status,
+              Number(ride.dropoffLat).toFixed(5),
+              Number(ride.dropoffLng).toFixed(5),
+            ].join(":"),
+          });
           setShowNavModal(true);
         }
       }

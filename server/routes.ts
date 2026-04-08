@@ -452,6 +452,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const GOOGLE_KEY = process.env.GOOGLE_API_KEY || "";
   const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
   const MAPS_USER_AGENT = "A2B-LIFT/1.0 (support@a2blift.app)";
+  const DIRECTIONS_CACHE_TTL_MS = 5 * 60 * 1000;
+  const DIRECTIONS_CACHE_MAX_ENTRIES = 250;
+  const directionsCache = new Map<string, { expiresAt: number; payload: any }>();
 
   async function fetchMapsJson(url: string) {
     const response = await fetch(url, {
@@ -462,6 +465,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       },
     });
     return response.json() as Promise<any>;
+  }
+
+  function normalizeCoordinate(raw: string | number) {
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return null;
+    return Number(value.toFixed(4));
+  }
+
+  function buildDirectionsCacheKey(originLat: string, originLng: string, destLat: string, destLng: string) {
+    const normalized = [originLat, originLng, destLat, destLng].map(normalizeCoordinate);
+    if (normalized.some((value) => value == null)) return null;
+    return normalized.join(":");
+  }
+
+  function getDirectionsCacheEntry(cacheKey: string) {
+    const cached = directionsCache.get(cacheKey);
+    if (!cached) return null;
+    if (cached.expiresAt <= Date.now()) {
+      directionsCache.delete(cacheKey);
+      return null;
+    }
+    return cached.payload;
+  }
+
+  function setDirectionsCacheEntry(cacheKey: string, payload: any) {
+    directionsCache.set(cacheKey, {
+      expiresAt: Date.now() + DIRECTIONS_CACHE_TTL_MS,
+      payload,
+    });
+
+    if (directionsCache.size <= DIRECTIONS_CACHE_MAX_ENTRIES) return;
+
+    for (const [key, entry] of directionsCache) {
+      if (entry.expiresAt <= Date.now()) {
+        directionsCache.delete(key);
+      }
+    }
+
+    while (directionsCache.size > DIRECTIONS_CACHE_MAX_ENTRIES) {
+      const oldestKey = directionsCache.keys().next().value;
+      if (!oldestKey) break;
+      directionsCache.delete(oldestKey);
+    }
   }
 
   function formatNominatimAddress(address: any, fallbackDisplayName?: string) {
@@ -547,10 +593,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/places/autocomplete", async (req: Request, res: Response) => {
     try {
       const input = req.query.input as string;
+      const sessionToken = typeof req.query.sessionToken === "string"
+        ? req.query.sessionToken
+        : typeof req.query.sessiontoken === "string"
+          ? req.query.sessiontoken
+          : "";
       if (!input || input.trim().length < 2) return res.json({ predictions: [] });
 
       if (GOOGLE_KEY) {
-        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en&key=${GOOGLE_KEY}`;
+        const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
+        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en${tokenQuery}&key=${GOOGLE_KEY}`;
         const r = await fetchMapsJson(url);
         const mappedPredictions = Array.isArray(r.predictions)
           ? r.predictions.slice(0, 6).map((p: any) => ({
@@ -602,10 +654,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/places/details", async (req: Request, res: Response) => {
     try {
       const placeId = req.query.placeId as string;
+      const sessionToken = typeof req.query.sessionToken === "string"
+        ? req.query.sessionToken
+        : typeof req.query.sessiontoken === "string"
+          ? req.query.sessiontoken
+          : "";
       if (!placeId) return res.status(400).json({ message: "placeId is required" });
       if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
 
-      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address,name&key=${GOOGLE_KEY}`;
+      const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
+      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address,name${tokenQuery}&key=${GOOGLE_KEY}`;
       const r = await (await fetch(url)).json() as any;
       if (r.status === "OK") {
         const loc = r.result.geometry.location;
@@ -661,7 +719,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/directions", async (req: Request, res: Response) => {
     try {
-      const { originLat, originLng, destLat, destLng } = req.query;
+      const originLat = typeof req.query.originLat === "string" ? req.query.originLat : "";
+      const originLng = typeof req.query.originLng === "string" ? req.query.originLng : "";
+      const destLat = typeof req.query.destLat === "string" ? req.query.destLat : "";
+      const destLng = typeof req.query.destLng === "string" ? req.query.destLng : "";
       if (!originLat || !originLng || !destLat || !destLng) {
         return res
           .status(400)
@@ -672,6 +733,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res
           .status(500)
           .json({ message: "Google Maps API key not configured" });
+      }
+      const cacheKey = buildDirectionsCacheKey(originLat, originLng, destLat, destLng);
+      if (cacheKey) {
+        const cached = getDirectionsCacheEntry(cacheKey);
+        if (cached) {
+          return res.json(cached);
+        }
       }
       const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&alternatives=true&key=${apiKey}`;
       const response = await fetch(url);
@@ -699,7 +767,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         const primary = parseRoute(data.routes[0], 0);
         const alternatives = data.routes.map((r: any, i: number) => parseRoute(r, i));
-        return res.json({ ...primary, alternatives });
+        const payload = { ...primary, alternatives };
+        if (cacheKey) {
+          setDirectionsCacheEntry(cacheKey, payload);
+        }
+        return res.json(payload);
       }
       return res.status(404).json({ message: "No route found" });
     } catch (error: any) {
