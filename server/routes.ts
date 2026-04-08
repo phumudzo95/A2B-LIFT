@@ -450,19 +450,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -----------------------------
 
   const GOOGLE_KEY = process.env.GOOGLE_API_KEY || "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0";
+  const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
+  const MAPS_USER_AGENT = "A2B-LIFT/1.0 (support@a2blift.app)";
+
+  async function fetchMapsJson(url: string) {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "en-ZA,en;q=0.9",
+        "User-Agent": MAPS_USER_AGENT,
+      },
+    });
+    return response.json() as Promise<any>;
+  }
+
+  function formatNominatimAddress(address: any, fallbackDisplayName?: string) {
+    const primary = [address?.house_number, address?.road].filter(Boolean).join(" ").trim();
+    const locality = [
+      address?.suburb,
+      address?.city || address?.town || address?.village,
+      address?.state,
+    ]
+      .filter(Boolean)
+      .join(", ")
+      .trim();
+    const description = [primary, locality].filter(Boolean).join(", ") || fallbackDisplayName || "";
+
+    return {
+      description,
+      mainText: primary || fallbackDisplayName?.split(",")[0] || "Pinned location",
+      secondaryText: locality || fallbackDisplayName?.split(",").slice(1).join(", ").trim() || "South Africa",
+    };
+  }
+
+  async function nominatimSearch(query: string, limit = 6) {
+    const url = `${NOMINATIM_BASE_URL}/search?format=jsonv2&addressdetails=1&limit=${limit}&countrycodes=za&q=${encodeURIComponent(query)}`;
+    const results = await fetchMapsJson(url);
+    if (!Array.isArray(results)) return [];
+
+    return results.map((result: any) => {
+      const formatted = formatNominatimAddress(result.address, result.display_name);
+      return {
+        placeId: `nominatim:${result.place_id}`,
+        description: formatted.description || result.display_name,
+        mainText: formatted.mainText,
+        secondaryText: formatted.secondaryText,
+        lat: result.lat ? Number(result.lat) : null,
+        lng: result.lon ? Number(result.lon) : null,
+      };
+    });
+  }
+
+  async function nominatimReverse(lat: string | number, lng: string | number) {
+    const url = `${NOMINATIM_BASE_URL}/reverse?format=jsonv2&addressdetails=1&lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lng))}&zoom=18`;
+    const result = await fetchMapsJson(url);
+    if (!result || !result.address) return null;
+
+    const formatted = formatNominatimAddress(result.address, result.display_name);
+    return {
+      placeId: `nominatim:${result.place_id || `${lat},${lng}`}`,
+      description: formatted.description || result.display_name,
+      mainText: formatted.mainText,
+      secondaryText: formatted.secondaryText,
+      lat: parseFloat(String(lat)),
+      lng: parseFloat(String(lng)),
+    };
+  }
 
   // Geocode: Google only
   app.get("/api/geocode", async (req: Request, res: Response) => {
     try {
       const address = req.query.address as string;
       if (!address) return res.status(400).json({ message: "Address is required" });
-      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
 
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&components=country:ZA&key=${GOOGLE_KEY}`;
-      const r = await (await fetch(url)).json() as any;
-      if (r.status === "OK" && r.results.length > 0) {
-        const loc = r.results[0].geometry.location;
-        return res.json({ lat: loc.lat, lng: loc.lng });
+      if (GOOGLE_KEY) {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&components=country:ZA&key=${GOOGLE_KEY}`;
+        const r = await fetchMapsJson(url);
+        if (r.status === "OK" && r.results.length > 0) {
+          const loc = r.results[0].geometry.location;
+          return res.json({ lat: loc.lat, lng: loc.lng });
+        }
+        console.warn("[maps] Google geocode fallback engaged:", r.status || "unknown");
+      }
+
+      const osmResults = await nominatimSearch(address, 1);
+      if (osmResults.length > 0 && osmResults[0].lat != null && osmResults[0].lng != null) {
+        return res.json({ lat: osmResults[0].lat, lng: osmResults[0].lng });
       }
       return res.status(404).json({ message: "Location not found" });
     } catch (error: any) {
@@ -475,47 +548,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const input = req.query.input as string;
       if (!input || input.trim().length < 2) return res.json({ predictions: [] });
-      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
 
-      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en&key=${GOOGLE_KEY}`;
-      const r = await (await fetch(url)).json() as any;
-      const mappedPredictions = Array.isArray(r.predictions)
-        ? r.predictions.slice(0, 6).map((p: any) => ({
-            placeId: p.place_id,
-            description: p.description,
-            mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
-            secondaryText: p.structured_formatting?.secondary_text || "",
-            lat: null,
-            lng: null,
-          }))
-        : [];
+      if (GOOGLE_KEY) {
+        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en&key=${GOOGLE_KEY}`;
+        const r = await fetchMapsJson(url);
+        const mappedPredictions = Array.isArray(r.predictions)
+          ? r.predictions.slice(0, 6).map((p: any) => ({
+              placeId: p.place_id,
+              description: p.description,
+              mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
+              secondaryText: p.structured_formatting?.secondary_text || "",
+              lat: null,
+              lng: null,
+            }))
+          : [];
 
-      if (r.status === "OK" && r.predictions.length > 0) {
-        return res.json({ predictions: mappedPredictions });
-      }
-
-      if (input.trim().length >= 3) {
-        const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input)}&components=country:ZA&key=${GOOGLE_KEY}`;
-        const geocodeResponse = await (await fetch(geocodeUrl)).json() as any;
-        if (geocodeResponse.status === "OK" && Array.isArray(geocodeResponse.results) && geocodeResponse.results.length > 0) {
-          return res.json({
-            predictions: geocodeResponse.results.slice(0, 5).map((result: any) => ({
-              placeId: result.place_id,
-              description: result.formatted_address,
-              mainText: result.address_components?.[0]?.long_name || result.formatted_address.split(",")[0],
-              secondaryText: result.formatted_address
-                .split(",")
-                .slice(1)
-                .join(", ")
-                .trim(),
-              lat: result.geometry?.location?.lat ?? null,
-              lng: result.geometry?.location?.lng ?? null,
-            })),
-          });
+        if (r.status === "OK" && r.predictions.length > 0) {
+          return res.json({ predictions: mappedPredictions });
         }
+
+        if (input.trim().length >= 3) {
+          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input)}&components=country:ZA&key=${GOOGLE_KEY}`;
+          const geocodeResponse = await fetchMapsJson(geocodeUrl);
+          if (geocodeResponse.status === "OK" && Array.isArray(geocodeResponse.results) && geocodeResponse.results.length > 0) {
+            return res.json({
+              predictions: geocodeResponse.results.slice(0, 5).map((result: any) => ({
+                placeId: result.place_id,
+                description: result.formatted_address,
+                mainText: result.address_components?.[0]?.long_name || result.formatted_address.split(",")[0],
+                secondaryText: result.formatted_address
+                  .split(",")
+                  .slice(1)
+                  .join(", ")
+                  .trim(),
+                lat: result.geometry?.location?.lat ?? null,
+                lng: result.geometry?.location?.lng ?? null,
+              })),
+            });
+          }
+        }
+
+        console.warn("[maps] Google autocomplete fallback engaged:", r.status || "unknown");
       }
 
-      return res.json({ predictions: [] });
+      const osmPredictions = await nominatimSearch(input, 6);
+      return res.json({ predictions: osmPredictions });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
@@ -545,30 +622,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { lat, lng } = req.query;
       if (!lat || !lng) return res.status(400).json({ message: "lat and lng are required" });
-      if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
 
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY}`;
-      const r = await (await fetch(url)).json() as any;
-      if (r.status === "OK" && r.results.length > 0) {
-        const best = r.results[0];
-        const components = best.address_components;
-        const get = (type: string) => components.find((c: any) => c.types.includes(type))?.long_name || "";
-        const streetNumber = get("street_number");
-        const route = get("route");
-        const suburb = get("sublocality_level_1") || get("sublocality") || get("neighborhood");
-        const city = get("locality") || get("administrative_area_level_2");
-        const province = get("administrative_area_level_1");
-        const mainText = route ? `${streetNumber ? streetNumber + " " : ""}${route}` : best.formatted_address.split(",")[0];
-        const secondaryParts = [suburb, city, province].filter(Boolean);
-        return res.json({
-          placeId: best.place_id,
-          description: best.formatted_address,
-          mainText,
-          secondaryText: secondaryParts.join(", "),
-          lat: parseFloat(lat as string),
-          lng: parseFloat(lng as string),
-        });
+      if (GOOGLE_KEY) {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY}`;
+        const r = await fetchMapsJson(url);
+        if (r.status === "OK" && r.results.length > 0) {
+          const best = r.results[0];
+          const components = best.address_components;
+          const get = (type: string) => components.find((c: any) => c.types.includes(type))?.long_name || "";
+          const streetNumber = get("street_number");
+          const route = get("route");
+          const suburb = get("sublocality_level_1") || get("sublocality") || get("neighborhood");
+          const city = get("locality") || get("administrative_area_level_2");
+          const province = get("administrative_area_level_1");
+          const mainText = route ? `${streetNumber ? streetNumber + " " : ""}${route}` : best.formatted_address.split(",")[0];
+          const secondaryParts = [suburb, city, province].filter(Boolean);
+          return res.json({
+            placeId: best.place_id,
+            description: best.formatted_address,
+            mainText,
+            secondaryText: secondaryParts.join(", "),
+            lat: parseFloat(lat as string),
+            lng: parseFloat(lng as string),
+          });
+        }
+
+        console.warn("[maps] Google reverse geocode fallback engaged:", r.status || "unknown");
       }
+
+      const osmResult = await nominatimReverse(lat as string, lng as string);
+      if (osmResult) return res.json(osmResult);
+
       return res.status(404).json({ message: "Location not found" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });

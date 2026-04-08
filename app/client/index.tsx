@@ -259,6 +259,52 @@ function formatNativeReverseGeocode(address?: Location.LocationGeocodedAddress |
   return [streetLine, localityLine].filter(Boolean).join(", ") || null;
 }
 
+async function buildNativeLocationSuggestions(query: string) {
+  try {
+    const results = await Location.geocodeAsync(query);
+    const uniqueResults = results.filter((result, index, all) => {
+      return all.findIndex((candidate) =>
+        Math.abs(candidate.latitude - result.latitude) < 0.0001 &&
+        Math.abs(candidate.longitude - result.longitude) < 0.0001,
+      ) === index;
+    }).slice(0, 5);
+
+    const suggestions = await Promise.all(
+      uniqueResults.map(async (result, index) => {
+        let description = query.trim();
+        let secondaryText = "Current area";
+
+        try {
+          const reverseResults = await Location.reverseGeocodeAsync({
+            latitude: result.latitude,
+            longitude: result.longitude,
+          });
+          const formatted = formatNativeReverseGeocode(reverseResults[0]);
+          if (formatted) {
+            description = formatted;
+            secondaryText = formatted.split(",").slice(1).join(", ").trim() || secondaryText;
+          }
+        } catch {}
+
+        return {
+          placeId: `native:${result.latitude}:${result.longitude}:${index}`,
+          description,
+          mainText: description.split(",")[0] || query.trim(),
+          secondaryText,
+          lat: result.latitude,
+          lng: result.longitude,
+        };
+      }),
+    );
+
+    return suggestions.filter((suggestion, index, all) => {
+      return all.findIndex((candidate) => candidate.description === suggestion.description) === index;
+    });
+  } catch {
+    return [];
+  }
+}
+
 function mergeNearbyDrivers(current: NearbyDriverState[], incoming: NearbyDriverState[]) {
   const sortedIncoming = [...incoming].sort((left, right) => left.id.localeCompare(right.id));
   const currentById = new Map(current.map((driver) => [driver.id, driver]));
@@ -533,9 +579,26 @@ export default function ClientHomeScreen() {
       try {
         const res = await apiRequest("GET", `/api/places/autocomplete?input=${encodeURIComponent(text)}`);
         const data = await res.json();
-        setLocationSuggestions(data.predictions || []);
-      } catch {
+        const predictions = Array.isArray(data.predictions) ? data.predictions : [];
+        if (predictions.length > 0) {
+          setLocationSuggestions(predictions);
+          return;
+        }
+
+        if (Platform.OS !== "web") {
+          const nativeSuggestions = await buildNativeLocationSuggestions(text);
+          setLocationSuggestions(nativeSuggestions);
+          return;
+        }
+
         setLocationSuggestions([]);
+      } catch {
+        if (Platform.OS !== "web") {
+          const nativeSuggestions = await buildNativeLocationSuggestions(text);
+          setLocationSuggestions(nativeSuggestions);
+        } else {
+          setLocationSuggestions([]);
+        }
       } finally {
         setSuggestionsLoading(false);
       }
