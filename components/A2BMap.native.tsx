@@ -105,6 +105,21 @@ function computeRegion(
   };
 }
 
+function distanceInMeters(
+  first: { lat: number; lng: number },
+  second: { lat: number; lng: number },
+) {
+  const earthRadiusM = 6371000;
+  const dLat = ((second.lat - first.lat) * Math.PI) / 180;
+  const dLng = ((second.lng - first.lng) * Math.PI) / 180;
+  const lat1 = (first.lat * Math.PI) / 180;
+  const lat2 = (second.lat * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return earthRadiusM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 interface NearbyDriver {
   id: string | number;
   lat: number;
@@ -138,6 +153,8 @@ export default function A2BMap({
 }: A2BMapProps) {
   const mapRef = useRef<MapView>(null);
   const mapReadyRef = useRef(false);
+  const lastCenteredPickupRef = useRef<{ lat: number; lng: number } | null>(null);
+  const lastFollowedDriverRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // Use user's location for initialRegion if available, else Johannesburg
   const center = pickupLocation || DEFAULT_REGION;
@@ -197,21 +214,51 @@ export default function A2BMap({
     setTimeout(fitMap, 400);
   }
 
-  useEffect(() => {
-    fitMap();
-  }, [fitMap]);
-
   // Zoom to user location when GPS first arrives (no route/dropoff set yet)
   useEffect(() => {
     if (!pickupLocation || !mapRef.current) return;
-    if (routeCoords.length > 0 || dropoffLocation) return;
+    if (routeCoords.length > 0 || dropoffLocation || followDriver) return;
+    if (
+      lastCenteredPickupRef.current &&
+      distanceInMeters(lastCenteredPickupRef.current, pickupLocation) < 30
+    ) {
+      return;
+    }
+
+    lastCenteredPickupRef.current = {
+      lat: pickupLocation.lat,
+      lng: pickupLocation.lng,
+    };
+
     mapRef.current.animateToRegion({
       latitude: pickupLocation.lat,
       longitude: pickupLocation.lng,
       latitudeDelta: 0.004,
       longitudeDelta: 0.004,
     }, 400);
-  }, [pickupLocation?.lat, pickupLocation?.lng]);
+  }, [pickupLocation?.lat, pickupLocation?.lng, dropoffLocation?.lat, dropoffLocation?.lng, routeCoords.length, followDriver]);
+
+  useEffect(() => {
+    if (!followDriver || !driverLocation || !mapRef.current) return;
+    if (
+      lastFollowedDriverRef.current &&
+      distanceInMeters(lastFollowedDriverRef.current, driverLocation) < 20
+    ) {
+      return;
+    }
+
+    lastFollowedDriverRef.current = {
+      lat: driverLocation.lat,
+      lng: driverLocation.lng,
+    };
+
+    mapRef.current.animateToRegion({
+      latitude: driverLocation.lat,
+      longitude: driverLocation.lng,
+      latitudeDelta: 0.005,
+      longitudeDelta: 0.005,
+    }, 500);
+  }, [followDriver, driverLocation?.lat, driverLocation?.lng]);
 
   // Zoom to show pickup + dropoff when dropoff is set (before route loads)
   useEffect(() => {

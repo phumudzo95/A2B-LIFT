@@ -479,18 +479,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en&key=${GOOGLE_KEY}`;
       const r = await (await fetch(url)).json() as any;
-      if (r.status === "OK" && r.predictions.length > 0) {
-        return res.json({
-          predictions: r.predictions.slice(0, 6).map((p: any) => ({
+      const mappedPredictions = Array.isArray(r.predictions)
+        ? r.predictions.slice(0, 6).map((p: any) => ({
             placeId: p.place_id,
             description: p.description,
             mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
             secondaryText: p.structured_formatting?.secondary_text || "",
             lat: null,
             lng: null,
-          })),
-        });
+          }))
+        : [];
+
+      if (r.status === "OK" && r.predictions.length > 0) {
+        return res.json({ predictions: mappedPredictions });
       }
+
+      if (input.trim().length >= 3) {
+        const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input)}&components=country:ZA&key=${GOOGLE_KEY}`;
+        const geocodeResponse = await (await fetch(geocodeUrl)).json() as any;
+        if (geocodeResponse.status === "OK" && Array.isArray(geocodeResponse.results) && geocodeResponse.results.length > 0) {
+          return res.json({
+            predictions: geocodeResponse.results.slice(0, 5).map((result: any) => ({
+              placeId: result.place_id,
+              description: result.formatted_address,
+              mainText: result.address_components?.[0]?.long_name || result.formatted_address.split(",")[0],
+              secondaryText: result.formatted_address
+                .split(",")
+                .slice(1)
+                .join(", ")
+                .trim(),
+              lat: result.geometry?.location?.lat ?? null,
+              lng: result.geometry?.location?.lng ?? null,
+            })),
+          });
+        }
+      }
+
       return res.json({ predictions: [] });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });

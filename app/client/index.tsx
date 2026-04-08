@@ -46,6 +46,8 @@ const VEHICLE_TYPES = [
 
 type RideStatus = "idle" | "selecting" | "confirming" | "requested" | "assigned" | "arriving" | "in_trip" | "completed" | "no_drivers";
 
+type NearbyDriverState = { id: string; lat: number; lng: number };
+
 interface ChauffeurDetails {
   id?: string;
   driverName: string;
@@ -227,6 +229,58 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+const CURRENT_LOCATION_LABEL = "Current Location";
+const SIGNIFICANT_LOCATION_SHIFT_KM = 0.03;
+const DRIVER_MARKER_SHIFT_KM = 0.01;
+
+function hasLocationShift(
+  previous: { lat: number; lng: number } | null | undefined,
+  next: { lat: number; lng: number } | null | undefined,
+  minimumDistanceKm = SIGNIFICANT_LOCATION_SHIFT_KM,
+) {
+  if (!previous || !next) return true;
+  return haversineDistance(previous.lat, previous.lng, next.lat, next.lng) >= minimumDistanceKm;
+}
+
+function formatNativeReverseGeocode(address?: Location.LocationGeocodedAddress | null) {
+  if (!address) return null;
+
+  const streetLine = [address.streetNumber, address.street].filter(Boolean).join(" ").trim();
+  const localityLine = [
+    address.district,
+    address.subregion,
+    address.city,
+    address.region,
+  ]
+    .filter(Boolean)
+    .join(", ")
+    .trim();
+
+  return [streetLine, localityLine].filter(Boolean).join(", ") || null;
+}
+
+function mergeNearbyDrivers(current: NearbyDriverState[], incoming: NearbyDriverState[]) {
+  const sortedIncoming = [...incoming].sort((left, right) => left.id.localeCompare(right.id));
+  const currentById = new Map(current.map((driver) => [driver.id, driver]));
+
+  const next = sortedIncoming.map((driver) => {
+    const existing = currentById.get(driver.id);
+    if (existing && !hasLocationShift(existing, driver, DRIVER_MARKER_SHIFT_KM)) {
+      return existing;
+    }
+    return driver;
+  });
+
+  if (
+    current.length === next.length &&
+    current.every((driver, index) => driver === next[index])
+  ) {
+    return current;
+  }
+
+  return next;
+}
+
 function carColorToHex(color: string): string {
   const map: Record<string, string> = {
     Black: "#000000", White: "#FFFFFF", Silver: "#C0C0C0", Grey: "#808080",
@@ -268,7 +322,7 @@ export default function ClientHomeScreen() {
   const [rating, setRating] = useState<number>(0);
   const [ratingComment, setRatingComment] = useState<string>("");
   const [submittingRating, setSubmittingRating] = useState(false);
-  const [onlineDrivers, setOnlineDrivers] = useState<{ id: string; lat: number; lng: number }[]>([]);
+  const [onlineDrivers, setOnlineDrivers] = useState<NearbyDriverState[]>([]);
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "wallet">("cash");
   const [savedCards, setSavedCards] = useState<{ id: string; last4: string; cardType: string; isDefault: boolean }[]>([]);
@@ -309,6 +363,7 @@ export default function ClientHomeScreen() {
   const autocompleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locationWatchRef = useRef<Location.LocationSubscription | null>(null);
   const pickupFollowsDeviceRef = useRef(true);
+  const lastResolvedPickupRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // Keep a ref so socket callbacks always see the latest ride without stale closure
   const currentRideRef = useRef<any>(null);
@@ -360,7 +415,7 @@ export default function ClientHomeScreen() {
               isRecentLocation(c.locationUpdatedAt),
           )
           .map((c: any) => ({ id: String(c.id), lat: Number(c.lat), lng: Number(c.lng) }));
-        setOnlineDrivers(online);
+        setOnlineDrivers((prev) => mergeNearbyDrivers(prev, online));
 
       } catch {}
     }
@@ -388,13 +443,15 @@ export default function ClientHomeScreen() {
   useEffect(() => {
     const handleNearbyDriverLocation = (data: any) => {
       if (!data?.chauffeurId || data.lat == null || data.lng == null) return;
+      const nextDriver = {
+        id: String(data.chauffeurId),
+        lat: Number(data.lat),
+        lng: Number(data.lng),
+      };
+
       setOnlineDrivers((prev) => {
-        if (!prev.some((driver) => driver.id === data.chauffeurId)) return prev;
-        return prev.map((driver) =>
-          driver.id === data.chauffeurId
-            ? { ...driver, lat: Number(data.lat), lng: Number(data.lng) }
-            : driver,
-        );
+        const withoutDriver = prev.filter((driver) => driver.id !== nextDriver.id);
+        return mergeNearbyDrivers(prev, [...withoutDriver, nextDriver]);
       });
     };
 
@@ -457,7 +514,7 @@ export default function ClientHomeScreen() {
   function openLocationPicker(target: "pickup" | "dropoff") {
     const current = target === "pickup" ? pickupAddress : dropoffAddress;
     setLocationPickerTarget(target);
-    setLocationPickerQuery(current === "Current Location" ? "" : current);
+    setLocationPickerQuery(current === CURRENT_LOCATION_LABEL ? "" : current);
     setLocationSuggestions([]);
     setLocationPickerVisible(true);
   }
@@ -466,7 +523,6 @@ export default function ClientHomeScreen() {
     setLocationPickerQuery(text);
     // Clear previously resolved coords when user edits the query
     if (locationPickerTarget === "dropoff") setDropoffCoords(null);
-    if (locationPickerTarget === "pickup") setLocation(null);
     if (autocompleteTimerRef.current) clearTimeout(autocompleteTimerRef.current);
     if (text.trim().length < 2) {
       setLocationSuggestions([]);
@@ -555,12 +611,55 @@ export default function ClientHomeScreen() {
     await requestLocation();
   }
 
+  async function resolvePickupAddress(coords: { lat: number; lng: number }, force = false) {
+    if (!force && !pickupFollowsDeviceRef.current) return;
+    if (!force && !hasLocationShift(lastResolvedPickupRef.current, coords, 0.08)) return;
+
+    let description: string | null = null;
+
+    try {
+      const res = await apiRequest("GET", `/api/places/reverse?lat=${coords.lat}&lng=${coords.lng}`);
+      const data = await res.json();
+      if (typeof data.description === "string" && data.description.trim()) {
+        description = data.description.trim();
+      }
+    } catch {}
+
+    if (!description && Platform.OS !== "web") {
+      try {
+        const results = await Location.reverseGeocodeAsync({
+          latitude: coords.lat,
+          longitude: coords.lng,
+        });
+        description = formatNativeReverseGeocode(results[0]);
+      } catch {}
+    }
+
+    if (!force && !pickupFollowsDeviceRef.current) return;
+
+    if (description) {
+      lastResolvedPickupRef.current = coords;
+      setPickupAddress(description);
+      return;
+    }
+
+    if (force || pickupAddress === CURRENT_LOCATION_LABEL) {
+      setPickupAddress(CURRENT_LOCATION_LABEL);
+    }
+  }
+
   async function startLocationWatch() {
     if (Platform.OS === "web" || locationWatchRef.current) return;
     try {
       locationWatchRef.current = await watchBestPosition((position) => {
         if (!pickupFollowsDeviceRef.current) return;
-        setLocation(toLatLng(position));
+        const nextLocation = toLatLng(position);
+        setLocation((current) => {
+          if (!hasLocationShift(current, nextLocation)) {
+            return current;
+          }
+          return nextLocation;
+        });
       });
     } catch {}
   }
@@ -838,17 +937,12 @@ export default function ClientHomeScreen() {
           const position = await new Promise<GeolocationPosition>((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
           });
-          setLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-          try {
-            const res = await apiRequest("GET", `/api/places/reverse?lat=${position.coords.latitude}&lng=${position.coords.longitude}`);
-            const data = await res.json();
-            setPickupAddress(data.description || "Current Location");
-          } catch {
-            setPickupAddress("Current Location");
-          }
+          const nextLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+          setLocation(nextLocation);
+          await resolvePickupAddress(nextLocation, true);
         } catch {
-          setLocation({ lat: -26.2041, lng: 28.0473 });
-          setPickupAddress("Johannesburg, South Africa");
+          setLocation((current) => current ?? { lat: -26.2041, lng: 28.0473 });
+          setPickupAddress(CURRENT_LOCATION_LABEL);
         }
         setLocationLoading(false);
         return;
@@ -856,26 +950,23 @@ export default function ClientHomeScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
         const loc = await getBestAvailablePosition();
+        const nextLocation = toLatLng(loc);
         await startLocationWatch();
         if (pickupFollowsDeviceRef.current) {
-          setLocation(toLatLng(loc));
+          setLocation(nextLocation);
         }
-        try {
-          const res = await apiRequest("GET", `/api/places/reverse?lat=${loc.coords.latitude}&lng=${loc.coords.longitude}`);
-          const data = await res.json();
-          if (pickupFollowsDeviceRef.current && data.description) setPickupAddress(data.description);
-        } catch {}
+        await resolvePickupAddress(nextLocation, true);
       } else {
         locationWatchRef.current?.remove();
         locationWatchRef.current = null;
-        setLocation({ lat: -26.2041, lng: 28.0473 });
-        setPickupAddress("Johannesburg, South Africa");
+        setLocation((current) => current ?? { lat: -26.2041, lng: 28.0473 });
+        setPickupAddress(CURRENT_LOCATION_LABEL);
       }
     } catch (e) {
       locationWatchRef.current?.remove();
       locationWatchRef.current = null;
-      setLocation({ lat: -26.2041, lng: 28.0473 });
-      setPickupAddress("Johannesburg, South Africa");
+      setLocation((current) => current ?? { lat: -26.2041, lng: 28.0473 });
+      setPickupAddress(CURRENT_LOCATION_LABEL);
     } finally {
       setLocationLoading(false);
     }
