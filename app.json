@@ -44,7 +44,7 @@
     },
     "android": {
       "package": "com.a2blift",
-      "versionCode": 3,
+      "versionCode": 4,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
