@@ -35,9 +35,10 @@ async function sendExpoPushNotification(
   title: string,
   body: string,
   data?: object,
-  options?: { urgent?: boolean },
+  options?: { urgent?: boolean; channelId?: string },
 ) {
   const urgent = options?.urgent ?? false;
+  const channelId = options?.channelId || (urgent ? "ride-alerts" : undefined);
   const messages = tokens
     .filter(t => t && t.startsWith("ExponentPushToken["))
     .map(to => ({
@@ -49,9 +50,9 @@ async function sendExpoPushNotification(
       badge: urgent ? 1 : undefined,
       priority: urgent ? "high" : "default",
       ttl: urgent ? 0 : undefined,
-      channelId: urgent ? "ride-alerts" : undefined,
+      channelId,
       interruptionLevel: urgent ? "time-sensitive" : undefined,
-      android: urgent ? { channelId: "ride-alerts", sound: "default" } : undefined,
+      android: channelId ? { channelId, sound: "default", priority: urgent ? "max" : "high" } : undefined,
     }));
   if (messages.length === 0) return;
   try {
@@ -2308,6 +2309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             "🚘 Driver Assigned",
             "Your premium chauffeur has been assigned and is on the way.",
             { rideId: updated.id, type: "ride:accepted" },
+            { urgent: true, channelId: "client-alerts" },
           );
         }
       }
@@ -2400,6 +2402,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 body: `Your ride was cancelled. R${amt.toFixed(2)} has been refunded to your A2B wallet.`,
                 type: "payment",
               });
+              if ((rider as any)?.pushToken) {
+                sendExpoPushNotification(
+                  [(rider as any).pushToken],
+                  "Refund Issued",
+                  `R${amt.toFixed(2)} has been refunded to your A2B wallet.`,
+                  { rideId: ride.id, type: "ride:cancelled" },
+                  { urgent: true, channelId: "client-alerts" },
+                );
+              }
             }
           }
 
@@ -2428,6 +2439,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 body: `Your ride was cancelled. R${amt.toFixed(2)} has been returned to your A2B wallet.`,
                 type: "payment",
               });
+              if ((rider as any)?.pushToken) {
+                sendExpoPushNotification(
+                  [(rider as any).pushToken],
+                  "Refund Issued",
+                  `R${amt.toFixed(2)} has been returned to your A2B wallet.`,
+                  { rideId: ride.id, type: "ride:cancelled" },
+                  { urgent: true, channelId: "client-alerts" },
+                );
+              }
             }
           }
 
@@ -2440,6 +2460,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               body: "Your ride has been cancelled. No charges were applied.",
               type: "ride",
             });
+            const rider = await storage.getUser(rideBeforeUpdate.clientId);
+            if ((rider as any)?.pushToken) {
+              sendExpoPushNotification(
+                [(rider as any).pushToken],
+                "Ride Cancelled",
+                "Your ride was cancelled. No charges were applied.",
+                { rideId: ride.id, type: "ride:cancelled" },
+                { urgent: true, channelId: "client-alerts" },
+              );
+            }
           }
 
           // ── Notify the assigned chauffeur (if any) ──
@@ -2530,6 +2560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               "Trip Completed",
               `Fare: R ${ride.price}. Thank you for choosing A2B LIFT.`,
               { rideId: ride.id, type: "ride:completed" },
+              { urgent: true, channelId: "client-alerts" },
             );
           }
         } catch (notifErr: any) {
@@ -2588,7 +2619,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               [(riderUser as any).pushToken],
               "🚗 Driver Arriving",
               "Your chauffeur is arriving at your pickup. Please be ready!",
-              { rideId: ride.id, type: "ride:arriving" }
+              { rideId: ride.id, type: "ride:arriving" },
+              { urgent: true, channelId: "client-alerts" }
             );
           }
         } else if (status === "trip_started" && ride.clientId) {
@@ -2604,7 +2636,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               [(riderUser as any).pushToken],
               "🚀 Trip Started",
               `Your ride is underway to ${ride.dropoffAddress || "your destination"}.`,
-              { rideId: ride.id, type: "ride:started" }
+              { rideId: ride.id, type: "ride:started" },
+              { urgent: true, channelId: "client-alerts" }
             );
           }
         }
@@ -2917,6 +2950,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } else if (ride.chauffeurId) {
               const chauffeur = await storage.getChauffeur(ride.chauffeurId);
               if (chauffeur?.userId && senderId !== ride.clientId) {
+                const rider = await storage.getUser(ride.clientId);
+                if ((rider as any)?.pushToken) {
+                  sendExpoPushNotification(
+                    [(rider as any).pushToken],
+                    "New message from chauffeur",
+                    previewText,
+                    { rideId: ride.id, type: "chat:new" },
+                    { urgent: true, channelId: "client-alerts" },
+                  );
+                }
                 await storage.createNotification({ userId: ride.clientId, type: "chat", title: "New message from chauffeur", body: previewText, isRead: false });
               }
             }

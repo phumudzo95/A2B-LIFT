@@ -457,7 +457,7 @@ export default function ClientHomeScreen() {
         if (Platform.OS === "android") {
           await Notifications.setNotificationChannelAsync("client-alerts", {
             name: "Client Alerts",
-            importance: Notifications.AndroidImportance.HIGH,
+            importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 200, 200, 200],
             sound: "default",
             lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
