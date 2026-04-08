@@ -135,6 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(null);
     await AsyncStorage.removeItem("a2b_user");
     await AsyncStorage.removeItem("a2b_chauffeur");
+    await AsyncStorage.removeItem("a2b_last_mode");
+    await AsyncStorage.removeItem("a2b_current_ride");
     await AsyncStorage.removeItem("a2b_token");
     // Best-effort server logout (clears cookie on web)
     apiRequest("POST", "/api/auth/logout").catch(() => {});

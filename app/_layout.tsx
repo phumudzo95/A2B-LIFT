@@ -34,10 +34,14 @@ function AuthGate() {
     if (user && isGuestOnly) {
       // Restore last mode, or default to role-select
       AsyncStorage.getItem("a2b_last_mode").then(lastMode => {
-        if (lastMode === "client") {
+        if (user.role === "chauffeur") {
+          if (lastMode === "client") {
+            router.replace("/client");
+          } else {
+            router.replace("/chauffeur");
+          }
+        } else if (lastMode === "client") {
           router.replace("/client");
-        } else if (lastMode === "chauffeur" || user.role === "chauffeur") {
-          router.replace("/chauffeur");
         } else {
           router.replace("/role-select");
         }
