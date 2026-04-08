@@ -25,6 +25,7 @@ module.exports = {
         NSCameraUsageDescription: "A2B LIFT needs camera access to let you upload your profile photo and vehicle documents.",
         NSPhotoLibraryUsageDescription: "A2B LIFT needs access to your photo library to let you upload your profile photo and vehicle documents.",
         NSPhotoLibraryAddUsageDescription: "A2B LIFT saves trip-related photos to your library.",
+        ITSAppUsesNonExemptEncryption: false,
         UIBackgroundModes: ["location", "fetch"],
       },
       config: {
