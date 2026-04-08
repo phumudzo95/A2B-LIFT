@@ -814,6 +814,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/users/:id/push-token", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      if (req.auth!.sub !== req.params.id) {
+        const caller = await storage.getUser(req.auth!.sub);
+        if (caller?.role !== "admin") {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+
+      const { pushToken } = req.body as { pushToken?: string };
+      if (!pushToken || typeof pushToken !== "string") {
+        return res.status(400).json({ message: "pushToken is required" });
+      }
+      if (!pushToken.startsWith("ExponentPushToken[")) {
+        return res.status(400).json({ message: "Invalid Expo push token" });
+      }
+
+      const updatedUser = await storage.updateUser(req.params.id, { pushToken } as any);
+      if (!updatedUser) return res.status(404).json({ message: "User not found" });
+      return res.json({ success: true });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   app.put("/api/users/:id/role", async (req: Request, res: Response) => {
     try {
       const { role } = req.body;
@@ -2276,6 +2301,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           body: "Your premium chauffeur has been assigned and is on the way.",
           type: "ride",
         });
+        const riderUser = await storage.getUser(updated.clientId);
+        if ((riderUser as any)?.pushToken) {
+          sendExpoPushNotification(
+            [(riderUser as any).pushToken],
+            "🚘 Driver Assigned",
+            "Your premium chauffeur has been assigned and is on the way.",
+            { rideId: updated.id, type: "ride:accepted" },
+          );
+        }
       }
       // Notify the driver they are on the way to pick up
       await storage.createNotification({
@@ -2489,6 +2523,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             body: `Your trip has been completed. Fare: R ${ride.price}. Thank you for choosing A2B LIFT.`,
             type: "ride",
           });
+          const riderUser = await storage.getUser(ride.clientId);
+          if ((riderUser as any)?.pushToken) {
+            sendExpoPushNotification(
+              [(riderUser as any).pushToken],
+              "Trip Completed",
+              `Fare: R ${ride.price}. Thank you for choosing A2B LIFT.`,
+              { rideId: ride.id, type: "ride:completed" },
+            );
+          }
         } catch (notifErr: any) {
           console.error("notification failed (non-fatal):", notifErr.message);
         }

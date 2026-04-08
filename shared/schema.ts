@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   name: text("name").notNull(),
   phone: text("phone"),
+  pushToken: text("push_token"),
   // client (passenger) | chauffeur (driver) | admin
   role: text("role").notNull().default("client"),
   rating: real("rating").default(5.0),

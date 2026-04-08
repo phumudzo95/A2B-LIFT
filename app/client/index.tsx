@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import Constants from "expo-constants";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -416,6 +417,8 @@ export default function ClientHomeScreen() {
   const pickupFollowsDeviceRef = useRef(true);
   const lastResolvedPickupRef = useRef<{ lat: number; lng: number } | null>(null);
   const placesSessionTokenRef = useRef<string | null>(null);
+  const notificationsRef = useRef<any>(null);
+  const isExpoGoAndroid = Platform.OS === "android" && Constants.appOwnership === "expo";
 
   // Keep a ref so socket callbacks always see the latest ride without stale closure
   const currentRideRef = useRef<any>(null);
@@ -434,6 +437,64 @@ export default function ClientHomeScreen() {
       locationWatchRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (Platform.OS === "web" || isExpoGoAndroid) return;
+    try {
+      // Load notifications only where supported to avoid Expo Go Android runtime errors.
+      notificationsRef.current = require("expo-notifications");
+    } catch {
+      notificationsRef.current = null;
+    }
+  }, [isExpoGoAndroid]);
+
+  useEffect(() => {
+    if (!user?.id || Platform.OS === "web" || isExpoGoAndroid) return;
+    (async () => {
+      try {
+        const Notifications = notificationsRef.current;
+        if (!Notifications) return;
+        if (Platform.OS === "android") {
+          await Notifications.setNotificationChannelAsync("client-alerts", {
+            name: "Client Alerts",
+            importance: Notifications.AndroidImportance.HIGH,
+            vibrationPattern: [0, 200, 200, 200],
+            sound: "default",
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          });
+        }
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== "granted") return;
+        const tokenData = await Notifications.getExpoPushTokenAsync();
+        if (tokenData?.data) {
+          await apiRequest("PUT", `/api/users/${user.id}/push-token`, { pushToken: tokenData.data });
+        }
+      } catch {}
+    })();
+  }, [user?.id, isExpoGoAndroid]);
+
+  useEffect(() => {
+    if (Platform.OS === "web" || isExpoGoAndroid) return;
+    const Notifications = notificationsRef.current;
+    if (!Notifications) return;
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+
+    const sub = Notifications.addNotificationResponseReceivedListener((response: any) => {
+      const data = response?.notification?.request?.content?.data as any;
+      if (data?.type?.startsWith("ride:")) {
+        setRideStatus((prev) => (prev === "idle" ? "requested" : prev));
+      }
+    });
+    return () => sub.remove();
+  }, [isExpoGoAndroid]);
 
   // Poll unread notification count for badge
   useEffect(() => {
