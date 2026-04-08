@@ -25,6 +25,12 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/query-client";
+import {
+  getBestAvailablePosition,
+  isRecentLocation,
+  toLatLng,
+  watchBestPosition,
+} from "@/lib/location-utils";
 import { useSocket } from "@/lib/socket-context";
 import { uploadDocument } from "@/lib/supabase-storage";
 import Colors from "@/constants/colors";
@@ -301,6 +307,8 @@ export default function ClientHomeScreen() {
   const [locationSuggestions, setLocationSuggestions] = useState<{ placeId: string; description: string; mainText: string; secondaryText: string; lat: number; lng: number }[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const autocompleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const locationWatchRef = useRef<Location.LocationSubscription | null>(null);
+  const pickupFollowsDeviceRef = useRef(true);
 
   // Keep a ref so socket callbacks always see the latest ride without stale closure
   const currentRideRef = useRef<any>(null);
@@ -314,6 +322,10 @@ export default function ClientHomeScreen() {
     requestLocation();
     // Persist mode so app reopens to the correct screen
     AsyncStorage.setItem("a2b_last_mode", "client").catch(() => {});
+    return () => {
+      locationWatchRef.current?.remove();
+      locationWatchRef.current = null;
+    };
   }, []);
 
   // Poll unread notification count for badge
@@ -339,29 +351,56 @@ export default function ClientHomeScreen() {
         const res = await apiRequest("GET", "/api/chauffeurs");
         const all = await res.json();
         const online = (all as any[])
-          .filter((c: any) => c.isOnline && c.isApproved && c.lat && c.lng)
+          .filter(
+            (c: any) =>
+              c.isOnline &&
+              c.isApproved &&
+              c.lat &&
+              c.lng &&
+              isRecentLocation(c.locationUpdatedAt),
+          )
           .map((c: any) => ({ id: String(c.id), lat: Number(c.lat), lng: Number(c.lng) }));
         setOnlineDrivers(online);
 
-        // Compute ETA to nearest driver using haversine distance
-        if (online.length > 0 && location) {
-          let minDist = Infinity;
-          for (const d of online) {
-            const dist = haversineDistance(location.lat, location.lng, d.lat, d.lng);
-            if (dist < minDist) minDist = dist;
-          }
-          // Assume ~30 km/h average speed in city
-          const etaMin = Math.max(1, Math.round((minDist / 30) * 60));
-          setNearestDriverEta(etaMin <= 1 ? "< 1 min away" : `~${etaMin} min away`);
-        } else {
-          setNearestDriverEta(null);
-        }
       } catch {}
     }
     fetchOnlineDrivers();
     const interval = setInterval(fetchOnlineDrivers, 20000);
     return () => clearInterval(interval);
-  }, [location]);
+  }, []);
+
+  useEffect(() => {
+    if (!location || onlineDrivers.length === 0) {
+      setNearestDriverEta(null);
+      return;
+    }
+
+    let minDist = Infinity;
+    for (const driver of onlineDrivers) {
+      const dist = haversineDistance(location.lat, location.lng, driver.lat, driver.lng);
+      if (dist < minDist) minDist = dist;
+    }
+
+    const etaMin = Math.max(1, Math.round((minDist / 30) * 60));
+    setNearestDriverEta(etaMin <= 1 ? "< 1 min away" : `~${etaMin} min away`);
+  }, [location?.lat, location?.lng, onlineDrivers]);
+
+  useEffect(() => {
+    const handleNearbyDriverLocation = (data: any) => {
+      if (!data?.chauffeurId || data.lat == null || data.lng == null) return;
+      setOnlineDrivers((prev) => {
+        if (!prev.some((driver) => driver.id === data.chauffeurId)) return prev;
+        return prev.map((driver) =>
+          driver.id === data.chauffeurId
+            ? { ...driver, lat: Number(data.lat), lng: Number(data.lng) }
+            : driver,
+        );
+      });
+    };
+
+    on("location:update", handleNearbyDriverLocation);
+    return () => off("location:update", handleNearbyDriverLocation);
+  }, [on, off]);
 
   // Draw route line as soon as pickup + dropoff are both known
   useEffect(() => {
@@ -491,6 +530,9 @@ export default function ClientHomeScreen() {
 
       const address = suggestion.description;
       if (locationPickerTarget === "pickup") {
+        pickupFollowsDeviceRef.current = false;
+        locationWatchRef.current?.remove();
+        locationWatchRef.current = null;
         setLocation(coords);
         setPickupAddress(address);
       } else {
@@ -509,7 +551,18 @@ export default function ClientHomeScreen() {
   async function useCurrentLocationForPickup() {
     setLocationPickerVisible(false);
     setLocationLoading(true);
+    pickupFollowsDeviceRef.current = true;
     await requestLocation();
+  }
+
+  async function startLocationWatch() {
+    if (Platform.OS === "web" || locationWatchRef.current) return;
+    try {
+      locationWatchRef.current = await watchBestPosition((position) => {
+        if (!pickupFollowsDeviceRef.current) return;
+        setLocation(toLatLng(position));
+      });
+    } catch {}
   }
 
   // Apply a ride status update received from socket or polling
@@ -802,18 +855,25 @@ export default function ClientHomeScreen() {
       }
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+        const loc = await getBestAvailablePosition();
+        await startLocationWatch();
+        if (pickupFollowsDeviceRef.current) {
+          setLocation(toLatLng(loc));
+        }
         try {
           const res = await apiRequest("GET", `/api/places/reverse?lat=${loc.coords.latitude}&lng=${loc.coords.longitude}`);
           const data = await res.json();
-          if (data.description) setPickupAddress(data.description);
+          if (pickupFollowsDeviceRef.current && data.description) setPickupAddress(data.description);
         } catch {}
       } else {
+        locationWatchRef.current?.remove();
+        locationWatchRef.current = null;
         setLocation({ lat: -26.2041, lng: 28.0473 });
         setPickupAddress("Johannesburg, South Africa");
       }
     } catch (e) {
+      locationWatchRef.current?.remove();
+      locationWatchRef.current = null;
       setLocation({ lat: -26.2041, lng: 28.0473 });
       setPickupAddress("Johannesburg, South Africa");
     } finally {

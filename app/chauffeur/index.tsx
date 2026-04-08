@@ -26,6 +26,12 @@ import * as Speech from "expo-speech";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
 import { useAuth } from "@/lib/auth-context";
+import {
+  RIDE_MATCH_RADIUS_KM,
+  getBestAvailablePosition,
+  toLatLng,
+  watchBestPosition,
+} from "@/lib/location-utils";
 import { apiRequest } from "@/lib/query-client";
 import { useSocket } from "@/lib/socket-context";
 import Colors from "@/constants/colors";
@@ -108,6 +114,7 @@ export default function ChauffeurDashboard() {
   const menuAnim = useRef(new Animated.Value(0)).current;
   const incomingSlide = useRef(new Animated.Value(300)).current;
   const notificationsRef = useRef<any>(null);
+  const locationWatchRef = useRef<Location.LocationSubscription | null>(null);
   const isExpoGoAndroid = Platform.OS === "android" && Constants.appOwnership === "expo";
 
   function getClientFirstName(name?: string | null, fallback = "Client") {
@@ -587,14 +594,39 @@ export default function ChauffeurDashboard() {
     const Notifications = notificationsRef.current;
     if (!Notifications) return;
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false }),
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
     });
+    async function hydrateIncomingRideFromNotification() {
+      if (!chauffeur?.id || currentRide) return;
+      try {
+        const res = await apiRequest("GET", `/api/rides/chauffeur-pending/${chauffeur.id}`);
+        if (!res.ok) return;
+        const ride = await res.json();
+        if (!ride?.id) return;
+        seenRideIdRef.current = ride.id;
+        const enrichedRide = await enrichRideClientDetails(ride, "Client");
+        setIncomingRide(enrichedRide);
+        if (ride.id !== suppressedRideAlertIdRef.current) {
+          playTripAlert();
+        }
+      } catch {}
+    }
+
     const sub = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data as any;
-      if (data?.type === "ride:new") setIsOnline(true);
+      if (data?.type === "ride:new") {
+        setIsOnline(true);
+        void hydrateIncomingRideFromNotification();
+      }
     });
     return () => sub.remove();
-  }, [isExpoGoAndroid]);
+  }, [chauffeur?.id, currentRide, isExpoGoAndroid]);
 
   // ─── Polling fallback ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -820,34 +852,45 @@ export default function ChauffeurDashboard() {
 
   const JHB_FALLBACK = { lat: -26.2041, lng: 28.0473 };
 
+  function publishChauffeurLocation(next: { lat: number; lng: number }) {
+    setMyLocation(next);
+    if (chauffeur?.id) {
+      emit("chauffeur:location", { chauffeurId: chauffeur.id, lat: next.lat, lng: next.lng });
+    }
+  }
+
   async function startLocationUpdates() {
     try {
+      stopLocationUpdates();
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") { setMyLocation(JHB_FALLBACK); return; }
-      let initialLoc: { lat: number; lng: number } | null = null;
+
       try {
-        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        initialLoc = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+        const loc = await getBestAvailablePosition();
+        publishChauffeurLocation(toLatLng(loc));
       } catch {
-        try {
-          const last = await Location.getLastKnownPositionAsync();
-          if (last) initialLoc = { lat: last.coords.latitude, lng: last.coords.longitude };
-        } catch {}
+        setMyLocation(JHB_FALLBACK);
       }
-      setMyLocation(initialLoc ?? JHB_FALLBACK);
+
+      try {
+        locationWatchRef.current = await watchBestPosition((loc) => {
+          publishChauffeurLocation(toLatLng(loc));
+        });
+      } catch {}
+
       const interval = setInterval(async () => {
         try {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-          const next = { lat: loc.coords.latitude, lng: loc.coords.longitude };
-          setMyLocation(next);
-          emit("chauffeur:location", { chauffeurId: chauffeur?.id, lat: next.lat, lng: next.lng });
+          const loc = await getBestAvailablePosition();
+          publishChauffeurLocation(toLatLng(loc));
         } catch {}
-      }, 5000);
+      }, 15000);
       setLocationIntervalId(interval);
     } catch { setMyLocation(JHB_FALLBACK); }
   }
 
   function stopLocationUpdates() {
+    locationWatchRef.current?.remove();
+    locationWatchRef.current = null;
     if (locationInterval) { clearInterval(locationInterval); setLocationIntervalId(null); }
   }
 
@@ -1328,7 +1371,7 @@ export default function ChauffeurDashboard() {
             <Text style={styles.tripsPanelTitle}>
               {availableTrips.length > 0
                 ? `${availableTrips.length} trip${availableTrips.length > 1 ? "s" : ""} available`
-                : "Searching for trips..."}
+                  : `Searching for trips within ${RIDE_MATCH_RADIUS_KM} km...`}
             </Text>
             {availableTrips.length === 0 && <ActivityIndicator size="small" color={Colors.accent} style={{ marginLeft: 4 }} />}
           </View>

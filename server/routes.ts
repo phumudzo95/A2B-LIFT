@@ -19,7 +19,25 @@ import { authOptional, requireAuth, requireRole, type AuthedRequest } from "./au
 import { signAccessToken, type UserRole } from "./auth";
 import { externalApiService } from "./external-api-service";
 
-async function sendExpoPushNotification(tokens: string[], title: string, body: string, data?: object) {
+const RIDE_MATCH_RADIUS_KM = 25;
+const CHAUFFEUR_LOCATION_STALE_WINDOW_MS = 10 * 60 * 1000;
+
+function hasFreshChauffeurLocation(chauffeur: { lat?: number | null; lng?: number | null; locationUpdatedAt?: Date | string | null }) {
+  if (chauffeur.lat == null || chauffeur.lng == null) return false;
+  if (!chauffeur.locationUpdatedAt) return true;
+  const timestamp = new Date(chauffeur.locationUpdatedAt).getTime();
+  if (!Number.isFinite(timestamp)) return true;
+  return Date.now() - timestamp <= CHAUFFEUR_LOCATION_STALE_WINDOW_MS;
+}
+
+async function sendExpoPushNotification(
+  tokens: string[],
+  title: string,
+  body: string,
+  data?: object,
+  options?: { urgent?: boolean },
+) {
+  const urgent = options?.urgent ?? false;
   const messages = tokens
     .filter(t => t && t.startsWith("ExponentPushToken["))
     .map(to => ({
@@ -28,9 +46,12 @@ async function sendExpoPushNotification(tokens: string[], title: string, body: s
       title,
       body,
       data: data || {},
-      priority: "high",
-      channelId: "ride-alerts",
-      android: { channelId: "ride-alerts", priority: "max", sound: "default" },
+      badge: urgent ? 1 : undefined,
+      priority: urgent ? "high" : "default",
+      ttl: urgent ? 0 : undefined,
+      channelId: urgent ? "ride-alerts" : undefined,
+      interruptionLevel: urgent ? "time-sensitive" : undefined,
+      android: urgent ? { channelId: "ride-alerts", sound: "default" } : undefined,
     }));
   if (messages.length === 0) return;
   try {
@@ -1735,20 +1756,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch {}
       const enrichedRide = { ...ride, clientFirstName };
 
-      // Send trip only to nearby approved online drivers (within 15 km, sorted by distance)
+      // Send trip only to nearby approved online drivers (sorted by distance)
       const allChauffeurs = await storage.getAllChauffeurs();
       const pickupLat = parseFloat(rideData.pickupLat);
       const pickupLng = parseFloat(rideData.pickupLng);
 
       const nearbyChauffeurs = allChauffeurs
-        .filter(c => c.isOnline && c.isApproved && c.lat && c.lng)
+        .filter(c => c.isOnline && c.isApproved && hasFreshChauffeurLocation(c))
         .map(c => ({
           ...c,
           distKm: haversine(pickupLat, pickupLng, Number(c.lat), Number(c.lng)),
         }))
-        .filter(c => c.distKm <= 15)
+        .filter(c => c.distKm <= RIDE_MATCH_RADIUS_KM)
         .sort((a, b) => a.distKm - b.distKm)
-        .slice(0, 5); // notify up to 5 nearest drivers
+        .slice(0, 10); // notify up to 10 nearest drivers
 
       if (nearbyChauffeurs.length > 0) {
         // Emit only to connected sockets belonging to nearby drivers
@@ -1772,21 +1793,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             pushTokens,
             "🚗 New Ride Request",
             `Pickup: ${ride.pickupAddress || "Nearby"} — tap to accept`,
-            { rideId: ride.id, type: "ride:new" }
+              { rideId: ride.id, type: "ride:new" },
+              { urgent: true }
           );
         }
       } else {
         // No nearby drivers — broadcast to all online approved drivers as fallback
         io.emit("ride:new", enrichedRide);
         // Push to ALL online approved drivers with tokens
-        const allDrivers = (await storage.getAllChauffeurs()).filter(c => c.isOnline && c.isApproved);
+          const allDrivers = (await storage.getAllChauffeurs()).filter(c => c.isOnline && c.isApproved && hasFreshChauffeurLocation(c));
         const pushTokens = allDrivers.map(c => (c as any).pushToken).filter(Boolean);
         if (pushTokens.length > 0) {
           sendExpoPushNotification(
             pushTokens,
             "🚗 New Ride Request",
             `Pickup: ${ride.pickupAddress || "Nearby"} — tap to accept`,
-            { rideId: ride.id, type: "ride:new" }
+              { rideId: ride.id, type: "ride:new" },
+              { urgent: true }
           );
         }
       }
@@ -2520,7 +2543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               parseFloat(r.pickupLat as any), parseFloat(r.pickupLng as any)
             ),
           }))
-          .filter((r: any) => r.distKm <= 15)
+            .filter((r: any) => r.distKm <= RIDE_MATCH_RADIUS_KM)
           .sort((a: any, b: any) => a.distKm - b.distKm) as typeof searching;
       }
 
@@ -2564,8 +2587,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // If driver has a location, return the nearest searching ride within 15km
-      if (chauffeur.lat && chauffeur.lng) {
+        // If driver has a fresh location, return the nearest searching ride within the match radius
+        if (hasFreshChauffeurLocation(chauffeur)) {
         const withDist = searching
           .map((r) => ({
             ...r,
@@ -2574,7 +2597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               parseFloat(r.pickupLat as any), parseFloat(r.pickupLng as any)
             ),
           }))
-          .filter((r) => r.distKm <= 15)
+            .filter((r) => r.distKm <= RIDE_MATCH_RADIUS_KM)
           .sort((a, b) => a.distKm - b.distKm);
         if (!withDist.length) return res.status(204).end();
         return res.json(await enrichRide(withDist[0]));
