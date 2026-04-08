@@ -2,12 +2,14 @@ import React, { useRef, useEffect, useMemo, useCallback } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, Platform } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import Colors from "@/constants/colors";
 
 const GOOGLE_MAPS_API_KEY =
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ||
-  "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0";
+  Constants.expoConfig?.extra?.googleMapsApiKey ||
+  "";
 
 // Fallback region — Johannesburg CBD. Used when GPS not yet acquired so map
 // never renders at world zoom level.

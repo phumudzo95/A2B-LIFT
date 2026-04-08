@@ -449,7 +449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Maps helpers — Google Places API only
   // -----------------------------
 
-  const GOOGLE_KEY = process.env.GOOGLE_API_KEY || "AIzaSyAY-_nYP4PvZcKDaY-KVuZXx0oB0syx1N0";
+  const GOOGLE_KEY = process.env.GOOGLE_API_KEY || "";
   const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
   const MAPS_USER_AGENT = "A2B-LIFT/1.0 (support@a2blift.app)";
 
