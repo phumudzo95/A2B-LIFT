@@ -28,9 +28,30 @@ import {
   Platform,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import * as FaceDetector from "expo-face-detector";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
+
+type FaceDetectorModuleType = typeof import("expo-face-detector");
+
+type DetectedFace = {
+  leftEyeOpenProbability?: number;
+  rightEyeOpenProbability?: number;
+  smilingProbability?: number;
+  yawAngle?: number;
+  rollAngle?: number;
+  bounds: {
+    origin: { x: number; y: number };
+    size: { width: number; height: number };
+  };
+};
+
+let FaceDetector: FaceDetectorModuleType | null = null;
+
+try {
+  FaceDetector = require("expo-face-detector");
+} catch {
+  FaceDetector = null;
+}
 
 /* ─── types ──────────────────────────────────────────────────────────────── */
 
@@ -89,7 +110,7 @@ const CHALLENGE_ICONS: Record<LivenessChallenge, string> = {
 
 function challengePassed(
   challenge: LivenessChallenge,
-  face: FaceDetector.FaceFeature
+  face: DetectedFace
 ): boolean {
   const left = face.leftEyeOpenProbability ?? 1;
   const right = face.rightEyeOpenProbability ?? 1;
@@ -110,7 +131,7 @@ function challengePassed(
   }
 }
 
-function faceInOval(face: FaceDetector.FaceFeature): boolean {
+function faceInOval(face: DetectedFace): boolean {
   const b = face.bounds;
   const faceCx = b.origin.x + b.size.width / 2;
   const faceCy = b.origin.y + b.size.height / 2;
@@ -129,7 +150,7 @@ function faceInOval(face: FaceDetector.FaceFeature): boolean {
   return centred && goodSize;
 }
 
-function computeScore(face: FaceDetector.FaceFeature, challenge: LivenessChallenge): number {
+function computeScore(face: DetectedFace, challenge: LivenessChallenge): number {
   const filled = faceInOval(face) ? 0.4 : 0;
   const passed = challengePassed(challenge, face) ? 0.55 : 0;
   return Math.min(filled + passed + 0.05, 1.0);
@@ -140,11 +161,12 @@ function computeScore(face: FaceDetector.FaceFeature, challenge: LivenessChallen
 export default function LivenessCamera({ challenge, onCapture, onCancel }: Props) {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
-  const [faces, setFaces] = useState<FaceDetector.FaceFeature[]>([]);
+  const [faces, setFaces] = useState<DetectedFace[]>([]);
   const [step, setStep] = useState<"position" | "challenge" | "capturing" | "done">("position");
   const [challengeDone, setChallengeDone] = useState(false);
   const challengeDoneRef = useRef(false);
   const capturingRef = useRef(false);
+  const hasFaceDetector = Boolean(FaceDetector);
 
   // Animations
   const ovalAnim = useRef(new Animated.Value(0)).current; // 0=idle, 1=good
@@ -166,7 +188,7 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
 
   /* ── face detection handler ── */
   const handleFacesDetected = useCallback(
-    ({ faces: detected }: { faces: FaceDetector.FaceFeature[] }) => {
+    ({ faces: detected }: { faces: DetectedFace[] }) => {
       setFaces(detected);
 
       if (capturingRef.current || challengeDoneRef.current) return;
@@ -210,7 +232,7 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
 
   /* ── capture ── */
   const doCapture = useCallback(
-    async (face: FaceDetector.FaceFeature) => {
+    async (face: DetectedFace) => {
       if (capturingRef.current) return;
       capturingRef.current = true;
       try {
@@ -301,6 +323,7 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
   });
 
   const instruction =
+    !hasFaceDetector ? "Face detection unavailable in Expo Go" :
     step === "position" ? "Centre your face in the oval" :
     step === "challenge" ? CHALLENGE_LABELS[challenge] :
     step === "capturing" ? "Hold still…" :
@@ -319,14 +342,18 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
         facing="front"
-        onFacesDetected={Platform.OS !== "web" ? handleFacesDetected : undefined}
-        faceDetectorSettings={{
-          mode: FaceDetector.FaceDetectorMode.fast,
-          detectLandmarks: FaceDetector.FaceDetectorLandmarks.all,
-          runClassifications: FaceDetector.FaceDetectorClassifications.all,
-          minDetectionInterval: 120,
-          tracking: true,
-        }}
+        onFacesDetected={Platform.OS !== "web" && hasFaceDetector ? handleFacesDetected : undefined}
+        faceDetectorSettings={
+          Platform.OS !== "web" && hasFaceDetector && FaceDetector
+            ? {
+                mode: FaceDetector.FaceDetectorMode.fast,
+                detectLandmarks: FaceDetector.FaceDetectorLandmarks.all,
+                runClassifications: FaceDetector.FaceDetectorClassifications.all,
+                minDetectionInterval: 120,
+                tracking: true,
+              }
+            : undefined
+        }
       />
 
       {/* Dark vignette overlay everywhere except the oval */}
@@ -432,12 +459,14 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
         {/* Tip */}
         {step === "position" && (
           <Text style={styles.tip}>
-            Ensure good lighting • Remove glasses if needed • Face the camera directly
+            {hasFaceDetector
+              ? "Ensure good lighting • Remove glasses if needed • Face the camera directly"
+              : "This Expo Go client does not include face detection. Use manual capture for testing."}
           </Text>
         )}
 
         {/* Manual capture fallback (for simulators / testing) */}
-        {step === "challenge" && Platform.OS !== "web" && (
+        {Platform.OS !== "web" && (!hasFaceDetector || step === "challenge") && (
           <Pressable
             style={styles.manualBtn}
             onPress={async () => {
