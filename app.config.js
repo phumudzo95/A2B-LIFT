@@ -114,7 +114,7 @@ module.exports = {
       googleMapsApiKey,
     },
     runtimeVersion: {
-      policy: "appVersion",
+      policy: "fingerprint",
     },
     updates: {
       url: "https://u.expo.dev/f282a582-7512-48d6-b563-13aa571d9115",
