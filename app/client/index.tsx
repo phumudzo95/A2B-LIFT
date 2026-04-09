@@ -36,6 +36,7 @@ import { useSocket } from "@/lib/socket-context";
 import { uploadDocument } from "@/lib/supabase-storage";
 import Colors from "@/constants/colors";
 import A2BMap from "@/components/A2BMap";
+import LivenessCamera, { type LivenessChallenge, type LivenessCaptureResult } from "@/components/LivenessCamera";
 
 const VEHICLE_TYPES = [
   { id: "budget", name: "Budget", desc: "Toyota Corolla, Toyota Quest", icon: "car-outline" as const, pricePerKm: 7, baseFare: 50 },
@@ -381,12 +382,14 @@ export default function ClientHomeScreen() {
 
   // Cash liveness flow
   const [showCashLiveness, setShowCashLiveness] = useState(false);
+  const [showLivenessCamera, setShowLivenessCamera] = useState(false);
   const [livenessSessionId, setLivenessSessionId] = useState<string | null>(null);
-  const [livenessChallenge, setLivenessChallenge] = useState<string>("");
+  const [livenessChallenge, setLivenessChallenge] = useState<LivenessChallenge>("look_straight");
   const [livenessAttempts, setLivenessAttempts] = useState(0);
   const [livenessMaxAttempts, setLivenessMaxAttempts] = useState(3);
   const [livenessSelfieLocalUri, setLivenessSelfieLocalUri] = useState<string | null>(null);
   const [livenessSelfieUrl, setLivenessSelfieUrl] = useState<string | null>(null);
+  const [livenessFaceData, setLivenessFaceData] = useState<LivenessCaptureResult["faceData"] | null>(null);
   const [livenessPassed, setLivenessPassed] = useState(false);
   const [livenessBusy, setLivenessBusy] = useState(false);
   const [livenessMessage, setLivenessMessage] = useState<string>("");
@@ -1209,15 +1212,27 @@ export default function ClientHomeScreen() {
 
   function resetCashLiveness(closeModal = false) {
     if (closeModal) setShowCashLiveness(false);
+    setShowLivenessCamera(false);
     setLivenessSessionId(null);
-    setLivenessChallenge("");
+    setLivenessChallenge("look_straight");
     setLivenessAttempts(0);
     setLivenessMaxAttempts(3);
     setLivenessSelfieLocalUri(null);
     setLivenessSelfieUrl(null);
+    setLivenessFaceData(null);
     setLivenessPassed(false);
     setLivenessBusy(false);
     setLivenessMessage("");
+  }
+
+  /** Map server challenge label to LivenessChallenge enum */
+  function parseLivenessChallenge(raw: string): LivenessChallenge {
+    const s = (raw || "").toLowerCase();
+    if (s.includes("blink")) return "blink";
+    if (s.includes("smile")) return "smile";
+    if (s.includes("left")) return "turn_left";
+    if (s.includes("right")) return "turn_right";
+    return "look_straight";
   }
 
   async function openCashLivenessFlow() {
@@ -1229,10 +1244,10 @@ export default function ClientHomeScreen() {
       const res = await apiRequest("POST", "/api/liveness/session", {});
       const data = await res.json();
       setLivenessSessionId(data.sessionId || null);
-      setLivenessChallenge(data.challenge || "Blink and smile");
+      setLivenessChallenge(parseLivenessChallenge(data.challenge || ""));
       setLivenessAttempts(Number(data.attempts || 0));
       setLivenessMaxAttempts(Number(data.maxAttempts || 3));
-      setLivenessMessage("Session ready. Capture your selfie to continue.");
+      setLivenessMessage("");
     } catch (error: any) {
       setLivenessMessage(error?.message || "Could not start liveness verification.");
     } finally {
@@ -1240,43 +1255,27 @@ export default function ClientHomeScreen() {
     }
   }
 
-  async function captureAndVerifyLiveness() {
-    if (!user || !livenessSessionId) return;
+  /** Called by LivenessCamera once it auto-captures a face + challenge */
+  async function handleLivenessCapture(result: LivenessCaptureResult) {
+    setShowLivenessCamera(false);
+    if (!result.passed) {
+      setLivenessMessage("Capture failed. Please try again.");
+      return;
+    }
+    setLivenessSelfieLocalUri(result.uri);
+    setLivenessFaceData(result.faceData || null);
     setLivenessBusy(true);
-    setLivenessMessage("Opening camera...");
+    setLivenessMessage("Uploading selfie securely...");
     try {
-      if (Platform.OS !== "web") {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== "granted") {
-          Alert.alert("Permission needed", "Please allow camera access to continue cash verification.");
-          setLivenessBusy(false);
-          return;
-        }
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        quality: 0.7,
-        allowsEditing: true,
-        aspect: [1, 1],
-        cameraType: ImagePicker.CameraType.front,
-      });
-
-      if (result.canceled || !result.assets?.[0]) {
-        setLivenessMessage("Capture cancelled.");
-        setLivenessBusy(false);
-        return;
-      }
-
-      const selfieUri = result.assets[0].uri;
-      setLivenessSelfieLocalUri(selfieUri);
-      setLivenessMessage("Uploading selfie securely...");
-      const uploadedUrl = await uploadDocument(selfieUri, user.id, "cash_liveness_selfie");
+      const uploadedUrl = await uploadDocument(result.uri, user!.id, "cash_liveness_selfie");
       setLivenessSelfieUrl(uploadedUrl);
 
       setLivenessMessage("Verifying liveness...");
       const verifyRes = await apiRequest("POST", "/api/liveness/verify", {
         sessionId: livenessSessionId,
         selfieUrl: uploadedUrl,
+        faceData: result.faceData,
+        challenge: result.challenge,
       });
       const verifyData = await verifyRes.json();
 
@@ -1285,8 +1284,8 @@ export default function ClientHomeScreen() {
       setLivenessAttempts((prev) => prev + 1);
       setLivenessMessage(
         passed
-          ? "Verification passed. You can now continue with cash booking."
-          : (verifyData?.reason || "Verification failed. Please retake your selfie."),
+          ? "Verification passed ✓  You can now continue with your cash ride."
+          : verifyData?.reason || "Verification failed. Please try again.",
       );
     } catch (error: any) {
       setLivenessMessage(error?.message || "Liveness verification failed. Please try again.");
@@ -2265,73 +2264,84 @@ export default function ClientHomeScreen() {
         animationType="slide"
         onRequestClose={() => resetCashLiveness(true)}
       >
-        <ScrollView style={{ flex: 1, backgroundColor: Colors.primary }} contentContainerStyle={[styles.livenessContainer, { paddingTop: insets.top + 8, flexGrow: 1 }]} keyboardShouldPersistTaps="handled">
-          <View style={styles.livenessHeader}>
-            <Pressable onPress={() => resetCashLiveness(true)} hitSlop={12}>
-              <Ionicons name="arrow-back" size={24} color={Colors.white} />
-            </Pressable>
-            <Text style={styles.livenessTitle}>Cash Verification</Text>
-            <View style={{ width: 24 }} />
-          </View>
-
-          <View style={styles.livenessCard}>
-            <Text style={styles.livenessHeadline}>Liveness Check Required</Text>
-            <Text style={styles.livenessBodyText}>
-              Before requesting a cash trip, take a live selfie. This helps prevent fraud and secures cash collections.
-            </Text>
-            <Text style={styles.livenessFareNote}>
-              Fare reminder: route choice affects the final fare. Confirm route with your driver before trip starts.
-            </Text>
-            <View style={styles.livenessMetaRow}>
-              <Text style={styles.livenessMetaText}>Attempts: {livenessAttempts}/{livenessMaxAttempts}</Text>
+        {showLivenessCamera && livenessSessionId ? (
+          <LivenessCamera
+            challenge={livenessChallenge}
+            onCapture={handleLivenessCapture}
+            onCancel={() => setShowLivenessCamera(false)}
+          />
+        ) : (
+          <ScrollView
+            style={{ flex: 1, backgroundColor: Colors.primary }}
+            contentContainerStyle={[styles.livenessContainer, { paddingTop: insets.top + 8, flexGrow: 1 }]}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.livenessHeader}>
+              <Pressable onPress={() => resetCashLiveness(true)} hitSlop={12}>
+                <Ionicons name="arrow-back" size={24} color={Colors.white} />
+              </Pressable>
+              <Text style={styles.livenessTitle}>Cash Verification</Text>
+              <View style={{ width: 24 }} />
             </View>
-            {!!livenessChallenge && (
-              <View style={styles.challengeBox}>
-                <Ionicons name="sparkles-outline" size={16} color={Colors.accent} />
-                <Text style={styles.challengeText}>Action: {livenessChallenge}</Text>
+
+            <View style={styles.livenessCard}>
+              <Text style={styles.livenessHeadline}>Liveness Check Required</Text>
+              <Text style={styles.livenessBodyText}>
+                Before requesting a cash trip, we need to verify you are a real person. Look into the camera and follow the on-screen challenge.
+              </Text>
+              <View style={styles.livenessMetaRow}>
+                <Text style={styles.livenessMetaText}>Attempts: {livenessAttempts}/{livenessMaxAttempts}</Text>
               </View>
-            )}
-          </View>
+            </View>
 
-          <View style={styles.livenessPreviewWrap}>
-            {livenessSelfieLocalUri ? (
-              <Image source={{ uri: livenessSelfieLocalUri }} style={styles.livenessPreviewImg} />
-            ) : (
-              <View style={styles.livenessPlaceholder}>
-                <Ionicons name="person-circle-outline" size={82} color={Colors.textMuted} />
-                <Text style={styles.livenessPlaceholderText}>No selfie captured yet</Text>
-              </View>
-            )}
-          </View>
-
-          {!!livenessMessage && (
-            <Text style={styles.livenessStatusText}>{livenessMessage}</Text>
-          )}
-
-          <View style={styles.livenessActions}>
-            <Pressable
-              style={[styles.livenessBtnSecondary, livenessBusy && { opacity: 0.6 }]}
-              disabled={livenessBusy}
-              onPress={captureAndVerifyLiveness}
-            >
-              {livenessBusy ? (
-                <ActivityIndicator size="small" color={Colors.white} />
+            <View style={styles.livenessPreviewWrap}>
+              {livenessSelfieLocalUri ? (
+                <Image source={{ uri: livenessSelfieLocalUri }} style={styles.livenessPreviewImg} />
               ) : (
-                <Text style={styles.livenessBtnSecondaryText}>
-                  {livenessSelfieLocalUri ? "Retake Selfie" : "Start Liveness"}
-                </Text>
+                <View style={styles.livenessPlaceholder}>
+                  <Ionicons name="scan-outline" size={64} color={Colors.textMuted} />
+                  <Text style={styles.livenessPlaceholderText}>Face scan not yet captured</Text>
+                </View>
               )}
-            </Pressable>
+              {livenessPassed && (
+                <View style={styles.livenessPassedBadge}>
+                  <Ionicons name="checkmark-circle" size={22} color="#6EE86E" />
+                  <Text style={styles.livenessPassedText}>Verified</Text>
+                </View>
+              )}
+            </View>
 
-            <Pressable
-              style={[styles.livenessBtnPrimary, !livenessPassed && styles.livenessBtnDisabled]}
-              disabled={!livenessPassed || livenessBusy}
-              onPress={continueWithVerifiedCashRide}
-            >
-              <Text style={styles.livenessBtnPrimaryText}>Continue With Cash Ride</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
+            {!!livenessMessage && (
+              <Text style={[styles.livenessStatusText, livenessPassed && { color: "#6EE86E" }]}>
+                {livenessMessage}
+              </Text>
+            )}
+
+            <View style={styles.livenessActions}>
+              <Pressable
+                style={[styles.livenessBtnSecondary, (livenessBusy || !livenessSessionId) && { opacity: 0.55 }]}
+                disabled={livenessBusy || !livenessSessionId}
+                onPress={() => setShowLivenessCamera(true)}
+              >
+                {livenessBusy ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Text style={styles.livenessBtnSecondaryText}>
+                    {livenessSelfieLocalUri ? "Retry Liveness Check" : "Start Liveness Check"}
+                  </Text>
+                )}
+              </Pressable>
+
+              <Pressable
+                style={[styles.livenessBtnPrimary, !livenessPassed && styles.livenessBtnDisabled]}
+                disabled={!livenessPassed || livenessBusy}
+                onPress={continueWithVerifiedCashRide}
+              >
+                <Text style={styles.livenessBtnPrimaryText}>Continue With Cash Ride</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        )}
       </Modal>
 
       {/* Location Picker Modal */}
@@ -3986,6 +3996,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_500Medium",
     color: Colors.textMuted,
+  },
+  livenessPassedBadge: {
+    position: "absolute",
+    bottom: 10,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(110,232,110,0.15)",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "rgba(110,232,110,0.4)",
+  },
+  livenessPassedText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#6EE86E",
   },
   livenessStatusText: {
     marginTop: 12,

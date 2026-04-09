@@ -1,0 +1,682 @@
+/**
+ * LivenessCamera.tsx
+ *
+ * A full-screen guided selfie capture component with real-time face detection.
+ * Uses expo-camera + expo-face-detector to:
+ *   1. Show an animated oval face guide
+ *   2. Detect if a real human face is centred and fills the oval
+ *   3. Issue a random liveness challenge (blink / smile / turn left / turn right)
+ *   4. Auto-capture once the challenge is satisfied
+ *   5. Return the captured image URI + face metadata to the parent
+ *
+ * Works in Expo Go (no custom native build required).
+ */
+
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Animated,
+  Dimensions,
+  Platform,
+} from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import * as FaceDetector from "expo-face-detector";
+import { Ionicons } from "@expo/vector-icons";
+import Colors from "@/constants/colors";
+
+/* ─── types ──────────────────────────────────────────────────────────────── */
+
+export type LivenessChallenge = "blink" | "smile" | "turn_left" | "turn_right" | "look_straight";
+
+export interface LivenessCaptureResult {
+  uri: string;
+  /** true = face detected & challenge passed */
+  passed: boolean;
+  /** 0-1 confidence score */
+  score: number;
+  challenge: LivenessChallenge;
+  faceData?: {
+    leftEyeOpenProbability: number;
+    rightEyeOpenProbability: number;
+    smilingProbability: number;
+    yawAngle: number;
+    rollAngle: number;
+    bounds: { x: number; y: number; width: number; height: number };
+  };
+}
+
+interface Props {
+  challenge: LivenessChallenge;
+  onCapture: (result: LivenessCaptureResult) => void;
+  onCancel: () => void;
+}
+
+/* ─── constants ──────────────────────────────────────────────────────────── */
+
+const { width: SW, height: SH } = Dimensions.get("window");
+
+// Oval guide dimensions — slightly taller than wide, centred at 42% from top
+const OVAL_W = SW * 0.68;
+const OVAL_H = OVAL_W * 1.28;
+const OVAL_X = (SW - OVAL_W) / 2;
+const OVAL_Y = SH * 0.14;
+
+const CHALLENGE_LABELS: Record<LivenessChallenge, string> = {
+  blink: "Blink slowly",
+  smile: "Smile naturally",
+  turn_left: "Slowly turn left",
+  turn_right: "Slowly turn right",
+  look_straight: "Look straight ahead",
+};
+
+const CHALLENGE_ICONS: Record<LivenessChallenge, string> = {
+  blink: "eye-outline",
+  smile: "happy-outline",
+  turn_left: "arrow-back-outline",
+  turn_right: "arrow-forward-outline",
+  look_straight: "radio-button-on-outline",
+};
+
+/* ─── helpers ────────────────────────────────────────────────────────────── */
+
+function challengePassed(
+  challenge: LivenessChallenge,
+  face: FaceDetector.FaceFeature
+): boolean {
+  const left = face.leftEyeOpenProbability ?? 1;
+  const right = face.rightEyeOpenProbability ?? 1;
+  const smile = face.smilingProbability ?? 0;
+  const yaw = face.yawAngle ?? 0;
+
+  switch (challenge) {
+    case "blink":
+      return left < 0.25 && right < 0.25;
+    case "smile":
+      return smile > 0.75;
+    case "turn_left":
+      return yaw < -18;
+    case "turn_right":
+      return yaw > 18;
+    case "look_straight":
+      return Math.abs(yaw) < 12;
+  }
+}
+
+function faceInOval(face: FaceDetector.FaceFeature): boolean {
+  const b = face.bounds;
+  const faceCx = b.origin.x + b.size.width / 2;
+  const faceCy = b.origin.y + b.size.height / 2;
+  const ovalCx = OVAL_X + OVAL_W / 2;
+  const ovalCy = OVAL_Y + OVAL_H / 2;
+
+  // Face centre must be within 28% of oval centre
+  const dx = Math.abs(faceCx - ovalCx) / (OVAL_W / 2);
+  const dy = Math.abs(faceCy - ovalCy) / (OVAL_H / 2);
+  const centred = dx < 0.28 && dy < 0.28;
+
+  // Face must fill at least 55% of oval width
+  const fillRatio = b.size.width / OVAL_W;
+  const goodSize = fillRatio > 0.55 && fillRatio < 1.4;
+
+  return centred && goodSize;
+}
+
+function computeScore(face: FaceDetector.FaceFeature, challenge: LivenessChallenge): number {
+  const filled = faceInOval(face) ? 0.4 : 0;
+  const passed = challengePassed(challenge, face) ? 0.55 : 0;
+  return Math.min(filled + passed + 0.05, 1.0);
+}
+
+/* ─── component ──────────────────────────────────────────────────────────── */
+
+export default function LivenessCamera({ challenge, onCapture, onCancel }: Props) {
+  const cameraRef = useRef<CameraView>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [faces, setFaces] = useState<FaceDetector.FaceFeature[]>([]);
+  const [step, setStep] = useState<"position" | "challenge" | "capturing" | "done">("position");
+  const [challengeDone, setChallengeDone] = useState(false);
+  const challengeDoneRef = useRef(false);
+  const capturingRef = useRef(false);
+
+  // Animations
+  const ovalAnim = useRef(new Animated.Value(0)).current; // 0=idle, 1=good
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const checkAnim = useRef(new Animated.Value(0)).current;
+  const bgAnim = useRef(new Animated.Value(0)).current;
+
+  /* ── pulse loop ── */
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.04, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  /* ── face detection handler ── */
+  const handleFacesDetected = useCallback(
+    ({ faces: detected }: { faces: FaceDetector.FaceFeature[] }) => {
+      setFaces(detected);
+
+      if (capturingRef.current || challengeDoneRef.current) return;
+
+      const face = detected[0];
+      if (!face) {
+        setStep("position");
+        Animated.timing(ovalAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
+        Animated.timing(bgAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
+        return;
+      }
+
+      const inOval = faceInOval(face);
+
+      if (!inOval) {
+        setStep("position");
+        Animated.timing(ovalAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
+        Animated.timing(bgAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
+        return;
+      }
+
+      // Face is in oval → show challenge
+      setStep("challenge");
+      Animated.timing(ovalAnim, { toValue: 0.5, duration: 300, useNativeDriver: false }).start();
+
+      if (challengePassed(challenge, face)) {
+        // Challenge satisfied → capture
+        challengeDoneRef.current = true;
+        setChallengeDone(true);
+        setStep("capturing");
+        Animated.parallel([
+          Animated.timing(ovalAnim, { toValue: 1, duration: 300, useNativeDriver: false }),
+          Animated.timing(bgAnim, { toValue: 1, duration: 400, useNativeDriver: false }),
+          Animated.spring(checkAnim, { toValue: 1, useNativeDriver: true }),
+        ]).start();
+        doCapture(face);
+      }
+    },
+    [challenge]
+  );
+
+  /* ── capture ── */
+  const doCapture = useCallback(
+    async (face: FaceDetector.FaceFeature) => {
+      if (capturingRef.current) return;
+      capturingRef.current = true;
+      try {
+        await new Promise((r) => setTimeout(r, 350)); // let the animation show
+        const photo = await cameraRef.current?.takePictureAsync({
+          quality: 0.82,
+          base64: false,
+          skipProcessing: false,
+        });
+        if (!photo) throw new Error("Camera returned no photo");
+        setStep("done");
+        const score = computeScore(face, challenge);
+        onCapture({
+          uri: photo.uri,
+          passed: true,
+          score,
+          challenge,
+          faceData: {
+            leftEyeOpenProbability: face.leftEyeOpenProbability ?? 1,
+            rightEyeOpenProbability: face.rightEyeOpenProbability ?? 1,
+            smilingProbability: face.smilingProbability ?? 0,
+            yawAngle: face.yawAngle ?? 0,
+            rollAngle: face.rollAngle ?? 0,
+            bounds: {
+              x: face.bounds.origin.x,
+              y: face.bounds.origin.y,
+              width: face.bounds.size.width,
+              height: face.bounds.size.height,
+            },
+          },
+        });
+      } catch {
+        // Reset on failure
+        capturingRef.current = false;
+        challengeDoneRef.current = false;
+        setStep("position");
+        setChallengeDone(false);
+        checkAnim.setValue(0);
+        ovalAnim.setValue(0);
+        bgAnim.setValue(0);
+      }
+    },
+    [challenge, onCapture]
+  );
+
+  /* ── permission gate ── */
+  useEffect(() => {
+    if (!permission?.granted) requestPermission();
+  }, [permission]);
+
+  if (!permission) return null;
+
+  if (!permission.granted) {
+    return (
+      <View style={styles.permissionContainer}>
+        <Ionicons name="camera-outline" size={56} color={Colors.white} />
+        <Text style={styles.permissionTitle}>Camera Access Required</Text>
+        <Text style={styles.permissionBody}>
+          We need your camera to verify your identity for cash rides.
+        </Text>
+        <Pressable style={styles.permissionBtn} onPress={requestPermission}>
+          <Text style={styles.permissionBtnText}>Allow Camera</Text>
+        </Pressable>
+        <Pressable onPress={onCancel} style={{ marginTop: 16 }}>
+          <Text style={{ color: Colors.textMuted, fontSize: 14 }}>Cancel</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  /* ── derived UI state ── */
+  const hasFace = faces.length > 0;
+  const faceGood = hasFace && faceInOval(faces[0]);
+
+  const ovalColor = ovalAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: ["rgba(255,255,255,0.35)", "rgba(255,220,50,0.85)", "rgba(100,220,100,0.95)"],
+  });
+
+  const ovalGlow = ovalAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 6, 18],
+  });
+
+  const overlayOpacity = bgAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.22],
+  });
+
+  const instruction =
+    step === "position" ? "Centre your face in the oval" :
+    step === "challenge" ? CHALLENGE_LABELS[challenge] :
+    step === "capturing" ? "Hold still…" :
+    "Done!";
+
+  const instructionColor =
+    step === "position" ? "#fff" :
+    step === "challenge" ? "#FFE066" :
+    step === "capturing" ? "#6EE86E" :
+    "#6EE86E";
+
+  return (
+    <View style={styles.root}>
+      {/* Camera feed */}
+      <CameraView
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill}
+        facing="front"
+        onFacesDetected={Platform.OS !== "web" ? handleFacesDetected : undefined}
+        faceDetectorSettings={{
+          mode: FaceDetector.FaceDetectorMode.fast,
+          detectLandmarks: FaceDetector.FaceDetectorLandmarks.all,
+          runClassifications: FaceDetector.FaceDetectorClassifications.all,
+          minDetectionInterval: 120,
+          tracking: true,
+        }}
+      />
+
+      {/* Dark vignette overlay everywhere except the oval */}
+      <View style={styles.vignetteTop} />
+      <View style={[styles.vignetteMiddleRow]}>
+        <View style={styles.vignetteSide} />
+        {/* transparent oval hole */}
+        <View style={{ width: OVAL_W, height: OVAL_H }} />
+        <View style={styles.vignetteSide} />
+      </View>
+      <View style={styles.vignetteBottom} />
+
+      {/* Green flash overlay on success */}
+      <Animated.View
+        style={[StyleSheet.absoluteFill, { backgroundColor: "#6EE86E", opacity: overlayOpacity }]}
+        pointerEvents="none"
+      />
+
+      {/* Oval guide frame */}
+      <Animated.View
+        style={[
+          styles.ovalFrame,
+          {
+            width: OVAL_W,
+            height: OVAL_H,
+            left: OVAL_X,
+            top: OVAL_Y,
+            borderColor: ovalColor,
+            shadowColor: "#6EE86E",
+            shadowRadius: ovalGlow,
+            shadowOpacity: 1,
+            elevation: 12,
+            transform: [{ scale: step === "capturing" ? pulseAnim : 1 }],
+          },
+        ]}
+        pointerEvents="none"
+      />
+
+      {/* Corner accent marks inside oval */}
+      {["tl", "tr", "bl", "br"].map((pos) => (
+        <Animated.View
+          key={pos}
+          style={[
+            styles.cornerMark,
+            {
+              left: pos.includes("l") ? OVAL_X + 4 : OVAL_X + OVAL_W - 28,
+              top: pos.includes("t") ? OVAL_Y + 4 : OVAL_Y + OVAL_H - 28,
+              borderTopWidth: pos.includes("t") ? 3 : 0,
+              borderBottomWidth: pos.includes("b") ? 3 : 0,
+              borderLeftWidth: pos.includes("l") ? 3 : 0,
+              borderRightWidth: pos.includes("r") ? 3 : 0,
+              borderColor: ovalColor,
+            },
+          ]}
+          pointerEvents="none"
+        />
+      ))}
+
+      {/* ✓ checkmark on capture */}
+      <Animated.View
+        style={[
+          styles.checkCircle,
+          {
+            left: OVAL_X + OVAL_W / 2 - 32,
+            top: OVAL_Y + OVAL_H / 2 - 32,
+            opacity: checkAnim,
+            transform: [{ scale: checkAnim }],
+          },
+        ]}
+        pointerEvents="none"
+      >
+        <Ionicons name="checkmark" size={40} color="#fff" />
+      </Animated.View>
+
+      {/* Top bar */}
+      <View style={styles.topBar}>
+        <Pressable onPress={onCancel} style={styles.cancelBtn} hitSlop={12}>
+          <Ionicons name="close" size={22} color="#fff" />
+        </Pressable>
+        <Text style={styles.topTitle}>Identity Check</Text>
+        <View style={{ width: 44 }} />
+      </View>
+
+      {/* Challenge pill */}
+      <View style={[styles.challengePill, { top: OVAL_Y - 52 }]}>
+        <Ionicons name={CHALLENGE_ICONS[challenge] as any} size={16} color="#FFE066" />
+        <Text style={styles.challengePillText}>{CHALLENGE_LABELS[challenge]}</Text>
+      </View>
+
+      {/* Bottom instruction area */}
+      <View style={styles.bottomArea}>
+        {/* Face status dot */}
+        <View style={styles.statusRow}>
+          <View style={[styles.statusDot, { backgroundColor: faceGood ? "#6EE86E" : hasFace ? "#FFE066" : "#FF5555" }]} />
+          <Text style={styles.statusText}>
+            {!hasFace ? "No face detected" : !faceGood ? "Move closer / centre face" : "Face detected"}
+          </Text>
+        </View>
+
+        {/* Main instruction */}
+        <Text style={[styles.instruction, { color: instructionColor }]}>{instruction}</Text>
+
+        {/* Tip */}
+        {step === "position" && (
+          <Text style={styles.tip}>
+            Ensure good lighting • Remove glasses if needed • Face the camera directly
+          </Text>
+        )}
+
+        {/* Manual capture fallback (for simulators / testing) */}
+        {step === "challenge" && Platform.OS !== "web" && (
+          <Pressable
+            style={styles.manualBtn}
+            onPress={async () => {
+              if (capturingRef.current) return;
+              challengeDoneRef.current = true;
+              setChallengeDone(true);
+              setStep("capturing");
+              Animated.parallel([
+                Animated.timing(ovalAnim, { toValue: 1, duration: 300, useNativeDriver: false }),
+                Animated.spring(checkAnim, { toValue: 1, useNativeDriver: true }),
+              ]).start();
+              const mockFace: any = {
+                leftEyeOpenProbability: 0.05,
+                rightEyeOpenProbability: 0.05,
+                smilingProbability: 0.9,
+                yawAngle: 0,
+                rollAngle: 0,
+                bounds: {
+                  origin: { x: OVAL_X + 20, y: OVAL_Y + 20 },
+                  size: { width: OVAL_W - 40, height: OVAL_H - 40 },
+                },
+              };
+              await doCapture(mockFace);
+            }}
+          >
+            <Text style={styles.manualBtnText}>Capture Now</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+}
+
+/* ─── styles ─────────────────────────────────────────────────────────────── */
+
+const VIGNETTE = "rgba(0,0,0,0.72)";
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#000" },
+
+  // Vignette mask (everything outside the oval is darkened)
+  vignetteTop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: OVAL_Y,
+    backgroundColor: VIGNETTE,
+  },
+  vignetteMiddleRow: {
+    position: "absolute",
+    top: OVAL_Y,
+    left: 0,
+    right: 0,
+    height: OVAL_H,
+    flexDirection: "row",
+  },
+  vignetteSide: {
+    flex: 1,
+    backgroundColor: VIGNETTE,
+  },
+  vignetteBottom: {
+    position: "absolute",
+    top: OVAL_Y + OVAL_H,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: VIGNETTE,
+  },
+
+  // Oval guide
+  ovalFrame: {
+    position: "absolute",
+    borderRadius: 999,
+    borderWidth: 3,
+    backgroundColor: "transparent",
+  },
+
+  // Corner accent marks
+  cornerMark: {
+    position: "absolute",
+    width: 24,
+    height: 24,
+    borderRadius: 3,
+  },
+
+  // ✓ checkmark
+  checkCircle: {
+    position: "absolute",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(100,220,100,0.92)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Top bar
+  topBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 56,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cancelBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+    letterSpacing: 0.5,
+  },
+
+  // Challenge pill (above oval)
+  challengePill: {
+    position: "absolute",
+    alignSelf: "center",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    backgroundColor: "rgba(255,220,50,0.12)",
+    marginHorizontal: 60,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,220,50,0.3)",
+    zIndex: 10,
+  },
+  challengePillText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#FFE066",
+  },
+
+  // Bottom instruction area
+  bottomArea: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: 52,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    gap: 10,
+  },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  statusDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+  },
+  statusText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.7)",
+  },
+  instruction: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    letterSpacing: -0.3,
+  },
+  tip: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.45)",
+    textAlign: "center",
+    lineHeight: 18,
+    marginTop: 4,
+  },
+
+  // Manual capture button (testing fallback)
+  manualBtn: {
+    marginTop: 12,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 14,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  manualBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+  },
+
+  // Permission screen
+  permissionContainer: {
+    flex: 1,
+    backgroundColor: "#0a0a0f",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 40,
+    gap: 16,
+  },
+  permissionTitle: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    textAlign: "center",
+  },
+  permissionBody: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.55)",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  permissionBtn: {
+    marginTop: 8,
+    backgroundColor: Colors.accent,
+    borderRadius: 14,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+  },
+  permissionBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+  },
+});

@@ -75,6 +75,7 @@ var users = (0, import_pg_core.pgTable)("users", {
   password: (0, import_pg_core.text)("password").notNull(),
   name: (0, import_pg_core.text)("name").notNull(),
   phone: (0, import_pg_core.text)("phone"),
+  pushToken: (0, import_pg_core.text)("push_token"),
   // client (passenger) | chauffeur (driver) | admin
   role: (0, import_pg_core.text)("role").notNull().default("client"),
   rating: (0, import_pg_core.real)("rating").default(5),
@@ -950,6 +951,7 @@ function hasFreshChauffeurLocation(chauffeur) {
 }
 async function sendExpoPushNotification(tokens, title, body, data, options) {
   const urgent = options?.urgent ?? false;
+  const channelId = options?.channelId || (urgent ? "ride-alerts" : void 0);
   const messages2 = tokens.filter((t) => t && t.startsWith("ExponentPushToken[")).map((to) => ({
     to,
     sound: "default",
@@ -959,9 +961,9 @@ async function sendExpoPushNotification(tokens, title, body, data, options) {
     badge: urgent ? 1 : void 0,
     priority: urgent ? "high" : "default",
     ttl: urgent ? 0 : void 0,
-    channelId: urgent ? "ride-alerts" : void 0,
+    channelId,
     interruptionLevel: urgent ? "time-sensitive" : void 0,
-    android: urgent ? { channelId: "ride-alerts", sound: "default" } : void 0
+    android: channelId ? { channelId, sound: "default", priority: urgent ? "max" : "high" } : void 0
   }));
   if (messages2.length === 0) return;
   try {
@@ -1066,15 +1068,56 @@ function isAllowedSelfieUrl(rawUrl) {
     return false;
   }
 }
-async function runMockSelfieQualityCheck(selfieUrl) {
+async function runMockSelfieQualityCheck(selfieUrl, faceData, challenge) {
   if (!isAllowedSelfieUrl(selfieUrl)) {
-    return {
-      passed: false,
-      score: 0.1,
-      reason: "Selfie URL is not from an allowed secure storage domain."
-    };
+    return { passed: false, score: 0.05, reason: "Selfie URL is not from a trusted storage domain." };
   }
-  return { passed: true, score: 0.95 };
+  if (faceData) {
+    const { leftEyeOpenProbability, rightEyeOpenProbability, smilingProbability, yawAngle, rollAngle, bounds } = faceData;
+    const faceWidth = bounds.width;
+    const faceHeight = bounds.height;
+    if (faceWidth < 80 || faceHeight < 80) {
+      return { passed: false, score: 0.1, reason: "Face too small or too far. Move closer to the camera." };
+    }
+    if (faceWidth > 900 || faceHeight > 900) {
+      return { passed: false, score: 0.1, reason: "Too close to the camera. Step back slightly." };
+    }
+    if (Math.abs(rollAngle) > 30) {
+      return { passed: false, score: 0.2, reason: "Please keep your head level (don't tilt sideways)." };
+    }
+    const ch = challenge || "look_straight";
+    if (ch === "blink") {
+      if (leftEyeOpenProbability > 0.35 || rightEyeOpenProbability > 0.35) {
+        return { passed: false, score: 0.35, reason: "Blink not detected. Please blink slowly with both eyes." };
+      }
+    } else if (ch === "smile") {
+      if (smilingProbability < 0.65) {
+        return { passed: false, score: 0.35, reason: "Smile not detected. Please smile naturally." };
+      }
+    } else if (ch === "turn_left") {
+      if (yawAngle > -12) {
+        return { passed: false, score: 0.35, reason: "Please turn your head slowly to the left." };
+      }
+    } else if (ch === "turn_right") {
+      if (yawAngle < 12) {
+        return { passed: false, score: 0.35, reason: "Please turn your head slowly to the right." };
+      }
+    } else {
+      if (Math.abs(yawAngle) > 20) {
+        return { passed: false, score: 0.3, reason: "Please look straight into the camera." };
+      }
+    }
+    const sizeScore = Math.min(faceWidth / 220, 1) * 0.3;
+    const rollScore = (1 - Math.min(Math.abs(rollAngle) / 30, 1)) * 0.2;
+    const challengeScore = 0.5;
+    const total = Math.min(sizeScore + rollScore + challengeScore, 1);
+    return { passed: true, score: parseFloat(total.toFixed(2)) };
+  }
+  return {
+    passed: false,
+    score: 0,
+    reason: "No face detection data received. Please use the guided liveness camera."
+  };
 }
 async function registerRoutes(app2) {
   const httpServer = (0, import_node_http.createServer)(app2);
@@ -1530,6 +1573,28 @@ async function registerRoutes(app2) {
       if (!user) return res.status(404).json({ message: "User not found" });
       const { password: _pw, ...safeUser } = user;
       return res.json(safeUser);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.put("/api/users/:id/push-token", requireAuth, async (req, res) => {
+    try {
+      if (req.auth.sub !== req.params.id) {
+        const caller = await storage.getUser(req.auth.sub);
+        if (caller?.role !== "admin") {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+      const { pushToken } = req.body;
+      if (!pushToken || typeof pushToken !== "string") {
+        return res.status(400).json({ message: "pushToken is required" });
+      }
+      if (!pushToken.startsWith("ExponentPushToken[")) {
+        return res.status(400).json({ message: "Invalid Expo push token" });
+      }
+      const updatedUser = await storage.updateUser(req.params.id, { pushToken });
+      if (!updatedUser) return res.status(404).json({ message: "User not found" });
+      return res.json({ success: true });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
@@ -2320,7 +2385,7 @@ async function registerRoutes(app2) {
   });
   app2.post("/api/liveness/verify", requireAuth, async (req, res) => {
     try {
-      const { sessionId, selfieUrl } = req.body;
+      const { sessionId, selfieUrl, faceData, challenge } = req.body;
       if (!sessionId || !selfieUrl) {
         return res.status(400).json({ message: "sessionId and selfieUrl are required" });
       }
@@ -2363,7 +2428,7 @@ async function registerRoutes(app2) {
           message: "Selected liveness provider is not configured yet. Switch LIVENESS_PROVIDER=mock for now."
         });
       }
-      const qualityResult = await runMockSelfieQualityCheck(selfieUrl);
+      const qualityResult = await runMockSelfieQualityCheck(selfieUrl, faceData || null, challenge || session.challengeCode || null);
       const passed = qualityResult.passed;
       const score = qualityResult.score;
       const status = passed ? "passed" : "failed";
@@ -2759,6 +2824,16 @@ async function registerRoutes(app2) {
           body: "Your premium chauffeur has been assigned and is on the way.",
           type: "ride"
         });
+        const riderUser = await storage.getUser(updated.clientId);
+        if (riderUser?.pushToken) {
+          sendExpoPushNotification(
+            [riderUser.pushToken],
+            "\u{1F698} Driver Assigned",
+            "Your premium chauffeur has been assigned and is on the way.",
+            { rideId: updated.id, type: "ride:accepted" },
+            { urgent: true, channelId: "client-alerts" }
+          );
+        }
       }
       await storage.createNotification({
         userId: chauffeur.userId,
@@ -2839,6 +2914,15 @@ async function registerRoutes(app2) {
                 body: `Your ride was cancelled. R${amt.toFixed(2)} has been refunded to your A2B wallet.`,
                 type: "payment"
               });
+              if (rider?.pushToken) {
+                sendExpoPushNotification(
+                  [rider.pushToken],
+                  "Refund Issued",
+                  `R${amt.toFixed(2)} has been refunded to your A2B wallet.`,
+                  { rideId: ride.id, type: "ride:cancelled" },
+                  { urgent: true, channelId: "client-alerts" }
+                );
+              }
             }
           }
           const walletPayment = !cardPayment ? payments2.find((p) => p.method === "wallet" && p.status === "paid") : null;
@@ -2867,6 +2951,15 @@ async function registerRoutes(app2) {
                 body: `Your ride was cancelled. R${amt.toFixed(2)} has been returned to your A2B wallet.`,
                 type: "payment"
               });
+              if (rider?.pushToken) {
+                sendExpoPushNotification(
+                  [rider.pushToken],
+                  "Refund Issued",
+                  `R${amt.toFixed(2)} has been returned to your A2B wallet.`,
+                  { rideId: ride.id, type: "ride:cancelled" },
+                  { urgent: true, channelId: "client-alerts" }
+                );
+              }
             }
           }
           const paymentMethod = rideBeforeUpdate.paymentMethod || "cash";
@@ -2877,6 +2970,16 @@ async function registerRoutes(app2) {
               body: "Your ride has been cancelled. No charges were applied.",
               type: "ride"
             });
+            const rider = await storage.getUser(rideBeforeUpdate.clientId);
+            if (rider?.pushToken) {
+              sendExpoPushNotification(
+                [rider.pushToken],
+                "Ride Cancelled",
+                "Your ride was cancelled. No charges were applied.",
+                { rideId: ride.id, type: "ride:cancelled" },
+                { urgent: true, channelId: "client-alerts" }
+              );
+            }
           }
           if (rideBeforeUpdate.chauffeurId) {
             const chauffeur = await storage.getChauffeur(rideBeforeUpdate.chauffeurId);
@@ -2947,6 +3050,16 @@ async function registerRoutes(app2) {
             body: `Your trip has been completed. Fare: R ${ride.price}. Thank you for choosing A2B LIFT.`,
             type: "ride"
           });
+          const riderUser = await storage.getUser(ride.clientId);
+          if (riderUser?.pushToken) {
+            sendExpoPushNotification(
+              [riderUser.pushToken],
+              "Trip Completed",
+              `Fare: R ${ride.price}. Thank you for choosing A2B LIFT.`,
+              { rideId: ride.id, type: "ride:completed" },
+              { urgent: true, channelId: "client-alerts" }
+            );
+          }
         } catch (notifErr) {
           console.error("notification failed (non-fatal):", notifErr.message);
         }
@@ -2999,7 +3112,8 @@ async function registerRoutes(app2) {
               [riderUser.pushToken],
               "\u{1F697} Driver Arriving",
               "Your chauffeur is arriving at your pickup. Please be ready!",
-              { rideId: ride.id, type: "ride:arriving" }
+              { rideId: ride.id, type: "ride:arriving" },
+              { urgent: true, channelId: "client-alerts" }
             );
           }
         } else if (status === "trip_started" && ride.clientId) {
@@ -3015,7 +3129,8 @@ async function registerRoutes(app2) {
               [riderUser.pushToken],
               "\u{1F680} Trip Started",
               `Your ride is underway to ${ride.dropoffAddress || "your destination"}.`,
-              { rideId: ride.id, type: "ride:started" }
+              { rideId: ride.id, type: "ride:started" },
+              { urgent: true, channelId: "client-alerts" }
             );
           }
         }
@@ -3280,6 +3395,16 @@ async function registerRoutes(app2) {
             } else if (ride.chauffeurId) {
               const chauffeur = await storage.getChauffeur(ride.chauffeurId);
               if (chauffeur?.userId && senderId !== ride.clientId) {
+                const rider = await storage.getUser(ride.clientId);
+                if (rider?.pushToken) {
+                  sendExpoPushNotification(
+                    [rider.pushToken],
+                    "New message from chauffeur",
+                    previewText,
+                    { rideId: ride.id, type: "chat:new" },
+                    { urgent: true, channelId: "client-alerts" }
+                  );
+                }
                 await storage.createNotification({ userId: ride.clientId, type: "chat", title: "New message from chauffeur", body: previewText, isRead: false });
               }
             }
