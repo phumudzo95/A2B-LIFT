@@ -386,7 +386,7 @@ export default function ChauffeurDashboard() {
         await soundRef.current.replayAsync();
       } else {
         const { sound } = await Audio.Sound.createAsync(
-          require("../../assets/trip-alert.wav"),
+          require("../../assets/driverSound.wav"),
           { shouldPlay: false, volume: 1.0, isLooping: true }
         );
         if (tripAlertTokenRef.current !== alertToken || !tripAlertEnabledRef.current) {
