@@ -26,6 +26,8 @@ import {
   Animated,
   Dimensions,
   Platform,
+  Image,
+  ActivityIndicator,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
@@ -76,7 +78,7 @@ export interface LivenessCaptureResult {
 
 interface Props {
   challenge: LivenessChallenge;
-  onCapture: (result: LivenessCaptureResult) => void;
+  onCapture: (result: LivenessCaptureResult) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -162,8 +164,10 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [faces, setFaces] = useState<DetectedFace[]>([]);
-  const [step, setStep] = useState<"position" | "challenge" | "capturing" | "done">("position");
+  const [step, setStep] = useState<"position" | "challenge" | "capturing" | "review">("position");
   const [challengeDone, setChallengeDone] = useState(false);
+  const [pendingCapture, setPendingCapture] = useState<LivenessCaptureResult | null>(null);
+  const [confirmingCapture, setConfirmingCapture] = useState(false);
   const challengeDoneRef = useRef(false);
   const capturingRef = useRef(false);
   const hasFaceDetector = Boolean(FaceDetector);
@@ -173,6 +177,18 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const checkAnim = useRef(new Animated.Value(0)).current;
   const bgAnim = useRef(new Animated.Value(0)).current;
+
+  const resetCaptureState = useCallback(() => {
+    capturingRef.current = false;
+    challengeDoneRef.current = false;
+    setChallengeDone(false);
+    setPendingCapture(null);
+    setConfirmingCapture(false);
+    setStep("position");
+    checkAnim.setValue(0);
+    ovalAnim.setValue(0);
+    bgAnim.setValue(0);
+  }, [bgAnim, checkAnim, ovalAnim]);
 
   /* ── pulse loop ── */
   useEffect(() => {
@@ -191,7 +207,7 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
     ({ faces: detected }: { faces: DetectedFace[] }) => {
       setFaces(detected);
 
-      if (capturingRef.current || challengeDoneRef.current) return;
+      if (capturingRef.current || challengeDoneRef.current || pendingCapture) return;
 
       const face = detected[0];
       if (!face) {
@@ -227,7 +243,7 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
         doCapture(face);
       }
     },
-    [challenge]
+    [challenge, pendingCapture]
   );
 
   /* ── capture ── */
@@ -243,9 +259,8 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
           skipProcessing: false,
         });
         if (!photo) throw new Error("Camera returned no photo");
-        setStep("done");
         const score = computeScore(face, challenge);
-        onCapture({
+        setPendingCapture({
           uri: photo.uri,
           passed: true,
           score,
@@ -264,19 +279,24 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
             },
           },
         });
-      } catch {
-        // Reset on failure
+        setStep("review");
         capturingRef.current = false;
-        challengeDoneRef.current = false;
-        setStep("position");
-        setChallengeDone(false);
-        checkAnim.setValue(0);
-        ovalAnim.setValue(0);
-        bgAnim.setValue(0);
+      } catch {
+        resetCaptureState();
       }
     },
-    [challenge, onCapture]
+    [challenge, resetCaptureState]
   );
+
+  const confirmCapture = useCallback(async () => {
+    if (!pendingCapture || confirmingCapture) return;
+    setConfirmingCapture(true);
+    try {
+      await onCapture(pendingCapture);
+    } finally {
+      setConfirmingCapture(false);
+    }
+  }, [confirmingCapture, onCapture, pendingCapture]);
 
   /* ── permission gate ── */
   useEffect(() => {
@@ -327,7 +347,7 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
     step === "position" ? "Centre your face in the oval" :
     step === "challenge" ? CHALLENGE_LABELS[challenge] :
     step === "capturing" ? "Hold still…" :
-    "Done!";
+    "Review your capture";
 
   const instructionColor =
     step === "position" ? "#fff" :
@@ -355,6 +375,35 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
             : undefined
         }
       />
+
+      {pendingCapture ? (
+        <View style={styles.reviewOverlay}>
+          <Image source={{ uri: pendingCapture.uri }} style={styles.reviewImage} />
+          <View style={styles.reviewBackdrop} />
+          <View style={styles.reviewPanel}>
+            <Text style={styles.reviewTitle}>Confirm capture</Text>
+            <Text style={styles.reviewBody}>
+              Use this selfie for liveness verification, or retake it if your face is not clear.
+            </Text>
+            <View style={styles.reviewActions}>
+              <Pressable style={styles.reviewSecondaryBtn} onPress={resetCaptureState}>
+                <Text style={styles.reviewSecondaryBtnText}>Retake</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.reviewPrimaryBtn, confirmingCapture && { opacity: 0.7 }]}
+                onPress={confirmCapture}
+                disabled={confirmingCapture}
+              >
+                {confirmingCapture ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <Text style={styles.reviewPrimaryBtnText}>Confirm Capture</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      ) : null}
 
       {/* Dark vignette overlay everywhere except the oval */}
       <View style={styles.vignetteTop} />
@@ -457,7 +506,7 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
         <Text style={[styles.instruction, { color: instructionColor }]}>{instruction}</Text>
 
         {/* Tip */}
-        {step === "position" && (
+        {step === "position" && !pendingCapture && (
           <Text style={styles.tip}>
             {hasFaceDetector
               ? "Ensure good lighting • Remove glasses if needed • Face the camera directly"
@@ -466,7 +515,7 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
         )}
 
         {/* Manual capture fallback (for simulators / testing) */}
-        {Platform.OS !== "web" && (!hasFaceDetector || step === "challenge") && (
+        {Platform.OS !== "web" && !pendingCapture && (!hasFaceDetector || step === "challenge") && (
           <Pressable
             style={styles.manualBtn}
             onPress={async () => {
@@ -506,6 +555,74 @@ const VIGNETTE = "rgba(0,0,0,0.72)";
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#000" },
+  reviewOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 25,
+  },
+  reviewImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  reviewBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  reviewPanel: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    bottom: 38,
+    borderRadius: 20,
+    backgroundColor: "rgba(8,8,8,0.92)",
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    gap: 10,
+  },
+  reviewTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  reviewBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "rgba(255,255,255,0.78)",
+  },
+  reviewActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  reviewSecondaryBtn: {
+    flex: 1,
+    minHeight: 50,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewSecondaryBtnText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  reviewPrimaryBtn: {
+    flex: 1.2,
+    minHeight: 50,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewPrimaryBtnText: {
+    color: Colors.primary,
+    fontSize: 15,
+    fontWeight: "700",
+  },
 
   // Vignette mask (everything outside the oval is darkened)
   vignetteTop: {
