@@ -30,6 +30,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import Constants from "expo-constants";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 
@@ -168,9 +169,12 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
   const [challengeDone, setChallengeDone] = useState(false);
   const [pendingCapture, setPendingCapture] = useState<LivenessCaptureResult | null>(null);
   const [confirmingCapture, setConfirmingCapture] = useState(false);
+  const [challengeReady, setChallengeReady] = useState(false);
   const challengeDoneRef = useRef(false);
   const capturingRef = useRef(false);
+  const readyFaceRef = useRef<DetectedFace | null>(null);
   const hasFaceDetector = Boolean(FaceDetector);
+  const allowTestingCapture = !hasFaceDetector || Constants.isDevice === false;
 
   // Animations
   const ovalAnim = useRef(new Animated.Value(0)).current; // 0=idle, 1=good
@@ -181,7 +185,9 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
   const resetCaptureState = useCallback(() => {
     capturingRef.current = false;
     challengeDoneRef.current = false;
+    readyFaceRef.current = null;
     setChallengeDone(false);
+    setChallengeReady(false);
     setPendingCapture(null);
     setConfirmingCapture(false);
     setStep("position");
@@ -211,18 +217,28 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
 
       const face = detected[0];
       if (!face) {
+        readyFaceRef.current = null;
+        setChallengeReady(false);
+        challengeDoneRef.current = false;
+        setChallengeDone(false);
         setStep("position");
         Animated.timing(ovalAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
         Animated.timing(bgAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
+        checkAnim.setValue(0);
         return;
       }
 
       const inOval = faceInOval(face);
 
       if (!inOval) {
+        readyFaceRef.current = null;
+        setChallengeReady(false);
+        challengeDoneRef.current = false;
+        setChallengeDone(false);
         setStep("position");
         Animated.timing(ovalAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
         Animated.timing(bgAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
+        checkAnim.setValue(0);
         return;
       }
 
@@ -231,19 +247,26 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
       Animated.timing(ovalAnim, { toValue: 0.5, duration: 300, useNativeDriver: false }).start();
 
       if (challengePassed(challenge, face)) {
-        // Challenge satisfied → capture
+        // Challenge satisfied → enable capture button
+        readyFaceRef.current = face;
+        setChallengeReady(true);
         challengeDoneRef.current = true;
         setChallengeDone(true);
-        setStep("capturing");
         Animated.parallel([
           Animated.timing(ovalAnim, { toValue: 1, duration: 300, useNativeDriver: false }),
           Animated.timing(bgAnim, { toValue: 1, duration: 400, useNativeDriver: false }),
           Animated.spring(checkAnim, { toValue: 1, useNativeDriver: true }),
         ]).start();
-        doCapture(face);
+      } else {
+        readyFaceRef.current = null;
+        setChallengeReady(false);
+        challengeDoneRef.current = false;
+        setChallengeDone(false);
+        Animated.timing(bgAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
+        checkAnim.setValue(0);
       }
     },
-    [challenge, pendingCapture]
+    [bgAnim, challenge, checkAnim, pendingCapture]
   );
 
   /* ── capture ── */
@@ -298,6 +321,28 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
     }
   }, [confirmingCapture, onCapture, pendingCapture]);
 
+  const startCapture = useCallback(async () => {
+    if (capturingRef.current) return;
+
+    const fallbackFace: DetectedFace = {
+      leftEyeOpenProbability: 0.1,
+      rightEyeOpenProbability: 0.1,
+      smilingProbability: 0.9,
+      yawAngle: 0,
+      rollAngle: 0,
+      bounds: {
+        origin: { x: OVAL_X + 20, y: OVAL_Y + 20 },
+        size: { width: OVAL_W - 40, height: OVAL_H - 40 },
+      },
+    };
+
+    const face = readyFaceRef.current || (allowTestingCapture ? fallbackFace : null);
+    if (!face) return;
+
+    setStep("capturing");
+    await doCapture(face);
+  }, [allowTestingCapture, doCapture]);
+
   /* ── permission gate ── */
   useEffect(() => {
     if (!permission?.granted) requestPermission();
@@ -345,7 +390,7 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
   const instruction =
     !hasFaceDetector ? "Face detection unavailable in Expo Go" :
     step === "position" ? "Centre your face in the oval" :
-    step === "challenge" ? CHALLENGE_LABELS[challenge] :
+    step === "challenge" ? (challengeReady ? "Tap capture when you are ready" : CHALLENGE_LABELS[challenge]) :
     step === "capturing" ? "Hold still…" :
     "Review your capture";
 
@@ -514,34 +559,15 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
           </Text>
         )}
 
-        {/* Manual capture fallback (for simulators / testing) */}
-        {Platform.OS !== "web" && !pendingCapture && (!hasFaceDetector || step === "challenge") && (
+        {Platform.OS !== "web" && !pendingCapture && (allowTestingCapture || step === "challenge") && (
           <Pressable
-            style={styles.manualBtn}
-            onPress={async () => {
-              if (capturingRef.current) return;
-              challengeDoneRef.current = true;
-              setChallengeDone(true);
-              setStep("capturing");
-              Animated.parallel([
-                Animated.timing(ovalAnim, { toValue: 1, duration: 300, useNativeDriver: false }),
-                Animated.spring(checkAnim, { toValue: 1, useNativeDriver: true }),
-              ]).start();
-              const mockFace: any = {
-                leftEyeOpenProbability: 0.05,
-                rightEyeOpenProbability: 0.05,
-                smilingProbability: 0.9,
-                yawAngle: 0,
-                rollAngle: 0,
-                bounds: {
-                  origin: { x: OVAL_X + 20, y: OVAL_Y + 20 },
-                  size: { width: OVAL_W - 40, height: OVAL_H - 40 },
-                },
-              };
-              await doCapture(mockFace);
-            }}
+            style={[styles.manualBtn, !(allowTestingCapture || challengeReady) && styles.manualBtnDisabled]}
+            onPress={startCapture}
+            disabled={!(allowTestingCapture || challengeReady)}
           >
-            <Text style={styles.manualBtnText}>Capture Now</Text>
+            <Text style={styles.manualBtnText}>
+              {allowTestingCapture ? "Capture for Testing" : "Capture Selfie"}
+            </Text>
           </Pressable>
         )}
       </View>
@@ -789,6 +815,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     color: "#fff",
+  },
+  manualBtnDisabled: {
+    opacity: 0.45,
   },
 
   // Permission screen
