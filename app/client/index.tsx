@@ -1258,7 +1258,7 @@ export default function ClientHomeScreen() {
   /** Called by LivenessCamera once it auto-captures a face + challenge */
   async function handleLivenessCapture(result: LivenessCaptureResult) {
     setShowLivenessCamera(false);
-    if (!result.passed) {
+    if (!result.uri) {
       setLivenessMessage("Capture failed. Please try again.");
       return;
     }

@@ -291,7 +291,7 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
 
         setPendingCapture({
           uri: photo.uri,
-          passed: hasFaceData, // server will do final validation
+          passed: true, // user confirmed — server does final validation
           score,
           challenge,
           faceData: hasFaceData ? {
