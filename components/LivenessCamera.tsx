@@ -559,14 +559,33 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
           </Text>
         )}
 
-        {Platform.OS !== "web" && !pendingCapture && (allowTestingCapture || step === "challenge") && (
+        {/* Capture button — always visible, enabled once face+challenge is ready */}
+        {Platform.OS !== "web" && !pendingCapture && (
           <Pressable
-            style={[styles.manualBtn, !(allowTestingCapture || challengeReady) && styles.manualBtnDisabled]}
+            style={[
+              styles.captureBtn,
+              (allowTestingCapture || challengeReady) ? styles.captureBtnReady : styles.captureBtnWaiting,
+            ]}
             onPress={startCapture}
             disabled={!(allowTestingCapture || challengeReady)}
           >
-            <Text style={styles.manualBtnText}>
-              {allowTestingCapture ? "Capture for Testing" : "Capture Selfie"}
+            <Ionicons
+              name="camera"
+              size={20}
+              color={(allowTestingCapture || challengeReady) ? Colors.primary : "rgba(255,255,255,0.4)"}
+              style={{ marginRight: 8 }}
+            />
+            <Text
+              style={[
+                styles.captureBtnText,
+                !(allowTestingCapture || challengeReady) && styles.captureBtnTextWaiting,
+              ]}
+            >
+              {allowTestingCapture
+                ? "Capture for Testing"
+                : challengeReady
+                  ? "Capture Selfie"
+                  : "Waiting for face…"}
             </Text>
           </Pressable>
         )}
@@ -801,23 +820,33 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Manual capture button (testing fallback)
-  manualBtn: {
+  // Capture button
+  captureBtn: {
     marginTop: 12,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 14,
+    width: "100%",
+    borderRadius: 16,
     paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
   },
-  manualBtnText: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    color: "#fff",
+  captureBtnReady: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#FFFFFF",
   },
-  manualBtnDisabled: {
-    opacity: 0.45,
+  captureBtnWaiting: {
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  captureBtnText: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: Colors.primary,
+  },
+  captureBtnTextWaiting: {
+    color: "rgba(255,255,255,0.4)",
   },
 
   // Permission screen
