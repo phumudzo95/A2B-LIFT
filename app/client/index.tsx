@@ -1262,6 +1262,11 @@ export default function ClientHomeScreen() {
       setLivenessMessage("Capture failed. Please try again.");
       return;
     }
+    if (!result.passed) {
+      // Face detector is available but didn't detect a face — object/background was captured
+      setLivenessMessage("No face detected. Please position your face in the oval and try again.");
+      return;
+    }
     setLivenessSelfieLocalUri(result.uri);
     setLivenessFaceData(result.faceData || null);
     setLivenessBusy(true);

@@ -289,9 +289,13 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
 
         const score = hasFaceData ? computeScore(face, challenge) : 0;
 
+        // passed = true only if we actually detected a face (production build)
+        // OR if expo-face-detector is not available (Expo Go testing bypass)
+        const capturePass = hasFaceData || !hasFaceDetector;
+
         setPendingCapture({
           uri: photo.uri,
-          passed: true, // user confirmed — server does final validation
+          passed: capturePass,
           score,
           challenge,
           faceData: hasFaceData ? {
@@ -329,9 +333,13 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
 
   const startCapture = useCallback(async () => {
     if (capturingRef.current) return;
+    // If face detection is available and no face is visible, block the capture
+    if (hasFaceDetector && faces.length === 0) {
+      setStep("position");
+      return;
+    }
     setStep("capturing");
     // Use the best detected face if available, otherwise null
-    // Server-side validation will determine if the captured image contains a real face
     const face = readyFaceRef.current ?? (faces.length > 0 ? faces[0] : null);
     const fallbackFace: DetectedFace = {
       leftEyeOpenProbability: undefined,
@@ -561,10 +569,10 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
           </Text>
         )}
 
-        {/* Capture button — always enabled, server validates the face after upload */}
+        {/* Capture button — enabled when face detected (or in Expo Go testing mode) */}
         {Platform.OS !== "web" && !pendingCapture && (
           <Pressable
-            style={styles.captureBtn}
+            style={[styles.captureBtn, hasFaceDetector && faces.length === 0 && { opacity: 0.45 }]}
             onPress={startCapture}
             disabled={step === "capturing"}
           >
