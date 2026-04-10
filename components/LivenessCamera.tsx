@@ -275,20 +275,26 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
       if (capturingRef.current) return;
       capturingRef.current = true;
       try {
-        await new Promise((r) => setTimeout(r, 350)); // let the animation show
+        await new Promise((r) => setTimeout(r, 200));
         const photo = await cameraRef.current?.takePictureAsync({
           quality: 0.82,
           base64: false,
           skipProcessing: false,
         });
         if (!photo) throw new Error("Camera returned no photo");
-        const score = computeScore(face, challenge);
+
+        // Determine if we have real face detection data
+        const hasFaceData = face.leftEyeOpenProbability !== undefined ||
+                            face.rightEyeOpenProbability !== undefined;
+
+        const score = hasFaceData ? computeScore(face, challenge) : 0;
+
         setPendingCapture({
           uri: photo.uri,
-          passed: true,
+          passed: hasFaceData, // server will do final validation
           score,
           challenge,
-          faceData: {
+          faceData: hasFaceData ? {
             leftEyeOpenProbability: face.leftEyeOpenProbability ?? 1,
             rightEyeOpenProbability: face.rightEyeOpenProbability ?? 1,
             smilingProbability: face.smilingProbability ?? 0,
@@ -300,7 +306,7 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
               width: face.bounds.size.width,
               height: face.bounds.size.height,
             },
-          },
+          } : undefined,
         });
         setStep("review");
         capturingRef.current = false;
@@ -323,25 +329,23 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
 
   const startCapture = useCallback(async () => {
     if (capturingRef.current) return;
-
+    setStep("capturing");
+    // Use the best detected face if available, otherwise null
+    // Server-side validation will determine if the captured image contains a real face
+    const face = readyFaceRef.current ?? (faces.length > 0 ? faces[0] : null);
     const fallbackFace: DetectedFace = {
-      leftEyeOpenProbability: 0.1,
-      rightEyeOpenProbability: 0.1,
-      smilingProbability: 0.9,
-      yawAngle: 0,
-      rollAngle: 0,
+      leftEyeOpenProbability: undefined,
+      rightEyeOpenProbability: undefined,
+      smilingProbability: undefined,
+      yawAngle: undefined,
+      rollAngle: undefined,
       bounds: {
         origin: { x: OVAL_X + 20, y: OVAL_Y + 20 },
         size: { width: OVAL_W - 40, height: OVAL_H - 40 },
       },
     };
-
-    const face = readyFaceRef.current || (allowTestingCapture ? fallbackFace : null);
-    if (!face) return;
-
-    setStep("capturing");
-    await doCapture(face);
-  }, [allowTestingCapture, doCapture]);
+    await doCapture(face ?? fallbackFace);
+  }, [doCapture, faces]);
 
   /* ── permission gate ── */
   useEffect(() => {
@@ -553,39 +557,20 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
         {/* Tip */}
         {step === "position" && !pendingCapture && (
           <Text style={styles.tip}>
-            {hasFaceDetector
-              ? "Ensure good lighting • Remove glasses if needed • Face the camera directly"
-              : "This Expo Go client does not include face detection. Use manual capture for testing."}
+            Ensure good lighting • Remove glasses • Face the camera directly
           </Text>
         )}
 
-        {/* Capture button — always visible, enabled once face+challenge is ready */}
+        {/* Capture button — always enabled, server validates the face after upload */}
         {Platform.OS !== "web" && !pendingCapture && (
           <Pressable
-            style={[
-              styles.captureBtn,
-              (allowTestingCapture || challengeReady) ? styles.captureBtnReady : styles.captureBtnWaiting,
-            ]}
+            style={styles.captureBtn}
             onPress={startCapture}
-            disabled={!(allowTestingCapture || challengeReady)}
+            disabled={step === "capturing"}
           >
-            <Ionicons
-              name="camera"
-              size={20}
-              color={(allowTestingCapture || challengeReady) ? Colors.primary : "rgba(255,255,255,0.4)"}
-              style={{ marginRight: 8 }}
-            />
-            <Text
-              style={[
-                styles.captureBtnText,
-                !(allowTestingCapture || challengeReady) && styles.captureBtnTextWaiting,
-              ]}
-            >
-              {allowTestingCapture
-                ? "Capture for Testing"
-                : challengeReady
-                  ? "Capture Selfie"
-                  : "Waiting for face…"}
+            <Ionicons name="camera" size={20} color={Colors.primary} style={{ marginRight: 8 }} />
+            <Text style={styles.captureBtnText}>
+              {step === "capturing" ? "Capturing…" : "Capture Selfie"}
             </Text>
           </Pressable>
         )}
@@ -830,23 +815,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
-  },
-  captureBtnReady: {
     backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
     borderColor: "#FFFFFF",
-  },
-  captureBtnWaiting: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderColor: "rgba(255,255,255,0.18)",
   },
   captureBtnText: {
     fontSize: 16,
     fontFamily: "Inter_700Bold",
     color: Colors.primary,
-  },
-  captureBtnTextWaiting: {
-    color: "rgba(255,255,255,0.4)",
   },
 
   // Permission screen

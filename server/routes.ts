@@ -291,8 +291,13 @@ async function runMockSelfieQualityCheck(
     return { passed: true, score: parseFloat(total.toFixed(2)) };
   }
 
-  // No face data sent — this means the old ImagePicker flow was used (no real face detection)
-  // Fail it to enforce the new LivenessCamera flow
+  // No face data sent — device face detector did not detect a face in the image
+  // Fail with a clear, actionable message
+  return {
+    passed: false,
+    score: 0.0,
+    reason: "No face detected in the captured image. Please ensure your face fills the oval and try again.",
+  };
   return {
     passed: false,
     score: 0.0,

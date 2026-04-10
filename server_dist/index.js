@@ -1116,6 +1116,11 @@ async function runMockSelfieQualityCheck(selfieUrl, faceData, challenge) {
   return {
     passed: false,
     score: 0,
+    reason: "No face detected in the captured image. Please ensure your face fills the oval and try again."
+  };
+  return {
+    passed: false,
+    score: 0,
     reason: "No face detection data received. Please use the guided liveness camera."
   };
 }
@@ -1276,7 +1281,7 @@ async function registerRoutes(app2) {
     const { password: _pw, ...safeUser } = user;
     return res.json(safeUser);
   });
-  const GOOGLE_KEY = process.env.GOOGLE_API_KEY || "";
+  const GOOGLE_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY || "";
   const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
   const MAPS_USER_AGENT = "A2B-LIFT/1.0 (support@a2blift.app)";
   const DIRECTIONS_CACHE_TTL_MS = 5 * 60 * 1e3;
