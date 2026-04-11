@@ -1647,9 +1647,13 @@ export default function ChauffeurDashboard() {
             ) : clientProfile ? (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.profileScrollContent}>
                 <View style={styles.profileHero}>
-                  <View style={styles.profileAvatar}>
-                    <Text style={styles.profileAvatarText}>{clientProfile.clientName.charAt(0).toUpperCase()}</Text>
-                  </View>
+                  {clientProfile.profilePhoto ? (
+                    <Image source={{ uri: clientProfile.profilePhoto }} style={styles.profileAvatarImg} />
+                  ) : (
+                    <View style={styles.profileAvatar}>
+                      <Text style={styles.profileAvatarText}>{clientProfile.clientName.charAt(0).toUpperCase()}</Text>
+                    </View>
+                  )}
                   <Text style={styles.profilePersonName}>{clientProfile.clientName}</Text>
                   <Text style={styles.profileSubtext}>{clientProfile.clientPhone || "Phone not available"}</Text>
                   <Text style={styles.profileSubtext}>
@@ -1990,6 +1994,7 @@ const styles = StyleSheet.create({
   profileScrollContent: { paddingBottom: 24 },
   profileHero: { alignItems: "center", paddingVertical: 10 },
   profileAvatar: { width: 82, height: 82, borderRadius: 41, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  profileAvatarImg: { width: 82, height: 82, borderRadius: 41, marginBottom: 12 },
   profileAvatarText: { fontSize: 30, fontFamily: "Inter_700Bold", color: Colors.white },
   profilePersonName: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.white, textAlign: "center" },
   profileSubtext: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", marginTop: 4 },

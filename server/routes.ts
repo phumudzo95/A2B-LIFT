@@ -881,6 +881,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user selfie / profile photo
+  app.put("/api/users/:id/selfie", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const { profilePhoto } = req.body;
+      if (!profilePhoto) return res.status(400).json({ message: "profilePhoto URL is required" });
+      // Only allow users to update their own selfie
+      if (req.auth!.sub !== req.params.id) return res.status(403).json({ message: "Forbidden" });
+      const user = await storage.updateUser(req.params.id, { profilePhoto } as any);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const { password: _pw, ...safeUser } = user;
+      return res.json(safeUser);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   app.put("/api/users/:id/push-token", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
       if (req.auth!.sub !== req.params.id) {
@@ -1393,6 +1409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalRatings,
         completedTrips,
         memberSince: client.createdAt,
+        profilePhoto: client.profilePhoto || null,
         distribution,
         ratings: reviewsResult.rows,
       });

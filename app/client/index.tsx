@@ -1323,20 +1323,19 @@ export default function ClientHomeScreen() {
     }
   }
 
-  async function handlePayAndRide(method: "cash" | "card" | "wallet") {
-    if (!user || !location || !dropoffCoords) return;
-    setPaymentMethod(method);
-    setShowPaymentPicker(false);
-
-    if (method === "cash") {
-      setPaymentMethod("cash");
-      openCashLivenessFlow();
-      return;
-    }
-
+  /** Creates and dispatches a ride for any payment method */
+  async function proceedWithRide(method: "cash" | "card" | "wallet") {
     try {
       const ride = await createRideRecord(method);
       if (!ride) return;
+
+      if (method === "cash") {
+        setCurrentRide(ride);
+        setRideStatus("requested");
+        queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user!.id] });
+        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        return;
+      }
 
       if (method === "wallet") {
         const payRes = await apiRequest("POST", "/api/payments/pay-wallet", { rideId: ride.id });
@@ -1348,7 +1347,7 @@ export default function ClientHomeScreen() {
         }
         setCurrentRide(ride);
         setRideStatus("requested");
-        queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user.id] });
+        queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user!.id] });
         if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         return;
       }
@@ -1360,45 +1359,63 @@ export default function ClientHomeScreen() {
           if (!chargeData.success) {
             await apiRequest("PUT", `/api/rides/${ride.id}/status`, { status: "cancelled" }).catch(() => {});
             if (chargeData.needsCard) {
-              Alert.alert(
-                "No Card Saved",
-                "Please add a card in your wallet to pay by card.",
-                [
-                  { text: "Go to Wallet", onPress: () => router.push("/client/wallet") },
-                  { text: "Pay Cash Instead", onPress: () => handlePayAndRide("cash") },
-                  { text: "Cancel", style: "cancel" },
-                ]
-              );
+              Alert.alert("No Card Saved", "Please add a card in your wallet to pay by card.", [
+                { text: "Go to Wallet", onPress: () => router.push("/client/wallet") },
+                { text: "Pay Cash Instead", onPress: () => handlePayAndRide("cash") },
+                { text: "Cancel", style: "cancel" },
+              ]);
             } else {
-              Alert.alert(
-                "Payment Failed",
-                chargeData.message || "Card could not be charged.",
-                [
-                  { text: "Pay Cash", onPress: () => handlePayAndRide("cash") },
-                  { text: "Cancel", style: "cancel" },
-                ]
-              );
+              Alert.alert("Payment Failed", chargeData.message || "Card could not be charged.", [
+                { text: "Pay Cash", onPress: () => handlePayAndRide("cash") },
+                { text: "Cancel", style: "cancel" },
+              ]);
             }
             return;
           }
           setCurrentRide(ride);
           setRideStatus("requested");
-          queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user.id] });
+          queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user!.id] });
           if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         } catch {
           await apiRequest("PUT", `/api/rides/${ride.id}/status`, { status: "cancelled" }).catch(() => {});
-          Alert.alert(
-            "Payment Error",
-            "Could not process card. Please try again or pay cash.",
-            [
-              { text: "Pay Cash", onPress: () => handlePayAndRide("cash") },
-              { text: "Cancel", style: "cancel" },
-            ]
-          );
+          Alert.alert("Payment Error", "Could not process card. Please try again or pay cash.", [
+            { text: "Pay Cash", onPress: () => handlePayAndRide("cash") },
+            { text: "Cancel", style: "cancel" },
+          ]);
         }
       }
-    } catch {
-      Alert.alert("Error", "Failed to request ride. Please try again.");
+    } catch (err: any) {
+      Alert.alert("Error", err?.message || "Failed to request ride. Please try again.");
+    }
+  }
+
+  async function handlePayAndRide(method: "cash" | "card" | "wallet") {
+    if (!user || !location || !dropoffCoords) return;
+    setPaymentMethod(method);
+    setShowPaymentPicker(false);
+
+    if (method === "cash") {
+      setPaymentMethod("cash");
+      // Check if user has a profile selfie; if not, nudge them (non-blocking)
+      if (!user?.profilePhoto) {
+        Alert.alert(
+          "Add Your Selfie",
+          "For your safety and drivers' confidence, please add a profile selfie in your profile settings. You can still request rides without it.",
+          [
+            { text: "Add Selfie Later", style: "cancel", onPress: () => proceedWithRide("cash") },
+            { text: "Go to Profile", onPress: () => router.push("/client/profile") },
+          ]
+        );
+        return;
+      }
+      proceedWithRide("cash");
+      return;
+    }
+
+    try {
+      await proceedWithRide(method);
+    } catch (err: any) {
+      Alert.alert("Error", err?.message || "Failed to request ride. Please try again.");
     }
   }
 
@@ -1603,6 +1620,18 @@ export default function ClientHomeScreen() {
         <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
           <View style={styles.sheetHandle} />
           <Text style={styles.sheetTitle}>Where to?</Text>
+
+          {/* Selfie nudge banner */}
+          {!user?.profilePhoto && (
+            <Pressable style={styles.selfieNudgeBanner} onPress={() => router.push("/client/profile")}>
+              <Ionicons name="person-circle-outline" size={22} color="#FFE066" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.selfieNudgeTitle}>Add your profile selfie</Text>
+                <Text style={styles.selfieNudgeBody}>Drivers see your photo before accepting. Tap to add.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#FFE066" />
+            </Pressable>
+          )}
 
           {/* Location inputs */}
           <View style={styles.locationInputsCard}>
@@ -2263,92 +2292,6 @@ export default function ClientHomeScreen() {
         </Pressable>
       </Modal>
 
-      {/* Cash Liveness Screen */}
-      <Modal
-        visible={showCashLiveness}
-        animationType="slide"
-        onRequestClose={() => resetCashLiveness(true)}
-      >
-        {showLivenessCamera && livenessSessionId ? (
-          <LivenessCamera
-            challenge={livenessChallenge}
-            onCapture={handleLivenessCapture}
-            onCancel={() => setShowLivenessCamera(false)}
-          />
-        ) : (
-          <ScrollView
-            style={{ flex: 1, backgroundColor: Colors.primary }}
-            contentContainerStyle={[styles.livenessContainer, { paddingTop: insets.top + 8, flexGrow: 1 }]}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.livenessHeader}>
-              <Pressable onPress={() => resetCashLiveness(true)} hitSlop={12}>
-                <Ionicons name="arrow-back" size={24} color={Colors.white} />
-              </Pressable>
-              <Text style={styles.livenessTitle}>Cash Verification</Text>
-              <View style={{ width: 24 }} />
-            </View>
-
-            <View style={styles.livenessCard}>
-              <Text style={styles.livenessHeadline}>Liveness Check Required</Text>
-              <Text style={styles.livenessBodyText}>
-                Before requesting a cash trip, we need to verify you are a real person. Look into the camera and follow the on-screen challenge.
-              </Text>
-              <View style={styles.livenessMetaRow}>
-                <Text style={styles.livenessMetaText}>Attempts: {livenessAttempts}/{livenessMaxAttempts}</Text>
-              </View>
-            </View>
-
-            <View style={styles.livenessPreviewWrap}>
-              {livenessSelfieLocalUri ? (
-                <Image source={{ uri: livenessSelfieLocalUri }} style={styles.livenessPreviewImg} />
-              ) : (
-                <View style={styles.livenessPlaceholder}>
-                  <Ionicons name="scan-outline" size={64} color={Colors.textMuted} />
-                  <Text style={styles.livenessPlaceholderText}>Face scan not yet captured</Text>
-                </View>
-              )}
-              {livenessPassed && (
-                <View style={styles.livenessPassedBadge}>
-                  <Ionicons name="checkmark-circle" size={22} color="#6EE86E" />
-                  <Text style={styles.livenessPassedText}>Verified</Text>
-                </View>
-              )}
-            </View>
-
-            {!!livenessMessage && (
-              <Text style={[styles.livenessStatusText, livenessPassed && { color: "#6EE86E" }]}>
-                {livenessMessage}
-              </Text>
-            )}
-
-            <View style={styles.livenessActions}>
-              <Pressable
-                style={[styles.livenessBtnSecondary, (livenessBusy || !livenessSessionId) && { opacity: 0.55 }]}
-                disabled={livenessBusy || !livenessSessionId}
-                onPress={() => setShowLivenessCamera(true)}
-              >
-                {livenessBusy ? (
-                  <ActivityIndicator size="small" color={Colors.white} />
-                ) : (
-                  <Text style={styles.livenessBtnSecondaryText}>
-                    {livenessSelfieLocalUri ? "Retry Liveness Check" : "Start Liveness Check"}
-                  </Text>
-                )}
-              </Pressable>
-
-              <Pressable
-                style={[styles.livenessBtnPrimary, !livenessPassed && styles.livenessBtnDisabled]}
-                disabled={!livenessPassed || livenessBusy}
-                onPress={continueWithVerifiedCashRide}
-              >
-                <Text style={styles.livenessBtnPrimaryText}>Continue With Cash Ride</Text>
-              </Pressable>
-            </View>
-          </ScrollView>
-        )}
-      </Modal>
-
       {/* Location Picker Modal */}
       <Modal
         visible={locationPickerVisible}
@@ -2587,6 +2530,28 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     borderRadius: 2,
     alignSelf: "center",
+  selfieNudgeBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(255,224,102,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,224,102,0.3)",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 4,
+  },
+  selfieNudgeTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#FFE066",
+  },
+  selfieNudgeBody: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,224,102,0.7)",
+    marginTop: 1,
+  },
     marginBottom: 4,
   },
   sheetTitle: {

@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable, Platform, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Pressable, Platform, ScrollView, ActivityIndicator, Image, Modal, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAuth } from "@/lib/auth-context";
+import { uploadDocument } from "@/lib/supabase-storage";
+import { apiRequest } from "@/lib/query-client";
+import LivenessCamera, { type LivenessChallenge, type LivenessCaptureResult } from "@/components/LivenessCamera";
 import { apiRequest } from "@/lib/query-client";
 import Colors from "@/constants/colors";
 
@@ -27,6 +30,8 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const [profileDetails, setProfileDetails] = useState<ClientProfileDetails | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [showSelfieUpdate, setShowSelfieUpdate] = useState(false);
+  const [selfieUploading, setSelfieUploading] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -58,6 +63,30 @@ export default function ProfileScreen() {
     };
   }, [user?.id]);
 
+  async function handleUpdateSelfie(result: LivenessCaptureResult) {
+    if (!user?.id || !result.uri) { setShowSelfieUpdate(false); return; }
+    setSelfieUploading(true);
+    try {
+      const uploadedUrl = await uploadDocument(result.uri, user.id, "profile_selfie");
+      await apiRequest("PUT", `/api/users/${user.id}/selfie`, { profilePhoto: uploadedUrl });
+      // Refresh auth context user
+      const meRes = await apiRequest("GET", "/api/auth/me");
+      if (meRes.ok) {
+        const fresh = await meRes.json();
+        if (fresh?.user) {
+          const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+          await AsyncStorage.setItem("a2b_user", JSON.stringify(fresh.user));
+        }
+      }
+      Alert.alert("Selfie Updated", "Your profile photo has been updated successfully.");
+    } catch {
+      Alert.alert("Error", "Could not update selfie. Please try again.");
+    } finally {
+      setSelfieUploading(false);
+      setShowSelfieUpdate(false);
+    }
+  }
+
   async function handleLogout() {
     await logout();
   }
@@ -76,9 +105,18 @@ export default function ProfileScreen() {
       <Text style={styles.title}>Profile</Text>
 
       <View style={styles.profileCard}>
-        <View style={styles.avatar}>
-          <Ionicons name="person" size={32} color={Colors.white} />
-        </View>
+        <Pressable onPress={() => setShowSelfieUpdate(true)} style={styles.avatar}>
+          {user?.profilePhoto ? (
+            <Image source={{ uri: user.profilePhoto }} style={styles.avatarImg} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={32} color={Colors.white} />
+            </View>
+          )}
+          <View style={styles.avatarEditBadge}>
+            <Ionicons name="camera" size={12} color="#fff" />
+          </View>
+        </Pressable>
         <Text style={styles.profileName}>{user?.name || "User"}</Text>
         <Text style={styles.profileUsername}>{user?.username || user?.email || ""}</Text>
         {user?.phone && <Text style={styles.profilePhone}>{user.phone}</Text>}
@@ -132,6 +170,14 @@ export default function ProfileScreen() {
       )}
 
       <View style={styles.menuGroup}>
+        <Pressable style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]} onPress={() => setShowSelfieUpdate(true)}>
+          <View style={styles.menuIconCircle}>
+            <Ionicons name="camera-outline" size={20} color={Colors.white} />
+          </View>
+          <Text style={styles.menuText}>Update Selfie</Text>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </Pressable>
+
         <Pressable style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]} onPress={() => router.push("/client/notifications")}>
           <View style={styles.menuIconCircle}>
             <Ionicons name="notifications-outline" size={20} color={Colors.white} />
@@ -192,6 +238,30 @@ export default function ProfileScreen() {
       </View>
 
       <View style={{ height: 100 }} />
+
+      {/* Selfie Update Modal */}
+      <Modal visible={showSelfieUpdate} animationType="slide" onRequestClose={() => setShowSelfieUpdate(false)}>
+        {selfieUploading ? (
+          <View style={{ flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center", gap: 16 }}>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={{ color: "#fff", fontSize: 15 }}>Saving your selfie...</Text>
+          </View>
+        ) : (
+          <>
+            <LivenessCamera
+              challenge={"look_straight"}
+              onCapture={handleUpdateSelfie}
+              onCancel={() => setShowSelfieUpdate(false)}
+            />
+            <Pressable
+              style={{ position: "absolute", bottom: 120, alignSelf: "center", paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.08)", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" }}
+              onPress={() => setShowSelfieUpdate(false)}
+            >
+              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 13 }}>Cancel</Text>
+            </Pressable>
+          </>
+        )}
+      </Modal>
     </ScrollView>
   );
 }
@@ -201,7 +271,10 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 40 },
   title: { fontSize: 24, fontFamily: "Inter_700Bold", color: Colors.white, marginBottom: 20 },
   profileCard: { alignItems: "center", backgroundColor: Colors.card, borderRadius: 20, padding: 28, gap: 6, borderWidth: 1, borderColor: Colors.border, marginBottom: 24 },
-  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  avatar: { width: 80, height: 80, borderRadius: 40, marginBottom: 8, position: "relative" },
+  avatarImg: { width: 80, height: 80, borderRadius: 40 },
+  avatarPlaceholder: { width: 80, height: 80, borderRadius: 40, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center" },
+  avatarEditBadge: { position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: Colors.accent, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: Colors.card },
   profileName: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white },
   profileUsername: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 2 },
   profilePhone: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textMuted },
