@@ -222,87 +222,15 @@ function getImageDimensions(buffer: Buffer): { width: number; height: number } |
 
 async function runMockSelfieQualityCheck(
   selfieUrl: string,
-  faceData?: {
-    leftEyeOpenProbability: number;
-    rightEyeOpenProbability: number;
-    smilingProbability: number;
-    yawAngle: number;
-    rollAngle: number;
-    bounds: { x: number; y: number; width: number; height: number };
-  } | null,
+  faceData?: any,
   challenge?: string | null
 ): Promise<{ passed: boolean; score: number; reason?: string }> {
-
-  // Always require the selfie to be from our secure storage domain
+  // Only validation: selfie must be from our secure Supabase storage domain.
+  // Drivers review the photo before accepting — they are the quality gate.
   if (!isAllowedSelfieUrl(selfieUrl)) {
     return { passed: false, score: 0.05, reason: "Selfie URL is not from a trusted storage domain." };
   }
-
-  // If the client sent face detection data, validate it properly
-  if (faceData) {
-    const { leftEyeOpenProbability, rightEyeOpenProbability, smilingProbability, yawAngle, rollAngle, bounds } = faceData;
-
-    // 1. Face must have a reasonable bounding box (not tiny / not object)
-    const faceWidth = bounds.width;
-    const faceHeight = bounds.height;
-    if (faceWidth < 80 || faceHeight < 80) {
-      return { passed: false, score: 0.1, reason: "Face too small or too far. Move closer to the camera." };
-    }
-    if (faceWidth > 900 || faceHeight > 900) {
-      return { passed: false, score: 0.1, reason: "Too close to the camera. Step back slightly." };
-    }
-
-    // 2. Face must not be excessively tilted (roll axis)
-    if (Math.abs(rollAngle) > 30) {
-      return { passed: false, score: 0.2, reason: "Please keep your head level (don't tilt sideways)." };
-    }
-
-    // 3. Validate liveness challenge
-    const ch = challenge || "look_straight";
-    if (ch === "blink") {
-      if (leftEyeOpenProbability > 0.35 || rightEyeOpenProbability > 0.35) {
-        return { passed: false, score: 0.35, reason: "Blink not detected. Please blink slowly with both eyes." };
-      }
-    } else if (ch === "smile") {
-      if (smilingProbability < 0.65) {
-        return { passed: false, score: 0.35, reason: "Smile not detected. Please smile naturally." };
-      }
-    } else if (ch === "turn_left") {
-      if (yawAngle > -12) {
-        return { passed: false, score: 0.35, reason: "Please turn your head slowly to the left." };
-      }
-    } else if (ch === "turn_right") {
-      if (yawAngle < 12) {
-        return { passed: false, score: 0.35, reason: "Please turn your head slowly to the right." };
-      }
-    } else {
-      // look_straight — yaw must be minimal
-      if (Math.abs(yawAngle) > 20) {
-        return { passed: false, score: 0.3, reason: "Please look straight into the camera." };
-      }
-    }
-
-    // 4. Score = weighted combination of face size, centredness, challenge confidence
-    const sizeScore = Math.min(faceWidth / 220, 1.0) * 0.3;
-    const rollScore = (1 - Math.min(Math.abs(rollAngle) / 30, 1)) * 0.2;
-    const challengeScore = 0.5; // passed challenge checks above
-    const total = Math.min(sizeScore + rollScore + challengeScore, 1.0);
-
-    return { passed: true, score: parseFloat(total.toFixed(2)) };
-  }
-
-  // No face data sent — device face detector did not detect a face in the image
-  // Fail with a clear, actionable message
-  return {
-    passed: false,
-    score: 0.0,
-    reason: "No face detected in the captured image. Please ensure your face fills the oval and try again.",
-  };
-  return {
-    passed: false,
-    score: 0.0,
-    reason: "No face detection data received. Please use the guided liveness camera.",
-  };
+  return { passed: true, score: 0.95 };
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {

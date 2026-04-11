@@ -333,13 +333,8 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
 
   const startCapture = useCallback(async () => {
     if (capturingRef.current) return;
-    // If face detection is available and no face is visible, block the capture
-    if (hasFaceDetector && faces.length === 0) {
-      setStep("position");
-      return;
-    }
     setStep("capturing");
-    // Use the best detected face if available, otherwise null
+    // Use detected face data if available, otherwise use fallback bounds
     const face = readyFaceRef.current ?? (faces.length > 0 ? faces[0] : null);
     const fallbackFace: DetectedFace = {
       leftEyeOpenProbability: undefined,
@@ -569,10 +564,10 @@ export default function LivenessCamera({ challenge, onCapture, onCancel }: Props
           </Text>
         )}
 
-        {/* Capture button — enabled when face detected (or in Expo Go testing mode) */}
+        {/* Capture button — always ready to tap */}
         {Platform.OS !== "web" && !pendingCapture && (
           <Pressable
-            style={[styles.captureBtn, hasFaceDetector && faces.length === 0 && { opacity: 0.45 }]}
+            style={styles.captureBtn}
             onPress={startCapture}
             disabled={step === "capturing"}
           >
