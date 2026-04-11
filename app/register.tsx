@@ -34,10 +34,7 @@ export default function RegisterScreen() {
   const [selfieUri, setSelfieUri] = useState<string | null>(null);
   const [selfieUploading, setSelfieUploading] = useState(false);
   const [selfieMessage, setSelfieMessage] = useState("");
-  // Selfie capture during registration
   const [showSelfieCamera, setShowSelfieCamera] = useState(false);
-  const [selfieUri, setSelfieUri] = useState<string | null>(null);
-  const [selfieUploading, setSelfieUploading] = useState(false);
   const [registeredUser, setRegisteredUser] = useState<any>(null);
 
   // Handle the deep link callback from the backend OAuth flow

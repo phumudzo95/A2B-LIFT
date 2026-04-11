@@ -7,7 +7,6 @@ import { useAuth } from "@/lib/auth-context";
 import { uploadDocument } from "@/lib/supabase-storage";
 import { apiRequest } from "@/lib/query-client";
 import LivenessCamera, { type LivenessChallenge, type LivenessCaptureResult } from "@/components/LivenessCamera";
-import { apiRequest } from "@/lib/query-client";
 import Colors from "@/constants/colors";
 
 interface ClientReview {
