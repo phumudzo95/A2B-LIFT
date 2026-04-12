@@ -33,8 +33,10 @@ import {
   watchBestPosition,
 } from "@/lib/location-utils";
 import { useSocket } from "@/lib/socket-context";
+import { uploadDocument } from "@/lib/supabase-storage";
 import Colors from "@/constants/colors";
 import A2BMap from "@/components/A2BMap";
+import LivenessCamera, { type LivenessChallenge, type LivenessCaptureResult } from "@/components/LivenessCamera";
 
 const VEHICLE_TYPES = [
   { id: "budget", name: "Budget", desc: "Toyota Corolla, Toyota Quest", icon: "car-outline" as const, pricePerKm: 7, baseFare: 50 },
@@ -344,7 +346,7 @@ function carColorToHex(color: string): string {
 
 export default function ClientHomeScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { on, off } = useSocket();
   const bottomPanelOffset = Platform.OS === "ios" ? 72 : 8;
   const bottomPanelPadding = insets.bottom + 20;
@@ -377,6 +379,8 @@ export default function ClientHomeScreen() {
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "wallet">("cash");
   const [showCashSelfiePrompt, setShowCashSelfiePrompt] = useState(false);
+  const [showCashSelfieCamera, setShowCashSelfieCamera] = useState(false);
+  const [cashSelfieSaving, setCashSelfieSaving] = useState(false);
   const [savedCards, setSavedCards] = useState<{ id: string; last4: string; cardType: string; isDefault: boolean }[]>([]);
 
   // Driver profile modal
@@ -1280,6 +1284,33 @@ export default function ClientHomeScreen() {
       await proceedWithRide(method);
     } catch (err: any) {
       Alert.alert("Error", err?.message || "Failed to request ride. Please try again.");
+    }
+  }
+
+  async function handleCashSelfieCapture(result: LivenessCaptureResult) {
+    if (!user?.id || !result.uri) {
+      setShowCashSelfieCamera(false);
+      setShowCashSelfiePrompt(true);
+      return;
+    }
+
+    setCashSelfieSaving(true);
+    try {
+      const uploadedUrl = await uploadDocument(result.uri, user.id, "profile_selfie");
+      await apiRequest("PUT", `/api/users/${user.id}/selfie`, { profilePhoto: uploadedUrl });
+      await refreshUser();
+      setShowCashSelfieCamera(false);
+      setShowCashSelfiePrompt(false);
+      await proceedWithRide("cash");
+    } catch (error: any) {
+      const message = typeof error?.message === "string"
+        ? error.message.replace(/^\d+:\s*/, "")
+        : "Could not save your selfie. Please try again.";
+      Alert.alert("Error", message);
+      setShowCashSelfieCamera(false);
+      setShowCashSelfiePrompt(true);
+    } finally {
+      setCashSelfieSaving(false);
     }
   }
 
@@ -2241,7 +2272,7 @@ export default function ClientHomeScreen() {
                 style={styles.cashSelfiePrimaryButton}
                 onPress={() => {
                   setShowCashSelfiePrompt(false);
-                  router.push("/client/profile");
+                  setShowCashSelfieCamera(true);
                 }}
               >
                 <Ionicons name="camera" size={16} color="#07111B" />
@@ -2250,6 +2281,32 @@ export default function ClientHomeScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      <Modal
+        visible={showCashSelfieCamera}
+        animationType="slide"
+        onRequestClose={() => {
+          if (cashSelfieSaving) return;
+          setShowCashSelfieCamera(false);
+          setShowCashSelfiePrompt(true);
+        }}
+      >
+        <LivenessCamera
+          challenge={"look_straight" as LivenessChallenge}
+          onCapture={handleCashSelfieCapture}
+          onCancel={() => {
+            if (cashSelfieSaving) return;
+            setShowCashSelfieCamera(false);
+            setShowCashSelfiePrompt(true);
+          }}
+        />
+        {cashSelfieSaving && (
+          <View style={styles.cashSelfieSavingOverlay}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.cashSelfieSavingText}>Saving your selfie...</Text>
+          </View>
+        )}
       </Modal>
 
       {/* Location Picker Modal */}
@@ -4095,6 +4152,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_700Bold",
     color: "#07111B",
+  },
+  cashSelfieSavingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(4,10,18,0.78)",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+  },
+  cashSelfieSavingText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "#FFFFFF",
   },
   livenessContainer: {
     flex: 1,

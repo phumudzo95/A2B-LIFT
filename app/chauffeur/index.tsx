@@ -58,6 +58,7 @@ interface ClientProfile {
   totalRatings: number;
   completedTrips: number;
   memberSince: string;
+  profilePhoto: string | null;
   distribution: Record<number, number>;
   ratings: ClientReview[];
 }
@@ -348,6 +349,7 @@ export default function ChauffeurDashboard() {
         totalRatings: 0,
         completedTrips,
         memberSince: user.createdAt ? String(user.createdAt) : new Date().toISOString(),
+        profilePhoto: user.profilePhoto || null,
         distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
         ratings: [],
       };

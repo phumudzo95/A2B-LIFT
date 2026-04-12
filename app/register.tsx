@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Image, Modal } from "react-native";
+import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Image } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,8 +9,6 @@ import Colors from "@/constants/colors";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import LivenessCamera, { type LivenessChallenge, type LivenessCaptureResult } from "@/components/LivenessCamera";
-import { uploadDocument } from "@/lib/supabase-storage";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -27,12 +25,6 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
-  // Selfie capture step (shown after successful registration)
-  const [registeredUserId, setRegisteredUserId] = useState<string | null>(null);
-  const [showSelfieStep, setShowSelfieStep] = useState(false);
-  const [selfieChallenge] = useState<LivenessChallenge>("look_straight");
-  const [selfieUploading, setSelfieUploading] = useState(false);
-  const [selfieMessage, setSelfieMessage] = useState("");
 
   // Handle the deep link callback from the backend OAuth flow
   useEffect(() => {
@@ -84,9 +76,7 @@ export default function RegisterScreen() {
     if (password.length < 4) { setError("Password must be at least 4 characters"); return; }
     setLoading(true); setError("");
     try {
-      const user = await register({ username: email.trim().toLowerCase(), password, name: name.trim(), phone: phone.trim() });
-      setRegisteredUserId(user.id);
-      setShowSelfieStep(true);
+      await register({ username: email.trim().toLowerCase(), password, name: name.trim(), phone: phone.trim() });
     } catch (e: any) {
       const msg = e.message || "Registration failed.";
       if (msg.includes("already exists") || msg.includes("400")) setError("An account with this email already exists");
@@ -94,29 +84,6 @@ export default function RegisterScreen() {
       else if (msg.includes("fetch") || msg.includes("network")) setError("Cannot connect to server.");
       else setError(msg);
     } finally { setLoading(false); }
-  }
-
-  async function handleSelfieCapture(result: LivenessCaptureResult) {
-    const userId = registeredUserId;
-    if (!userId || !result.uri) return;
-    setSelfieUploading(true);
-    setSelfieMessage("Uploading your selfie...");
-    try {
-      const uploadedUrl = await uploadDocument(result.uri, userId, "profile_selfie");
-      await apiRequest("PUT", `/api/users/${userId}/selfie`, { profilePhoto: uploadedUrl });
-      setSelfieMessage("Selfie saved! Setting up your account...");
-    } catch {
-      setSelfieMessage("Could not save selfie. You can add it from your profile later.");
-    } finally {
-      setSelfieUploading(false);
-      setShowSelfieStep(false);
-      // AuthGate will navigate to the correct screen
-    }
-  }
-
-  function skipSelfie() {
-    setShowSelfieStep(false);
-    // AuthGate will navigate to the correct screen
   }
 
   return (
@@ -238,54 +205,9 @@ export default function RegisterScreen() {
           </Pressable>
         </View>
       </ScrollView>
-      {/* Selfie capture step — shown after successful registration */}
-      <Modal visible={showSelfieStep} animationType="slide" onRequestClose={skipSelfie}>
-        <LivenessCamera
-          challenge={selfieChallenge}
-          onCapture={handleSelfieCapture}
-          onCancel={skipSelfie}
-        />
-        {/* Skip button overlaid at bottom */}
-        {!selfieUploading && (
-          <Pressable
-            style={selfieSkipBtn}
-            onPress={skipSelfie}
-          >
-            <Text style={selfieSkipText}>Skip for now</Text>
-          </Pressable>
-        )}
-        {selfieUploading && (
-          <View style={selfieLoadingOverlay}>
-            <ActivityIndicator size="large" color="#fff" />
-            <Text style={selfieLoadingText}>{selfieMessage}</Text>
-          </View>
-        )}
-      </Modal>
     </View>
   );
 }
-
-const selfieSkipBtn = {
-  position: "absolute" as const,
-  bottom: 120,
-  alignSelf: "center" as const,
-  paddingHorizontal: 24,
-  paddingVertical: 10,
-  borderRadius: 20,
-  backgroundColor: "rgba(255,255,255,0.08)",
-  borderWidth: 1,
-  borderColor: "rgba(255,255,255,0.15)",
-};
-const selfieSkipText = { color: "rgba(255,255,255,0.6)", fontSize: 13 };
-const selfieLoadingOverlay = {
-  position: "absolute" as const,
-  inset: 0,
-  backgroundColor: "rgba(0,0,0,0.7)",
-  alignItems: "center" as const,
-  justifyContent: "center" as const,
-  gap: 16,
-};
-const selfieLoadingText = { color: "#fff", fontSize: 15 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.primary, paddingHorizontal: 24 },
