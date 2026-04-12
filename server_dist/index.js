@@ -75,6 +75,7 @@ var users = (0, import_pg_core.pgTable)("users", {
   password: (0, import_pg_core.text)("password").notNull(),
   name: (0, import_pg_core.text)("name").notNull(),
   phone: (0, import_pg_core.text)("phone"),
+  profilePhoto: (0, import_pg_core.text)("profile_photo"),
   pushToken: (0, import_pg_core.text)("push_token"),
   // client (passenger) | chauffeur (driver) | admin
   role: (0, import_pg_core.text)("role").notNull().default("client"),
@@ -1076,6 +1077,7 @@ async function runMockSelfieQualityCheck(selfieUrl, faceData, challenge) {
 }
 async function registerRoutes(app2) {
   const httpServer = (0, import_node_http.createServer)(app2);
+  await pool2.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo text");
   const SUPABASE_SERVICE_KEY_CONFIGURED = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
   app2.use("/api", authOptional);
   const io = new import_socket.Server(httpServer, {
@@ -1535,9 +1537,11 @@ async function registerRoutes(app2) {
   app2.put("/api/users/:id/selfie", requireAuth, async (req, res) => {
     try {
       const { profilePhoto } = req.body;
-      if (!profilePhoto) return res.status(400).json({ message: "profilePhoto URL is required" });
+      if (typeof profilePhoto !== "string" || !profilePhoto.trim()) {
+        return res.status(400).json({ message: "profilePhoto URL is required" });
+      }
       if (req.auth.sub !== req.params.id) return res.status(403).json({ message: "Forbidden" });
-      const user = await storage.updateUser(req.params.id, { profilePhoto });
+      const user = await storage.updateUser(req.params.id, { profilePhoto: profilePhoto.trim() });
       if (!user) return res.status(404).json({ message: "User not found" });
       const { password: _pw, ...safeUser } = user;
       return res.json(safeUser);
@@ -2472,22 +2476,6 @@ async function registerRoutes(app2) {
       const safeFare = Number.isFinite(requestedFare) && requestedFare > 0 ? requestedFare : priceEstimate.totalPrice;
       const routeCurrency = typeof rideData.routeCurrency === "string" && rideData.routeCurrency.trim() ? rideData.routeCurrency.trim().toUpperCase() : priceEstimate.currency;
       const paymentMethod = rideData.paymentMethod || "cash";
-      if (paymentMethod === "cash") {
-        const { livenessSessionId, livenessStatus, cashSelfieUrl } = rideData;
-        if (!livenessSessionId || livenessStatus !== "passed" || !cashSelfieUrl) {
-          return res.status(400).json({
-            success: false,
-            message: "Cash rides require completed liveness verification"
-          });
-        }
-        const session = await storage.getLivenessSession(livenessSessionId);
-        if (!session || session.userId !== clientId || session.status !== "passed") {
-          return res.status(403).json({
-            success: false,
-            message: "Invalid liveness session"
-          });
-        }
-      }
       const livenessVerifiedAt = rideData.livenessStatus === "passed" ? /* @__PURE__ */ new Date() : void 0;
       const ride = await storage.createRide({
         clientId,

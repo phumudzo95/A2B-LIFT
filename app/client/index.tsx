@@ -33,10 +33,8 @@ import {
   watchBestPosition,
 } from "@/lib/location-utils";
 import { useSocket } from "@/lib/socket-context";
-import { uploadDocument } from "@/lib/supabase-storage";
 import Colors from "@/constants/colors";
 import A2BMap from "@/components/A2BMap";
-import LivenessCamera, { type LivenessChallenge, type LivenessCaptureResult } from "@/components/LivenessCamera";
 
 const VEHICLE_TYPES = [
   { id: "budget", name: "Budget", desc: "Toyota Corolla, Toyota Quest", icon: "car-outline" as const, pricePerKm: 7, baseFare: 50 },
@@ -378,21 +376,8 @@ export default function ClientHomeScreen() {
   const [onlineDrivers, setOnlineDrivers] = useState<NearbyDriverState[]>([]);
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "wallet">("cash");
+  const [showCashSelfiePrompt, setShowCashSelfiePrompt] = useState(false);
   const [savedCards, setSavedCards] = useState<{ id: string; last4: string; cardType: string; isDefault: boolean }[]>([]);
-
-  // Cash liveness flow
-  const [showCashLiveness, setShowCashLiveness] = useState(false);
-  const [showLivenessCamera, setShowLivenessCamera] = useState(false);
-  const [livenessSessionId, setLivenessSessionId] = useState<string | null>(null);
-  const [livenessChallenge, setLivenessChallenge] = useState<LivenessChallenge>("look_straight");
-  const [livenessAttempts, setLivenessAttempts] = useState(0);
-  const [livenessMaxAttempts, setLivenessMaxAttempts] = useState(3);
-  const [livenessSelfieLocalUri, setLivenessSelfieLocalUri] = useState<string | null>(null);
-  const [livenessSelfieUrl, setLivenessSelfieUrl] = useState<string | null>(null);
-  const [livenessFaceData, setLivenessFaceData] = useState<LivenessCaptureResult["faceData"] | null>(null);
-  const [livenessPassed, setLivenessPassed] = useState(false);
-  const [livenessBusy, setLivenessBusy] = useState(false);
-  const [livenessMessage, setLivenessMessage] = useState<string>("");
 
   // Driver profile modal
   const [showDriverProfile, setShowDriverProfile] = useState(false);
@@ -1210,119 +1195,6 @@ export default function ClientHomeScreen() {
     return payload.ride ?? payload;
   }
 
-  function resetCashLiveness(closeModal = false) {
-    if (closeModal) setShowCashLiveness(false);
-    setShowLivenessCamera(false);
-    setLivenessSessionId(null);
-    setLivenessChallenge("look_straight");
-    setLivenessAttempts(0);
-    setLivenessMaxAttempts(3);
-    setLivenessSelfieLocalUri(null);
-    setLivenessSelfieUrl(null);
-    setLivenessFaceData(null);
-    setLivenessPassed(false);
-    setLivenessBusy(false);
-    setLivenessMessage("");
-  }
-
-  /** Map server challenge label to LivenessChallenge enum */
-  function parseLivenessChallenge(raw: string): LivenessChallenge {
-    const s = (raw || "").toLowerCase();
-    if (s.includes("blink")) return "blink";
-    if (s.includes("smile")) return "smile";
-    if (s.includes("left")) return "turn_left";
-    if (s.includes("right")) return "turn_right";
-    return "look_straight";
-  }
-
-  async function openCashLivenessFlow() {
-    if (!user) return;
-    setShowCashLiveness(true);
-    setLivenessBusy(true);
-    setLivenessMessage("Creating secure liveness session...");
-    try {
-      const res = await apiRequest("POST", "/api/liveness/session", {});
-      const data = await res.json();
-      setLivenessSessionId(data.sessionId || null);
-      setLivenessChallenge(parseLivenessChallenge(data.challenge || ""));
-      setLivenessAttempts(Number(data.attempts || 0));
-      setLivenessMaxAttempts(Number(data.maxAttempts || 3));
-      setLivenessMessage("");
-    } catch (error: any) {
-      setLivenessMessage(error?.message || "Could not start liveness verification.");
-    } finally {
-      setLivenessBusy(false);
-    }
-  }
-
-  /** Called by LivenessCamera once it auto-captures a face + challenge */
-  async function handleLivenessCapture(result: LivenessCaptureResult) {
-    setShowLivenessCamera(false);
-    if (!result.uri) {
-      setLivenessMessage("Capture failed. Please try again.");
-      return;
-    }
-    if (!result.passed) {
-      // Face detector is available but didn't detect a face — object/background was captured
-      setLivenessMessage("No face detected. Please position your face in the oval and try again.");
-      return;
-    }
-    setLivenessSelfieLocalUri(result.uri);
-    setLivenessFaceData(result.faceData || null);
-    setLivenessBusy(true);
-    setLivenessMessage("Uploading selfie securely...");
-    try {
-      const uploadedUrl = await uploadDocument(result.uri, user!.id, "cash_liveness_selfie");
-      setLivenessSelfieUrl(uploadedUrl);
-
-      setLivenessMessage("Verifying liveness...");
-      const verifyRes = await apiRequest("POST", "/api/liveness/verify", {
-        sessionId: livenessSessionId,
-        selfieUrl: uploadedUrl,
-        faceData: result.faceData,
-        challenge: result.challenge,
-      });
-      const verifyData = await verifyRes.json();
-
-      const passed = Boolean(verifyData?.passed);
-      setLivenessPassed(passed);
-      setLivenessAttempts((prev) => prev + 1);
-      setLivenessMessage(
-        passed
-          ? "Verification passed ✓  You can now continue with your cash ride."
-          : verifyData?.reason || "Verification failed. Please try again.",
-      );
-    } catch (error: any) {
-      setLivenessMessage(error?.message || "Liveness verification failed. Please try again.");
-    } finally {
-      setLivenessBusy(false);
-    }
-  }
-
-  async function continueWithVerifiedCashRide() {
-    if (!livenessPassed || !livenessSessionId || !livenessSelfieUrl) {
-      Alert.alert("Verification Required", "Please complete liveness verification first.");
-      return;
-    }
-    try {
-      const ride = await createRideRecord("cash", {
-        livenessSessionId,
-        livenessStatus: "passed",
-        livenessProvider: "mock",
-        cashSelfieUrl: livenessSelfieUrl,
-      });
-      if (!ride) return;
-
-      setCurrentRide(ride);
-      setRideStatus("requested");
-      resetCashLiveness(true);
-      queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user?.id] });
-      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch (err: any) {
-      Alert.alert("Error", err?.message || "Failed to request cash ride. Please try again.");
-    }
-  }
-
   /** Creates and dispatches a ride for any payment method */
   async function proceedWithRide(method: "cash" | "card" | "wallet") {
     try {
@@ -1396,19 +1268,11 @@ export default function ClientHomeScreen() {
 
     if (method === "cash") {
       setPaymentMethod("cash");
-      // Check if user has a profile selfie; if not, nudge them (non-blocking)
       if (!user?.profilePhoto) {
-        Alert.alert(
-          "Add Your Selfie",
-          "For your safety and drivers' confidence, please add a profile selfie in your profile settings. You can still request rides without it.",
-          [
-            { text: "Add Selfie Later", style: "cancel", onPress: () => proceedWithRide("cash") },
-            { text: "Go to Profile", onPress: () => router.push("/client/profile") },
-          ]
-        );
+        setShowCashSelfiePrompt(true);
         return;
       }
-      proceedWithRide("cash");
+      await proceedWithRide("cash");
       return;
     }
 
@@ -2290,6 +2154,102 @@ export default function ClientHomeScreen() {
             </Pressable>
           </View>
         </Pressable>
+      </Modal>
+
+      <Modal
+        visible={showCashSelfiePrompt}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCashSelfiePrompt(false)}
+      >
+        <View style={styles.cashSelfiePromptOverlay}>
+          <View style={styles.cashSelfiePromptCard}>
+            <Pressable
+              style={styles.cashSelfiePromptClose}
+              hitSlop={12}
+              onPress={() => setShowCashSelfiePrompt(false)}
+            >
+              <Ionicons name="close" size={20} color="rgba(255,255,255,0.72)" />
+            </Pressable>
+
+            <View style={styles.cashSelfieHero}>
+              <View style={styles.cashSelfieGlowPrimary} />
+              <View style={styles.cashSelfieGlowAccent} />
+
+              <View style={styles.cashSelfieIllustrationRow}>
+                <View style={styles.cashSelfieCharacter}>
+                  <View style={styles.cashSelfieCharacterArm} />
+                  <View style={styles.cashSelfieCharacterBody} />
+                  <View style={styles.cashSelfieCharacterHead}>
+                    <View style={styles.cashSelfieCharacterEye} />
+                    <View style={styles.cashSelfieCharacterEyeRight} />
+                    <View style={styles.cashSelfieCharacterSmile} />
+                  </View>
+                </View>
+
+                <View style={styles.cashSelfiePhone}>
+                  <View style={styles.cashSelfiePhoneNotch} />
+                  <View style={styles.cashSelfiePhoneScreen}>
+                    <View style={styles.cashSelfiePhoneAvatarHead} />
+                    <View style={styles.cashSelfiePhoneAvatarBody} />
+                    <View style={styles.cashSelfiePhoneSparkle}>
+                      <Ionicons name="sparkles" size={14} color="#E7F6FF" />
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            <Text style={styles.cashSelfiePromptEyebrow}>Cash ride tip</Text>
+            <Text style={styles.cashSelfiePromptTitle}>Add a selfie drivers can trust</Text>
+            <Text style={styles.cashSelfiePromptBody}>
+              Drivers see your profile photo before deciding on a cash trip. A clear selfie helps them confirm it is you and accept faster.
+            </Text>
+
+            <View style={styles.cashSelfieBenefitList}>
+              <View style={styles.cashSelfieBenefitRow}>
+                <View style={styles.cashSelfieBenefitIconWrap}>
+                  <Ionicons name="person-circle-outline" size={16} color="#0A1B2A" />
+                </View>
+                <Text style={styles.cashSelfieBenefitText}>Visible to drivers before they accept</Text>
+              </View>
+              <View style={styles.cashSelfieBenefitRow}>
+                <View style={styles.cashSelfieBenefitIconWrap}>
+                  <Ionicons name="shield-checkmark-outline" size={16} color="#0A1B2A" />
+                </View>
+                <Text style={styles.cashSelfieBenefitText}>Builds trust for cash pickups</Text>
+              </View>
+              <View style={styles.cashSelfieBenefitRow}>
+                <View style={styles.cashSelfieBenefitIconWrap}>
+                  <Ionicons name="camera-outline" size={16} color="#0A1B2A" />
+                </View>
+                <Text style={styles.cashSelfieBenefitText}>Takes a few seconds in your profile</Text>
+              </View>
+            </View>
+
+            <View style={styles.cashSelfieActionRow}>
+              <Pressable
+                style={styles.cashSelfieSecondaryButton}
+                onPress={() => {
+                  setShowCashSelfiePrompt(false);
+                  void proceedWithRide("cash");
+                }}
+              >
+                <Text style={styles.cashSelfieSecondaryButtonText}>Request without selfie</Text>
+              </Pressable>
+              <Pressable
+                style={styles.cashSelfiePrimaryButton}
+                onPress={() => {
+                  setShowCashSelfiePrompt(false);
+                  router.push("/client/profile");
+                }}
+              >
+                <Ionicons name="camera" size={16} color="#07111B" />
+                <Text style={styles.cashSelfiePrimaryButtonText}>Add selfie now</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Location Picker Modal */}
@@ -3878,6 +3838,263 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_500Medium",
     color: Colors.white,
+  },
+  cashSelfiePromptOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(4,10,18,0.76)",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+  },
+  cashSelfiePromptCard: {
+    backgroundColor: "#07111B",
+    borderRadius: 28,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: "rgba(127,214,255,0.18)",
+    shadowColor: "#000",
+    shadowOpacity: 0.32,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 18,
+  },
+  cashSelfiePromptClose: {
+    alignSelf: "flex-end",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginBottom: 8,
+  },
+  cashSelfieHero: {
+    height: 220,
+    borderRadius: 24,
+    backgroundColor: "#0E2233",
+    overflow: "hidden",
+    marginBottom: 18,
+    justifyContent: "center",
+    paddingHorizontal: 18,
+  },
+  cashSelfieGlowPrimary: {
+    position: "absolute",
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: "rgba(255,184,77,0.22)",
+    top: -22,
+    left: -28,
+  },
+  cashSelfieGlowAccent: {
+    position: "absolute",
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: "rgba(84,201,255,0.18)",
+    bottom: -80,
+    right: -40,
+  },
+  cashSelfieIllustrationRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+  },
+  cashSelfieCharacter: {
+    width: 120,
+    height: 146,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  cashSelfieCharacterHead: {
+    position: "absolute",
+    top: 16,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#FFCF99",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cashSelfieCharacterEye: {
+    position: "absolute",
+    top: 23,
+    left: 18,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#2B211A",
+  },
+  cashSelfieCharacterEyeRight: {
+    position: "absolute",
+    top: 23,
+    right: 18,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#2B211A",
+  },
+  cashSelfieCharacterSmile: {
+    position: "absolute",
+    bottom: 16,
+    width: 18,
+    height: 8,
+    borderBottomWidth: 2,
+    borderColor: "#2B211A",
+    borderRadius: 8,
+  },
+  cashSelfieCharacterBody: {
+    width: 86,
+    height: 74,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    backgroundColor: "#F2A93B",
+  },
+  cashSelfieCharacterArm: {
+    position: "absolute",
+    right: 4,
+    top: 72,
+    width: 36,
+    height: 14,
+    borderRadius: 10,
+    backgroundColor: "#FFCF99",
+    transform: [{ rotate: "-20deg" }],
+  },
+  cashSelfiePhone: {
+    width: 128,
+    height: 166,
+    borderRadius: 26,
+    backgroundColor: "#04101A",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    padding: 10,
+    justifyContent: "center",
+  },
+  cashSelfiePhoneNotch: {
+    alignSelf: "center",
+    width: 46,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    marginBottom: 10,
+  },
+  cashSelfiePhoneScreen: {
+    flex: 1,
+    borderRadius: 18,
+    backgroundColor: "#17344D",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cashSelfiePhoneAvatarHead: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#FFE0B8",
+    marginBottom: 8,
+  },
+  cashSelfiePhoneAvatarBody: {
+    width: 62,
+    height: 58,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+    backgroundColor: "#7FD6FF",
+  },
+  cashSelfiePhoneSparkle: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  cashSelfiePromptEyebrow: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    color: "#7FD6FF",
+    marginBottom: 8,
+  },
+  cashSelfiePromptTitle: {
+    fontSize: 25,
+    lineHeight: 31,
+    fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
+    marginBottom: 10,
+  },
+  cashSelfiePromptBody: {
+    fontSize: 14,
+    lineHeight: 22,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.76)",
+  },
+  cashSelfieBenefitList: {
+    gap: 10,
+    marginTop: 18,
+  },
+  cashSelfieBenefitRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  cashSelfieBenefitIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFE066",
+  },
+  cashSelfieBenefitText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: "Inter_500Medium",
+    color: "#F4F8FB",
+  },
+  cashSelfieActionRow: {
+    gap: 12,
+    marginTop: 18,
+  },
+  cashSelfieSecondaryButton: {
+    minHeight: 52,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  cashSelfieSecondaryButtonText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.84)",
+  },
+  cashSelfiePrimaryButton: {
+    minHeight: 56,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+    backgroundColor: "#FFE066",
+  },
+  cashSelfiePrimaryButtonText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: "#07111B",
   },
   livenessContainer: {
     flex: 1,

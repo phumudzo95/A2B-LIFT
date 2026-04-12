@@ -31,11 +31,8 @@ export default function RegisterScreen() {
   const [registeredUserId, setRegisteredUserId] = useState<string | null>(null);
   const [showSelfieStep, setShowSelfieStep] = useState(false);
   const [selfieChallenge] = useState<LivenessChallenge>("look_straight");
-  const [selfieUri, setSelfieUri] = useState<string | null>(null);
   const [selfieUploading, setSelfieUploading] = useState(false);
   const [selfieMessage, setSelfieMessage] = useState("");
-  const [showSelfieCamera, setShowSelfieCamera] = useState(false);
-  const [registeredUser, setRegisteredUser] = useState<any>(null);
 
   // Handle the deep link callback from the backend OAuth flow
   useEffect(() => {
@@ -88,9 +85,8 @@ export default function RegisterScreen() {
     setLoading(true); setError("");
     try {
       const user = await register({ username: email.trim().toLowerCase(), password, name: name.trim(), phone: phone.trim() });
-      // Show selfie capture step before navigating
-      setRegisteredUser(user);
-      setShowSelfieCamera(true);
+      setRegisteredUserId(user.id);
+      setShowSelfieStep(true);
     } catch (e: any) {
       const msg = e.message || "Registration failed.";
       if (msg.includes("already exists") || msg.includes("400")) setError("An account with this email already exists");
@@ -107,7 +103,6 @@ export default function RegisterScreen() {
     setSelfieMessage("Uploading your selfie...");
     try {
       const uploadedUrl = await uploadDocument(result.uri, userId, "profile_selfie");
-      setSelfieUri(result.uri);
       await apiRequest("PUT", `/api/users/${userId}/selfie`, { profilePhoto: uploadedUrl });
       setSelfieMessage("Selfie saved! Setting up your account...");
     } catch {
@@ -198,7 +193,28 @@ export default function RegisterScreen() {
 
           {/* ── Google Sign Up ── */}
           <Pressable style={({ pressed }) => [styles.googleBtn, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }, googleLoading && { opacity: 0.7 }]}
-            onPress={handleGoogleSignUp} disabled={googleLoading}>
+            onPress={async () => {
+              setError("");
+              setGoogleLoading(true);
+              try {
+                const redirectUrl = Linking.createURL("auth");
+                const authUrl = `${GOOGLE_OAUTH_START}?redirect_uri=${encodeURIComponent(redirectUrl)}`;
+                const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+
+                if (result.type === "success" && result.url) {
+                  await handleDeepLinkCallback(result.url);
+                  return;
+                }
+
+                if (result.type !== "cancel") {
+                  setError("Google sign up failed. Please try again.");
+                }
+              } catch {
+                setError("Google sign up failed. Please try again.");
+              } finally {
+                setGoogleLoading(false);
+              }
+            }} disabled={googleLoading}>
             {googleLoading ? <ActivityIndicator color="#1a1a1a" size="small" /> : (
               <>
                 <Image source={require("../assets/images/google_icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />

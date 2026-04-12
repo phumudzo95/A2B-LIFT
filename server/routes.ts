@@ -236,6 +236,8 @@ async function runMockSelfieQualityCheck(
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo text");
+
   const SUPABASE_SERVICE_KEY_CONFIGURED = !!(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   // Attach optional auth to all API requests (doesn't break legacy endpoints)
@@ -813,10 +815,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/users/:id/selfie", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
       const { profilePhoto } = req.body;
-      if (!profilePhoto) return res.status(400).json({ message: "profilePhoto URL is required" });
+      if (typeof profilePhoto !== "string" || !profilePhoto.trim()) {
+        return res.status(400).json({ message: "profilePhoto URL is required" });
+      }
       // Only allow users to update their own selfie
       if (req.auth!.sub !== req.params.id) return res.status(403).json({ message: "Forbidden" });
-      const user = await storage.updateUser(req.params.id, { profilePhoto } as any);
+      const user = await storage.updateUser(req.params.id, { profilePhoto: profilePhoto.trim() } as any);
       if (!user) return res.status(404).json({ message: "User not found" });
       const { password: _pw, ...safeUser } = user;
       return res.json(safeUser);
@@ -1918,23 +1922,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : priceEstimate.currency;
 
       const paymentMethod = (rideData.paymentMethod || "cash") as string;
-      if (paymentMethod === "cash") {
-        const { livenessSessionId, livenessStatus, cashSelfieUrl } = rideData as any;
-        if (!livenessSessionId || livenessStatus !== "passed" || !cashSelfieUrl) {
-          return res.status(400).json({
-            success: false,
-            message: "Cash rides require completed liveness verification",
-          });
-        }
-
-        const session = await storage.getLivenessSession(livenessSessionId);
-        if (!session || session.userId !== clientId || session.status !== "passed") {
-          return res.status(403).json({
-            success: false,
-            message: "Invalid liveness session",
-          });
-        }
-      }
       
       // Set livenessVerifiedAt on server side (Date object, never trust client strings for timestamps)
       const livenessVerifiedAt = (rideData as any).livenessStatus === "passed" ? new Date() : undefined;

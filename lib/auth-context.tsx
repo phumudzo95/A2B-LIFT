@@ -14,9 +14,12 @@ interface AuthUser {
   username: string;
   name: string;
   phone: string | null;
+  email?: string | null;
+  profilePhoto?: string | null;
   role: string;
   rating: number | null;
   walletBalance: number | null;
+  createdAt?: string | null;
 }
 
 type LoginResponse =
@@ -36,7 +39,7 @@ interface AuthContextValue {
     password: string;
     name: string;
     phone: string;
-  }) => Promise<void>;
+  }) => Promise<AuthUser>;
   logout: () => Promise<void>;
   setUser: (user: AuthUser | null) => void;
   refreshUser: () => Promise<void>;
@@ -115,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string;
     name: string;
     phone: string;
-  }) {
+  }): Promise<AuthUser> {
     const res = await apiRequest("POST", "/api/auth/register", data);
     const payload = (await res.json()) as LoginResponse;
     if (!res.ok) {
@@ -128,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (normalized.accessToken) {
       await AsyncStorage.setItem("a2b_token", normalized.accessToken);
     }
+    return normalized.user;
   }
 
   async function logout() {

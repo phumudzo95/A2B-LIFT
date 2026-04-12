@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Pressable, Platform, ScrollView, ActivityIndicator, Image, Modal, Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -26,7 +27,7 @@ interface ClientProfileDetails {
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
   const [profileDetails, setProfileDetails] = useState<ClientProfileDetails | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [showSelfieUpdate, setShowSelfieUpdate] = useState(false);
@@ -67,19 +68,16 @@ export default function ProfileScreen() {
     setSelfieUploading(true);
     try {
       const uploadedUrl = await uploadDocument(result.uri, user.id, "profile_selfie");
-      await apiRequest("PUT", `/api/users/${user.id}/selfie`, { profilePhoto: uploadedUrl });
-      // Refresh auth context user
-      const meRes = await apiRequest("GET", "/api/auth/me");
-      if (meRes.ok) {
-        const fresh = await meRes.json();
-        if (fresh?.user) {
-          const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-          await AsyncStorage.setItem("a2b_user", JSON.stringify(fresh.user));
-        }
-      }
+      const updateRes = await apiRequest("PUT", `/api/users/${user.id}/selfie`, { profilePhoto: uploadedUrl });
+      const updatedUser = await updateRes.json();
+      setUser(updatedUser);
+      await AsyncStorage.setItem("a2b_user", JSON.stringify(updatedUser));
       Alert.alert("Selfie Updated", "Your profile photo has been updated successfully.");
-    } catch {
-      Alert.alert("Error", "Could not update selfie. Please try again.");
+    } catch (error: any) {
+      const message = typeof error?.message === "string"
+        ? error.message.replace(/^\d+:\s*/, "")
+        : "Could not update selfie. Please try again.";
+      Alert.alert("Error", message);
     } finally {
       setSelfieUploading(false);
       setShowSelfieUpdate(false);
