@@ -19,6 +19,9 @@ interface AuthUser {
   role: string;
   rating: number | null;
   walletBalance: number | null;
+  rewardsBalance?: number | null;
+  referralCode?: string | null;
+  referredByUserId?: string | null;
   createdAt?: string | null;
 }
 
@@ -39,6 +42,7 @@ interface AuthContextValue {
     password: string;
     name: string;
     phone: string;
+    referralCode?: string;
   }) => Promise<AuthUser>;
   logout: () => Promise<void>;
   setUser: (user: AuthUser | null) => void;
@@ -118,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string;
     name: string;
     phone: string;
+    referralCode?: string;
   }): Promise<AuthUser> {
     const res = await apiRequest("POST", "/api/auth/register", data);
     const payload = (await res.json()) as LoginResponse;

@@ -18,6 +18,9 @@ import {
   livenessSessions,
   savedCards,
   walletTransactions,
+  referralEvents,
+  rewardTransactions,
+  rewardCashouts,
   type TripEnquiry,
   type User,
   type InsertUser,
@@ -35,6 +38,9 @@ import {
   type SavedCard,
   type WalletTransaction,
   type LivenessSession,
+  type ReferralEvent,
+  type RewardTransaction,
+  type RewardCashout,
 } from "../shared/schema";
 
 const dbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
@@ -56,7 +62,8 @@ export interface IStorage {
   // Users / Auth
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUserByReferralCode(referralCode: string): Promise<User | undefined>;
+  createUser(user: InsertUser & Partial<User>): Promise<User>;
   updateUser(id: string, data: Partial<User>): Promise<User | undefined>;
 
   // Chauffeurs (Drivers)
@@ -157,6 +164,27 @@ export interface IStorage {
   createWalletTransaction(data: any): Promise<WalletTransaction>;
   getWalletTransactions(userId: string): Promise<WalletTransaction[]>;
 
+  // Referral + Rewards
+  createReferralEvent(data: any): Promise<ReferralEvent>;
+  getReferralEventByReferredUserId(userId: string): Promise<ReferralEvent | undefined>;
+  getReferralEventsByReferrerUserId(userId: string): Promise<ReferralEvent[]>;
+  updateReferralEvent(id: string, data: Partial<ReferralEvent>): Promise<ReferralEvent | undefined>;
+
+  createRewardTransaction(data: any): Promise<RewardTransaction>;
+  getRewardTransactions(userId: string): Promise<RewardTransaction[]>;
+  getRewardTransactionByRideAndType(
+    userId: string,
+    rideId: string,
+    type: string,
+    sourceUserId?: string,
+  ): Promise<RewardTransaction | undefined>;
+
+  createRewardCashout(data: any): Promise<RewardCashout>;
+  getRewardCashout(id: string): Promise<RewardCashout | undefined>;
+  getRewardCashoutsByUser(userId: string): Promise<RewardCashout[]>;
+  getAllRewardCashouts(): Promise<RewardCashout[]>;
+  updateRewardCashout(id: string, data: Partial<RewardCashout>): Promise<RewardCashout | undefined>;
+
   // Withdrawal (extended)
   updateWithdrawalByTransferCode(transferCode: string, data: any): Promise<Withdrawal | undefined>;
 }
@@ -176,7 +204,13 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async getUserByReferralCode(referralCode: string): Promise<User | undefined> {
+    const code = referralCode.trim().toUpperCase();
+    const [user] = await db.select().from(users).where(eq(users.referralCode, code));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser & Partial<User>): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
@@ -637,6 +671,102 @@ export class DatabaseStorage implements IStorage {
       .where(eq(walletTransactions.userId, userId))
       .orderBy(desc(walletTransactions.createdAt))
       .limit(50);
+  }
+
+  async createReferralEvent(data: any): Promise<ReferralEvent> {
+    const [event] = await db.insert(referralEvents).values(data).returning();
+    return event;
+  }
+
+  async getReferralEventByReferredUserId(userId: string): Promise<ReferralEvent | undefined> {
+    const [event] = await db
+      .select()
+      .from(referralEvents)
+      .where(eq(referralEvents.referredUserId, userId));
+    return event;
+  }
+
+  async getReferralEventsByReferrerUserId(userId: string): Promise<ReferralEvent[]> {
+    return db
+      .select()
+      .from(referralEvents)
+      .where(eq(referralEvents.referrerUserId, userId))
+      .orderBy(desc(referralEvents.createdAt));
+  }
+
+  async updateReferralEvent(id: string, data: Partial<ReferralEvent>): Promise<ReferralEvent | undefined> {
+    const [event] = await db
+      .update(referralEvents)
+      .set(data)
+      .where(eq(referralEvents.id, id))
+      .returning();
+    return event;
+  }
+
+  async createRewardTransaction(data: any): Promise<RewardTransaction> {
+    const [tx] = await db.insert(rewardTransactions).values(data).returning();
+    return tx;
+  }
+
+  async getRewardTransactions(userId: string): Promise<RewardTransaction[]> {
+    return db
+      .select()
+      .from(rewardTransactions)
+      .where(eq(rewardTransactions.userId, userId))
+      .orderBy(desc(rewardTransactions.createdAt))
+      .limit(100);
+  }
+
+  async getRewardTransactionByRideAndType(
+    userId: string,
+    rideId: string,
+    type: string,
+    sourceUserId?: string,
+  ): Promise<RewardTransaction | undefined> {
+    const conditions = [
+      eq(rewardTransactions.userId, userId),
+      eq(rewardTransactions.rideId, rideId),
+      eq(rewardTransactions.type, type),
+    ];
+    if (sourceUserId) {
+      conditions.push(eq(rewardTransactions.sourceUserId, sourceUserId));
+    }
+    const [tx] = await db
+      .select()
+      .from(rewardTransactions)
+      .where(and(...conditions));
+    return tx;
+  }
+
+  async createRewardCashout(data: any): Promise<RewardCashout> {
+    const [cashout] = await db.insert(rewardCashouts).values(data).returning();
+    return cashout;
+  }
+
+  async getRewardCashout(id: string): Promise<RewardCashout | undefined> {
+    const [cashout] = await db.select().from(rewardCashouts).where(eq(rewardCashouts.id, id));
+    return cashout;
+  }
+
+  async getRewardCashoutsByUser(userId: string): Promise<RewardCashout[]> {
+    return db
+      .select()
+      .from(rewardCashouts)
+      .where(eq(rewardCashouts.userId, userId))
+      .orderBy(desc(rewardCashouts.requestedAt));
+  }
+
+  async getAllRewardCashouts(): Promise<RewardCashout[]> {
+    return db.select().from(rewardCashouts).orderBy(desc(rewardCashouts.requestedAt));
+  }
+
+  async updateRewardCashout(id: string, data: Partial<RewardCashout>): Promise<RewardCashout | undefined> {
+    const [cashout] = await db
+      .update(rewardCashouts)
+      .set(data)
+      .where(eq(rewardCashouts.id, id))
+      .returning();
+    return cashout;
   }
 
   async updateWithdrawalByTransferCode(transferCode: string, data: any): Promise<Withdrawal | undefined> {

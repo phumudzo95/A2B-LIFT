@@ -288,6 +288,15 @@ export default function ClientWalletScreen() {
           </Pressable>
         </View>
 
+        <Pressable style={styles.rewardsCard} onPress={() => router.push("/client/referrals") as any}>
+          <View style={styles.rewardsInfo}>
+            <Text style={styles.rewardsLabel}>Rewards Balance</Text>
+            <Text style={styles.rewardsAmount}>R {(user?.rewardsBalance || 0).toFixed(2)}</Text>
+            <Text style={styles.rewardsSub}>Spend rewards on rides or request a manual cash-out.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </Pressable>
+
         {/* ── Payment Methods ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -526,6 +535,23 @@ const styles = StyleSheet.create({
   balanceLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 1 },
   balanceAmount: { fontSize: 42, fontFamily: "Inter_700Bold", color: Colors.white, letterSpacing: -1 },
   balanceSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  rewardsCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 18,
+    backgroundColor: Colors.card,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  rewardsInfo: { flex: 1 },
+  rewardsLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 1 },
+  rewardsAmount: { fontSize: 24, fontFamily: "Inter_700Bold", color: Colors.white, marginTop: 6 },
+  rewardsSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, marginTop: 4 },
   topupBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
     backgroundColor: Colors.white, paddingVertical: 10, paddingHorizontal: 24,

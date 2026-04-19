@@ -211,12 +211,23 @@ export default function ProfileScreen() {
       <View style={styles.menuGroup}>
         <Pressable
           style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
-          onPress={() => router.replace("/role-select")}
+          onPress={() => router.push(user?.role === "chauffeur" ? "/chauffeur" : "/chauffeur-register")}
         >
           <View style={styles.menuIconCircle}>
-            <Ionicons name="swap-horizontal" size={20} color={Colors.white} />
+            <Ionicons name={user?.role === "chauffeur" ? "car-sport-outline" : "car-outline"} size={20} color={Colors.white} />
           </View>
-          <Text style={styles.menuText}>Switch Mode</Text>
+          <Text style={styles.menuText}>{user?.role === "chauffeur" ? "Driver Dashboard" : "Become a Driver"}</Text>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
+          onPress={() => router.push("/client/referrals")}
+        >
+          <View style={styles.menuIconCircle}>
+            <Ionicons name="gift-outline" size={20} color={Colors.white} />
+          </View>
+          <Text style={styles.menuText}>Referral & Rewards</Text>
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </Pressable>
       </View>

@@ -130,8 +130,33 @@ function getRoutePreferenceLabel(routeId?: string | null): string {
 
 function getPaymentMethodLabel(method?: string | null): string {
   if (method === "card") return "Card";
+  if (method === "card_rewards") return "Card + Rewards";
   if (method === "wallet") return "Wallet";
+  if (method === "cash_rewards") return "Cash + Rewards";
   return "Cash";
+            {(() => {
+              const rewardsAvailable = Number(user?.rewardsBalance || 0);
+              const rewardsCap = Math.min(rewardsAvailable, Number(estimatedPrice || 0) * 0.2);
+              const mixedRewardsValue = Math.round(rewardsCap * 100) / 100;
+              const remainingFare = Math.max(Number(estimatedPrice || 0) - mixedRewardsValue, 0);
+
+              if (!(mixedRewardsValue > 0)) {
+                return null;
+              }
+
+              return (
+                <Pressable style={styles.payMethodRow} onPress={() => handlePayAndRide("cash_rewards")}>
+                  <View style={[styles.payMethodIcon, { backgroundColor: Colors.warning }]}> 
+                    <Ionicons name="cash" size={20} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.payMethodName}>Cash + Rewards</Text>
+                    <Text style={styles.payMethodSub}>Use R {mixedRewardsValue.toFixed(2)} rewards, pay R {remainingFare.toFixed(2)} in cash</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                </Pressable>
+              );
+            })()}
 }
 
 function calculateRouteSafetyScore(route: DirectionRoute): number {
@@ -377,7 +402,7 @@ export default function ClientHomeScreen() {
   const [submittingRating, setSubmittingRating] = useState(false);
   const [onlineDrivers, setOnlineDrivers] = useState<NearbyDriverState[]>([]);
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "wallet">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "cash_rewards" | "card" | "card_rewards" | "wallet">("cash");
   const [showCashSelfiePrompt, setShowCashSelfiePrompt] = useState(false);
   const [showCashSelfieCamera, setShowCashSelfieCamera] = useState(false);
   const [cashSelfieSaving, setCashSelfieSaving] = useState(false);
@@ -1186,7 +1211,7 @@ export default function ClientHomeScreen() {
       vehicleType: selectedVehicle.id,
       distanceKm,
       paymentMethod: method,
-      paymentStatus: method === "cash" ? "unpaid" : "pending",
+      paymentStatus: method === "cash" || method === "cash_rewards" ? "unpaid" : "pending",
       durationMin: activeRouteChoice?.durationMin || tripDurationMin || undefined,
       selectedRouteId: activeRouteChoice?.id || undefined,
       selectedRouteDistanceKm: activeRouteChoice?.distanceKm || undefined,
@@ -1200,12 +1225,25 @@ export default function ClientHomeScreen() {
   }
 
   /** Creates and dispatches a ride for any payment method */
-  async function proceedWithRide(method: "cash" | "card" | "wallet") {
+  async function proceedWithRide(method: "cash" | "cash_rewards" | "card" | "card_rewards" | "wallet") {
     try {
       const ride = await createRideRecord(method);
       if (!ride) return;
 
-      if (method === "cash") {
+      if (method === "cash" || method === "cash_rewards") {
+        if (method === "cash_rewards") {
+          const payRes = await apiRequest("POST", "/api/payments/pay-mixed", {
+            rideId: ride.id,
+            baseMethod: "cash",
+          });
+          const payData = await payRes.json();
+          if (!payData.success) {
+            await apiRequest("PUT", `/api/rides/${ride.id}/status`, { status: "cancelled" }).catch(() => {});
+            Alert.alert("Payment Failed", payData.message || "Could not apply rewards to this cash ride.");
+            return;
+          }
+          await refreshUser();
+        }
         setCurrentRide(ride);
         setRideStatus("requested");
         queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user!.id] });
@@ -1226,6 +1264,42 @@ export default function ClientHomeScreen() {
         queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user!.id] });
         if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         return;
+      }
+
+      if (method === "card_rewards") {
+        try {
+          const payRes = await apiRequest("POST", "/api/payments/pay-mixed", {
+            rideId: ride.id,
+            baseMethod: "card",
+          });
+          const payData = await payRes.json();
+          if (!payData.success) {
+            await apiRequest("PUT", `/api/rides/${ride.id}/status`, { status: "cancelled" }).catch(() => {});
+            if (payData.needsCard) {
+              Alert.alert("No Card Saved", "Please add a card in your wallet to use rewards with card payment.", [
+                { text: "Go to Wallet", onPress: () => router.push("/client/wallet") },
+                { text: "Pay Cash", onPress: () => handlePayAndRide("cash") },
+                { text: "Cancel", style: "cancel" },
+              ]);
+            } else {
+              Alert.alert("Payment Failed", payData.message || "Could not complete mixed payment.");
+            }
+            return;
+          }
+          await refreshUser();
+          setCurrentRide(ride);
+          setRideStatus("requested");
+          queryClient.invalidateQueries({ queryKey: ["/api/rides/client", user!.id] });
+          if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          return;
+        } catch {
+          await apiRequest("PUT", `/api/rides/${ride.id}/status`, { status: "cancelled" }).catch(() => {});
+          Alert.alert("Payment Error", "Could not process mixed payment. Please try again or pay cash.", [
+            { text: "Pay Cash", onPress: () => handlePayAndRide("cash") },
+            { text: "Cancel", style: "cancel" },
+          ]);
+          return;
+        }
       }
 
       if (method === "card") {
@@ -1265,18 +1339,17 @@ export default function ClientHomeScreen() {
     }
   }
 
-  async function handlePayAndRide(method: "cash" | "card" | "wallet") {
+  async function handlePayAndRide(method: "cash" | "cash_rewards" | "card" | "card_rewards" | "wallet") {
     if (!user || !location || !dropoffCoords) return;
     setPaymentMethod(method);
     setShowPaymentPicker(false);
 
-    if (method === "cash") {
-      setPaymentMethod("cash");
+    if (method === "cash" || method === "cash_rewards") {
       if (!user?.profilePhoto) {
         setShowCashSelfiePrompt(true);
         return;
       }
-      await proceedWithRide("cash");
+      await proceedWithRide(method);
       return;
     }
 
@@ -1841,7 +1914,7 @@ export default function ClientHomeScreen() {
             </View>
             <View style={styles.selectionMetaChip}>
               <Ionicons
-                name={currentRide?.paymentMethod === "card" ? "card-outline" : currentRide?.paymentMethod === "wallet" ? "wallet-outline" : "cash-outline"}
+                name={currentRide?.paymentMethod === "card" ? "card-outline" : currentRide?.paymentMethod === "wallet" ? "wallet-outline" : currentRide?.paymentMethod === "card_rewards" ? "gift-outline" : "cash-outline"}
                 size={14}
                 color={Colors.white}
               />
@@ -2134,31 +2207,62 @@ export default function ClientHomeScreen() {
             ) : null}
             {(() => {
               const defaultCard = savedCards.find(c => c.isDefault) || savedCards[0];
+              const rewardsAvailable = Number(user?.rewardsBalance || 0);
+              const rewardsCap = Math.min(rewardsAvailable, Number(estimatedPrice || 0) * 0.2);
+              const mixedRewardsValue = Math.round(rewardsCap * 100) / 100;
+              const remainingFare = Math.max(Number(estimatedPrice || 0) - mixedRewardsValue, 0);
               return (
-                <Pressable
-                  style={styles.payMethodRow}
-                  onPress={() => {
-                    if (!defaultCard) {
-                      setShowPaymentPicker(false);
-                      router.push("/client/wallet");
-                    } else {
-                      handlePayAndRide("card");
-                    }
-                  }}
-                >
-                  <View style={[styles.payMethodIcon, { backgroundColor: "#1434CB" }]}>
-                    <Ionicons name="card" size={20} color="#fff" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.payMethodName}>
-                      {defaultCard ? `${defaultCard.cardType?.toUpperCase()} •••• ${defaultCard.last4}` : "Pay by Card"}
-                    </Text>
-                    <Text style={styles.payMethodSub}>
-                      {defaultCard ? "Charged immediately to saved card" : "No card saved — tap to add one in wallet"}
-                    </Text>
-                  </View>
-                  <Ionicons name={defaultCard ? "chevron-forward" : "add-circle-outline"} size={16} color={Colors.textMuted} />
-                </Pressable>
+                <>
+                  <Pressable
+                    style={styles.payMethodRow}
+                    onPress={() => {
+                      if (!defaultCard) {
+                        setShowPaymentPicker(false);
+                        router.push("/client/wallet");
+                      } else {
+                        handlePayAndRide("card");
+                      }
+                    }}
+                  >
+                    <View style={[styles.payMethodIcon, { backgroundColor: "#1434CB" }]}> 
+                      <Ionicons name="card" size={20} color="#fff" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.payMethodName}>
+                        {defaultCard ? `${defaultCard.cardType?.toUpperCase()} •••• ${defaultCard.last4}` : "Pay by Card"}
+                      </Text>
+                      <Text style={styles.payMethodSub}>
+                        {defaultCard ? "Charged immediately to saved card" : "No card saved — tap to add one in wallet"}
+                      </Text>
+                    </View>
+                    <Ionicons name={defaultCard ? "chevron-forward" : "add-circle-outline"} size={16} color={Colors.textMuted} />
+                  </Pressable>
+
+                  {mixedRewardsValue > 0 && (
+                    <Pressable
+                      style={styles.payMethodRow}
+                      onPress={() => {
+                        if (!defaultCard) {
+                          setShowPaymentPicker(false);
+                          router.push("/client/wallet");
+                        } else {
+                          handlePayAndRide("card_rewards");
+                        }
+                      }}
+                    >
+                      <View style={[styles.payMethodIcon, { backgroundColor: "#6C4D17" }]}> 
+                        <Ionicons name="gift" size={20} color="#fff" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.payMethodName}>Card + Rewards</Text>
+                        <Text style={styles.payMethodSub}>
+                          Use R {mixedRewardsValue.toFixed(2)} rewards, charge R {remainingFare.toFixed(2)} to card
+                        </Text>
+                      </View>
+                      <Ionicons name={defaultCard ? "chevron-forward" : "add-circle-outline"} size={16} color={Colors.textMuted} />
+                    </Pressable>
+                  )}
+                </>
               );
             })()}
             {(user?.walletBalance || 0) >= (estimatedPrice || 0) && (estimatedPrice || 0) > 0 && (
@@ -2173,6 +2277,29 @@ export default function ClientHomeScreen() {
                 <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
               </Pressable>
             )}
+            {(() => {
+              const rewardsAvailable = Number(user?.rewardsBalance || 0);
+              const rewardsCap = Math.min(rewardsAvailable, Number(estimatedPrice || 0) * 0.2);
+              const mixedRewardsValue = Math.round(rewardsCap * 100) / 100;
+              const remainingFare = Math.max(Number(estimatedPrice || 0) - mixedRewardsValue, 0);
+
+              if (!(mixedRewardsValue > 0)) {
+                return null;
+              }
+
+              return (
+                <Pressable style={styles.payMethodRow} onPress={() => handlePayAndRide("cash_rewards")}>
+                  <View style={[styles.payMethodIcon, { backgroundColor: Colors.warning }]}> 
+                    <Ionicons name="cash" size={20} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.payMethodName}>Cash + Rewards</Text>
+                    <Text style={styles.payMethodSub}>Use R {mixedRewardsValue.toFixed(2)} rewards, pay R {remainingFare.toFixed(2)} in cash</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                </Pressable>
+              );
+            })()}
             <Pressable style={styles.payMethodRow} onPress={() => handlePayAndRide("cash")}>
               <View style={[styles.payMethodIcon, { backgroundColor: Colors.accent }]}> 
                 <Ionicons name="cash" size={20} color="#fff" />

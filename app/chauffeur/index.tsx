@@ -1749,26 +1749,30 @@ export default function ChauffeurDashboard() {
       <Modal visible={!!completedTrip} transparent animationType="fade" onRequestClose={() => setCompletedTrip(null)}>
         <View style={styles.payPopupOverlay}>
           <View style={styles.payPopupCard}>
-            {completedTrip?.paymentMethod === "cash" ? (
+            {completedTripIsCashLike ? (
               <>
                 <View style={styles.payPopupIconWrap}>
                   <Ionicons name="cash-outline" size={40} color={Colors.success} />
                 </View>
-                <Text style={styles.payPopupTitle}>Collect Cash Payment</Text>
-                <Text style={styles.payPopupAmount}>R {getRideClientFare(completedTrip).toFixed(0)}</Text>
+                <Text style={styles.payPopupTitle}>{completedTripRewardsUsed > 0 ? "Collect Remaining Cash" : "Collect Cash Payment"}</Text>
+                <Text style={styles.payPopupAmount}>R {completedTripRemainingDue.toFixed(0)}</Text>
                 <Text style={styles.payPopupBody}>
-                  Please collect R {getRideClientFare(completedTrip).toFixed(0)} from {completedTrip?.clientFirstName || (completedTrip?.clientName ? String(completedTrip.clientName).split(" ")[0] : "the client")} before they exit the vehicle. Your net after 15% commission is R {getRideFare(completedTrip).toFixed(0)}.
+                  {completedTripRewardsUsed > 0
+                    ? `Rewards covered R ${completedTripRewardsUsed.toFixed(0)}. Please collect the remaining R ${completedTripRemainingDue.toFixed(0)} from ${completedTrip?.clientFirstName || (completedTrip?.clientName ? String(completedTrip.clientName).split(" ")[0] : "the client")} before they exit the vehicle. Your net after 15% commission is R ${getRideFare(completedTrip).toFixed(0)}.`
+                    : `Please collect R ${completedTripRemainingDue.toFixed(0)} from ${completedTrip?.clientFirstName || (completedTrip?.clientName ? String(completedTrip.clientName).split(" ")[0] : "the client")} before they exit the vehicle. Your net after 15% commission is R ${getRideFare(completedTrip).toFixed(0)}.`}
                 </Text>
               </>
             ) : (
               <>
                 <View style={styles.payPopupIconWrap}>
-                  <Text style={{ fontSize: 40 }}>💳</Text>
+                  <Text style={{ fontSize: 40 }}>{completedTripIsCardRewards ? "🎁" : "💳"}</Text>
                 </View>
-                <Text style={styles.payPopupTitle}>Card Payment</Text>
+                <Text style={styles.payPopupTitle}>{completedTripIsCardRewards ? "Card + Rewards Payment" : "Card Payment"}</Text>
                 <Text style={styles.payPopupAmount}>R {getRideFare(completedTrip).toFixed(0)}</Text>
                 <Text style={styles.payPopupBody}>
-                  Your net after 15% commission is R {getRideFare(completedTrip).toFixed(0)}, which will reflect in your wallet shortly.
+                  {completedTripIsCardRewards
+                    ? `Rewards covered R ${completedTripRewardsUsed.toFixed(0)} and the remaining R ${completedTripRemainingDue.toFixed(0)} was charged to the rider's card. Your net after 15% commission is R ${getRideFare(completedTrip).toFixed(0)}, which will reflect in your wallet shortly.`
+                    : `Your net after 15% commission is R ${getRideFare(completedTrip).toFixed(0)}, which will reflect in your wallet shortly.`}
                 </Text>
               </>
             )}

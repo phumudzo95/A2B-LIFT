@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Image } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
@@ -16,11 +16,13 @@ const GOOGLE_OAUTH_START = "https://api-production-0783.up.railway.app/api/auth/
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ ref?: string }>();
   const { register, setUser } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -34,6 +36,12 @@ export default function RegisterScreen() {
     });
     return () => sub.remove();
   }, []);
+
+  useEffect(() => {
+    if (typeof params.ref === "string" && params.ref.trim()) {
+      setReferralCode(params.ref.trim().toUpperCase());
+    }
+  }, [params.ref]);
 
   async function handleDeepLinkCallback(url: string) {
     try {
@@ -76,7 +84,13 @@ export default function RegisterScreen() {
     if (password.length < 4) { setError("Password must be at least 4 characters"); return; }
     setLoading(true); setError("");
     try {
-      await register({ username: email.trim().toLowerCase(), password, name: name.trim(), phone: phone.trim() });
+      await register({
+        username: email.trim().toLowerCase(),
+        password,
+        name: name.trim(),
+        phone: phone.trim(),
+        referralCode: referralCode.trim() || undefined,
+      });
     } catch (e: any) {
       const msg = e.message || "Registration failed.";
       if (msg.includes("already exists") || msg.includes("400")) setError("An account with this email already exists");
@@ -84,6 +98,26 @@ export default function RegisterScreen() {
       else if (msg.includes("fetch") || msg.includes("network")) setError("Cannot connect to server.");
       else setError(msg);
     } finally { setLoading(false); }
+  }
+
+  async function handleGoogleSignUp() {
+    setGoogleLoading(true);
+    setError("");
+    try {
+      const googleStartUrl = referralCode.trim()
+        ? `${GOOGLE_OAUTH_START}?ref=${encodeURIComponent(referralCode.trim())}`
+        : GOOGLE_OAUTH_START;
+      const result = await WebBrowser.openAuthSessionAsync(googleStartUrl, "a2blift://auth", {
+        preferEphemeralSession: true,
+      });
+      if (result.type === "success" && result.url) {
+        await handleDeepLinkCallback(result.url);
+      }
+    } catch {
+      setError("Google sign up failed. Please try again.");
+    } finally {
+      setGoogleLoading(false);
+    }
   }
 
   return (
@@ -146,6 +180,22 @@ export default function RegisterScreen() {
             </View>
           </View>
 
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Referral Code</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="gift-outline" size={18} color={Colors.textMuted} />
+              <TextInput
+                style={styles.input}
+                placeholder="Optional"
+                placeholderTextColor={Colors.textMuted}
+                value={referralCode}
+                onChangeText={(value) => setReferralCode(value.toUpperCase())}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+            </View>
+          </View>
+
           <Pressable style={({ pressed }) => [styles.registerBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }, loading && { opacity: 0.7 }]}
             onPress={handleRegister} disabled={loading}>
             {loading ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.registerBtnText}>Create Account</Text>}
@@ -160,28 +210,7 @@ export default function RegisterScreen() {
 
           {/* ── Google Sign Up ── */}
           <Pressable style={({ pressed }) => [styles.googleBtn, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }, googleLoading && { opacity: 0.7 }]}
-            onPress={async () => {
-              setError("");
-              setGoogleLoading(true);
-              try {
-                const redirectUrl = Linking.createURL("auth");
-                const authUrl = `${GOOGLE_OAUTH_START}?redirect_uri=${encodeURIComponent(redirectUrl)}`;
-                const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
-
-                if (result.type === "success" && result.url) {
-                  await handleDeepLinkCallback(result.url);
-                  return;
-                }
-
-                if (result.type !== "cancel") {
-                  setError("Google sign up failed. Please try again.");
-                }
-              } catch {
-                setError("Google sign up failed. Please try again.");
-              } finally {
-                setGoogleLoading(false);
-              }
-            }} disabled={googleLoading}>
+            onPress={handleGoogleSignUp} disabled={googleLoading}>
             {googleLoading ? <ActivityIndicator color="#1a1a1a" size="small" /> : (
               <>
                 <Image source={require("../assets/images/google_icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />

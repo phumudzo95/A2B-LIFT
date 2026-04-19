@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   pgTable,
   text,
   varchar,
@@ -25,6 +26,9 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("client"),
   rating: real("rating").default(5.0),
   walletBalance: real("wallet_balance").default(0),
+  rewardsBalance: real("rewards_balance").default(0),
+  referralCode: text("referral_code").unique(),
+  referredByUserId: varchar("referred_by_user_id").references((): AnyPgColumn => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -78,6 +82,7 @@ export const rides = pgTable("rides", {
   vehicleType: text("vehicle_type"),
   paymentMethod: text("payment_method").default("cash"),
   paymentStatus: text("payment_status").notNull().default("unpaid"), // unpaid|pending|paid|failed|refunded
+  rewardsAmountUsed: real("rewards_amount_used").default(0),
   cashSelfieUrl: text("cash_selfie_url"),
   livenessStatus: text("liveness_status").default("not_required"), // not_required|pending|passed|failed
   livenessProvider: text("liveness_provider"),
@@ -309,8 +314,56 @@ export const walletTransactions = pgTable("wallet_transactions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const referralEvents = pgTable("referral_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referrerUserId: varchar("referrer_user_id").notNull().references(() => users.id),
+  referredUserId: varchar("referred_user_id").notNull().unique().references(() => users.id),
+  referralCodeUsed: text("referral_code_used").notNull(),
+  status: text("status").notNull().default("registered"),
+  totalRewards: real("total_rewards").default(0),
+  firstRewardAt: timestamp("first_reward_at"),
+  lastRewardAt: timestamp("last_reward_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const rewardTransactions = pgTable("reward_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  referralEventId: varchar("referral_event_id").references(() => referralEvents.id),
+  sourceUserId: varchar("source_user_id").references(() => users.id),
+  rideId: varchar("ride_id").references(() => rides.id),
+  type: text("type").notNull(),
+  amount: real("amount").notNull(),
+  balanceBefore: real("balance_before").notNull(),
+  balanceAfter: real("balance_after").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("completed"),
+  reference: varchar("reference"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const rewardCashouts = pgTable("reward_cashouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  amount: real("amount").notNull(),
+  status: text("status").notNull().default("requested"),
+  bankName: text("bank_name"),
+  accountNumber: text("account_number"),
+  accountHolder: text("account_holder"),
+  phone: text("phone"),
+  notes: text("notes"),
+  reviewedByAdminId: varchar("reviewed_by_admin_id").references(() => users.id),
+  requestedAt: timestamp("requested_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  paidAt: timestamp("paid_at"),
+});
+
 export type SavedCard = typeof savedCards.$inferSelect;
 export type WalletTransaction = typeof walletTransactions.$inferSelect;
+export type ReferralEvent = typeof referralEvents.$inferSelect;
+export type RewardTransaction = typeof rewardTransactions.$inferSelect;
+export type RewardCashout = typeof rewardCashouts.$inferSelect;
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,

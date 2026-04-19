@@ -42,7 +42,7 @@ function ClassicTabLayout() {
         tabBarActiveTintColor: Colors.white,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: {
-          position: isIOS ? "absolute" as const : "relative" as const,
+          position: "absolute" as const,
           backgroundColor: isIOS ? "transparent" : Colors.card,
           borderTopWidth: isWeb ? 1 : 0,
           borderTopColor: Colors.border,
@@ -86,6 +86,7 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="referrals" options={{ href: null }} />
       <Tabs.Screen name="safety" options={{ href: null }} />
       <Tabs.Screen name="help" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
