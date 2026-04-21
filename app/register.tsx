@@ -17,7 +17,7 @@ const GOOGLE_OAUTH_START = "https://api-production-0783.up.railway.app/api/auth/
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ ref?: string }>();
-  const { register, setUser } = useAuth();
+  const { register, setUser, pendingReferralCode, setPendingReferralCode, clearPendingReferralCode } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -39,9 +39,17 @@ export default function RegisterScreen() {
 
   useEffect(() => {
     if (typeof params.ref === "string" && params.ref.trim()) {
-      setReferralCode(params.ref.trim().toUpperCase());
+      const normalizedReferralCode = params.ref.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+      setReferralCode(normalizedReferralCode);
+      void setPendingReferralCode(normalizedReferralCode);
     }
-  }, [params.ref]);
+  }, [params.ref, setPendingReferralCode]);
+
+  useEffect(() => {
+    if (!referralCode && pendingReferralCode) {
+      setReferralCode(pendingReferralCode);
+    }
+  }, [pendingReferralCode, referralCode]);
 
   async function handleDeepLinkCallback(url: string) {
     try {
@@ -60,10 +68,12 @@ export default function RegisterScreen() {
           const freshUser = await meRes.json();
           await AsyncStorage.setItem("a2b_user", JSON.stringify(freshUser));
           setUser(freshUser);
+          await clearPendingReferralCode();
           return;
         }
       } catch {}
       setUser(payload.user);
+      await clearPendingReferralCode();
       // AuthGate handles navigation when user state changes
     } catch {
       setError("Google sign up failed. Please try again.");
@@ -84,12 +94,13 @@ export default function RegisterScreen() {
     if (password.length < 4) { setError("Password must be at least 4 characters"); return; }
     setLoading(true); setError("");
     try {
+      const appliedReferralCode = referralCode.trim() || pendingReferralCode || undefined;
       await register({
         username: email.trim().toLowerCase(),
         password,
         name: name.trim(),
         phone: phone.trim(),
-        referralCode: referralCode.trim() || undefined,
+        referralCode: appliedReferralCode,
       });
     } catch (e: any) {
       const msg = e.message || "Registration failed.";
@@ -104,8 +115,9 @@ export default function RegisterScreen() {
     setGoogleLoading(true);
     setError("");
     try {
-      const googleStartUrl = referralCode.trim()
-        ? `${GOOGLE_OAUTH_START}?ref=${encodeURIComponent(referralCode.trim())}`
+      const appliedReferralCode = referralCode.trim() || pendingReferralCode || "";
+      const googleStartUrl = appliedReferralCode
+        ? `${GOOGLE_OAUTH_START}?ref=${encodeURIComponent(appliedReferralCode)}`
         : GOOGLE_OAUTH_START;
       const result = await WebBrowser.openAuthSessionAsync(googleStartUrl, "a2blift://auth", {
         preferEphemeralSession: true,
@@ -189,7 +201,11 @@ export default function RegisterScreen() {
                 placeholder="Optional"
                 placeholderTextColor={Colors.textMuted}
                 value={referralCode}
-                onChangeText={(value) => setReferralCode(value.toUpperCase())}
+                onChangeText={(value) => {
+                  const normalizedReferralCode = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                  setReferralCode(normalizedReferralCode);
+                  void setPendingReferralCode(normalizedReferralCode || null);
+                }}
                 autoCapitalize="characters"
                 autoCorrect={false}
               />

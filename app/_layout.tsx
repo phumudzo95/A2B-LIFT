@@ -3,6 +3,7 @@ import { Stack, router, usePathname, useRootNavigationState } from "expo-router"
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
+import * as Linking from "expo-linking";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { StatusBar } from "expo-status-bar";
@@ -14,6 +15,30 @@ import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { SocketProvider } from "@/lib/socket-context";
 
 SplashScreen.preventAutoHideAsync();
+
+function normalizeReferralCode(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return normalized || null;
+}
+
+function extractReferralCodeFromUrl(url: string): string | null {
+  const parsed = Linking.parse(url);
+  const queryRef = parsed.queryParams?.ref;
+  if (typeof queryRef === "string") {
+    return normalizeReferralCode(queryRef);
+  }
+
+  const pathSegments = String(parsed.path || "")
+    .split("/")
+    .filter(Boolean);
+
+  if (pathSegments.length >= 2 && ["r", "ref"].includes(pathSegments[0])) {
+    return normalizeReferralCode(pathSegments[1]);
+  }
+
+  return null;
+}
 
 function AuthGate() {
   const { user, isLoading } = useAuth();
@@ -61,10 +86,48 @@ function AuthGate() {
   return null;
 }
 
+function ReferralLinkGate() {
+  const { user, setPendingReferralCode } = useAuth();
+
+  useEffect(() => {
+    let active = true;
+
+    const handleReferralUrl = async (url: string) => {
+      const referralCode = extractReferralCodeFromUrl(url);
+      if (!referralCode) return;
+
+      await setPendingReferralCode(referralCode);
+      if (!user) {
+        router.replace({ pathname: "/register", params: { ref: referralCode } });
+      }
+    };
+
+    Linking.getInitialURL()
+      .then((url) => {
+        if (active && url) {
+          void handleReferralUrl(url);
+        }
+      })
+      .catch(() => {});
+
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      void handleReferralUrl(url);
+    });
+
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [setPendingReferralCode, user]);
+
+  return null;
+}
+
 function RootLayoutNav() {
   return (
     <>
       <AuthGate />
+      <ReferralLinkGate />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#000000" } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />

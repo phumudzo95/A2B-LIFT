@@ -107,6 +107,139 @@ function getFrontendBaseUrl(): string {
   return (process.env.FRONTEND_URL || "https://peaceful-mousse-459c85.netlify.app").replace(/\/$/, "");
 }
 
+function getReferralEntryUrl(referralCode: string, req?: Request): string {
+  return `${getAppBaseUrl(req)}/r/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
+}
+
+function renderReferralEntryPage(options: {
+  referralCode: string;
+  deepLinkUrl: string;
+  referrerName?: string | null;
+}) {
+  const heading = options.referrerName
+    ? `${options.referrerName} invited you to A2B LIFT`
+    : "You were invited to A2B LIFT";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>A2B LIFT Referral</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #050505;
+        --card: #121212;
+        --border: rgba(255,255,255,0.1);
+        --text: #f5f5f5;
+        --muted: #b0b0b0;
+        --accent: #d4af37;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at top, rgba(212,175,55,0.18), transparent 38%),
+          linear-gradient(180deg, #090909 0%, var(--bg) 100%);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        padding: 24px;
+      }
+      .card {
+        width: min(100%, 460px);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        background: rgba(18,18,18,0.96);
+        padding: 28px;
+        box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+      }
+      .eyebrow {
+        color: var(--accent);
+        font-size: 12px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+      h1 {
+        font-size: 30px;
+        line-height: 1.1;
+        margin: 0 0 12px;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .code {
+        margin: 22px 0;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 16px 18px;
+        background: rgba(255,255,255,0.03);
+      }
+      .code-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+      .code-value {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+      .button {
+        display: inline-flex;
+        width: 100%;
+        justify-content: center;
+        align-items: center;
+        padding: 15px 18px;
+        border-radius: 16px;
+        background: var(--accent);
+        color: #111;
+        text-decoration: none;
+        font-weight: 700;
+        margin-top: 6px;
+      }
+      .secondary {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--border);
+        margin-top: 12px;
+      }
+      .hint {
+        margin-top: 16px;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="eyebrow">A2B LIFT Referral</div>
+      <h1>${heading}</h1>
+      <p>Open the app to start registration with this referral already applied. Your own 2.5% loyalty cashback starts once you complete rides.</p>
+      <div class="code">
+        <div class="code-label">Referral code</div>
+        <div class="code-value">${options.referralCode}</div>
+      </div>
+      <a class="button" href="${options.deepLinkUrl}">Open A2B LIFT</a>
+      <a class="button secondary" href="javascript:void(0)" onclick="navigator.clipboard && navigator.clipboard.writeText('${options.referralCode}')">Copy Referral Code</a>
+      <p class="hint">If the app does not open automatically, tap Open A2B LIFT or copy the code and register manually inside the app.</p>
+    </main>
+    <script>
+      window.setTimeout(function () {
+        window.location.replace(${JSON.stringify(options.deepLinkUrl)});
+      }, 120);
+    </script>
+  </body>
+</html>`;
+}
+
 function normalizeReferralCode(rawValue: unknown): string | null {
   if (typeof rawValue !== "string") return null;
   const cleaned = rawValue.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -671,6 +804,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return fallback;
   }
 
+  app.get(["/r/:referralCode", "/ref/:referralCode"], async (req: Request, res: Response) => {
+    const referralCode = normalizeReferralCode(req.params.referralCode);
+    if (!referralCode) {
+      return res.status(400).type("html").send(renderReferralEntryPage({
+        referralCode: "INVALID",
+        deepLinkUrl: "a2blift://register",
+      }));
+    }
+
+    const referrer = await storage.getUserByReferralCode(referralCode);
+    return res.type("html").send(renderReferralEntryPage({
+      referralCode,
+      deepLinkUrl: `a2blift://register?ref=${encodeURIComponent(referralCode)}`,
+      referrerName: getUserFirstName(referrer, "Your friend"),
+    }));
+  });
+
   let clientRatingsReady: Promise<void> | null = null;
   function ensureClientRatingsTable() {
     if (!clientRatingsReady) {
@@ -807,7 +957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       return res.json({
         referralCode: hydratedUser.referralCode,
-        shareUrl: `${getFrontendBaseUrl()}/register?ref=${hydratedUser.referralCode}`,
+        shareUrl: getReferralEntryUrl(hydratedUser.referralCode, req),
         rewardsBalance: hydratedUser.rewardsBalance || 0,
         referredCount: events.length,
         rewardedReferrals: events.filter((event) => event.status === "rewarded").length,

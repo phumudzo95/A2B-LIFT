@@ -20,7 +20,7 @@ const GOOGLE_OAUTH_START = "https://api-production-0783.up.railway.app/api/auth/
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { login, setUser } = useAuth();
+  const { login, setUser, pendingReferralCode } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -163,7 +163,7 @@ export default function LoginScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account?</Text>
-          <Pressable onPress={() => router.replace("/register")}> 
+          <Pressable onPress={() => router.replace({ pathname: "/register", params: pendingReferralCode ? { ref: pendingReferralCode } : {} })}> 
             <Text style={styles.footerLink}>Create Account</Text>
           </Pressable>
         </View>

@@ -54,7 +54,7 @@ type ReferralDashboardResponse = ReferralSummary & {
   cashouts?: RewardCashout[];
 };
 
-const FALLBACK_REFERRAL_BASE_URL = "https://peaceful-mousse-459c85.netlify.app";
+const FALLBACK_REFERRAL_BASE_URL = "https://api-production-0783.up.railway.app";
 
 const TX_LABELS: Record<string, string> = {
   referral_reward: "Referral reward",
@@ -112,7 +112,7 @@ function transactionPrefix(type: string) {
 function buildReferralShareUrl(referralCode?: string | null, shareUrl?: string | null) {
   if (shareUrl?.trim()) return shareUrl.trim();
   if (!referralCode?.trim()) return "";
-  return `${FALLBACK_REFERRAL_BASE_URL}/register?ref=${encodeURIComponent(referralCode.trim().toUpperCase())}`;
+  return `${FALLBACK_REFERRAL_BASE_URL}/r/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
 }
 
 function buildFallbackSummary(referralCode?: string | null, rewardsBalance?: number | null): ReferralSummary | null {
@@ -255,7 +255,7 @@ export default function ReferralsScreen() {
 
     try {
       await Share.share({
-        message: `Join A2B LIFT with my referral code ${referralCode} and start earning rewards: ${shareUrl}`,
+        message: `Join A2B LIFT with my referral code ${referralCode}. Tap this link to open the app and start registration: ${shareUrl}`,
         url: shareUrl,
       });
     } catch (error: any) {
