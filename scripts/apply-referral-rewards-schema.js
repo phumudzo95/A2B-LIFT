@@ -8,6 +8,10 @@ UPDATE users SET rewards_balance = 0 WHERE rewards_balance IS NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code text;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id varchar REFERENCES users(id);
 
+ALTER TABLE rides ADD COLUMN IF NOT EXISTS rewards_amount_used real DEFAULT 0;
+ALTER TABLE rides ALTER COLUMN rewards_amount_used SET DEFAULT 0;
+UPDATE rides SET rewards_amount_used = 0 WHERE rewards_amount_used IS NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code_unique
   ON users (referral_code)
   WHERE referral_code IS NOT NULL;
@@ -108,6 +112,14 @@ CREATE INDEX IF NOT EXISTS idx_reward_cashouts_status
       ORDER BY column_name;
     `);
 
+    const verifyRideColumns = await client.query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'rides'
+      AND column_name IN ('rewards_amount_used')
+      ORDER BY column_name;
+    `);
+
     const verifyTables = await client.query(`
       SELECT table_name
       FROM information_schema.tables
@@ -117,6 +129,7 @@ CREATE INDEX IF NOT EXISTS idx_reward_cashouts_status
 
     console.log("MIGRATION_OK");
     console.log("USER_COLUMNS:", verifyUserColumns.rows.map((row) => row.column_name).join(", "));
+    console.log("RIDE_COLUMNS:", verifyRideColumns.rows.map((row) => row.column_name).join(", "));
     console.log("TABLES:", verifyTables.rows.map((row) => row.table_name).join(", "));
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});

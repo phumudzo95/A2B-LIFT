@@ -1501,6 +1501,9 @@ function ensureReferralRewardsSchema() {
       await pool2.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id varchar REFERENCES users(id)");
       await pool2.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code_unique ON users (referral_code) WHERE referral_code IS NOT NULL");
       await pool2.query("CREATE INDEX IF NOT EXISTS idx_users_referred_by_user_id ON users (referred_by_user_id)");
+      await pool2.query("ALTER TABLE rides ADD COLUMN IF NOT EXISTS rewards_amount_used real DEFAULT 0");
+      await pool2.query("ALTER TABLE rides ALTER COLUMN rewards_amount_used SET DEFAULT 0");
+      await pool2.query("UPDATE rides SET rewards_amount_used = 0 WHERE rewards_amount_used IS NULL");
       await pool2.query(`
         CREATE TABLE IF NOT EXISTS referral_events (
           id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
