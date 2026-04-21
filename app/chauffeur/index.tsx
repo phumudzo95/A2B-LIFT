@@ -1748,8 +1748,15 @@ export default function ChauffeurDashboard() {
       {/* ─── Post-trip payment popup ─── */}
       <Modal visible={!!completedTrip} transparent animationType="fade" onRequestClose={() => setCompletedTrip(null)}>
         <View style={styles.payPopupOverlay}>
-          <View style={styles.payPopupCard}>
-            {completedTripIsCashLike ? (
+            <View style={styles.payPopupCard}>
+              {(() => {
+                const completedTripPaymentMethod = String(completedTrip?.paymentMethod || "").toLowerCase();
+                const completedTripRewardsUsed = Number(completedTrip?.rewardsAmountUsed || 0);
+                const completedTripRemainingDue = Math.max(0, getRideClientFare(completedTrip) - completedTripRewardsUsed);
+                const completedTripIsCashLike = completedTripPaymentMethod === "cash" || completedTripPaymentMethod === "cash_rewards";
+                const completedTripIsCardRewards = completedTripPaymentMethod === "card_rewards";
+
+                return completedTripIsCashLike ? (
               <>
                 <View style={styles.payPopupIconWrap}>
                   <Ionicons name="cash-outline" size={40} color={Colors.success} />
@@ -1762,7 +1769,7 @@ export default function ChauffeurDashboard() {
                     : `Please collect R ${completedTripRemainingDue.toFixed(0)} from ${completedTrip?.clientFirstName || (completedTrip?.clientName ? String(completedTrip.clientName).split(" ")[0] : "the client")} before they exit the vehicle. Your net after 15% commission is R ${getRideFare(completedTrip).toFixed(0)}.`}
                 </Text>
               </>
-            ) : (
+                ) : (
               <>
                 <View style={styles.payPopupIconWrap}>
                   <Text style={{ fontSize: 40 }}>{completedTripIsCardRewards ? "🎁" : "💳"}</Text>
@@ -1775,7 +1782,8 @@ export default function ChauffeurDashboard() {
                     : `Your net after 15% commission is R ${getRideFare(completedTrip).toFixed(0)}, which will reflect in your wallet shortly.`}
                 </Text>
               </>
-            )}
+                );
+              })()}
             <Pressable style={styles.payPopupBtn} onPress={beginClientRating}>
               <Text style={styles.payPopupBtnText}>Continue</Text>
             </Pressable>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { apiRequest } from "@/lib/query-client";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
@@ -49,8 +49,16 @@ type RewardCashout = {
   requestedAt: string;
 };
 
+type ReferralDashboardResponse = ReferralSummary & {
+  transactions?: RewardTransaction[];
+  cashouts?: RewardCashout[];
+};
+
+const FALLBACK_REFERRAL_BASE_URL = "https://peaceful-mousse-459c85.netlify.app";
+
 const TX_LABELS: Record<string, string> = {
   referral_reward: "Referral reward",
+  ride_cashback: "Trip cashback",
   ride_redemption: "Ride redemption",
   ride_refund: "Ride refund",
   cashout_request: "Cash-out request",
@@ -61,17 +69,17 @@ const REWARD_STEPS = [
   {
     number: "01",
     title: "Share your invite",
-    copy: "Send your code or link to friends, family, and returning riders.",
+    copy: "Send your code or link to new riders.",
   },
   {
     number: "02",
-    title: "They complete a ride",
-    copy: "The 5% loyalty reward pool is funded from A2B commission and shared between the inviter and the invited rider.",
+    title: "Earn 5% on referrals",
+    copy: "When your invited rider completes a trip, you get 5% back.",
   },
   {
     number: "03",
-    title: "Spend or withdraw",
-    copy: "Use rewards on bookings, combine them with cash or card, or request a withdrawal.",
+    title: "Earn 2.5% on your rides",
+    copy: "Every completed trip you take adds 2.5% to your loyalty balance.",
   },
 ];
 
@@ -101,14 +109,48 @@ function transactionPrefix(type: string) {
   return "+";
 }
 
+function buildReferralShareUrl(referralCode?: string | null, shareUrl?: string | null) {
+  if (shareUrl?.trim()) return shareUrl.trim();
+  if (!referralCode?.trim()) return "";
+  return `${FALLBACK_REFERRAL_BASE_URL}/register?ref=${encodeURIComponent(referralCode.trim().toUpperCase())}`;
+}
+
+function buildFallbackSummary(referralCode?: string | null, rewardsBalance?: number | null): ReferralSummary | null {
+  const normalizedCode = referralCode?.trim().toUpperCase();
+  if (!normalizedCode) return null;
+
+  return {
+    referralCode: normalizedCode,
+    shareUrl: buildReferralShareUrl(normalizedCode),
+    rewardsBalance: Number(rewardsBalance || 0),
+    referredCount: 0,
+    rewardedReferrals: 0,
+    totalRewardsEarned: 0,
+    pendingCashoutAmount: 0,
+  };
+}
+
+function getFriendlyRewardsError(error: any) {
+  const message = String(error?.message || "");
+  if (message.includes("404")) {
+    return "Some rewards activity is not available right now, but your invite link is ready to share.";
+  }
+  if (message.includes("401")) {
+    return "Your session expired. Please log in again to refresh rewards activity.";
+  }
+  return "Rewards activity could not be refreshed right now.";
+}
+
 export default function ReferralsScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const hasLoadedOnceRef = useRef(false);
   const [summary, setSummary] = useState<ReferralSummary | null>(null);
   const [transactions, setTransactions] = useState<RewardTransaction[]>([]);
   const [cashouts, setCashouts] = useState<RewardCashout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadNotice, setLoadNotice] = useState<string | null>(null);
   const [showCashout, setShowCashout] = useState(false);
   const [cashoutAmount, setCashoutAmount] = useState("");
   const [bankName, setBankName] = useState("");
@@ -118,34 +160,103 @@ export default function ReferralsScreen() {
 
   const isWide = width >= 900;
 
-  const loadData = useCallback(async () => {
-    try {
-      const [summaryRes, txRes, cashoutRes] = await Promise.all([
-        apiRequest("GET", "/api/referrals/me"),
-        apiRequest("GET", "/api/rewards/transactions"),
-        apiRequest("GET", "/api/rewards/cashouts"),
-      ]);
+  const loadData = useCallback(async (options?: { showLoader?: boolean }) => {
+    const showLoader = options?.showLoader ?? !hasLoadedOnceRef.current;
 
-      setSummary(await summaryRes.json());
-      setTransactions(await txRes.json());
-      setCashouts(await cashoutRes.json());
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to load rewards information.");
-    } finally {
-      setLoading(false);
+    if (showLoader) {
+      setLoading(true);
     }
-  }, []);
+    setLoadNotice(null);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+    const fallbackSummary = buildFallbackSummary(user?.referralCode, user?.rewardsBalance);
+
+    try {
+      let nextSummary = fallbackSummary;
+      let nextTransactions: RewardTransaction[] = [];
+      let nextCashouts: RewardCashout[] = [];
+
+      try {
+        const summaryRes = await apiRequest("GET", "/api/referrals/me");
+        const summaryPayload = (await summaryRes.json()) as ReferralDashboardResponse;
+
+        nextSummary = {
+          referralCode: summaryPayload.referralCode,
+          shareUrl: buildReferralShareUrl(summaryPayload.referralCode, summaryPayload.shareUrl),
+          rewardsBalance: Number(summaryPayload.rewardsBalance || 0),
+          referredCount: Number(summaryPayload.referredCount || 0),
+          rewardedReferrals: Number(summaryPayload.rewardedReferrals || 0),
+          totalRewardsEarned: Number(summaryPayload.totalRewardsEarned || 0),
+          pendingCashoutAmount: Number(summaryPayload.pendingCashoutAmount || 0),
+        };
+
+        if (Array.isArray(summaryPayload.transactions)) {
+          nextTransactions = summaryPayload.transactions;
+        }
+        if (Array.isArray(summaryPayload.cashouts)) {
+          nextCashouts = summaryPayload.cashouts;
+        }
+      } catch (error: any) {
+        setLoadNotice(getFriendlyRewardsError(error));
+      }
+
+      if (nextTransactions.length === 0 || nextCashouts.length === 0) {
+        const [txResult, cashoutResult] = await Promise.allSettled([
+          nextTransactions.length === 0 ? apiRequest("GET", "/api/rewards/transactions") : Promise.resolve(null),
+          nextCashouts.length === 0 ? apiRequest("GET", "/api/rewards/cashouts") : Promise.resolve(null),
+        ]);
+
+        if (nextTransactions.length === 0 && txResult.status === "fulfilled" && txResult.value) {
+          nextTransactions = await txResult.value.json();
+        } else if (nextTransactions.length === 0 && txResult.status === "rejected") {
+          setLoadNotice((current) => current || getFriendlyRewardsError(txResult.reason));
+        }
+
+        if (nextCashouts.length === 0 && cashoutResult.status === "fulfilled" && cashoutResult.value) {
+          nextCashouts = await cashoutResult.value.json();
+        } else if (nextCashouts.length === 0 && cashoutResult.status === "rejected") {
+          setLoadNotice((current) => current || getFriendlyRewardsError(cashoutResult.reason));
+        }
+      }
+
+      setSummary(nextSummary);
+      setTransactions(Array.isArray(nextTransactions) ? nextTransactions : []);
+      setCashouts(Array.isArray(nextCashouts) ? nextCashouts : []);
+      hasLoadedOnceRef.current = true;
+    } finally {
+      if (showLoader) {
+        setLoading(false);
+      }
+    }
+  }, [user?.referralCode, user?.rewardsBalance]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const refreshDashboard = async (showLoader = false) => {
+        await refreshUser();
+        await loadData({ showLoader });
+      };
+
+      void refreshDashboard(!hasLoadedOnceRef.current);
+      const intervalId = setInterval(() => {
+        void refreshDashboard(false);
+      }, 15000);
+
+      return () => clearInterval(intervalId);
+    }, [loadData, refreshUser]),
+  );
 
   async function handleShareReferral() {
-    if (!summary) return;
+    const referralCode = summary?.referralCode || user?.referralCode || "";
+    const shareUrl = buildReferralShareUrl(referralCode, summary?.shareUrl);
+    if (!referralCode || !shareUrl) {
+      Alert.alert("Invite Unavailable", "Your referral link is still being prepared. Please try again in a moment.");
+      return;
+    }
+
     try {
       await Share.share({
-        message: `Join A2B LIFT with my referral link and start earning rewards: ${summary.shareUrl}`,
-        url: summary.shareUrl,
+        message: `Join A2B LIFT with my referral code ${referralCode} and start earning rewards: ${shareUrl}`,
+        url: shareUrl,
       });
     } catch (error: any) {
       Alert.alert("Share Failed", error.message || "Could not open the share sheet.");
@@ -168,7 +279,7 @@ export default function ReferralsScreen() {
         accountNumber: accountNumber.trim() || null,
       });
       await refreshUser();
-      await loadData();
+      await loadData({ showLoader: false });
       setShowCashout(false);
       setCashoutAmount("");
       setBankName("");
@@ -205,8 +316,10 @@ export default function ReferralsScreen() {
 
         <Text style={styles.eyebrow}>INVITE. EARN. RIDE.</Text>
         <Text style={styles.pageLead}>
-          Share your A2B link, earn from completed referrals, and let invited riders see their own balance too once they complete eligible trips.
+          Earn 2.5% back on every ride and 5% when your referral completes a trip.
         </Text>
+
+        {loadNotice ? <Text style={styles.inlineNotice}>{loadNotice}</Text> : null}
 
         <View style={[styles.heroGrid, isWide && styles.heroGridWide]}>
           <View style={[styles.inviteCard, isWide && styles.heroColumn]}>
@@ -218,7 +331,7 @@ export default function ReferralsScreen() {
             </View>
 
             <Text style={styles.cardCopyDark}>
-              Give new riders your code. Once they complete rides, the 5% loyalty reward pool is shared between both accounts automatically.
+              Share your code. Every completed referral trip pays you 5%.
             </Text>
 
             <View style={styles.codeBlock}>
@@ -228,7 +341,7 @@ export default function ReferralsScreen() {
 
             <View style={styles.linkPill}>
               <Ionicons name="link-outline" size={15} color="#181818" />
-              <Text style={styles.linkPillText} numberOfLines={1}>{summary?.shareUrl || "Link unavailable"}</Text>
+              <Text style={styles.linkPillText} numberOfLines={1}>{buildReferralShareUrl(summary?.referralCode || user?.referralCode, summary?.shareUrl) || "Link unavailable"}</Text>
             </View>
 
             <Pressable style={styles.primaryAction} onPress={handleShareReferral}>
@@ -236,7 +349,7 @@ export default function ReferralsScreen() {
               <Text style={styles.primaryActionText}>Invite Friends</Text>
             </Pressable>
 
-            <Text style={styles.cardHintDark}>Rewards are funded from A2B commission after completed trips.</Text>
+            <Text style={styles.cardHintDark}>Your loyalty balance updates automatically after completed trips.</Text>
           </View>
 
           <View style={[styles.balanceCard, isWide && styles.heroColumn]}>
@@ -249,7 +362,7 @@ export default function ReferralsScreen() {
 
             <Text style={styles.balanceAmount}>{formatCurrency(summary?.rewardsBalance || 0)}</Text>
             <Text style={styles.balanceCopy}>
-              Apply rewards to bookings, combine them with cash or card, or request a manual withdrawal.
+              You earn 2.5% back on every completed ride. Spend it on trips or withdraw it.
             </Text>
 
             <View style={styles.balanceMetaRow}>
@@ -265,12 +378,12 @@ export default function ReferralsScreen() {
 
             <View style={styles.balanceNotice}>
               <Ionicons name="sparkles-outline" size={16} color={Colors.white} />
-              <Text style={styles.balanceNoticeText}>You can now split ride payments with rewards plus cash or card.</Text>
+              <Text style={styles.balanceNoticeText}>Balances refresh after completed trips and referral rewards post automatically.</Text>
             </View>
 
             <View style={styles.balanceActionsRow}>
               <Pressable style={styles.secondaryAction} onPress={() => setShowCashout(true)}>
-                <Text style={styles.secondaryActionText}>Withdraw Balance</Text>
+                <Text style={styles.secondaryActionText}>Withdraw</Text>
               </Pressable>
               <Pressable style={styles.outlineAction} onPress={handleShareReferral}>
                 <Text style={styles.outlineActionText}>Share Link</Text>
@@ -323,7 +436,7 @@ export default function ReferralsScreen() {
                 <View key={tx.id} style={[styles.rowItem, index > 0 && styles.rowItemBorder]}>
                   <View style={styles.rowIconWrap}>
                     <Ionicons
-                      name={tx.type === "ride_redemption" ? "car-outline" : tx.type === "cashout_request" ? "cash-outline" : "gift-outline"}
+                      name={tx.type === "ride_redemption" ? "car-outline" : tx.type === "cashout_request" ? "cash-outline" : tx.type === "ride_cashback" ? "sparkles-outline" : "gift-outline"}
                       size={18}
                       color={Colors.white}
                     />
@@ -462,6 +575,13 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     marginBottom: 20,
     maxWidth: 760,
+  },
+  inlineNotice: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: Colors.warning,
+    fontFamily: "Inter_500Medium",
+    marginBottom: 6,
   },
   heroGrid: {
     gap: 14,

@@ -48,7 +48,6 @@ async function sendExpoPushNotification(
       body,
       data: data || {},
       badge: urgent ? 1 : undefined,
-            if (paymentMethod.startsWith("cash")) {
       ttl: urgent ? 0 : undefined,
       channelId,
       interruptionLevel: urgent ? "time-sensitive" : undefined,
@@ -99,6 +98,13 @@ function setAuthCookie(res: Response, token: string) {
 
 function roundCurrency(value: number): number {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
+const RIDE_CASHBACK_RATE = 0.025;
+const REFERRAL_REWARD_RATE = 0.05;
+
+function getFrontendBaseUrl(): string {
+  return (process.env.FRONTEND_URL || "https://peaceful-mousse-459c85.netlify.app").replace(/\/$/, "");
 }
 
 function normalizeReferralCode(rawValue: unknown): string | null {
@@ -188,49 +194,6 @@ async function recordRewardTransaction(options: {
   direction: "credit" | "debit";
   description: string;
   referralEventId?: string | null;
-  async function chargeDefaultCardForRide(options: {
-    userId: string;
-    rideId: string;
-    amount: number;
-    paymentMethod?: string;
-  }) {
-    const { userId, rideId, amount, paymentMethod = "card" } = options;
-    const user = await storage.getUser(userId);
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    const cards = await storage.getSavedCardsByUser(userId);
-    const defaultCard = cards.find((card: any) => card.isDefault) || cards[0];
-    if (!defaultCard) {
-      const error = new Error("No saved card found. Please add a card in your wallet.");
-      (error as any).needsCard = true;
-      throw error;
-    }
-
-    const reference = `A2B-RIDE-${rideId}-${Date.now()}`;
-    const response = await paystackAPI.post("/transaction/charge_authorization", {
-      authorization_code: defaultCard.paystackAuthCode,
-      email: user.username,
-      amount: Math.round(Number(amount) * 100),
-      currency: "ZAR",
-      reference,
-      metadata: { userId, rideId, paymentMethod },
-    });
-
-    const txData = response.data.data;
-    if (txData.status !== "success") {
-      const error = new Error("Card charge failed");
-      (error as any).status = txData.status;
-      throw error;
-    }
-
-    return {
-      reference,
-      defaultCard,
-      paystackAuthCode: defaultCard.paystackAuthCode,
-    };
-  }
   sourceUserId?: string | null;
   rideId?: string | null;
   status?: string;
@@ -268,87 +231,130 @@ async function recordRewardTransaction(options: {
   return balanceAfter;
 }
 
-async function rewardReferralForCompletedRide(sourceUserId: string, ride: { id: string }, commissionAmount: number, sourceLabel: "client" | "driver") {
+async function chargeDefaultCardForRide(options: {
+  userId: string;
+  rideId: string;
+  amount: number;
+  paymentMethod?: string;
+}) {
+  const { userId, rideId, amount, paymentMethod = "card" } = options;
+  const user = await storage.getUser(userId);
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const cards = await storage.getSavedCardsByUser(userId);
+  const defaultCard = cards.find((card: any) => card.isDefault) || cards[0];
+  if (!defaultCard) {
+    const error = new Error("No saved card found. Please add a card in your wallet.");
+    (error as any).needsCard = true;
+    throw error;
+  }
+
+  const reference = `A2B-RIDE-${rideId}-${Date.now()}`;
+  const response = await paystackAPI.post("/transaction/charge_authorization", {
+    authorization_code: defaultCard.paystackAuthCode,
+    email: user.username,
+    amount: Math.round(Number(amount) * 100),
+    currency: "ZAR",
+    reference,
+    metadata: { userId, rideId, paymentMethod },
+  });
+
+  const txData = response.data.data;
+  if (txData.status !== "success") {
+    const error = new Error("Card charge failed");
+    (error as any).status = txData.status;
+    throw error;
+  }
+
+  return {
+    reference,
+    defaultCard,
+    paystackAuthCode: defaultCard.paystackAuthCode,
+  };
+}
+
+function getCompletedRideRewardBase(ride: { price?: number | null; actualFare?: number | null }) {
+  return roundCurrency(Number(ride.actualFare ?? ride.price ?? 0));
+}
+
+async function rewardRideCashbackForCompletedRide(
+  userId: string,
+  ride: { id: string; price?: number | null; actualFare?: number | null },
+  sourceLabel: "client" | "driver",
+) {
+  const existingCashback = await storage.getRewardTransactionByRideAndType(userId, ride.id, "ride_cashback");
+  if (existingCashback) return;
+
+  const rideTotal = getCompletedRideRewardBase(ride);
+  const cashbackAmount = roundCurrency(rideTotal * RIDE_CASHBACK_RATE);
+  if (cashbackAmount <= 0) return;
+
+  const balanceAfter = await recordRewardTransaction({
+    userId,
+    type: "ride_cashback",
+    amount: cashbackAmount,
+    direction: "credit",
+    description: `${(RIDE_CASHBACK_RATE * 100).toFixed(1)}% cashback from your completed ${sourceLabel} trip`,
+    rideId: ride.id,
+    reference: `ride_cashback:${ride.id}:${userId}`,
+  });
+
+  await storage.createNotification({
+    userId,
+    title: "Trip Cashback Earned",
+    body: `R ${cashbackAmount.toFixed(2)} was added to your loyalty balance from your completed trip. New balance: R ${balanceAfter.toFixed(2)}.`,
+    type: "reward",
+  });
+}
+
+async function rewardReferralForCompletedRide(
+  sourceUserId: string,
+  ride: { id: string; price?: number | null; actualFare?: number | null },
+  sourceLabel: "client" | "driver",
+) {
   const referralEvent = await storage.getReferralEventByReferredUserId(sourceUserId);
   if (!referralEvent) return;
 
-  const [existingReferrerReward, existingReferredReward] = await Promise.all([
-    storage.getRewardTransactionByRideAndType(
-      referralEvent.referrerUserId,
-      ride.id,
-      "referral_reward",
-      sourceUserId,
-    ),
-    storage.getRewardTransactionByRideAndType(
-      sourceUserId,
-      ride.id,
-      "referral_reward",
-      sourceUserId,
-    ),
-  ]);
-  if (existingReferrerReward && existingReferredReward) return;
+  const existingReferrerReward = await storage.getRewardTransactionByRideAndType(
+    referralEvent.referrerUserId,
+    ride.id,
+    "referral_reward",
+    sourceUserId,
+  );
+  if (existingReferrerReward) return;
 
-  const rewardPool = roundCurrency(commissionAmount * 0.05);
-  if (rewardPool <= 0) return;
+  const rideTotal = getCompletedRideRewardBase(ride);
+  const referrerRewardAmount = roundCurrency(rideTotal * REFERRAL_REWARD_RATE);
+  if (referrerRewardAmount <= 0) return;
 
-  const referrerRewardAmount = roundCurrency(rewardPool / 2);
-  const referredRewardAmount = roundCurrency(rewardPool - referrerRewardAmount);
-
-  let referrerBalanceAfter: number | null = null;
-  if (!existingReferrerReward && referrerRewardAmount > 0) {
-    referrerBalanceAfter = await recordRewardTransaction({
-      userId: referralEvent.referrerUserId,
-      type: "referral_reward",
-      amount: referrerRewardAmount,
-      direction: "credit",
-      description: `Referral reward from referred ${sourceLabel} activity`,
-      referralEventId: referralEvent.id,
-      sourceUserId,
-      rideId: ride.id,
-      reference: `referral_reward_referrer:${ride.id}:${sourceUserId}`,
-    });
-  }
-
-  let referredBalanceAfter: number | null = null;
-  if (!existingReferredReward && referredRewardAmount > 0) {
-    referredBalanceAfter = await recordRewardTransaction({
-      userId: sourceUserId,
-      type: "referral_reward",
-      amount: referredRewardAmount,
-      direction: "credit",
-      description: `Referral bonus as an invited ${sourceLabel}`,
-      referralEventId: referralEvent.id,
-      sourceUserId,
-      rideId: ride.id,
-      reference: `referral_reward_referred:${ride.id}:${sourceUserId}`,
-    });
-  }
+  const referrerBalanceAfter = await recordRewardTransaction({
+    userId: referralEvent.referrerUserId,
+    type: "referral_reward",
+    amount: referrerRewardAmount,
+    direction: "credit",
+    description: `${(REFERRAL_REWARD_RATE * 100).toFixed(0)}% referral reward from a completed ${sourceLabel} trip`,
+    referralEventId: referralEvent.id,
+    sourceUserId,
+    rideId: ride.id,
+    reference: `referral_reward_referrer:${ride.id}:${sourceUserId}`,
+  });
 
   await storage.updateReferralEvent(referralEvent.id, {
     status: "rewarded",
-    totalRewards: roundCurrency((referralEvent.totalRewards || 0) + rewardPool),
+    totalRewards: roundCurrency((referralEvent.totalRewards || 0) + referrerRewardAmount),
     firstRewardAt: referralEvent.firstRewardAt || new Date(),
     lastRewardAt: new Date(),
     updatedAt: new Date(),
   });
 
-  if (referrerBalanceAfter !== null) {
-    await storage.createNotification({
-      userId: referralEvent.referrerUserId,
-      title: "Referral Reward Earned",
-      body: `R ${referrerRewardAmount.toFixed(2)} has been added to your rewards balance from your ${sourceLabel} referral. New rewards balance: R ${referrerBalanceAfter.toFixed(2)}.`,
-      type: "reward",
-    });
-  }
-
-  if (referredBalanceAfter !== null) {
-    await storage.createNotification({
-      userId: sourceUserId,
-      title: "Referral Bonus Earned",
-      body: `R ${referredRewardAmount.toFixed(2)} has been added to your rewards balance because you joined with a referral and completed a ${sourceLabel} ride. New rewards balance: R ${referredBalanceAfter.toFixed(2)}.`,
-      type: "reward",
-    });
-  }
+  await storage.createNotification({
+    userId: referralEvent.referrerUserId,
+    title: "Referral Reward Earned",
+    body: `R ${referrerRewardAmount.toFixed(2)} was added to your loyalty balance from your completed referral trip. New balance: R ${referrerBalanceAfter.toFixed(2)}.`,
+    type: "reward",
+  });
 }
 
 function getPaystackConfig() {
@@ -487,10 +493,90 @@ async function runMockSelfieQualityCheck(
   return { passed: true, score: 0.95 };
 }
 
+let referralRewardsSchemaReady: Promise<void> | null = null;
+
+function ensureReferralRewardsSchema() {
+  if (!referralRewardsSchemaReady) {
+    referralRewardsSchemaReady = (async () => {
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS rewards_balance real DEFAULT 0");
+      await pool.query("ALTER TABLE users ALTER COLUMN rewards_balance SET DEFAULT 0");
+      await pool.query("UPDATE users SET rewards_balance = 0 WHERE rewards_balance IS NULL");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code text");
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id varchar REFERENCES users(id)");
+      await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code_unique ON users (referral_code) WHERE referral_code IS NOT NULL");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_users_referred_by_user_id ON users (referred_by_user_id)");
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS referral_events (
+          id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+          referrer_user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          referred_user_id varchar NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+          referral_code_used text NOT NULL,
+          status text NOT NULL DEFAULT 'registered',
+          total_rewards real DEFAULT 0,
+          first_reward_at timestamp,
+          last_reward_at timestamp,
+          created_at timestamp DEFAULT now(),
+          updated_at timestamp DEFAULT now()
+        )
+      `);
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_referral_events_referrer_user_id ON referral_events (referrer_user_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_referral_events_status ON referral_events (status)");
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS reward_transactions (
+          id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          referral_event_id varchar REFERENCES referral_events(id) ON DELETE SET NULL,
+          source_user_id varchar REFERENCES users(id) ON DELETE SET NULL,
+          ride_id varchar REFERENCES rides(id) ON DELETE SET NULL,
+          type text NOT NULL,
+          amount real NOT NULL,
+          balance_before real NOT NULL,
+          balance_after real NOT NULL,
+          description text,
+          status text NOT NULL DEFAULT 'completed',
+          reference varchar,
+          created_at timestamp DEFAULT now()
+        )
+      `);
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_reward_transactions_user_id ON reward_transactions (user_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_reward_transactions_ride_id ON reward_transactions (ride_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_reward_transactions_referral_event_id ON reward_transactions (referral_event_id)");
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS reward_cashouts (
+          id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          amount real NOT NULL,
+          status text NOT NULL DEFAULT 'requested',
+          bank_name text,
+          account_number text,
+          account_holder text,
+          phone text,
+          notes text,
+          reviewed_by_admin_id varchar REFERENCES users(id) ON DELETE SET NULL,
+          requested_at timestamp DEFAULT now(),
+          reviewed_at timestamp,
+          paid_at timestamp
+        )
+      `);
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_reward_cashouts_user_id ON reward_cashouts (user_id)");
+      await pool.query("CREATE INDEX IF NOT EXISTS idx_reward_cashouts_status ON reward_cashouts (status)");
+    })().catch((error) => {
+      referralRewardsSchemaReady = null;
+      throw error;
+    });
+  }
+
+  return referralRewardsSchemaReady;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
   await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo text");
+  await ensureReferralRewardsSchema();
 
   const SUPABASE_SERVICE_KEY_CONFIGURED = !!(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -505,10 +591,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   io.on("connection", (socket) => {
-
-function getFrontendBaseUrl(): string {
-  return (process.env.FRONTEND_URL || "https://peaceful-mousse-459c85.netlify.app").replace(/\/$/, "");
-}
     console.log("Socket connected:", socket.id);
 
     // Driver registers their chauffeurId on connect so we can target them for nearby trips
@@ -716,8 +798,8 @@ function getFrontendBaseUrl(): string {
         storage.getRewardCashoutsByUser(hydratedUser.id),
       ]);
 
-      const totalRewardsEarned = rewardTxs
-        .filter((tx) => tx.type === "referral_reward")
+        const totalRewardsEarned = rewardTxs
+          .filter((tx) => tx.type === "referral_reward" || tx.type === "ride_cashback")
         .reduce((sum, tx) => sum + (tx.amount || 0), 0);
       const pendingCashoutAmount = cashouts
         .filter((cashout) => ["requested", "approved"].includes(cashout.status))
@@ -731,6 +813,8 @@ function getFrontendBaseUrl(): string {
         rewardedReferrals: events.filter((event) => event.status === "rewarded").length,
         totalRewardsEarned: roundCurrency(totalRewardsEarned),
         pendingCashoutAmount: roundCurrency(pendingCashoutAmount),
+        transactions: rewardTxs,
+        cashouts,
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -1318,6 +1402,7 @@ function getFrontendBaseUrl(): string {
   app.get("/api/auth/google/start", (req: Request, res: Response) => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) return res.status(500).send("Google OAuth not configured");
+    const referralCode = normalizeReferralCode(req.query.ref);
     const callbackUrl = `https://api-production-0783.up.railway.app/api/auth/google/callback`;
     const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     url.searchParams.set("client_id", clientId);
@@ -1326,12 +1411,15 @@ function getFrontendBaseUrl(): string {
     url.searchParams.set("scope", "openid email profile");
     url.searchParams.set("access_type", "offline");
     url.searchParams.set("prompt", "select_account");
+    if (referralCode) {
+      url.searchParams.set("state", JSON.stringify({ ref: referralCode }));
+    }
     return res.redirect(url.toString());
   });
 
   app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
     try {
-      const { code, error } = req.query as any;
+      const { code, error, state } = req.query as any;
       if (error || !code) {
         return res.redirect(`a2blift://auth?error=${encodeURIComponent(error || "cancelled")}`);
       }
@@ -1357,15 +1445,33 @@ function getFrontendBaseUrl(): string {
         return res.redirect(`a2blift://auth?error=no_email`);
       }
 
+      let referralCode: string | null = null;
+      if (typeof state === "string" && state.trim()) {
+        try {
+          const parsedState = JSON.parse(state);
+          referralCode = normalizeReferralCode(parsedState?.ref);
+        } catch {
+          referralCode = null;
+        }
+      }
+
       const email = googleUser.email.trim().toLowerCase();
       let user = await storage.getUserByUsername(email);
       if (!user) {
         const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
-        user = await storage.createUser({ username: email, password: randomPassword, name: googleUser.name || email.split("@")[0], phone: null, role: "client" });
+        user = await createUserWithReferral({
+          username: email,
+          password: randomPassword,
+          name: googleUser.name || email.split("@")[0],
+          phone: null,
+          role: "client",
+          referralCode: referralCode || undefined,
+        });
       }
 
-      const appToken = signAccessToken({ sub: user.id, role: user.role as UserRole, email: user.username, name: user.name });
-      const { password: _pw, ...safeUser } = user;
+      const hydratedUser = await ensureUserReferralCode(user);
+      const appToken = signAccessToken({ sub: hydratedUser.id, role: hydratedUser.role as UserRole, email: hydratedUser.username, name: hydratedUser.name });
+      const { password: _pw, ...safeUser } = hydratedUser;
       // Deep link back into the app with the JWT
       const payload = encodeURIComponent(JSON.stringify({ user: safeUser, accessToken: appToken }));
       return res.redirect(`a2blift://auth?payload=${payload}`);
@@ -2922,21 +3028,28 @@ function getFrontendBaseUrl(): string {
           const alreadyRecorded = existingEarnings.some((e: any) => e.rideId === ride.id);
           const paymentMethod = ride.paymentMethod || "cash";
           if (!alreadyRecorded) {
-            if (paymentMethod === "cash") {
-              // Cash trips: driver collects the gross fare in hand,
-              // while the platform records the 15% commission digitally.
+            if (paymentMethod.startsWith("cash")) {
+              const remainingCashAmount = roundCurrency(
+                Math.max((ride.price || 0) - (ride.rewardsAmountUsed || 0), 0),
+              );
+              const digitalAdjustment = roundCurrency(
+                earningsCalc.chauffeurEarnings - remainingCashAmount,
+              );
+
+              // Cash and cash+rewards trips settle some amount in-hand. The wallet
+              // only records the delta needed to land the chauffeur on the correct net.
               await storage.createEarning({
                 chauffeurId: ride.chauffeurId,
                 rideId: ride.id,
-                amount: -earningsCalc.commission,
+                amount: digitalAdjustment,
                 commission: earningsCalc.commission,
-                type: "cash",
+                type: paymentMethod,
               });
               const chauffeur = await storage.getChauffeur(ride.chauffeurId);
               if (chauffeur) {
                 await storage.updateChauffeur(ride.chauffeurId, {
                   earningsTotal:
-                    (chauffeur.earningsTotal || 0) - earningsCalc.commission,
+                    roundCurrency((chauffeur.earningsTotal || 0) + digitalAdjustment),
                 });
               }
             } else {
@@ -2985,12 +3098,17 @@ function getFrontendBaseUrl(): string {
         try {
           const paymentMethod = ride.paymentMethod || "cash";
           if (paymentMethod.startsWith("cash")) {
+            const remainingCashAmount = roundCurrency(
+              Math.max((ride.price || 0) - (ride.rewardsAmountUsed || 0), 0),
+            );
             const existingPayments = await storage.getPaymentsByRide(ride.id);
-            if (existingPayments.length === 0) {
+            if (remainingCashAmount <= 0) {
+              await storage.updateRide(ride.id, { paymentStatus: "paid" });
+            } else if (existingPayments.length === 0) {
               await storage.createPayment({
                 rideId: ride.id,
                 payerUserId: ride.clientId,
-                amount: Math.max((ride.price || 0) - (ride.rewardsAmountUsed || 0), 0),
+                amount: remainingCashAmount,
                 method: "cash",
                 status: "paid",
                 provider: "cash",
@@ -3010,7 +3128,8 @@ function getFrontendBaseUrl(): string {
         }
 
         try {
-          await rewardReferralForCompletedRide(ride);
+          await rewardRideCashbackForCompletedRide(ride.clientId, ride, "client");
+          await rewardReferralForCompletedRide(ride.clientId, ride, "client");
         } catch (rewardErr: any) {
           console.error("referral reward failed (non-fatal):", rewardErr.message);
         }
@@ -4260,8 +4379,7 @@ function getFrontendBaseUrl(): string {
         return res.status(400).json({ message: "Ride has no price set" });
       }
 
-      const commissionCap = roundCurrency(rideAmount * 0.2);
-      const rewardsToUse = roundCurrency(Math.min(user.rewardsBalance || 0, commissionCap));
+      const rewardsToUse = roundCurrency(Math.min(user.rewardsBalance || 0, rideAmount));
       if (rewardsToUse <= 0) {
         return res.status(400).json({ message: "No rewards balance available for this ride" });
       }
@@ -4280,13 +4398,6 @@ function getFrontendBaseUrl(): string {
       });
 
       if (baseMethod === "card") {
-        const { reference, defaultCard, paystackAuthCode } = await chargeDefaultCardForRide({
-          userId,
-          rideId: ride.id,
-          amount: remainingAmount,
-          paymentMethod: "card_rewards",
-        });
-
         await storage.createPayment({
           rideId: ride.id,
           payerUserId: userId,
@@ -4299,17 +4410,29 @@ function getFrontendBaseUrl(): string {
           providerRef: `mixed_rewards_${ride.id}_${Date.now()}`,
         });
 
-        await storage.createPayment({
-          rideId: ride.id,
-          payerUserId: userId,
-          amount: remainingAmount,
-          method: "card",
-          status: "paid",
-          currency: "ZAR",
-          paidAt: new Date(),
-          paystackReference: reference,
-          paystackAuthCode,
-        });
+        let cardSummary: { last4: string; cardType: string } | null = null;
+        if (remainingAmount > 0) {
+          const { reference, defaultCard, paystackAuthCode } = await chargeDefaultCardForRide({
+            userId,
+            rideId: ride.id,
+            amount: remainingAmount,
+            paymentMethod: "card_rewards",
+          });
+
+          await storage.createPayment({
+            rideId: ride.id,
+            payerUserId: userId,
+            amount: remainingAmount,
+            method: "card",
+            status: "paid",
+            currency: "ZAR",
+            paidAt: new Date(),
+            paystackReference: reference,
+            paystackAuthCode,
+          });
+
+          cardSummary = { last4: defaultCard.last4, cardType: defaultCard.cardType };
+        }
 
         await storage.updateRide(ride.id, {
           paymentStatus: "paid",
@@ -4322,7 +4445,7 @@ function getFrontendBaseUrl(): string {
           rewardsBalance,
           rewardsUsed: rewardsToUse,
           chargedAmount: remainingAmount,
-          card: { last4: defaultCard.last4, cardType: defaultCard.cardType },
+          card: cardSummary,
         });
       }
 
@@ -4338,19 +4461,21 @@ function getFrontendBaseUrl(): string {
         providerRef: `mixed_rewards_${ride.id}_${Date.now()}`,
       });
 
-      await storage.createPayment({
-        rideId: ride.id,
-        payerUserId: userId,
-        amount: remainingAmount,
-        method: "cash",
-        status: "pending",
-        currency: "ZAR",
-        provider: "cash",
-        providerRef: `mixed_cash_${ride.id}_${Date.now()}`,
-      });
+      if (remainingAmount > 0) {
+        await storage.createPayment({
+          rideId: ride.id,
+          payerUserId: userId,
+          amount: remainingAmount,
+          method: "cash",
+          status: "pending",
+          currency: "ZAR",
+          provider: "cash",
+          providerRef: `mixed_cash_${ride.id}_${Date.now()}`,
+        });
+      }
 
       await storage.updateRide(ride.id, {
-        paymentStatus: "pending",
+        paymentStatus: remainingAmount > 0 ? "pending" : "paid",
         paymentMethod: "cash_rewards",
         rewardsAmountUsed: rewardsToUse,
       });

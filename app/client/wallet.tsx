@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import Colors from "@/constants/colors";
@@ -94,6 +94,13 @@ export default function ClientWalletScreen() {
   }, []);
 
   useEffect(() => { loadData(); }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshUser();
+      void loadData();
+    }, [loadData, refreshUser]),
+  );
 
   // Listen for postMessage from the Paystack popup callback (web only)
   useEffect(() => {

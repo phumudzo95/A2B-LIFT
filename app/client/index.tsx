@@ -134,29 +134,19 @@ function getPaymentMethodLabel(method?: string | null): string {
   if (method === "wallet") return "Wallet";
   if (method === "cash_rewards") return "Cash + Rewards";
   return "Cash";
-            {(() => {
-              const rewardsAvailable = Number(user?.rewardsBalance || 0);
-              const rewardsCap = Math.min(rewardsAvailable, Number(estimatedPrice || 0) * 0.2);
-              const mixedRewardsValue = Math.round(rewardsCap * 100) / 100;
-              const remainingFare = Math.max(Number(estimatedPrice || 0) - mixedRewardsValue, 0);
+}
 
-              if (!(mixedRewardsValue > 0)) {
-                return null;
-              }
+function getMixedRewardsBreakdown(totalFare?: number | null, rewardsBalance?: number | null) {
+  const fare = Math.max(Number(totalFare || 0), 0);
+  const availableRewards = Math.max(Number(rewardsBalance || 0), 0);
+  const rewardsUsed = Math.round(Math.min(availableRewards, fare) * 100) / 100;
+  const remainingFare = Math.round(Math.max(fare - rewardsUsed, 0) * 100) / 100;
 
-              return (
-                <Pressable style={styles.payMethodRow} onPress={() => handlePayAndRide("cash_rewards")}>
-                  <View style={[styles.payMethodIcon, { backgroundColor: Colors.warning }]}> 
-                    <Ionicons name="cash" size={20} color="#fff" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.payMethodName}>Cash + Rewards</Text>
-                    <Text style={styles.payMethodSub}>Use R {mixedRewardsValue.toFixed(2)} rewards, pay R {remainingFare.toFixed(2)} in cash</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-                </Pressable>
-              );
-            })()}
+  return {
+    fare,
+    rewardsUsed,
+    remainingFare,
+  };
 }
 
 function calculateRouteSafetyScore(route: DirectionRoute): number {
@@ -879,6 +869,7 @@ export default function ClientHomeScreen() {
       setTimeout(() => setShowRating(true), 1000);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ["/api/rides/client"] });
+      void refreshUser();
     }
   }, []);
 
@@ -1194,7 +1185,7 @@ export default function ClientHomeScreen() {
   }
 
   async function createRideRecord(
-    method: "cash" | "card" | "wallet",
+    method: "cash" | "cash_rewards" | "card" | "card_rewards" | "wallet",
     extras: Record<string, unknown> = {},
   ) {
     if (!user || !location || !dropoffCoords) return null;
@@ -1211,7 +1202,7 @@ export default function ClientHomeScreen() {
       vehicleType: selectedVehicle.id,
       distanceKm,
       paymentMethod: method,
-      paymentStatus: method === "cash" || method === "cash_rewards" ? "unpaid" : "pending",
+      paymentStatus: method.startsWith("cash") ? "unpaid" : "pending",
       durationMin: activeRouteChoice?.durationMin || tripDurationMin || undefined,
       selectedRouteId: activeRouteChoice?.id || undefined,
       selectedRouteDistanceKm: activeRouteChoice?.distanceKm || undefined,
@@ -2207,10 +2198,10 @@ export default function ClientHomeScreen() {
             ) : null}
             {(() => {
               const defaultCard = savedCards.find(c => c.isDefault) || savedCards[0];
-              const rewardsAvailable = Number(user?.rewardsBalance || 0);
-              const rewardsCap = Math.min(rewardsAvailable, Number(estimatedPrice || 0) * 0.2);
-              const mixedRewardsValue = Math.round(rewardsCap * 100) / 100;
-              const remainingFare = Math.max(Number(estimatedPrice || 0) - mixedRewardsValue, 0);
+              const { rewardsUsed: mixedRewardsValue, remainingFare } = getMixedRewardsBreakdown(
+                selectedRouteChoice?.fare ?? estimatedPrice,
+                user?.rewardsBalance,
+              );
               return (
                 <>
                   <Pressable
@@ -2242,7 +2233,7 @@ export default function ClientHomeScreen() {
                     <Pressable
                       style={styles.payMethodRow}
                       onPress={() => {
-                        if (!defaultCard) {
+                        if (!defaultCard && remainingFare > 0) {
                           setShowPaymentPicker(false);
                           router.push("/client/wallet");
                         } else {
@@ -2265,7 +2256,7 @@ export default function ClientHomeScreen() {
                 </>
               );
             })()}
-            {(user?.walletBalance || 0) >= (estimatedPrice || 0) && (estimatedPrice || 0) > 0 && (
+            {(user?.walletBalance || 0) >= Number(selectedRouteChoice?.fare ?? estimatedPrice ?? 0) && Number(selectedRouteChoice?.fare ?? estimatedPrice ?? 0) > 0 && (
               <Pressable style={styles.payMethodRow} onPress={() => handlePayAndRide("wallet")}>
                 <View style={[styles.payMethodIcon, { backgroundColor: Colors.success }]}>
                   <Ionicons name="wallet" size={20} color="#fff" />
@@ -2278,10 +2269,10 @@ export default function ClientHomeScreen() {
               </Pressable>
             )}
             {(() => {
-              const rewardsAvailable = Number(user?.rewardsBalance || 0);
-              const rewardsCap = Math.min(rewardsAvailable, Number(estimatedPrice || 0) * 0.2);
-              const mixedRewardsValue = Math.round(rewardsCap * 100) / 100;
-              const remainingFare = Math.max(Number(estimatedPrice || 0) - mixedRewardsValue, 0);
+              const { rewardsUsed: mixedRewardsValue, remainingFare } = getMixedRewardsBreakdown(
+                selectedRouteChoice?.fare ?? estimatedPrice,
+                user?.rewardsBalance,
+              );
 
               if (!(mixedRewardsValue > 0)) {
                 return null;
