@@ -1443,7 +1443,7 @@ export default function ClientHomeScreen() {
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
         <View style={styles.headerBrand}>
-          <Text style={styles.brandName} numberOfLines={1}>A2B LIFT</Text>
+          <Text style={styles.brandName} numberOfLines={1}>LIFT</Text>
           <Text style={styles.brandSlogan} numberOfLines={1}>Premium Ride Experience</Text>
         </View>
         <View style={styles.headerRight}>
