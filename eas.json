@@ -10,6 +10,7 @@
       "environment": "development",
       "env": {
         "EXPO_PUBLIC_DOMAIN": "https://api-production-0783.up.railway.app",
+        "EXPO_PUBLIC_REFERRAL_BASE_URL": "https://api-production-0783.up.railway.app",
         "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co"
       },
       "channel": "development"
@@ -22,6 +23,7 @@
       },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "https://api-production-0783.up.railway.app",
+        "EXPO_PUBLIC_REFERRAL_BASE_URL": "https://api-production-0783.up.railway.app",
         "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co"
       },
       "channel": "preview"
@@ -37,6 +39,7 @@
       },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "https://api-production-0783.up.railway.app",
+        "EXPO_PUBLIC_REFERRAL_BASE_URL": "https://api-production-0783.up.railway.app",
         "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co"
       },
       "channel": "production"

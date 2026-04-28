@@ -101,14 +101,27 @@ function roundCurrency(value: number): number {
 }
 
 const RIDE_CASHBACK_RATE = 0.025;
-const REFERRAL_REWARD_RATE = 0.05;
+const REFERRAL_REWARD_RATE = 0.025;
 
 function getFrontendBaseUrl(): string {
   return (process.env.FRONTEND_URL || "https://peaceful-mousse-459c85.netlify.app").replace(/\/$/, "");
 }
 
+function getReferralBaseUrl(req?: Request): string {
+  const configuredBaseUrl =
+    process.env.PUBLIC_REFERRAL_BASE_URL ||
+    process.env.EXPO_PUBLIC_REFERRAL_BASE_URL ||
+    process.env.FRONTEND_URL;
+
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.replace(/\/$/, "");
+  }
+
+  return getAppBaseUrl(req).replace(/\/$/, "");
+}
+
 function getReferralEntryUrl(referralCode: string, req?: Request): string {
-  return `${getAppBaseUrl(req)}/r/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
+  return `${getReferralBaseUrl(req)}/referral/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
 }
 
 function renderReferralEntryPage(options: {
@@ -808,7 +821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return fallback;
   }
 
-  app.get(["/r/:referralCode", "/ref/:referralCode"], async (req: Request, res: Response) => {
+  app.get(["/r/:referralCode", "/ref/:referralCode", "/referral/:referralCode"], async (req: Request, res: Response) => {
     const referralCode = normalizeReferralCode(req.params.referralCode);
     if (!referralCode) {
       return res.status(400).type("html").send(renderReferralEntryPage({

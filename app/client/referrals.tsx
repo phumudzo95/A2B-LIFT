@@ -54,7 +54,10 @@ type ReferralDashboardResponse = ReferralSummary & {
   cashouts?: RewardCashout[];
 };
 
-const FALLBACK_REFERRAL_BASE_URL = "https://api-production-0783.up.railway.app";
+const FALLBACK_REFERRAL_BASE_URL =
+  process.env.EXPO_PUBLIC_REFERRAL_BASE_URL ||
+  process.env.EXPO_PUBLIC_DOMAIN ||
+  "https://api-production-0783.up.railway.app";
 
 const TX_LABELS: Record<string, string> = {
   referral_reward: "Referral reward",
@@ -73,8 +76,8 @@ const REWARD_STEPS = [
   },
   {
     number: "02",
-    title: "Earn 5% on referrals",
-    copy: "When your invited rider completes a trip, you get 5% back.",
+    title: "Earn another 2.5%",
+    copy: "When your invited rider completes a trip, you earn another 2.5%.",
   },
   {
     number: "03",
@@ -112,7 +115,7 @@ function transactionPrefix(type: string) {
 function buildReferralShareUrl(referralCode?: string | null, shareUrl?: string | null) {
   if (shareUrl?.trim()) return shareUrl.trim();
   if (!referralCode?.trim()) return "";
-  return `${FALLBACK_REFERRAL_BASE_URL}/r/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
+  return `${FALLBACK_REFERRAL_BASE_URL.replace(/\/$/, "")}/referral/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
 }
 
 function buildFallbackSummary(referralCode?: string | null, rewardsBalance?: number | null): ReferralSummary | null {
@@ -316,7 +319,7 @@ export default function ReferralsScreen() {
 
         <Text style={styles.eyebrow}>INVITE. EARN. RIDE.</Text>
         <Text style={styles.pageLead}>
-          Earn 2.5% back on every ride and 5% when your referral completes a trip.
+          Earn 2.5% back on every ride and another 2.5% when your referral completes a trip.
         </Text>
 
         {loadNotice ? <Text style={styles.inlineNotice}>{loadNotice}</Text> : null}
@@ -331,7 +334,7 @@ export default function ReferralsScreen() {
             </View>
 
             <Text style={styles.cardCopyDark}>
-              Share your code. Every completed referral trip pays you 5%.
+              Share your code. When your referral completes a trip, you earn another 2.5%.
             </Text>
 
             <View style={styles.codeBlock}>

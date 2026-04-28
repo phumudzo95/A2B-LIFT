@@ -1114,9 +1114,16 @@ function roundCurrency(value) {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 }
 var RIDE_CASHBACK_RATE = 0.025;
-var REFERRAL_REWARD_RATE = 0.05;
+var REFERRAL_REWARD_RATE = 0.025;
+function getReferralBaseUrl(req) {
+  const configuredBaseUrl = process.env.PUBLIC_REFERRAL_BASE_URL || process.env.EXPO_PUBLIC_REFERRAL_BASE_URL || process.env.FRONTEND_URL;
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.replace(/\/$/, "");
+  }
+  return getAppBaseUrl(req).replace(/\/$/, "");
+}
 function getReferralEntryUrl(referralCode, req) {
-  return `${getAppBaseUrl(req)}/r/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
+  return `${getReferralBaseUrl(req)}/referral/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
 }
 function renderReferralEntryPage(options) {
   const heading = options.referrerName ? `${options.referrerName} invited you to A2B LIFT` : "You were invited to A2B LIFT";
@@ -1629,7 +1636,7 @@ async function registerRoutes(app2) {
     }
     return fallback;
   }
-  app2.get(["/r/:referralCode", "/ref/:referralCode"], async (req, res) => {
+  app2.get(["/r/:referralCode", "/ref/:referralCode", "/referral/:referralCode"], async (req, res) => {
     const referralCode = normalizeReferralCode(req.params.referralCode);
     if (!referralCode) {
       return res.status(400).type("html").send(renderReferralEntryPage({
