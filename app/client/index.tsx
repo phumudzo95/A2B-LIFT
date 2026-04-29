@@ -22,7 +22,6 @@ import Constants from "expo-constants";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/query-client";
@@ -36,6 +35,7 @@ import { useSocket } from "@/lib/socket-context";
 import { uploadDocument } from "@/lib/supabase-storage";
 import Colors from "@/constants/colors";
 import A2BMap from "@/components/A2BMap";
+import EntranceView from "@/components/EntranceView";
 import LivenessCamera, { type LivenessChallenge, type LivenessCaptureResult } from "@/components/LivenessCamera";
 
 const VEHICLE_TYPES = [
@@ -238,6 +238,21 @@ function isLateNightWindow() {
   return hour >= 22 || hour < 5;
 }
 
+function isUnauthorizedApiError(error: any) {
+  return String(error?.message || "").includes("401");
+}
+
+function getFriendlyRequestError(error: any, fallbackMessage: string) {
+  const message = String(error?.message || "").toLowerCase();
+  if (message.includes("timed out") || message.includes("abort")) {
+    return "This request took too long. Please try again.";
+  }
+  if (message.includes("network") || message.includes("fetch")) {
+    return "Check your internet connection and try again.";
+  }
+  return fallbackMessage;
+}
+
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -361,10 +376,12 @@ function carColorToHex(color: string): string {
 
 export default function ClientHomeScreen() {
   const insets = useSafeAreaInsets();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const { on, off } = useSocket();
-  const bottomPanelOffset = Platform.OS === "ios" ? 72 : 8;
-  const bottomPanelPadding = insets.bottom + 20;
+  const bottomPanelOffset = Platform.OS === "ios" ? 72 : 12;
+  const bottomPanelPadding = Platform.OS === "ios"
+    ? insets.bottom + 20
+    : Math.max(insets.bottom + 28, 92);
 
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
@@ -376,6 +393,7 @@ export default function ClientHomeScreen() {
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
   const [estimatedDistance, setEstimatedDistance] = useState<number | null>(null);
   const [lateNightPremium, setLateNightPremium] = useState<number>(0);
+  const [estimateLoading, setEstimateLoading] = useState(false);
   const [routeChoices, setRouteChoices] = useState<RouteChoice[]>([]);
   const [selectedRouteId, setSelectedRouteId] = useState<RouteChoiceId | null>(null);
   const [currentRide, setCurrentRide] = useState<any>(null);
@@ -430,6 +448,30 @@ export default function ClientHomeScreen() {
   // Keep a ref so socket callbacks always see the latest ride without stale closure
   const currentRideRef = useRef<any>(null);
   const selectedRouteChoice = routeChoices.find((choice) => choice.id === selectedRouteId) || routeChoices[0] || null;
+
+  function promptReLogin() {
+    Alert.alert("Session Expired", "Please log in again before requesting a ride.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log In",
+        onPress: () => {
+          void (async () => {
+            await logout();
+            router.replace("/login");
+          })();
+        },
+      },
+    ]);
+  }
+
+  function showRideRequestError(error: any) {
+    if (isUnauthorizedApiError(error)) {
+      promptReLogin();
+      return;
+    }
+
+    Alert.alert("Error", getFriendlyRequestError(error, "Failed to request ride. Please try again."));
+  }
 
   useEffect(() => {
     currentRideRef.current = currentRide;
@@ -1032,47 +1074,23 @@ export default function ClientHomeScreen() {
     }
 
     const lateNightRide = isLateNightWindow();
-    const choices = await Promise.all(
-      choiceDescriptors.map(async ({ id, route, title, subtitle, badge, icon }) => {
+      const choices = choiceDescriptors.map(({ id, route, title, subtitle, badge, icon }) => {
         const fallbackEstimate = calculateFallbackEstimate(route.distanceKm, selectedVehicle, lateNightRide);
 
-        try {
-          const estimateRes = await apiRequest("POST", "/api/pricing/estimate", {
-            distanceKm: route.distanceKm,
-            categoryId: selectedVehicle.id,
-            isLateNight: lateNightRide,
-          });
-          const estimate = await estimateRes.json();
-          return {
-            ...route,
-            id,
-            title,
-            subtitle,
-            badge,
-            icon,
-            fare: Number(estimate.totalPrice ?? fallbackEstimate.totalPrice),
-            baseFare: Number(estimate.baseFare ?? fallbackEstimate.baseFare),
-            pricePerKm: Number(estimate.pricePerKm ?? fallbackEstimate.pricePerKm),
-            lateNightPremium: Number(estimate.lateNightPremium ?? fallbackEstimate.lateNightPremium),
-            currency: estimate.currency || fallbackEstimate.currency,
-          } as RouteChoice;
-        } catch {
-          return {
-            ...route,
-            id,
-            title,
-            subtitle,
-            badge,
-            icon,
-            fare: fallbackEstimate.totalPrice,
-            baseFare: fallbackEstimate.baseFare,
-            pricePerKm: fallbackEstimate.pricePerKm,
-            lateNightPremium: fallbackEstimate.lateNightPremium,
-            currency: fallbackEstimate.currency,
-          } as RouteChoice;
-        }
-      })
-    );
+        return {
+          ...route,
+          id,
+          title,
+          subtitle,
+          badge,
+          icon,
+          fare: fallbackEstimate.totalPrice,
+          baseFare: fallbackEstimate.baseFare,
+          pricePerKm: fallbackEstimate.pricePerKm,
+          lateNightPremium: fallbackEstimate.lateNightPremium,
+          currency: fallbackEstimate.currency,
+        } as RouteChoice;
+      });
 
     setRouteChoices(choices);
     applyRouteChoice(choices[0]);
@@ -1142,6 +1160,7 @@ export default function ClientHomeScreen() {
   }
 
   async function getEstimate() {
+    if (estimateLoading) return;
     if (!dropoffAddress.trim()) {
       Alert.alert("Enter Destination", "Please enter your dropoff location");
       return;
@@ -1150,6 +1169,7 @@ export default function ClientHomeScreen() {
       Alert.alert("Location Error", "Unable to determine your location");
       return;
     }
+    setEstimateLoading(true);
     try {
       // Use already-resolved coords from autocomplete selection, or geocode the typed address
       const dest = dropoffCoords ?? await geocodeDestination();
@@ -1164,7 +1184,9 @@ export default function ClientHomeScreen() {
       }
       setRideStatus("confirming");
     } catch (e) {
-      Alert.alert("Error", "Failed to get estimate");
+      Alert.alert("Estimate Unavailable", getFriendlyRequestError(e, "Failed to get estimate. Please try again."));
+    } finally {
+      setEstimateLoading(false);
     }
   }
 
@@ -1326,7 +1348,7 @@ export default function ClientHomeScreen() {
         }
       }
     } catch (err: any) {
-      Alert.alert("Error", err?.message || "Failed to request ride. Please try again.");
+        showRideRequestError(err);
     }
   }
 
@@ -1347,7 +1369,7 @@ export default function ClientHomeScreen() {
     try {
       await proceedWithRide(method);
     } catch (err: any) {
-      Alert.alert("Error", err?.message || "Failed to request ride. Please try again.");
+        showRideRequestError(err);
     }
   }
 
@@ -1533,7 +1555,7 @@ export default function ClientHomeScreen() {
 
         {/* Live driver notification banner — floats above map when driver is on the way */}
         {(rideStatus === "assigned" || rideStatus === "arriving") && chauffeurDetails && (
-          <Animated.View entering={FadeInDown.duration(500)} style={styles.liveNotifBanner}>
+          <EntranceView duration={500} style={styles.liveNotifBanner}>
             <View style={styles.liveNotifRow}>
               <View style={styles.liveCarIconWrap}>
                 <Ionicons name="car" size={20} color={Colors.white} />
@@ -1571,12 +1593,12 @@ export default function ClientHomeScreen() {
                 }
               ]} />
             </View>
-          </Animated.View>
+          </EntranceView>
         )}
       </View>
 
       {rideStatus === "idle" && (
-        <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
+        <EntranceView style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
           <View style={styles.sheetHandle} />
           <Text style={styles.sheetTitle}>Where to?</Text>
 
@@ -1635,16 +1657,21 @@ export default function ClientHomeScreen() {
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [styles.confirmBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
+              style={({ pressed }) => [
+                styles.confirmBtn,
+                estimateLoading && styles.confirmBtnDisabled,
+                pressed && !estimateLoading && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+              ]}
             onPress={getEstimate}
+              disabled={estimateLoading}
           >
-            <Text style={styles.confirmBtnText}>Get Estimated Fare</Text>
+              {estimateLoading ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.confirmBtnText}>Get Estimated Fare</Text>}
           </Pressable>
-        </Animated.View>
+        </EntranceView>
       )}
 
       {rideStatus === "confirming" && (
-        <Animated.View entering={FadeInDown.duration(400)} style={[styles.confirmingSheet, { marginBottom: bottomPanelOffset }]}>
+        <EntranceView style={[styles.confirmingSheet, { marginBottom: bottomPanelOffset }]}>
           <View style={styles.sheetHandle} />
 
           {/* Header row with dismiss button */}
@@ -1767,11 +1794,11 @@ export default function ClientHomeScreen() {
               <Text style={styles.cancelFullBtnText}>Cancel</Text>
             </Pressable>
           </ScrollView>
-        </Animated.View>
+        </EntranceView>
       )}
 
       {rideStatus === "requested" && (
-        <Animated.View entering={FadeInDown.duration(400)} style={[styles.searchingBottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
+        <EntranceView style={[styles.searchingBottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}> 
           <View style={styles.sheetHandle} />
           <View style={styles.searchingContainer}>
             <ActivityIndicator size="small" color={Colors.white} />
@@ -1785,11 +1812,11 @@ export default function ClientHomeScreen() {
           <Pressable style={styles.cancelFullBtn} onPress={cancelRide}>
             <Text style={styles.cancelFullBtnText}>Cancel Request</Text>
           </Pressable>
-        </Animated.View>
+        </EntranceView>
       )}
 
       {rideStatus === "no_drivers" && (
-        <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
+        <EntranceView style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}> 
           <View style={styles.sheetHandle} />
           <View style={styles.noDriversContainer}>
             <Ionicons name="car-outline" size={48} color={Colors.textSecondary} />
@@ -1801,11 +1828,11 @@ export default function ClientHomeScreen() {
           <Pressable style={styles.retryBtn} onPress={() => { setRideStatus("idle"); setDropoffCoords(null); setDropoffAddress(""); setRoutePolyline(null); }}>
             <Text style={styles.retryBtnText}>Back to Home</Text>
           </Pressable>
-        </Animated.View>
+        </EntranceView>
       )}
 
       {(rideStatus === "assigned" || rideStatus === "arriving" || rideStatus === "in_trip") && (
-        <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
+        <EntranceView style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}> 
           <View style={styles.sheetHandle} />
           <View style={styles.statusBadge}>
             <View style={[styles.statusDot, { backgroundColor: Colors.success }]} />
@@ -1931,11 +1958,11 @@ export default function ClientHomeScreen() {
               <Text style={styles.cancelRideActiveBtnText}>Cancel Ride</Text>
             </Pressable>
           )}
-        </Animated.View>
+        </EntranceView>
       )}
 
       {rideStatus === "completed" && !showRating && (
-        <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
+        <EntranceView style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}> 
           <View style={styles.sheetHandle} />
           <View style={styles.completedContainer}>
             <View style={styles.checkCircle}>
@@ -1951,7 +1978,7 @@ export default function ClientHomeScreen() {
           >
             <Text style={styles.confirmBtnText}>Rate Your Driver</Text>
           </Pressable>
-        </Animated.View>
+        </EntranceView>
       )}
 
       {showRating && (
@@ -1967,7 +1994,7 @@ export default function ClientHomeScreen() {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, styles.ratingSheetCard, { paddingBottom: bottomPanelPadding }]}> 
+              <EntranceView style={[styles.bottomSheet, styles.ratingSheetCard, { paddingBottom: bottomPanelPadding }]}> 
                 <View style={styles.sheetHandle} />
                 <Text style={styles.sheetTitle}>Rate Your Driver</Text>
 
@@ -2031,7 +2058,7 @@ export default function ClientHomeScreen() {
                     )}
                   </Pressable>
                 </View>
-              </Animated.View>
+              </EntranceView>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
@@ -2879,6 +2906,9 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 12,
     alignItems: "center",
+  },
+  confirmBtnDisabled: {
+    opacity: 0.65,
   },
   confirmBtnText: {
     fontSize: 14,

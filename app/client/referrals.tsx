@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useSegments } from "expo-router";
 import { apiRequest } from "@/lib/query-client";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
@@ -40,6 +40,17 @@ type RewardTransaction = {
   createdAt: string;
 };
 
+type ReferredPerson = {
+  id: string;
+  name: string;
+  joinedAt: string;
+  firstRewardAt?: string | null;
+  lastRewardAt?: string | null;
+  rewardedAt?: string | null;
+  totalRewards: number;
+  status: string;
+};
+
 type RewardCashout = {
   id: string;
   amount: number;
@@ -50,6 +61,7 @@ type RewardCashout = {
 };
 
 type ReferralDashboardResponse = ReferralSummary & {
+  referredPeople?: ReferredPerson[];
   transactions?: RewardTransaction[];
   cashouts?: RewardCashout[];
 };
@@ -57,7 +69,10 @@ type ReferralDashboardResponse = ReferralSummary & {
 const FALLBACK_REFERRAL_BASE_URL =
   process.env.EXPO_PUBLIC_REFERRAL_BASE_URL ||
   process.env.EXPO_PUBLIC_DOMAIN ||
-  "https://api-production-0783.up.railway.app";
+  "https://a2blift.com";
+const MIN_CASHOUT_AMOUNT = 100;
+const REFERRAL_PREVIEW_COUNT = 5;
+const REFERRALS_REFRESH_INTERVAL_MS = 60000;
 
 const TX_LABELS: Record<string, string> = {
   referral_reward: "Referral reward",
@@ -118,6 +133,17 @@ function buildReferralShareUrl(referralCode?: string | null, shareUrl?: string |
   return `${FALLBACK_REFERRAL_BASE_URL.replace(/\/$/, "")}/referral/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
 }
 
+function getReferralActivityDate(person: ReferredPerson) {
+  return person.rewardedAt || person.lastRewardAt || person.firstRewardAt || person.joinedAt;
+}
+
+function getReferralActivityCopy(person: ReferredPerson) {
+  if (person.totalRewards > 0 && person.rewardedAt) {
+    return `Rewarded on ${formatDate(person.rewardedAt)}`;
+  }
+  return `Joined with your invite on ${formatDate(person.joinedAt)}`;
+}
+
 function buildFallbackSummary(referralCode?: string | null, rewardsBalance?: number | null): ReferralSummary | null {
   const normalizedCode = referralCode?.trim().toUpperCase();
   if (!normalizedCode) return null;
@@ -147,14 +173,17 @@ function getFriendlyRewardsError(error: any) {
 export default function ReferralsScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const segments = useSegments();
   const { user, refreshUser } = useAuth();
   const hasLoadedOnceRef = useRef(false);
   const [summary, setSummary] = useState<ReferralSummary | null>(null);
+  const [referredPeople, setReferredPeople] = useState<ReferredPerson[]>([]);
   const [transactions, setTransactions] = useState<RewardTransaction[]>([]);
   const [cashouts, setCashouts] = useState<RewardCashout[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadNotice, setLoadNotice] = useState<string | null>(null);
   const [showCashout, setShowCashout] = useState(false);
+  const [showReferredPeople, setShowReferredPeople] = useState(false);
   const [cashoutAmount, setCashoutAmount] = useState("");
   const [bankName, setBankName] = useState("");
   const [accountHolder, setAccountHolder] = useState("");
@@ -162,6 +191,15 @@ export default function ReferralsScreen() {
   const [cashoutBusy, setCashoutBusy] = useState(false);
 
   const isWide = width >= 900;
+  const rewardsBalance = Number(summary?.rewardsBalance ?? user?.rewardsBalance ?? 0);
+  const canRequestCashout = rewardsBalance >= MIN_CASHOUT_AMOUNT;
+  const enteredCashoutAmount = Number(cashoutAmount);
+  const canSubmitCashout =
+    !cashoutBusy &&
+    enteredCashoutAmount >= MIN_CASHOUT_AMOUNT &&
+    enteredCashoutAmount <= rewardsBalance;
+  const backRoute = segments[0] === "chauffeur" ? "/chauffeur" : "/client/profile";
+  const referralPreview = referredPeople.slice(0, REFERRAL_PREVIEW_COUNT);
 
   const loadData = useCallback(async (options?: { showLoader?: boolean }) => {
     const showLoader = options?.showLoader ?? !hasLoadedOnceRef.current;
@@ -175,8 +213,11 @@ export default function ReferralsScreen() {
 
     try {
       let nextSummary = fallbackSummary;
+      let nextReferredPeople: ReferredPerson[] = [];
       let nextTransactions: RewardTransaction[] = [];
       let nextCashouts: RewardCashout[] = [];
+      let shouldFetchTransactions = true;
+      let shouldFetchCashouts = true;
 
       try {
         const summaryRes = await apiRequest("GET", "/api/referrals/me");
@@ -192,36 +233,43 @@ export default function ReferralsScreen() {
           pendingCashoutAmount: Number(summaryPayload.pendingCashoutAmount || 0),
         };
 
+        if (Array.isArray(summaryPayload.referredPeople)) {
+          nextReferredPeople = summaryPayload.referredPeople;
+        }
+
         if (Array.isArray(summaryPayload.transactions)) {
           nextTransactions = summaryPayload.transactions;
+          shouldFetchTransactions = false;
         }
         if (Array.isArray(summaryPayload.cashouts)) {
           nextCashouts = summaryPayload.cashouts;
+          shouldFetchCashouts = false;
         }
       } catch (error: any) {
         setLoadNotice(getFriendlyRewardsError(error));
       }
 
-      if (nextTransactions.length === 0 || nextCashouts.length === 0) {
+      if (shouldFetchTransactions || shouldFetchCashouts) {
         const [txResult, cashoutResult] = await Promise.allSettled([
-          nextTransactions.length === 0 ? apiRequest("GET", "/api/rewards/transactions") : Promise.resolve(null),
-          nextCashouts.length === 0 ? apiRequest("GET", "/api/rewards/cashouts") : Promise.resolve(null),
+          shouldFetchTransactions ? apiRequest("GET", "/api/rewards/transactions") : Promise.resolve(null),
+          shouldFetchCashouts ? apiRequest("GET", "/api/rewards/cashouts") : Promise.resolve(null),
         ]);
 
-        if (nextTransactions.length === 0 && txResult.status === "fulfilled" && txResult.value) {
+        if (shouldFetchTransactions && txResult.status === "fulfilled" && txResult.value) {
           nextTransactions = await txResult.value.json();
-        } else if (nextTransactions.length === 0 && txResult.status === "rejected") {
+        } else if (shouldFetchTransactions && txResult.status === "rejected") {
           setLoadNotice((current) => current || getFriendlyRewardsError(txResult.reason));
         }
 
-        if (nextCashouts.length === 0 && cashoutResult.status === "fulfilled" && cashoutResult.value) {
+        if (shouldFetchCashouts && cashoutResult.status === "fulfilled" && cashoutResult.value) {
           nextCashouts = await cashoutResult.value.json();
-        } else if (nextCashouts.length === 0 && cashoutResult.status === "rejected") {
+        } else if (shouldFetchCashouts && cashoutResult.status === "rejected") {
           setLoadNotice((current) => current || getFriendlyRewardsError(cashoutResult.reason));
         }
       }
 
       setSummary(nextSummary);
+      setReferredPeople(Array.isArray(nextReferredPeople) ? nextReferredPeople : []);
       setTransactions(Array.isArray(nextTransactions) ? nextTransactions : []);
       setCashouts(Array.isArray(nextCashouts) ? nextCashouts : []);
       hasLoadedOnceRef.current = true;
@@ -235,14 +283,14 @@ export default function ReferralsScreen() {
   useFocusEffect(
     useCallback(() => {
       const refreshDashboard = async (showLoader = false) => {
-        await refreshUser();
         await loadData({ showLoader });
+        void refreshUser();
       };
 
       void refreshDashboard(!hasLoadedOnceRef.current);
       const intervalId = setInterval(() => {
-        void refreshDashboard(false);
-      }, 15000);
+        void loadData({ showLoader: false });
+      }, REFERRALS_REFRESH_INTERVAL_MS);
 
       return () => clearInterval(intervalId);
     }, [loadData, refreshUser]),
@@ -270,6 +318,14 @@ export default function ReferralsScreen() {
     const amount = Number(cashoutAmount);
     if (!amount || amount <= 0) {
       Alert.alert("Invalid Amount", "Enter a valid cash-out amount.");
+      return;
+    }
+    if (amount < MIN_CASHOUT_AMOUNT) {
+      Alert.alert("Minimum Withdrawal", `Rewards withdrawals start at R ${MIN_CASHOUT_AMOUNT.toFixed(2)}.`);
+      return;
+    }
+    if (amount > rewardsBalance) {
+      Alert.alert("Insufficient Balance", "Your requested withdrawal exceeds your available loyalty balance.");
       return;
     }
 
@@ -308,7 +364,7 @@ export default function ReferralsScreen() {
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16) }]}> 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.navigate("/client/profile")} hitSlop={10}>
+          <Pressable onPress={() => router.navigate(backRoute as any)} hitSlop={10}>
             <Ionicons name="chevron-back" size={24} color={Colors.white} />
           </Pressable>
           <Text style={styles.title}>Referral Club</Text>
@@ -363,7 +419,7 @@ export default function ReferralsScreen() {
               <Text style={styles.cardTitleLight}>Rewards wallet</Text>
             </View>
 
-            <Text style={styles.balanceAmount}>{formatCurrency(summary?.rewardsBalance || 0)}</Text>
+            <Text style={styles.balanceAmount}>{formatCurrency(rewardsBalance)}</Text>
             <Text style={styles.balanceCopy}>
               You earn 2.5% back on every completed ride. Spend it on trips or withdraw it.
             </Text>
@@ -384,8 +440,14 @@ export default function ReferralsScreen() {
               <Text style={styles.balanceNoticeText}>Balances refresh after completed trips and referral rewards post automatically.</Text>
             </View>
 
+            <Text style={styles.minimumHint}>Minimum withdrawal request: R {MIN_CASHOUT_AMOUNT.toFixed(2)}</Text>
+
             <View style={styles.balanceActionsRow}>
-              <Pressable style={styles.secondaryAction} onPress={() => setShowCashout(true)}>
+              <Pressable
+                style={[styles.secondaryAction, !canRequestCashout && styles.secondaryActionDisabled]}
+                onPress={() => setShowCashout(true)}
+                disabled={!canRequestCashout}
+              >
                 <Text style={styles.secondaryActionText}>Withdraw</Text>
               </Pressable>
               <Pressable style={styles.outlineAction} onPress={handleShareReferral}>
@@ -422,7 +484,7 @@ export default function ReferralsScreen() {
           </View>
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>Ready to spend</Text>
-            <Text style={styles.metricValue}>{formatCurrency(summary?.rewardsBalance || 0)}</Text>
+            <Text style={styles.metricValue}>{formatCurrency(rewardsBalance)}</Text>
           </View>
         </View>
 
@@ -430,9 +492,33 @@ export default function ReferralsScreen() {
           <View style={[styles.sectionCard, styles.detailCard, isWide && styles.detailCardWide]}>
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>Recent Reward Activity</Text>
-              <Text style={styles.sectionCaption}>{transactions.length} entries</Text>
+                {referredPeople.length > 0 ? (
+                  <Pressable onPress={() => setShowReferredPeople(true)}>
+                    <Text style={styles.sectionAction}>View more</Text>
+                  </Pressable>
+                ) : (
+                  <Text style={styles.sectionCaption}>{transactions.length} entries</Text>
+                )}
             </View>
-            {transactions.length === 0 ? (
+              {referredPeople.length > 0 ? (
+                referralPreview.map((person, index) => (
+                  <View key={person.id} style={[styles.rowItem, index > 0 && styles.rowItemBorder]}>
+                    <View style={styles.rowIconWrap}>
+                      <Ionicons name={person.totalRewards > 0 ? "gift-outline" : "person-outline"} size={18} color={Colors.white} />
+                    </View>
+                    <View style={styles.rowMain}>
+                      <Text style={styles.rowTitle}>{person.name}</Text>
+                      <Text style={styles.rowSub}>{getReferralActivityCopy(person)}</Text>
+                    </View>
+                    <View style={styles.rowRight}>
+                      <Text style={[styles.rowAmount, person.totalRewards > 0 ? styles.rowAmountPositive : styles.rowAmountNeutral]}>
+                        {person.totalRewards > 0 ? `+${formatCurrency(person.totalRewards)}` : "Joined"}
+                      </Text>
+                      <Text style={styles.rowMeta}>{formatDate(getReferralActivityDate(person))}</Text>
+                    </View>
+                  </View>
+                ))
+              ) : transactions.length === 0 ? (
               <Text style={styles.emptyText}>No rewards activity yet.</Text>
             ) : (
               transactions.map((tx, index) => (
@@ -462,8 +548,8 @@ export default function ReferralsScreen() {
           <View style={[styles.sectionCard, styles.detailCard, isWide && styles.detailCardWide]}>
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>Withdrawal History</Text>
-              <Pressable onPress={() => setShowCashout(true)}>
-                <Text style={styles.sectionAction}>Request</Text>
+              <Pressable onPress={() => setShowCashout(true)} disabled={!canRequestCashout}>
+                <Text style={[styles.sectionAction, !canRequestCashout && styles.sectionActionDisabled]}>Request</Text>
               </Pressable>
             </View>
             {cashouts.length === 0 ? (
@@ -498,6 +584,7 @@ export default function ReferralsScreen() {
             <Text style={styles.modalCopy}>
               Submit your preferred bank details and the A2B team will review the request manually.
             </Text>
+            <Text style={styles.modalHint}>Minimum payout request is R {MIN_CASHOUT_AMOUNT.toFixed(2)}.</Text>
             <TextInput
               value={cashoutAmount}
               onChangeText={setCashoutAmount}
@@ -528,9 +615,52 @@ export default function ReferralsScreen() {
               keyboardType="number-pad"
               style={styles.input}
             />
-            <Pressable style={styles.submitBtn} onPress={handleCashoutRequest} disabled={cashoutBusy}>
+            <Pressable style={[styles.submitBtn, !canSubmitCashout && styles.submitBtnDisabled]} onPress={handleCashoutRequest} disabled={!canSubmitCashout}>
               {cashoutBusy ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.submitBtnText}>Submit Withdrawal Request</Text>}
             </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showReferredPeople} transparent animationType="slide" onRequestClose={() => setShowReferredPeople(false)}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowReferredPeople(false)} />
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 16 }]}> 
+            <View style={styles.modalHeaderRow}>
+              <View style={styles.modalHeaderCopy}>
+                <Text style={styles.modalEyebrow}>YOUR REFERRALS</Text>
+                <Text style={styles.modalTitle}>People you referred</Text>
+              </View>
+              <Pressable style={styles.modalCloseButton} onPress={() => setShowReferredPeople(false)} hitSlop={10}>
+                <Ionicons name="close" size={18} color={Colors.textSecondary} />
+              </Pressable>
+            </View>
+            <Text style={styles.modalCopy}>
+              See who joined with your invite and when each referral started earning rewards.
+            </Text>
+            {referredPeople.length === 0 ? (
+              <Text style={styles.emptyText}>No referred riders yet.</Text>
+            ) : (
+              <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+                {referredPeople.map((person, index) => (
+                  <View key={person.id} style={[styles.rowItem, index > 0 && styles.rowItemBorder]}>
+                    <View style={styles.rowIconWrap}>
+                      <Ionicons name={person.totalRewards > 0 ? "gift-outline" : "person-outline"} size={18} color={Colors.white} />
+                    </View>
+                    <View style={styles.rowMain}>
+                      <Text style={styles.rowTitle}>{person.name}</Text>
+                      <Text style={styles.rowSub}>{getReferralActivityCopy(person)}</Text>
+                    </View>
+                    <View style={styles.rowRight}>
+                      <Text style={[styles.rowAmount, person.totalRewards > 0 ? styles.rowAmountPositive : styles.rowAmountNeutral]}>
+                        {person.totalRewards > 0 ? `+${formatCurrency(person.totalRewards)}` : "Joined"}
+                      </Text>
+                      <Text style={styles.rowMeta}>{formatDate(getReferralActivityDate(person))}</Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
@@ -774,6 +904,12 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontFamily: "Inter_400Regular",
   },
+  minimumHint: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontFamily: "Inter_500Medium",
+    marginBottom: 12,
+  },
   balanceActionsRow: {
     flexDirection: "row",
     gap: 10,
@@ -785,6 +921,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
+  },
+  secondaryActionDisabled: {
+    opacity: 0.45,
   },
   secondaryActionText: {
     fontSize: 14,
@@ -834,6 +973,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     color: "#D8B26B",
+  },
+  sectionActionDisabled: {
+    color: Colors.textMuted,
   },
   stepRow: {
     flexDirection: "row",
@@ -960,6 +1102,9 @@ const styles = StyleSheet.create({
   rowAmountNegative: {
     color: "#D8B26B",
   },
+  rowAmountNeutral: {
+    color: Colors.textSecondary,
+  },
   rowMeta: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
@@ -985,6 +1130,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#252525",
   },
+  modalHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  modalHeaderCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.surface,
+  },
   modalEyebrow: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
@@ -1004,6 +1167,16 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginBottom: 6,
   },
+  modalHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: "Inter_500Medium",
+    color: Colors.textMuted,
+    marginBottom: 4,
+  },
+  modalList: {
+    maxHeight: 420,
+  },
   input: {
     backgroundColor: Colors.surface,
     borderRadius: 14,
@@ -1021,6 +1194,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 15,
     marginTop: 4,
+  },
+  submitBtnDisabled: {
+    opacity: 0.45,
   },
   submitBtnText: {
     color: Colors.primary,

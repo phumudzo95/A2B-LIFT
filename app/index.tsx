@@ -1,12 +1,12 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
+import EntranceView from "@/components/EntranceView";
 
 export default function SplashLanding() {
   const insets = useSafeAreaInsets();
@@ -29,15 +29,15 @@ export default function SplashLanding() {
         style={StyleSheet.absoluteFill}
       />
       <View style={[styles.content, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
-        <Animated.View entering={FadeInUp.duration(800).delay(200)} style={styles.logoArea}>
+        <EntranceView direction="up" duration={800} delay={200} style={styles.logoArea}>
           <View style={styles.iconCircle}>
             <Ionicons name="car-sport" size={40} color={Colors.white} />
           </View>
           <Text style={styles.appName}>A2B LIFT</Text>
           <Text style={styles.slogan}>Premium Ride Experience</Text>
-        </Animated.View>
+        </EntranceView>
 
-        <Animated.View entering={FadeInDown.duration(800).delay(600)} style={styles.bottomArea}>
+        <EntranceView duration={800} delay={600} style={styles.bottomArea}>
           <View style={styles.featureRow}>
             <View style={styles.featureItem}>
               <Ionicons name="shield-checkmark" size={20} color={Colors.textSecondary} />
@@ -69,7 +69,7 @@ export default function SplashLanding() {
           </Pressable>
 
           <View style={{ height: insets.bottom + (Platform.OS === "web" ? 34 : 16) }} />
-        </Animated.View>
+        </EntranceView>
       </View>
     </View>
   );

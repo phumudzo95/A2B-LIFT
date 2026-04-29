@@ -47,11 +47,14 @@ PAYSTACK_CALLBACK_URL=https://yourdomain.com/paystack/return
 ```bash
 PORT=5000
 NODE_ENV=development
+FRONTEND_URL=https://a2blift.com
+PUBLIC_REFERRAL_BASE_URL=https://a2blift.com
 ```
 
 ### Expo/Mobile App
 ```bash
-EXPO_PUBLIC_DOMAIN=localhost:5000
+EXPO_PUBLIC_DOMAIN=https://a2blift.com
+EXPO_PUBLIC_REFERRAL_BASE_URL=https://a2blift.com
 ```
 
 ## Setup Instructions
@@ -69,4 +72,5 @@ EXPO_PUBLIC_DOMAIN=localhost:5000
 - **GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET**: Used by the backend Google OAuth endpoints.
 - **SUPABASE_URL/ANON_KEY**: Already provided above
 - **EXTERNAL_API_URL**: Set to `http://103.154.2.122` by default
+- **PUBLIC_REFERRAL_BASE_URL / EXPO_PUBLIC_REFERRAL_BASE_URL**: Set these to `https://a2blift.com` in production so shared referral links use your real domain instead of the Railway URL.
 - Never commit `.env` file to version control (it should be in `.gitignore`)

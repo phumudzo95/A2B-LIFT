@@ -1,8 +1,13 @@
 const googleMapsApiKey =
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
   process.env.GOOGLE_MAPS_API_KEY ||
-  process.env.GOOGLE_API_KEY ||
   "";
+
+if (!googleMapsApiKey) {
+  throw new Error(
+    "Missing native Google Maps key. Set EXPO_PUBLIC_GOOGLE_MAPS_API_KEY or GOOGLE_MAPS_API_KEY for mobile builds.",
+  );
+}
 
 module.exports = {
   expo: {
@@ -13,7 +18,7 @@ module.exports = {
     icon: "./assets/images/icon.png",
     scheme: "a2blift",
     userInterfaceStyle: "dark",
-    newArchEnabled: true,
+    newArchEnabled: false,
     splash: {
       image: "./assets/images/splash-icon.png",
       resizeMode: "contain",
@@ -77,6 +82,7 @@ module.exports = {
       "expo-router",
       "expo-font",
       "expo-web-browser",
+      "./plugins/with-android-release-lint-disabled",
       [
         "expo-notifications",
         {
@@ -114,7 +120,7 @@ module.exports = {
       googleMapsApiKey,
     },
     runtimeVersion: {
-      policy: "fingerprint",
+      policy: "appVersion",
     },
     updates: {
       url: "https://u.expo.dev/f282a582-7512-48d6-b563-13aa571d9115",

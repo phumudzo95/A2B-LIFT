@@ -3,10 +3,10 @@ import { View, Text, StyleSheet, Pressable, Platform, ScrollView } from "react-n
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/lib/auth-context";
 import Colors from "@/constants/colors";
+import EntranceView from "@/components/EntranceView";
 
 export default function RoleSelectScreen() {
   const insets = useSafeAreaInsets();
@@ -34,7 +34,7 @@ export default function RoleSelectScreen() {
         </View>
 
         <View style={styles.cardsContainer}>
-          <Animated.View entering={FadeInDown.duration(600).delay(200)}>
+          <EntranceView duration={600} delay={200}>
             <Pressable
               style={({ pressed }) => [styles.roleCard, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
               onPress={() => { AsyncStorage.setItem("a2b_last_mode", "client"); router.push("/client"); }}
@@ -48,9 +48,9 @@ export default function RoleSelectScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
             </Pressable>
-          </Animated.View>
+          </EntranceView>
 
-          <Animated.View entering={FadeInDown.duration(600).delay(400)}>
+          <EntranceView duration={600} delay={400}>
             <Pressable
               style={({ pressed }) => [styles.roleCard, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
               onPress={() => { AsyncStorage.setItem("a2b_last_mode", "chauffeur"); router.push("/chauffeur"); }}
@@ -64,7 +64,7 @@ export default function RoleSelectScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
             </Pressable>
-          </Animated.View>
+          </EntranceView>
         </View>
 
         <View style={styles.bottom}>

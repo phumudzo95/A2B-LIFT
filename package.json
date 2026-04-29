@@ -12,7 +12,9 @@
     "start": "npm run server:prod",
     "expo:go": "node /Users/mac/A2B-LIFT/node_modules/expo/bin/cli start --lan /Users/mac/A2B-LIFT",
     "db:push": "drizzle-kit push",
-    "build:prod": "npm run expo:static:build && npm run server:build"
+    "build:prod": "npm run expo:static:build && npm run server:build",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
@@ -65,14 +67,11 @@
     "react-dom": "^19.1.0",
     "react-native": "^0.81.5",
     "react-native-gesture-handler": "~2.28.0",
-    "react-native-keyboard-controller": "1.18.5",
     "react-native-maps": "1.20.1",
-    "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-web": "^0.21.2",
-    "react-native-worklets": "0.5.1",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "tsx": "^4.21.0",

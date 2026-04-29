@@ -2,14 +2,7 @@ import React, { useRef, useEffect, useMemo, useCallback } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, Platform } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
-import Constants from "expo-constants";
 import Colors from "@/constants/colors";
-
-const GOOGLE_MAPS_API_KEY =
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ||
-  Constants.expoConfig?.extra?.googleMapsApiKey ||
-  "";
 
 // Fallback region — Johannesburg CBD. Used when GPS not yet acquired so map
 // never renders at world zoom level.
@@ -157,6 +150,7 @@ export default function A2BMap({
   const mapReadyRef = useRef(false);
   const lastCenteredPickupRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastFollowedDriverRef = useRef<{ lat: number; lng: number } | null>(null);
+  const customMapStyle = DARK_MAP_STYLE;
 
   // Use user's location for initialRegion if available, else Johannesburg
   const center = pickupLocation || DEFAULT_REGION;
@@ -284,16 +278,6 @@ export default function A2BMap({
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [routeCoords, zoomToCoords]);
 
-
-  if (!GOOGLE_MAPS_API_KEY) {
-    return (
-      <View style={styles.fallback}>
-        <ActivityIndicator size="large" color={Colors.white} />
-        <Text style={styles.fallbackText}>Map Loading...</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       {(loading || !pickupLocation) && (
@@ -306,9 +290,12 @@ export default function A2BMap({
         ref={mapRef}
         style={styles.map}
         provider={Platform.OS === "web" ? undefined : PROVIDER_GOOGLE}
-        customMapStyle={DARK_MAP_STYLE}
+        customMapStyle={customMapStyle}
         initialRegion={initialRegionRef.current}
         onMapReady={handleMapReady}
+        mapType="standard"
+        loadingEnabled={true}
+        loadingBackgroundColor="#0B0B0B"
         showsUserLocation={true}
         showsMyLocationButton={false}
         showsCompass={false}
@@ -317,8 +304,6 @@ export default function A2BMap({
         showsIndoors={false}
         toolbarEnabled={false}
         mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
-        legalLabelInsets={{ bottom: -999, left: 0, top: 0, right: 0 }}
-        googleMapsApiKey={GOOGLE_MAPS_API_KEY}
       >
         {pickupLocation && (
           <Marker
@@ -396,18 +381,6 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
-  },
-  fallback: {
-    flex: 1,
-    backgroundColor: "#1a1a2e",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 12,
-  },
-  fallbackText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: Colors.textSecondary,
   },
   locatingOverlay: {
     position: "absolute",

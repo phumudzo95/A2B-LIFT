@@ -104,6 +104,13 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="referrals"
+        options={{
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
         name="chat"
         options={{
           href: null,

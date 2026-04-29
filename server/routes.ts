@@ -102,6 +102,8 @@ function roundCurrency(value: number): number {
 
 const RIDE_CASHBACK_RATE = 0.025;
 const REFERRAL_REWARD_RATE = 0.025;
+const DEFAULT_PUBLIC_REFERRAL_BASE_URL = "https://a2blift.com";
+const MIN_REWARD_CASHOUT_AMOUNT = 100;
 
 function getFrontendBaseUrl(): string {
   return (process.env.FRONTEND_URL || "https://peaceful-mousse-459c85.netlify.app").replace(/\/$/, "");
@@ -115,6 +117,10 @@ function getReferralBaseUrl(req?: Request): string {
 
   if (configuredBaseUrl) {
     return configuredBaseUrl.replace(/\/$/, "");
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return DEFAULT_PUBLIC_REFERRAL_BASE_URL;
   }
 
   return getAppBaseUrl(req).replace(/\/$/, "");
@@ -328,6 +334,13 @@ async function createUserWithReferral(data: {
       status: "registered",
       totalRewards: 0,
     });
+
+    await storage.createNotification({
+      userId: referrer.id,
+      title: "Referral Link Used",
+      body: `${String(user.name || user.username || "A new rider").split(/\s+/)[0]} registered with your referral code ${normalizedReferralCode}. Their first completed trip will trigger your loyalty reward.`,
+      type: "reward",
+    });
   }
 
   return user;
@@ -421,6 +434,27 @@ async function chargeDefaultCardForRide(options: {
   };
 }
 
+
+  async function buildReferredPeople(events: Awaited<ReturnType<typeof storage.getReferralEventsByReferrerUserId>>) {
+    return Promise.all(
+      events.map(async (event) => {
+        const referredUser = event.referredUserId
+          ? await storage.getUser(event.referredUserId)
+          : undefined;
+
+        return {
+          id: event.referredUserId || event.id,
+          name: String(referredUser?.name || referredUser?.username || "New rider").trim(),
+          joinedAt: event.createdAt,
+          firstRewardAt: event.firstRewardAt || null,
+          lastRewardAt: event.lastRewardAt || null,
+          rewardedAt: event.lastRewardAt || event.firstRewardAt || null,
+          totalRewards: roundCurrency(event.totalRewards || 0),
+          status: event.status,
+        };
+      }),
+    );
+  }
 function getCompletedRideRewardBase(ride: { price?: number | null; actualFare?: number | null }) {
   return roundCurrency(Number(ride.actualFare ?? ride.price ?? 0));
 }
@@ -964,9 +998,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getRewardTransactions(hydratedUser.id),
         storage.getRewardCashoutsByUser(hydratedUser.id),
       ]);
+      const referredPeople = await buildReferredPeople(events);
 
-        const totalRewardsEarned = rewardTxs
-          .filter((tx) => tx.type === "referral_reward" || tx.type === "ride_cashback")
+      const totalRewardsEarned = rewardTxs
+        .filter((tx) => tx.type === "referral_reward" || tx.type === "ride_cashback")
         .reduce((sum, tx) => sum + (tx.amount || 0), 0);
       const pendingCashoutAmount = cashouts
         .filter((cashout) => ["requested", "approved"].includes(cashout.status))
@@ -980,6 +1015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rewardedReferrals: events.filter((event) => event.status === "rewarded").length,
         totalRewardsEarned: roundCurrency(totalRewardsEarned),
         pendingCashoutAmount: roundCurrency(pendingCashoutAmount),
+        referredPeople,
         transactions: rewardTxs,
         cashouts,
       });
@@ -1015,6 +1051,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestedAmount = roundCurrency(Number(amount));
       if (!requestedAmount || requestedAmount <= 0) {
         return res.status(400).json({ message: "A valid cash-out amount is required" });
+      }
+      if (requestedAmount < MIN_REWARD_CASHOUT_AMOUNT) {
+        return res.status(400).json({ message: `Minimum rewards cash-out is R ${MIN_REWARD_CASHOUT_AMOUNT.toFixed(2)}` });
       }
       if (requestedAmount > (user.rewardsBalance || 0)) {
         return res.status(400).json({ message: "Insufficient rewards balance" });
@@ -3297,6 +3336,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           await rewardRideCashbackForCompletedRide(ride.clientId, ride, "client");
           await rewardReferralForCompletedRide(ride.clientId, ride, "client");
+
+          if (ride.chauffeurId) {
+            const chauffeur = await storage.getChauffeur(ride.chauffeurId);
+            if (chauffeur?.userId) {
+              await rewardRideCashbackForCompletedRide(chauffeur.userId, ride, "driver");
+              await rewardReferralForCompletedRide(chauffeur.userId, ride, "driver");
+            }
+          }
         } catch (rewardErr: any) {
           console.error("referral reward failed (non-fatal):", rewardErr.message);
         }

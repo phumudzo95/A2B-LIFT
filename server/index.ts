@@ -17,13 +17,29 @@ declare module "http" {
   }
 }
 
+function addUrlOrigin(origins: Set<string>, rawUrl?: string) {
+  if (!rawUrl) return;
+
+  try {
+    origins.add(new URL(rawUrl).origin);
+  } catch {
+    // Ignore invalid URLs in optional deployment env vars.
+  }
+}
+
 function setupCors(app: express.Application) {
   app.use((req, res, next) => {
     const origins = new Set<string>();
 
     // Add production domains
+    origins.add("https://a2blift.com");
+    origins.add("https://www.a2blift.com");
     origins.add("https://a2b-lift.onrender.com");
     origins.add("https://peaceful-mousse-459c85.netlify.app");
+
+    addUrlOrigin(origins, process.env.FRONTEND_URL);
+    addUrlOrigin(origins, process.env.PUBLIC_REFERRAL_BASE_URL);
+    addUrlOrigin(origins, process.env.EXPO_PUBLIC_REFERRAL_BASE_URL);
 
     // Railway domains — wildcard handled below via includes check
     if (process.env.RAILWAY_PUBLIC_DOMAIN) {
