@@ -362,7 +362,10 @@ export default function ReferralsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16) }]}> 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 120 : 144) }]}
+      >
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.navigate(backRoute as any)} hitSlop={10}>
             <Ionicons name="chevron-back" size={24} color={Colors.white} />

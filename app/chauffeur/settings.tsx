@@ -292,7 +292,21 @@ export default function ChauffeurSettingsScreen() {
       <View style={styles.menuGroup}>
         <Pressable
           style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
-          onPress={() => router.replace("/role-select")}
+          onPress={() => router.push("/chauffeur/referrals")}
+        >
+          <View style={styles.menuIconCircle}>
+            <Ionicons name="gift-outline" size={20} color={Colors.white} />
+          </View>
+          <Text style={styles.menuText}>Referral & Rewards</Text>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
+          onPress={async () => {
+            await AsyncStorage.setItem("a2b_last_mode", "client");
+            router.replace("/client");
+          }}
         >
           <View style={styles.menuIconCircle}>
             <Ionicons name="swap-horizontal" size={20} color={Colors.white} />
