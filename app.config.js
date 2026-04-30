@@ -88,7 +88,7 @@ module.exports = {
         {
           icon: "./assets/images/icon.png",
           color: "#0a0a0a",
-          sounds: [],
+          sounds: ["./assets/trip-alert.mp3"],
           mode: "production",
         },
       ],
