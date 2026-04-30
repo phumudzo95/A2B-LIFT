@@ -43,7 +43,7 @@ async function sendExpoPushNotification(
     .filter(t => t && t.startsWith("ExponentPushToken["))
     .map(to => ({
       to,
-      sound: channelId === "ride-alerts" ? "trip-alert.mp3" : "default",
+      sound: channelId === "ride-alerts" ? "trip_alert.mp3" : "default",
       title,
       body,
       data: data || {},
@@ -51,7 +51,7 @@ async function sendExpoPushNotification(
       ttl: urgent ? 30 : undefined,
       channelId,
       interruptionLevel: urgent ? "time-sensitive" : undefined,
-      android: channelId ? { channelId, sound: channelId === "ride-alerts" ? "trip-alert.mp3" : "default", priority: urgent ? "max" : "high" } : undefined,
+      android: channelId ? { channelId, sound: channelId === "ride-alerts" ? "trip_alert.mp3" : "default", priority: urgent ? "max" : "high" } : undefined,
     }));
   if (messages.length === 0) return;
   try {
