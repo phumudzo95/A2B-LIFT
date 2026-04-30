@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
+import { View, Text, StyleSheet, Pressable, Platform, Linking } from "react-native";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -68,6 +68,26 @@ export default function SplashLanding() {
             <Text style={styles.secondaryBtnText}>Create Account</Text>
           </Pressable>
 
+          <View style={styles.termsContainer}>
+            <Text style={styles.termsText}>
+              {"By signing up, you agree to our "}
+              <Text
+                style={styles.termsLink}
+                onPress={() => Linking.openURL("https://sites.google.com/view/a2bliftclub/termsofuse")}
+              >
+                Terms &amp; Conditions
+              </Text>
+              {", acknowledge our "}
+              <Text
+                style={styles.termsLink}
+                onPress={() => Linking.openURL("https://sites.google.com/view/a2bliftclub/home")}
+              >
+                Privacy Policy
+              </Text>
+              {", and confirm that you\u2019re over 18. We may send promotions related to our services \u2013 you can unsubscribe anytime in Communication Settings under your profile."}
+            </Text>
+          </View>
+
           <View style={{ height: insets.bottom + (Platform.OS === "web" ? 34 : 16) }} />
         </EntranceView>
       </View>
@@ -119,12 +139,27 @@ const styles = StyleSheet.create({
   bottomArea: {
     width: "100%",
     paddingHorizontal: 24,
-    gap: 12,
+    gap: 8,
   },
   featureRow: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginBottom: 24,
+    marginBottom: 12,
+  },
+  termsContainer: {
+    paddingHorizontal: 8,
+    paddingTop: 4,
+  },
+  termsText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+    textAlign: "center",
+    lineHeight: 17,
+  },
+  termsLink: {
+    color: "#4CAF50",
+    textDecorationLine: "underline",
   },
   featureItem: {
     alignItems: "center",

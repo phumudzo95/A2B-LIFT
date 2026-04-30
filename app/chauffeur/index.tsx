@@ -635,6 +635,15 @@ export default function ChauffeurDashboard() {
       } catch {}
     }
 
+    // Fires when notification arrives while app is in foreground (on any screen)
+    const receivedSub = Notifications.addNotificationReceivedListener(notification => {
+      const data = notification.request.content.data as any;
+      if (data?.type === "ride:new") {
+        setIsOnline(true);
+        void hydrateIncomingRideFromNotification();
+      }
+    });
+    // Fires when user taps a notification from background/locked state
     const sub = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data as any;
       if (data?.type === "ride:new") {
@@ -642,7 +651,7 @@ export default function ChauffeurDashboard() {
         void hydrateIncomingRideFromNotification();
       }
     });
-    return () => sub.remove();
+    return () => { receivedSub.remove(); sub.remove(); };
   }, [chauffeur?.id, currentRide, isExpoGoAndroid]);
 
   // ─── Polling fallback ─────────────────────────────────────────────────────

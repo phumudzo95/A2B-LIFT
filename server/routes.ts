@@ -19,7 +19,7 @@ import { authOptional, requireAuth, requireRole, type AuthedRequest } from "./au
 import { signAccessToken, type UserRole } from "./auth";
 import { externalApiService } from "./external-api-service";
 
-const RIDE_MATCH_RADIUS_KM = 25;
+const RIDE_MATCH_RADIUS_KM = 4;
 const CHAUFFEUR_LOCATION_STALE_WINDOW_MS = 10 * 60 * 1000;
 
 function hasFreshChauffeurLocation(chauffeur: { lat?: number | null; lng?: number | null; locationUpdatedAt?: Date | string | null }) {
@@ -48,7 +48,7 @@ async function sendExpoPushNotification(
       body,
       data: data || {},
       badge: urgent ? 1 : undefined,
-      ttl: urgent ? 0 : undefined,
+      ttl: urgent ? 30 : undefined,
       channelId,
       interruptionLevel: urgent ? "time-sensitive" : undefined,
       android: channelId ? { channelId, sound: "default", priority: urgent ? "max" : "high" } : undefined,

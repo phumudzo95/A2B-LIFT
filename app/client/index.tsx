@@ -43,7 +43,7 @@ const VEHICLE_TYPES = [
   { id: "luxury", name: "Luxury", desc: "BMW 3 Series, Mercedes C Class", icon: "car-sport" as const, pricePerKm: 13, baseFare: 100 },
   { id: "business", name: "Business Class", desc: "BMW 5 Series, Mercedes E Class", icon: "briefcase" as const, pricePerKm: 35, baseFare: 150 },
   { id: "van", name: "Van", desc: "Hyundai H1, Mercedes Vito, Staria", icon: "bus" as const, pricePerKm: 13, baseFare: 120 },
-  { id: "luxury_van", name: "Luxury Van", desc: "Mercedes V Class", icon: "car" as const, pricePerKm: 35, baseFare: 200 },
+  { id: "luxury_van", name: "Luxury Van", desc: "Mercedes V Class", icon: "car" as const, pricePerKm: 35, baseFare: 200, largeLuggage: 3, smallLuggage: 3 },
 ];
 
 type RideStatus = "idle" | "selecting" | "confirming" | "requested" | "assigned" | "arriving" | "in_trip" | "completed" | "no_drivers";
@@ -2548,11 +2548,30 @@ export default function ClientHomeScreen() {
                   setShowVehicleSheet(false);
                 }}
               >
-                <Ionicons name={vt.icon} size={22} color={Colors.white} />
+                {vt.id === "luxury_van" ? (
+                  <Image
+                    source={require("../../assets/images/LuxuryVan.jpg")}
+                    style={{ width: 40, height: 30, borderRadius: 4, resizeMode: "cover" }}
+                  />
+                ) : (
+                  <Ionicons name={vt.icon} size={22} color={Colors.white} />
+                )}
                 <View style={styles.vehicleOptionInfo}>
                   <Text style={styles.vehicleOptionName}>{vt.name}</Text>
                   <Text style={styles.vehicleOptionDesc}>{vt.desc}</Text>
                   <Text style={styles.vehicleOptionPrice}>R{vt.baseFare} + R{vt.pricePerKm}/km</Text>
+                  {vt.id === "luxury_van" && (
+                    <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                        <Text style={{ fontSize: 14 }}>🧳</Text>
+                        <Text style={{ fontSize: 11, color: Colors.textMuted }}>×{(vt as any).largeLuggage} large</Text>
+                      </View>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                        <Text style={{ fontSize: 14 }}>👜</Text>
+                        <Text style={{ fontSize: 11, color: Colors.textMuted }}>×{(vt as any).smallLuggage} small</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
                 {selectedVehicle.id === vt.id && (
                   <Ionicons name="checkmark-circle" size={22} color={Colors.white} />
