@@ -2550,7 +2550,7 @@ export default function ClientHomeScreen() {
               >
                 {vt.id === "luxury_van" ? (
                   <Image
-                    source={require("../../assets/images/LuxuryVan.jpg")}
+                    source={require("../../assets/images/LuxuryVan.png")}
                     style={{ width: 40, height: 30, borderRadius: 4, resizeMode: "cover" }}
                   />
                 ) : (
