@@ -84,6 +84,7 @@ module.exports = {
             compileSdkVersion: 35,
             targetSdkVersion: 35,
             minSdkVersion: 24,
+            ndkVersion: "27.1.12297006",
           },
         },
       ],
