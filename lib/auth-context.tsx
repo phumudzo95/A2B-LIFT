@@ -9,14 +9,6 @@ import React, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiRequest } from "@/lib/query-client";
 
-const PENDING_REFERRAL_CODE_STORAGE_KEY = "a2b_pending_referral_code";
-
-function normalizeReferralCode(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const normalized = value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-  return normalized || null;
-}
-
 interface AuthUser {
   id: string;
   username: string;
@@ -27,9 +19,6 @@ interface AuthUser {
   role: string;
   rating: number | null;
   walletBalance: number | null;
-  rewardsBalance?: number | null;
-  referralCode?: string | null;
-  referredByUserId?: string | null;
   createdAt?: string | null;
 }
 
@@ -44,7 +33,6 @@ interface AuthContextValue {
   user: AuthUser | null;
   accessToken: string | null;
   isLoading: boolean;
-  pendingReferralCode: string | null;
   login: (username: string, password: string) => Promise<void>;
   register: (data: {
     username: string;
@@ -56,8 +44,6 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   setUser: (user: AuthUser | null) => void;
   refreshUser: () => Promise<void>;
-  setPendingReferralCode: (referralCode: string | null) => Promise<void>;
-  clearPendingReferralCode: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -66,7 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [pendingReferralCode, setPendingReferralCodeState] = useState<string | null>(null);
 
   useEffect(() => {
     loadUser();
@@ -76,9 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const stored = await AsyncStorage.getItem("a2b_user");
       const token = await AsyncStorage.getItem("a2b_token");
-      const pendingReferral = await AsyncStorage.getItem(PENDING_REFERRAL_CODE_STORAGE_KEY);
       if (token) setAccessToken(token);
-      setPendingReferralCodeState(normalizeReferralCode(pendingReferral));
       if (stored) {
         setUser(JSON.parse(stored));
       }
@@ -113,20 +96,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { user: payload as AuthUser, accessToken: null };
   }
 
-  async function setPendingReferralCode(referralCode: string | null) {
-    const normalized = normalizeReferralCode(referralCode);
-    setPendingReferralCodeState(normalized);
-    if (normalized) {
-      await AsyncStorage.setItem(PENDING_REFERRAL_CODE_STORAGE_KEY, normalized);
-      return;
-    }
-    await AsyncStorage.removeItem(PENDING_REFERRAL_CODE_STORAGE_KEY);
-  }
-
-  async function clearPendingReferralCode() {
-    await setPendingReferralCode(null);
-  }
-
   async function login(username: string, password: string) {
     const res = await apiRequest("POST", "/api/auth/login", {
       username,
@@ -143,7 +112,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (normalized.accessToken) {
       await AsyncStorage.setItem("a2b_token", normalized.accessToken);
     }
-    await clearPendingReferralCode();
   }
 
   async function register(data: {
@@ -153,11 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     phone: string;
     referralCode?: string;
   }): Promise<AuthUser> {
-    const normalizedReferralCode = normalizeReferralCode(data.referralCode || pendingReferralCode);
-    const res = await apiRequest("POST", "/api/auth/register", {
-      ...data,
-      referralCode: normalizedReferralCode || undefined,
-    });
+    const res = await apiRequest("POST", "/api/auth/register", data);
     const payload = (await res.json()) as LoginResponse;
     if (!res.ok) {
       throw new Error((payload as any).message || "Registration failed. Please try again.");
@@ -169,7 +133,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (normalized.accessToken) {
       await AsyncStorage.setItem("a2b_token", normalized.accessToken);
     }
-    await clearPendingReferralCode();
     return normalized.user;
   }
 
@@ -213,16 +176,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       accessToken,
       isLoading,
-      pendingReferralCode,
       login,
       register,
       logout,
       setUser,
       refreshUser,
-      setPendingReferralCode,
-      clearPendingReferralCode,
     }),
-    [user, accessToken, isLoading, pendingReferralCode],
+    [user, accessToken, isLoading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
