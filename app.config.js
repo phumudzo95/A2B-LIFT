@@ -46,12 +46,10 @@ module.exports = {
     },
     android: {
       package: "com.a2blift",
-      versionCode: 4,
+      versionCode: 50,
       softwareKeyboardLayoutMode: "resize",
       adaptiveIcon: {
-        foregroundImage: "./assets/images/android-icon-foreground.png",
-        backgroundImage: "./assets/images/android-icon-background.png",
-        monochromeImage: "./assets/images/android-icon-monochrome.png",
+        foregroundImage: "./assets/images/icon.png",
         backgroundColor: "#000000",
       },
       permissions: [
@@ -71,7 +69,7 @@ module.exports = {
       },
     },
     web: {
-      favicon: "./assets/images/favicon.png",
+      favicon: "./assets/images/icon.png",
     },
     plugins: [
       "expo-router",
