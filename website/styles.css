@@ -148,7 +148,7 @@ ul, ol { list-style:none; }
   background:linear-gradient(105deg, rgba(0,0,0,0.62) 40%, rgba(0,0,0,0.20) 100%);
 }
 .hero--light .hero-bg {
-  background-image:url('assets/images/LuxuryVan.png');
+  background-image:url('assets/images/rides.png?v=20260505b');
   background-repeat:no-repeat;
   background-size:min(56vw, 780px) auto;
   background-position:right 36px bottom 52px;
