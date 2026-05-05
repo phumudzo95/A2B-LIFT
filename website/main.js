@@ -1,45 +1,68 @@
-// ── NAV SCROLL STATE ──
-const nav = document.getElementById('nav');
-window.addEventListener('scroll', () => {
-  nav.classList.toggle('scrolled', window.scrollY > 20);
-}, { passive: true });
+/* A2B Lift — main.js */
 
-// ── HAMBURGER MENU ──
+// ─── Nav scroll shadow ────────────────────────────────────────────────────
+const navEl = document.getElementById('nav');
+if (navEl) {
+  window.addEventListener('scroll', () => {
+    navEl.classList.toggle('scrolled', window.scrollY > 10);
+  }, { passive: true });
+}
+
+// ─── Hamburger / mobile nav ───────────────────────────────────────────────
 const hamburger = document.getElementById('hamburger');
-const navLinks  = document.getElementById('navLinks');
-hamburger.addEventListener('click', () => {
-  navLinks.classList.toggle('open');
-  hamburger.classList.toggle('open');
-});
-// Close on link click
-navLinks.querySelectorAll('a').forEach(a => {
-  a.addEventListener('click', () => {
-    navLinks.classList.remove('open');
-    hamburger.classList.remove('open');
-  });
-});
+const mobileNav = document.getElementById('mobileNav');
 
-// ── FADE-IN ON SCROLL ──
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      e.target.classList.add('visible');
-      observer.unobserve(e.target);
+if (hamburger && mobileNav) {
+  hamburger.addEventListener('click', () => {
+    const isOpen = mobileNav.classList.toggle('open');
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+    hamburger.setAttribute('aria-expanded', String(isOpen));
+  });
+
+  // Close on any link click inside mobile nav
+  mobileNav.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      mobileNav.classList.remove('open');
+      document.body.style.overflow = '';
+      hamburger.setAttribute('aria-expanded', 'false');
+    });
+  });
+}
+
+// ─── Fade-in on scroll ────────────────────────────────────────────────────
+if ('IntersectionObserver' in window) {
+  const fadeEls = document.querySelectorAll(
+    '.service-card, .feature-card, .step-card, .earn-card, .route-card, ' +
+    '.blog-card, .stat-item, .step, .split'
+  );
+
+  const fadeObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+        fadeObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  fadeEls.forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    fadeObserver.observe(el);
+  });
+}
+
+// ─── Smooth scroll for in-page hash links ────────────────────────────────
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function (e) {
+    const id = this.getAttribute('href').slice(1);
+    if (!id) return;
+    const target = document.getElementById(id);
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   });
-}, { threshold: 0.12 });
-
-document.querySelectorAll(
-  '.service-card, .how-step, .earn-card, .blog-card, .step, .stat'
-).forEach(el => {
-  el.classList.add('fade-in');
-  observer.observe(el);
 });
-
-// ── CSS FOR FADE-IN (injected so it works without extra file) ──
-const style = document.createElement('style');
-style.textContent = `
-  .fade-in { opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
-  .fade-in.visible { opacity: 1; transform: translateY(0); }
-`;
-document.head.appendChild(style);
