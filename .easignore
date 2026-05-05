@@ -1,0 +1,17 @@
+# Directories not needed for EAS builds
+builds/
+build-tools/
+server_dist/
+dist/
+website/
+attached_assets/
+ios/
+android/
+.expo/
+
+# Large image files not needed for the build
+appscreen2.jpeg
+appscreen3.jpeg
+appscreen4.jpeg
+appscreen5.jpeg
+"WhatsApp Image 2026-03-30 at 23.10.12.jpeg"
