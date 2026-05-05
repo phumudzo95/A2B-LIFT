@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Long Distance Travel — A2B Lift</title>
   <meta name="description" content="Search for A2B Lift drivers heading between cities. Book a seat for your long-distance trip across South Africa." />
-  <link rel="icon" href="assets/images/favicon.png" />
+  <link rel="icon" type="image/png" href="assets/images/favicon.png?v=20260505" />
+  <link rel="shortcut icon" href="assets/images/favicon.png?v=20260505" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -60,6 +61,59 @@
       padding: 10px 0 0;
     }
     .ld-route-info svg { width:14px; height:14px; flex-shrink:0; }
+
+    .ld-status {
+      margin-top: 16px;
+      padding: 16px 18px;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--grey-200);
+      background: var(--grey-50);
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .ld-status strong { display:block; font-size: 14px; margin-bottom: 4px; }
+    .ld-status span { font-size: 14px; color: var(--grey-600); line-height: 1.6; max-width: 760px; }
+
+    .ld-proof-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 28px;
+    }
+    .ld-proof-card {
+      background: var(--white);
+      border: 1.5px solid var(--grey-200);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow-sm);
+    }
+    .ld-proof-card strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+    .ld-proof-card p {
+      font-size: 14px;
+      color: var(--grey-600);
+      line-height: 1.7;
+    }
+    .ld-proof-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.88);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
 
     /* ── AUTOCOMPLETE override ── */
     .pac-container { font-family: var(--font) !important; border-radius: 10px !important; box-shadow: var(--shadow-lg) !important; border: 1.5px solid var(--grey-200) !important; }
@@ -190,11 +244,13 @@
       .ld-search-bar { grid-template-columns: 1fr 1fr; }
       .ld-results-layout { grid-template-columns: 1fr; }
       .ld-map { height: 360px; position: static; }
+      .ld-proof-grid { grid-template-columns: 1fr 1fr; }
     }
     @media(max-width:640px) {
       .ld-search-bar { grid-template-columns: 1fr; }
       .ld-search-bar .btn-search { width: 100%; }
       .matrix-card { grid-template-columns: 1fr; }
+      .ld-proof-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -235,8 +291,9 @@
     <div class="page-hero-bg" style="background-image:url('assets/images/LuxuryVan.png'); background-position: center center;"></div>
     <div class="container" style="position:relative;z-index:1;padding-bottom:80px;">
       <p class="label label--light">Long Distance</p>
+      <div class="ld-proof-kicker">Live routes, map preview, dashboard follow-up</div>
       <h1 class="page-hero-title" style="color:var(--white);">City to city,<br /><em>in real comfort.</em></h1>
-      <p class="page-hero-sub" style="color:rgba(255,255,255,0.82);">Search available drivers heading your way, compare routes on the map, and confirm your seat by card or cash once you log in.</p>
+      <p class="page-hero-sub" style="color:rgba(255,255,255,0.82);">Search available drivers heading your way, compare routes on the map, and lock in your seat. Sign in to finish the booking, keep the trip in your dashboard, and pay by card or cash.</p>
     </div>
   </div>
 
@@ -264,6 +321,13 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h18M3 12l4-4m-4 4 4 4M21 12l-4-4m4 4-4 4"/></svg>
         <span id="ldRouteInfoText"></span>
       </div>
+      <div class="ld-status" id="ldStatus">
+        <div>
+          <strong id="ldStatusTitle">Loading live long-distance routes</strong>
+          <span id="ldStatusText">Available drivers are fetched automatically when this page opens. You can also search your own route and compare drivers on the map.</span>
+        </div>
+        <a href="dashboard.html" class="btn btn-ghost btn-sm">Open dashboard</a>
+      </div>
 
       <!-- Results -->
       <div class="ld-results-layout" id="ldResultsLayout" style="display:none;">
@@ -284,6 +348,31 @@
   </section>
 
   <!-- HOW IT WORKS -->
+  <section class="section section--grey">
+    <div class="container">
+      <p class="label">Booking flow</p>
+      <h2 class="heading">Search here, finish cleanly,<br /><em>manage it in your dashboard.</em></h2>
+      <div class="ld-proof-grid">
+        <div class="ld-proof-card">
+          <strong>Live drivers show automatically</strong>
+          <p>When drivers mark themselves available for long-distance trips in the app, their posted routes load here automatically as soon as the page opens.</p>
+        </div>
+        <div class="ld-proof-card">
+          <strong>Location search uses autosuggest</strong>
+          <p>Type your departure city and destination and pick from location suggestions, just like the airport transfer page map flow.</p>
+        </div>
+        <div class="ld-proof-card">
+          <strong>Login keeps the booking tied to your dashboard</strong>
+          <p>If you are not signed in, A2B Lift saves your trip intent first so you can continue after login and keep the confirmed booking visible in your dashboard.</p>
+        </div>
+        <div class="ld-proof-card">
+          <strong>Drivers get notified, and you choose payment</strong>
+          <p>Each confirmed booking sends an in-app notification to the driver. Passengers can confirm with card online or select cash for the travel day.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="section section--grey">
     <div class="container">
       <p class="label">How it works</p>
@@ -488,13 +577,30 @@
     }
 
     async function autoLoadDrivers() {
+      setStatus('Loading live long-distance routes', 'Available drivers are fetched automatically when this page opens. You can also search your own route and compare them on the map.');
       try {
         const res = await fetch(`${API}/api/long-distance/search`);
         const payload = await res.json().catch(() => null);
-        if (!res.ok) return;
+        if (!res.ok) {
+          setStatus('Live routes are temporarily unavailable', 'Search a route manually or use one of the popular routes below while the live feed catches up.');
+          return;
+        }
         const drivers = Array.isArray(payload) ? payload : [];
-        if (drivers.length) renderResults(drivers, '', '', '');
-      } catch(e) { /* silent — user can search manually */ }
+        if (drivers.length) {
+          renderResults(drivers, '', '', '');
+          return;
+        }
+        setStatus('No drivers are live yet', 'Search your route manually or use one of the popular routes below to check again.');
+      } catch(e) {
+        setStatus('Unable to load live routes right now', 'Search your route manually or use one of the popular routes below while we retry live availability.');
+      }
+    }
+
+    function setStatus(title, text) {
+      const titleEl = document.getElementById('ldStatusTitle');
+      const textEl = document.getElementById('ldStatusText');
+      if (titleEl) titleEl.textContent = title;
+      if (textEl) textEl.textContent = text;
     }
 
     function showRoutePreview(fromText, toText) {
@@ -572,12 +678,13 @@
         }
         const drivers = Array.isArray(payload) ? payload : [];
 
-          renderResults(drivers, from, to, date);
+        renderResults(drivers, from, to, date);
         if (from && to) showRoutePreview(from, to);
       } catch (err) {
         document.getElementById('ldResultsLayout').style.display = 'none';
         document.getElementById('ldEmpty').style.display = 'block';
         document.getElementById('ldEmptyMessage').innerHTML = 'Live routes are temporarily unavailable.<br />Try again shortly or use the popular routes below.';
+        setStatus('Search could not be completed', 'The live route feed is temporarily unavailable. Try again shortly or pick a popular route below.');
       } finally {
         btn.textContent = 'Search trips';
         btn.disabled = false;
@@ -594,9 +701,15 @@
       empty.style.display = 'none';
 
       if (!drivers.length) {
+        setStatus('No matching drivers found', 'Try a nearby city, another travel date, or one of the popular routes below.');
         empty.style.display = 'block';
         return;
       }
+
+      setStatus(
+        `${drivers.length} live driver${drivers.length === 1 ? '' : 's'} available`,
+        'Choose a driver, review the route on the map, then continue with card or cash. Your confirmed trip will remain available in your dashboard.'
+      );
 
       count.textContent = `${drivers.length} driver${drivers.length === 1 ? '' : 's'} available`;
       list.innerHTML = drivers.map((d, i) => `
