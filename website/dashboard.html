@@ -263,7 +263,8 @@
 
     function shareRef(method) {
       const code = document.getElementById('refCodeDisplay').textContent;
-      const link = `https://a2bliftclub.com/register?ref=${code}`;
+      const base = window.location.origin || 'https://a2blift.com';
+      const link = `${base}/login.html?ref=${code}#register`;
       const msg = `Join me on A2B Lift! Use my code ${code}: ${link}`;
       if (method === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
       else { navigator.clipboard.writeText(link); alert('Link copied!'); }

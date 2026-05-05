@@ -107,6 +107,48 @@ function getPaystackConfig() {
   return { secret, currency, callbackUrl };
 }
 
+function encodeGoogleAuthState(data: Record<string, string>) {
+  return Buffer.from(JSON.stringify(data)).toString("base64url");
+}
+
+function decodeGoogleAuthState(rawState?: string) {
+  if (!rawState) return {} as Record<string, string>;
+  try {
+    const parsed = JSON.parse(Buffer.from(rawState, "base64url").toString("utf8"));
+    return parsed && typeof parsed === "object" ? parsed as Record<string, string> : {};
+  } catch {
+    return {} as Record<string, string>;
+  }
+}
+
+function isAllowedGoogleWebRedirect(rawUrl?: string) {
+  if (!rawUrl) return false;
+
+  try {
+    const parsed = new URL(rawUrl);
+    const exactAllowed = new Set([
+      "https://a2blift.com",
+      "https://www.a2blift.com",
+      "https://peaceful-mousse-459c85.netlify.app",
+      "https://api-production-0783.up.railway.app",
+    ]);
+
+    if (exactAllowed.has(parsed.origin)) return true;
+    if (parsed.hostname.endsWith(".netlify.app")) return true;
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function buildGoogleWebRedirect(rawUrl: string, params: Record<string, string>) {
+  const redirectUrl = new URL(rawUrl);
+  const hashParams = new URLSearchParams(params);
+  redirectUrl.hash = hashParams.toString();
+  return redirectUrl.toString();
+}
+
 /**
  * Determines the base URL for Paystack callback redirects.
  * Checks env vars in priority order so it works on Replit dev AND Railway production.
@@ -930,6 +972,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) return res.status(500).send("Google OAuth not configured");
     const callbackUrl = `https://api-production-0783.up.railway.app/api/auth/google/callback`;
+    const redirect = typeof req.query.redirect === "string" ? req.query.redirect : "";
+    const platform = req.query.platform === "web" && isAllowedGoogleWebRedirect(redirect) ? "web" : "app";
+    const state = encodeGoogleAuthState(platform === "web" ? { platform, redirect } : { platform: "app" });
     const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", callbackUrl);
@@ -937,13 +982,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     url.searchParams.set("scope", "openid email profile");
     url.searchParams.set("access_type", "offline");
     url.searchParams.set("prompt", "select_account");
+    url.searchParams.set("state", state);
     return res.redirect(url.toString());
   });
 
   app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
     try {
-      const { code, error } = req.query as any;
+      const { code, error, state } = req.query as any;
+      const authState = decodeGoogleAuthState(typeof state === "string" ? state : undefined);
+      const isWeb = authState.platform === "web" && isAllowedGoogleWebRedirect(authState.redirect);
       if (error || !code) {
+        if (isWeb) {
+          return res.redirect(buildGoogleWebRedirect(authState.redirect, { error: String(error || "cancelled") }));
+        }
         return res.redirect(`a2blift://auth?error=${encodeURIComponent(error || "cancelled")}`);
       }
       const clientId = process.env.GOOGLE_CLIENT_ID!;
@@ -957,6 +1008,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const tokens = await tokenRes.json() as any;
       if (tokens.error) {
+        if (isWeb) {
+          return res.redirect(buildGoogleWebRedirect(authState.redirect, { error: String(tokens.error_description || tokens.error) }));
+        }
         return res.redirect(`a2blift://auth?error=${encodeURIComponent(tokens.error_description || tokens.error)}`);
       }
 
@@ -965,6 +1019,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const googleUser = await userInfoRes.json() as any;
       if (!googleUser.email) {
+        if (isWeb) {
+          return res.redirect(buildGoogleWebRedirect(authState.redirect, { error: "no_email" }));
+        }
         return res.redirect(`a2blift://auth?error=no_email`);
       }
 
@@ -977,10 +1034,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const appToken = signAccessToken({ sub: user.id, role: user.role as UserRole, email: user.username, name: user.name });
       const { password: _pw, ...safeUser } = user;
+      if (isWeb) {
+        return res.redirect(buildGoogleWebRedirect(authState.redirect, {
+          accessToken: appToken,
+          user: JSON.stringify(safeUser),
+        }));
+      }
       // Deep link back into the app with the JWT
       const payload = encodeURIComponent(JSON.stringify({ user: safeUser, accessToken: appToken }));
       return res.redirect(`a2blift://auth?payload=${payload}`);
     } catch (err: any) {
+      const authState = decodeGoogleAuthState(typeof req.query.state === "string" ? req.query.state : undefined);
+      if (authState.platform === "web" && isAllowedGoogleWebRedirect(authState.redirect)) {
+        return res.redirect(buildGoogleWebRedirect(authState.redirect, { error: err.message || "oauth_failed" }));
+      }
       return res.redirect(`a2blift://auth?error=${encodeURIComponent(err.message)}`);
     }
   });

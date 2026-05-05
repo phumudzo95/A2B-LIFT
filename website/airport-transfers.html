@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Airport Transfers — A2B Lift</title>
+  <meta name="description" content="Pre-book airport transfers with A2B Lift. Track your flight, preview the route on a live map, and reserve your chauffeur in minutes." />
+  <link rel="icon" href="../assets/images/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .transfer-wrap { display:grid; grid-template-columns: minmax(0, 460px) 1fr; gap: 24px; align-items:start; }
+    .transfer-card, .transfer-map, .transfer-summary { background: var(--white); border: 1px solid var(--grey-200); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+    .transfer-card { padding: 28px; }
+    .transfer-map { overflow: hidden; min-height: 420px; }
+    #airportMap { width: 100%; height: 420px; }
+    .transfer-summary { padding: 20px 24px; margin-top: 20px; }
+    .transfer-summary-row { display:flex; justify-content:space-between; gap:16px; padding: 10px 0; border-bottom: 1px solid var(--grey-100); font-size: 14px; }
+    .transfer-summary-row:last-child { border-bottom: none; }
+    .transfer-summary-label { color: var(--grey-400); }
+    .airport-grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .airport-note { padding: 18px 20px; border-radius: var(--radius); background: var(--grey-50); border: 1px solid var(--grey-200); font-size: 14px; color: var(--grey-600); line-height: 1.7; }
+    @media(max-width: 960px) { .transfer-wrap { grid-template-columns: 1fr; } }
+    @media(max-width: 640px) { .airport-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="logo"><img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img" /><span class="logo-text">A2B<strong>Lift</strong></span></a>
+      <nav class="nav-links">
+        <a href="rides.html">Rides</a>
+        <a href="airport-transfers.html" class="active">Airport Transfers</a>
+        <a href="long-distance.html">Long Distance</a>
+        <a href="earn.html">Earn</a>
+        <a href="about.html">About</a>
+      </nav>
+      <div class="nav-actions">
+        <a href="login.html" class="btn btn-ghost btn-sm">Log in</a>
+        <a href="driver-register.html" class="btn btn-primary btn-sm">Become a driver</a>
+      </div>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+    </div>
+  </header>
+
+  <div class="mobile-nav" id="mobileNav">
+    <a href="rides.html">Rides</a>
+    <a href="airport-transfers.html" class="active">Airport Transfers</a>
+    <a href="long-distance.html">Long Distance</a>
+    <a href="earn.html">Earn</a>
+    <a href="about.html">About</a>
+    <div class="mobile-cta">
+      <a href="login.html" class="btn btn-ghost">Log in</a>
+      <a href="driver-register.html" class="btn btn-primary">Become a driver</a>
+    </div>
+  </div>
+
+  <div class="page-hero page-hero--photo" style="min-height: 420px; padding-top: var(--nav-h);">
+    <div class="page-hero-bg" style="background-image:url('https://images.unsplash.com/photo-1559829604-00d1bc6b7b03?auto=format&fit=crop&w=1600&q=80');"></div>
+    <div class="container">
+      <p class="label label--light">Airport Transfers</p>
+      <h1 class="page-hero-title">Your driver lands when you do.</h1>
+      <p class="page-hero-sub">Pre-book pickups and drop-offs for major South African airports, track your route on the map, and add your flight number for smoother arrivals.</p>
+    </div>
+  </div>
+
+  <section class="section section--grey">
+    <div class="container">
+      <div class="transfer-wrap">
+        <div>
+          <div class="transfer-card">
+            <p class="label">Book a transfer</p>
+            <h2 class="heading heading--sm">Reserve your airport journey</h2>
+            <div class="form-group">
+              <label for="airportSelect">Airport</label>
+              <select id="airportSelect">
+                <option value="or-tambo">OR Tambo International Airport</option>
+                <option value="cape-town">Cape Town International Airport</option>
+                <option value="king-shaka">King Shaka International Airport</option>
+                <option value="lanseria">Lanseria International Airport</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="airportDestination">Destination</label>
+              <input type="text" id="airportDestination" placeholder="Hotel, office, estate, or address" />
+            </div>
+            <div class="airport-grid">
+              <div class="form-group">
+                <label for="airportDate">Date</label>
+                <input type="date" id="airportDate" />
+              </div>
+              <div class="form-group">
+                <label for="airportTime">Pickup time</label>
+                <input type="time" id="airportTime" />
+              </div>
+              <div class="form-group">
+                <label for="flightNumber">Flight number</label>
+                <input type="text" id="flightNumber" placeholder="e.g. SA317" />
+              </div>
+              <div class="form-group">
+                <label for="airportPassengers">Passengers</label>
+                <input type="number" id="airportPassengers" min="1" max="8" value="1" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="airportPhone">Contact phone</label>
+              <input type="tel" id="airportPhone" placeholder="+27 71 000 0000" />
+            </div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top: 12px;">
+              <button class="btn btn-primary" type="button" onclick="previewTransfer()">Preview route</button>
+              <button class="btn btn-ghost" type="button" onclick="reserveTransfer()">Reserve transfer</button>
+            </div>
+          </div>
+          <div class="transfer-summary" id="transferSummary">
+            <div class="transfer-summary-row"><span class="transfer-summary-label">Route</span><strong id="summaryRoute">Choose an airport and destination</strong></div>
+            <div class="transfer-summary-row"><span class="transfer-summary-label">Travel time</span><strong id="summaryTime">-</strong></div>
+            <div class="transfer-summary-row"><span class="transfer-summary-label">Distance</span><strong id="summaryDistance">-</strong></div>
+            <div class="transfer-summary-row"><span class="transfer-summary-label">Estimated fare</span><strong id="summaryFare">-</strong></div>
+          </div>
+        </div>
+        <div>
+          <div class="transfer-map"><div id="airportMap"></div></div>
+          <div class="airport-note" style="margin-top:20px;">
+            Flight-aware pickups are best booked at least 2 hours before arrival. Your details are saved locally and, once you sign in, you will be redirected to your dashboard to continue confirmation.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="feature-grid">
+        <div class="feature-card"><div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div><h3>Flight-aware pickups</h3><p>Add your flight number so drivers can monitor arrival changes and avoid missed connections.</p></div>
+        <div class="feature-card"><div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div><h3>Meet-and-greet support</h3><p>Ideal for executives, visitors, and families arriving with luggage or unfamiliar with the city.</p></div>
+        <div class="feature-card"><div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><h3>Cashless confirmation</h3><p>Continue into the app or dashboard after sign-in to finalise the transfer using your wallet or card.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand"><a href="index.html" class="logo logo--light"><img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img" /><span class="logo-text">A2B<strong>Lift</strong></span></a><p>Premium rides and long-distance travel across South Africa.</p></div>
+        <div class="footer-col"><h4>Passengers</h4><a href="rides.html">Book a ride</a><a href="airport-transfers.html">Airport transfers</a><a href="long-distance.html">Long distance</a><a href="support.html">Support</a></div>
+        <div class="footer-col"><h4>Drivers</h4><a href="driver-register.html">Register to drive</a><a href="earn.html">How earnings work</a><a href="referral.html">Referral programme</a><a href="support.html#drivers">Driver guide</a></div>
+        <div class="footer-col"><h4>Company</h4><a href="about.html">About us</a><a href="safety.html">Safety</a><a href="blog.html">Blog</a><a href="support.html#privacy">Privacy policy</a></div>
+      </div>
+      <div class="footer-bottom"><p>&copy; 2026 A2B Lift. All rights reserved.</p><div class="footer-legal"><a href="support.html#privacy">Privacy</a><a href="support.html#terms">Terms</a><a href="support.html">Cookies</a></div></div>
+    </div>
+  </footer>
+
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDhC2aHuhOQ8ZwuWj2K5XZ5nAElB572-wo&libraries=places" async defer></script>
+  <script src="main.js"></script>
+  <script>
+    const AIRPORTS = {
+      'or-tambo': { name: 'OR Tambo International Airport', lat: -26.1337, lng: 28.2420 },
+      'cape-town': { name: 'Cape Town International Airport', lat: -33.9700, lng: 18.5972 },
+      'king-shaka': { name: 'King Shaka International Airport', lat: -29.6144, lng: 31.1197 },
+      'lanseria': { name: 'Lanseria International Airport', lat: -25.9385, lng: 27.9261 },
+    };
+    let airportMap;
+    let directionsService;
+    let directionsRenderer;
+    let geocoder;
+
+    function initAirportMap() {
+      const initial = AIRPORTS['or-tambo'];
+      airportMap = new google.maps.Map(document.getElementById('airportMap'), {
+        center: { lat: initial.lat, lng: initial.lng },
+        zoom: 10,
+        disableDefaultUI: true,
+        zoomControl: true,
+      });
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({ map: airportMap, suppressMarkers: false });
+      geocoder = new google.maps.Geocoder();
+      new google.maps.places.Autocomplete(document.getElementById('airportDestination'), { componentRestrictions: { country: 'za' } });
+    }
+
+    function setTodayMin() {
+      document.getElementById('airportDate').min = new Date().toISOString().split('T')[0];
+    }
+
+    function previewTransfer() {
+      if (!window.google || !airportMap) {
+        alert('Map is still loading. Please try again in a few seconds.');
+        return;
+      }
+      const airport = AIRPORTS[document.getElementById('airportSelect').value];
+      const destination = document.getElementById('airportDestination').value.trim();
+      if (!destination) {
+        alert('Please enter your destination.');
+        return;
+      }
+
+      geocoder.geocode({ address: destination, region: 'ZA' }, (results, status) => {
+        if (status !== 'OK' || !results[0]) {
+          alert('We could not locate that destination. Please choose a more specific address.');
+          return;
+        }
+
+        directionsService.route({
+          origin: { lat: airport.lat, lng: airport.lng },
+          destination: results[0].geometry.location,
+          travelMode: google.maps.TravelMode.DRIVING,
+        }, (response, routeStatus) => {
+          if (routeStatus !== 'OK' || !response.routes.length) {
+            alert('Unable to preview this route right now.');
+            return;
+          }
+
+          directionsRenderer.setDirections(response);
+          const leg = response.routes[0].legs[0];
+          const distanceKm = leg.distance.value / 1000;
+          const fare = Math.max(220, Math.round(120 + distanceKm * 12));
+          document.getElementById('summaryRoute').textContent = `${airport.name} → ${leg.end_address}`;
+          document.getElementById('summaryTime').textContent = leg.duration.text;
+          document.getElementById('summaryDistance').textContent = leg.distance.text;
+          document.getElementById('summaryFare').textContent = `From R${fare}`;
+        });
+      });
+    }
+
+    function reserveTransfer() {
+      const airport = AIRPORTS[document.getElementById('airportSelect').value];
+      const destination = document.getElementById('airportDestination').value.trim();
+      const date = document.getElementById('airportDate').value;
+      const time = document.getElementById('airportTime').value;
+      const flightNumber = document.getElementById('flightNumber').value.trim();
+      const passengers = document.getElementById('airportPassengers').value;
+      const phone = document.getElementById('airportPhone').value.trim();
+      if (!destination || !date || !time) {
+        alert('Please complete the destination, date, and time fields.');
+        return;
+      }
+
+      const payload = { service: 'airport-transfer', airport: airport.name, destination, date, time, flightNumber, passengers, phone, createdAt: new Date().toISOString() };
+      localStorage.setItem('a2b_pending_airport_transfer', JSON.stringify(payload));
+      if (!localStorage.getItem('a2b_token')) {
+        window.location.href = `login.html?next=${encodeURIComponent('airport-transfers.html')}`;
+        return;
+      }
+
+      alert('Your airport transfer details have been saved. Continue from your dashboard while we confirm your chauffeur.');
+      window.location.href = 'dashboard.html';
+    }
+
+    setTodayMin();
+    window.initAirportMap = initAirportMap;
+    window.addEventListener('load', () => { if (window.google) initAirportMap(); });
+  </script>
+</body>
+</html>

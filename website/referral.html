@@ -284,23 +284,36 @@
         </div>
 
         <p class="label">Driver referrals</p>
-        <h2 class="heading">Earn when the drivers<br /><em>you bring in succeed.</em></h2>
+        <h2 class="heading">Earn when the drivers<br /><em>you bring in keep moving.</em></h2>
 
         <div class="earn-grid" style="margin-bottom:64px;">
           <div class="earn-card">
             <div class="earn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
-            <h3>Instant sign-up bonus</h3>
-            <p>Earn 200 reward points when a driver you referred completes their registration and first accepted trip.</p>
+            <h3>2.5% per referred driver trip</h3>
+            <p>When a driver signs up through your code and completes trips, you earn 2.5% of the platform commission attached to their activity. The more they drive, the more your network earns.</p>
           </div>
           <div class="earn-card">
             <div class="earn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
-            <h3>Ongoing earnings</h3>
-            <p>Earn a percentage of the platform fee on every trip your referred driver completes — as long as they're active.</p>
+            <h3>Rider and driver earnings can stack</h3>
+            <p>You can still participate in the rider-side 5-level programme while also earning the driver referral percentage. The two earning paths complement each other rather than compete.</p>
           </div>
           <div class="earn-card">
             <div class="earn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-            <h3>No limit on referrals</h3>
-            <p>Refer as many drivers as you want. There's no cap on the number of drivers you can refer or the earnings you can make.</p>
+            <h3>IBO matrix upside</h3>
+            <p>Drivers who choose the IBO path can unlock the 2×15 matrix for wider network earnings, auto-placement, and recurring point-based rewards beyond direct driver referrals.</p>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:64px;">
+          <div style="padding:24px;border:1px solid var(--grey-200);border-radius:var(--radius);background:var(--grey-50);">
+            <p class="label">Direct driver earnings</p>
+            <h3 style="font-size:20px;font-weight:800;margin-bottom:10px;">How driver referral commission works</h3>
+            <p style="font-size:14px;color:var(--grey-600);line-height:1.75;">A referred driver signs up, gets approved, goes online, and starts completing trips. A2B Lift calculates your 2.5% share from the platform commission on those trips and adds it to your wallet during the weekly payout cycle.</p>
+          </div>
+          <div style="padding:24px;border:1px solid var(--grey-200);border-radius:var(--radius);background:var(--grey-50);">
+            <p class="label">Optional IBO path</p>
+            <h3 style="font-size:20px;font-weight:800;margin-bottom:10px;">How the matrix adds to it</h3>
+            <p style="font-size:14px;color:var(--grey-600);line-height:1.75;">IBO members participate in the 2-wide, 15-level matrix. New members can be placed beneath your network automatically, creating a second lane of earnings on top of your direct referral relationships.</p>
           </div>
         </div>
 
@@ -405,7 +418,8 @@
       const userStr = localStorage.getItem('a2b_user');
       const user = userStr ? JSON.parse(userStr) : {};
       const code = user.referralCode || '';
-      const link = `https://a2bliftclub.com/register?ref=${code}`;
+      const base = window.location.origin || 'https://a2blift.com';
+      const link = `${base}/login.html?ref=${code}#register`;
       const msg = `Join me on A2B Lift — luxury rides across South Africa. Use my referral code ${code} or sign up at: ${link}`;
       if (method === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
       else if (method === 'sms') window.open(`sms:?body=${encodeURIComponent(msg)}`);

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Corporate Travel — A2B Lift</title>
+  <meta name="description" content="Book executive and team travel with A2B Lift. Centralised billing, scheduled journeys, airport pickups, and account-managed corporate transport." />
+  <link rel="icon" href="../assets/images/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .corp-grid { display:grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, 420px); gap: 24px; }
+    .corp-card { background: var(--white); border: 1px solid var(--grey-200); border-radius: var(--radius-lg); padding: 28px; box-shadow: var(--shadow-sm); }
+    .corp-list { display:grid; gap: 14px; }
+    .corp-list-item { padding: 18px 20px; border-radius: var(--radius); background: var(--grey-50); border: 1px solid var(--grey-200); }
+    .corp-list-item strong { display:block; margin-bottom:6px; }
+    @media(max-width: 960px) { .corp-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="logo"><img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img" /><span class="logo-text">A2B<strong>Lift</strong></span></a>
+      <nav class="nav-links">
+        <a href="rides.html">Rides</a>
+        <a href="corporate-travel.html" class="active">Corporate Travel</a>
+        <a href="airport-transfers.html">Airport Transfers</a>
+        <a href="long-distance.html">Long Distance</a>
+        <a href="about.html">About</a>
+      </nav>
+      <div class="nav-actions">
+        <a href="login.html" class="btn btn-ghost btn-sm">Log in</a>
+        <a href="driver-register.html" class="btn btn-primary btn-sm">Become a driver</a>
+      </div>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+    </div>
+  </header>
+
+  <div class="mobile-nav" id="mobileNav">
+    <a href="rides.html">Rides</a>
+    <a href="corporate-travel.html" class="active">Corporate Travel</a>
+    <a href="airport-transfers.html">Airport Transfers</a>
+    <a href="long-distance.html">Long Distance</a>
+    <a href="about.html">About</a>
+    <div class="mobile-cta"><a href="login.html" class="btn btn-ghost">Log in</a><a href="driver-register.html" class="btn btn-primary">Become a driver</a></div>
+  </div>
+
+  <div class="page-hero page-hero--photo" style="min-height: 420px; padding-top: var(--nav-h);">
+    <div class="page-hero-bg" style="background-image:url('https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=80');"></div>
+    <div class="container">
+      <p class="label label--light">Corporate Travel</p>
+      <h1 class="page-hero-title">Executive travel for teams that move fast.</h1>
+      <p class="page-hero-sub">Arrange client pickups, airport runs, daily staff movements, and executive schedules with one corporate booking workflow.</p>
+    </div>
+  </div>
+
+  <section class="section section--grey">
+    <div class="container">
+      <div class="corp-grid">
+        <div class="corp-card">
+          <p class="label">Request a trip</p>
+          <h2 class="heading heading--sm">Book for one executive or a full team</h2>
+          <div class="form-row">
+            <div class="form-group"><label for="corpCompany">Company name</label><input type="text" id="corpCompany" placeholder="A2B Lift Holdings" /></div>
+            <div class="form-group"><label for="corpContact">Contact person</label><input type="text" id="corpContact" placeholder="Jane Mokoena" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label for="corpEmail">Work email</label><input type="email" id="corpEmail" placeholder="travel@company.com" /></div>
+            <div class="form-group"><label for="corpPhone">Phone number</label><input type="tel" id="corpPhone" placeholder="+27 71 000 0000" /></div>
+          </div>
+          <div class="form-group"><label for="corpPickup">Pickup point</label><input type="text" id="corpPickup" placeholder="Office, airport, or hotel" /></div>
+          <div class="form-group"><label for="corpDropoff">Destination</label><input type="text" id="corpDropoff" placeholder="Meeting venue or address" /></div>
+          <div class="form-row">
+            <div class="form-group"><label for="corpDate">Travel date</label><input type="date" id="corpDate" /></div>
+            <div class="form-group"><label for="corpTime">Pickup time</label><input type="time" id="corpTime" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label for="corpPassengers">Travellers</label><input type="number" id="corpPassengers" min="1" max="40" value="2" /></div>
+            <div class="form-group"><label for="corpService">Service type</label><select id="corpService"><option>Executive sedan</option><option>Airport pickup</option><option>Team shuttle</option><option>Full-day chauffeur</option></select></div>
+          </div>
+          <div class="form-group"><label for="corpNotes">Trip notes</label><textarea id="corpNotes" placeholder="Add luggage details, pickup signs, multiple stops, or billing instructions"></textarea></div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px;">
+            <button class="btn btn-primary" type="button" onclick="submitCorporateRequest()">Send request</button>
+            <a href="airport-transfers.html" class="btn btn-ghost">Need an airport run?</a>
+          </div>
+        </div>
+
+        <div class="corp-card">
+          <p class="label">Why teams use A2B Lift</p>
+          <div class="corp-list">
+            <div class="corp-list-item"><strong>Centralised trip planning</strong><span>Handle airport pickups, office transfers, and event transport through one concierge-style workflow.</span></div>
+            <div class="corp-list-item"><strong>Executive-ready vehicles</strong><span>Premium sedans, vans, and professional chauffeurs for client-facing travel.</span></div>
+            <div class="corp-list-item"><strong>Predictable billing</strong><span>We package the request details clearly so your operations team can confirm, approve, and track journeys faster.</span></div>
+            <div class="corp-list-item"><strong>Flexible coverage</strong><span>Single passenger rides, multi-stop days, and team movements between airports, offices, hotels, and meetings.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="split">
+        <div class="split-body">
+          <p class="label">Built for real operations</p>
+          <h2 class="heading">More than a taxi booking form.</h2>
+          <p class="split-desc">Corporate travel usually breaks when the request is vague or the confirmation channel is messy. This page captures the operational details your office actually needs so your team can move from enquiry to confirmed transfer without confusion.</p>
+          <ul class="checklist">
+            <li><span class="check-icon"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg></span> One request can cover executives, guests, or a small team</li>
+            <li><span class="check-icon"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg></span> Great for airport pickups, site visits, and investor roadshows</li>
+            <li><span class="check-icon"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg></span> Works alongside standard on-demand bookings when needs change</li>
+          </ul>
+        </div>
+        <div class="split-visual split-visual-ratio"><img src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1000&q=80" alt="Corporate travel planning" loading="lazy" /></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand"><a href="index.html" class="logo logo--light"><img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img" /><span class="logo-text">A2B<strong>Lift</strong></span></a><p>Premium rides and long-distance travel across South Africa.</p></div>
+        <div class="footer-col"><h4>Passengers</h4><a href="rides.html">Book a ride</a><a href="airport-transfers.html">Airport transfers</a><a href="long-distance.html">Long distance</a><a href="support.html">Support</a></div>
+        <div class="footer-col"><h4>Drivers</h4><a href="driver-register.html">Register to drive</a><a href="earn.html">How earnings work</a><a href="referral.html">Referral programme</a><a href="support.html#drivers">Driver guide</a></div>
+        <div class="footer-col"><h4>Company</h4><a href="about.html">About us</a><a href="blog.html">Blog</a><a href="safety.html">Safety</a><a href="support.html#privacy">Privacy policy</a></div>
+      </div>
+      <div class="footer-bottom"><p>&copy; 2026 A2B Lift. All rights reserved.</p><div class="footer-legal"><a href="support.html#privacy">Privacy</a><a href="support.html#terms">Terms</a><a href="support.html">Cookies</a></div></div>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+  <script>
+    document.getElementById('corpDate').min = new Date().toISOString().split('T')[0];
+    function submitCorporateRequest() {
+      const company = document.getElementById('corpCompany').value.trim();
+      const contact = document.getElementById('corpContact').value.trim();
+      const email = document.getElementById('corpEmail').value.trim();
+      const pickup = document.getElementById('corpPickup').value.trim();
+      const dropoff = document.getElementById('corpDropoff').value.trim();
+      const date = document.getElementById('corpDate').value;
+      const time = document.getElementById('corpTime').value;
+      const passengers = document.getElementById('corpPassengers').value;
+      const service = document.getElementById('corpService').value;
+      const notes = document.getElementById('corpNotes').value.trim();
+      if (!company || !contact || !email || !pickup || !dropoff || !date || !time) {
+        alert('Please complete the company, contact, route, date, and time fields.');
+        return;
+      }
+      const request = { company, contact, email, pickup, dropoff, date, time, passengers, service, notes, createdAt: new Date().toISOString() };
+      localStorage.setItem('a2b_corporate_request', JSON.stringify(request));
+      const subject = encodeURIComponent(`Corporate travel request from ${company}`);
+      const body = encodeURIComponent([
+        `Company: ${company}`,
+        `Contact: ${contact}`,
+        `Email: ${email}`,
+        `Service: ${service}`,
+        `Route: ${pickup} -> ${dropoff}`,
+        `Date: ${date} ${time}`,
+        `Travellers: ${passengers}`,
+        `Notes: ${notes || 'None'}`,
+      ].join('\n'));
+      window.location.href = `mailto:support@a2blift.com?subject=${subject}&body=${body}`;
+    }
+  </script>
+</body>
+</html>

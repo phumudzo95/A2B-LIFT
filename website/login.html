@@ -75,9 +75,10 @@
             </button>
           </div>
           <div class="form-divider">or sign up with email</div>
+          <p id="referralHint" style="display:none;font-size:13px;color:var(--grey-600);text-align:center;line-height:1.7;background:var(--grey-50);border:1px solid var(--grey-200);border-radius:var(--radius-sm);padding:10px 12px;">Referral code applied.</p>
           <form id="registerForm" onsubmit="handleRegister(event)">
             <div class="auth-form">
-              <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="auth-name-row">
                 <div class="form-group">
                   <label for="regFirst">First name</label>
                   <input type="text" id="regFirst" placeholder="First name" autocomplete="given-name" required />
@@ -113,6 +114,8 @@
 
   <script src="main.js"></script>
   <script>
+    const API = 'https://api-production-0783.up.railway.app';
+
     function switchTab(tab) {
       document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.auth-panel-login, .auth-panel-register').forEach(p => p.classList.remove('active'));
@@ -133,10 +136,10 @@
       btn.textContent = 'Logging in…';
       btn.disabled = true;
       try {
-        const res = await fetch('https://api-production-0783.up.railway.app/api/auth/login', {
+        const res = await fetch(`${API}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({ username: email.trim().toLowerCase(), password })
         });
         const data = await res.json();
         if (res.ok && data.token) {
@@ -157,18 +160,20 @@
     async function handleRegister(e) {
       e.preventDefault();
       const btn = e.target.querySelector('[type=submit]');
+      const firstName = document.getElementById('regFirst').value.trim();
+      const lastName = document.getElementById('regLast').value.trim();
       const body = {
-        firstName: document.getElementById('regFirst').value,
-        lastName: document.getElementById('regLast').value,
-        email: document.getElementById('regEmail').value,
-        phone: document.getElementById('regPhone').value,
+        username: document.getElementById('regEmail').value.trim().toLowerCase(),
+        name: [firstName, lastName].filter(Boolean).join(' '),
+        phone: document.getElementById('regPhone').value.trim(),
         password: document.getElementById('regPassword').value,
+        referralCode: referralCode || undefined,
         role: 'client'
       };
       btn.textContent = 'Creating account…';
       btn.disabled = true;
       try {
-        const res = await fetch('https://api-production-0783.up.railway.app/api/auth/register', {
+        const res = await fetch(`${API}/api/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
@@ -189,8 +194,44 @@
       }
     }
 
-    // Pre-select tab from URL hash
-    if (window.location.hash === '#register') switchTab('register');
+    const urlState = new URLSearchParams(window.location.search);
+    const referralCode = (urlState.get('ref') || '').trim().toUpperCase();
+
+    // Pre-select tab from URL hash or referral deep link
+    if (window.location.hash === '#register' || referralCode) switchTab('register');
+
+    if (referralCode) {
+      const hint = document.getElementById('referralHint');
+      hint.style.display = 'block';
+      hint.textContent = `Referral code applied: ${referralCode}`;
+    }
+
+    (function handleGoogleCallback() {
+      const hash = new URLSearchParams(window.location.hash.slice(1));
+      const accessToken = hash.get('accessToken');
+      const userPayload = hash.get('user');
+      const error = hash.get('error');
+      if (!accessToken && !userPayload && !error) return;
+
+      if (error) {
+        alert('Google sign-in failed. Please try again.');
+      } else {
+        try {
+          localStorage.setItem('a2b_token', accessToken || '');
+          if (userPayload) {
+            localStorage.setItem('a2b_user', userPayload);
+          }
+          const next = new URLSearchParams(window.location.search).get('next') || 'dashboard.html';
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+          window.location.replace(next);
+          return;
+        } catch {
+          alert('Google sign-in failed. Please try again.');
+        }
+      }
+
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    })();
 
     // ── Keep user signed in: redirect if already logged in ──
     (function() {
@@ -200,7 +241,8 @@
     })();
 
     function googleSignIn() {
-      alert('Google Sign-In: configure your Google OAuth Client ID in login.html to enable this. Your Google API key is already connected for Maps.');
+      const redirect = `${window.location.origin}${window.location.pathname}${window.location.search}${window.location.hash}`;
+      window.location.href = `${API}/api/auth/google/start?platform=web&redirect=${encodeURIComponent(redirect)}`;
     }
   </script>
 </body>

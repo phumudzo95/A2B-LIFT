@@ -104,6 +104,13 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="long-distance"
+        options={{
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
         name="referrals"
         options={{
           href: null,
