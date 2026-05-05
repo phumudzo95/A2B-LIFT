@@ -235,8 +235,8 @@
     <div class="page-hero-bg" style="background-image:url('../assets/images/LuxuryVan.png'); background-position: center center;"></div>
     <div class="container" style="position:relative;z-index:1;padding-bottom:80px;">
       <p class="label label--light">Long Distance</p>
-      <h1 class="page-hero-title">City to city,<br /><em>in real comfort.</em></h1>
-      <p class="page-hero-sub">Search available drivers heading your way — book a seat, split the cost, travel in luxury.</p>
+      <h1 class="page-hero-title" style="color:var(--white);">City to city,<br /><em>in real comfort.</em></h1>
+      <p class="page-hero-sub" style="color:rgba(255,255,255,0.82);">Search available drivers heading your way, compare routes on the map, and confirm your seat by card or cash once you log in.</p>
     </div>
   </div>
 
@@ -302,7 +302,7 @@
         <div class="step-card">
           <div class="step-circle"><span class="step-card-num">3</span></div>
           <h3>Pay and confirm</h3>
-          <p>Book your seat securely via card or wallet. The driver gets notified instantly and your trip is confirmed.</p>
+          <p>Book your seat securely by card or choose cash. The driver gets notified instantly and your trip is confirmed.</p>
         </div>
       </div>
     </div>
@@ -439,6 +439,14 @@
     let fromAutocomplete, toAutocomplete;
     let selectedSeats = 1;
     let selectedPayMethod = 'card';
+    let pendingLongDistanceBooking = null;
+    let attemptedPendingRestore = false;
+
+    try {
+      pendingLongDistanceBooking = JSON.parse(localStorage.getItem('a2b_pending_long_distance') || 'null');
+    } catch (error) {
+      pendingLongDistanceBooking = null;
+    }
 
     // Set today as minimum date
     document.getElementById('ldDate').min = new Date().toISOString().split('T')[0];
@@ -476,6 +484,7 @@
 
       // Auto-load available drivers on page load
       autoLoadDrivers();
+      restorePendingBooking();
     }
 
     async function autoLoadDrivers() {
@@ -511,6 +520,29 @@
       document.getElementById('ldTo').value = to;
       searchDrivers();
       window.scrollTo({ top: document.querySelector('.ld-search-bar').offsetTop - 100, behavior: 'smooth' });
+    }
+
+    function restorePendingBooking(drivers = window._ldDrivers || []) {
+      if (!pendingLongDistanceBooking || !localStorage.getItem('a2b_token')) return;
+
+      const matchedDriver = Array.isArray(drivers)
+        ? drivers.find((driver) => String(driver.id) === String(pendingLongDistanceBooking.driverId))
+        : null;
+
+      if (matchedDriver) {
+        localStorage.removeItem('a2b_pending_long_distance');
+        pendingLongDistanceBooking = null;
+        openBookModal(matchedDriver);
+        return;
+      }
+
+      if (!attemptedPendingRestore) {
+        attemptedPendingRestore = true;
+        document.getElementById('ldFrom').value = pendingLongDistanceBooking.from || '';
+        document.getElementById('ldTo').value = pendingLongDistanceBooking.to || '';
+        document.getElementById('ldDate').value = pendingLongDistanceBooking.date || '';
+        void searchDrivers();
+      }
     }
 
     async function searchDrivers() {
@@ -627,6 +659,7 @@
       }
 
       window._ldDrivers = drivers;
+      restorePendingBooking(drivers);
       layout.style.display = 'grid';
 
       // Map: if no individual markers, show SA overview
@@ -725,51 +758,68 @@
       selectedDriver = null;
     }
 
-    async function confirmCashBooking() {
+    async function submitLongDistanceBooking(booking, paymentMethod, extraPayload = {}) {
       const token = localStorage.getItem('a2b_token');
+      if (!token) throw new Error('Please log in to confirm your booking.');
+
+      const res = await fetch(`${API}/api/long-distance/book`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          driverId: booking.id,
+          from: booking.from,
+          to: booking.to,
+          date: booking.date,
+          seats: selectedSeats,
+          paymentMethod,
+          ...extraPayload,
+        }),
+      });
+
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.message || 'Unable to confirm this booking right now.');
+      }
+
+      return payload;
+    }
+
+    async function confirmCashBooking() {
       const userStr = localStorage.getItem('a2b_user');
       const user = userStr ? JSON.parse(userStr) : {};
+      const booking = selectedDriver;
+      if (!booking) return;
 
       const btn = document.getElementById('modalBookBtn');
       btn.disabled = true;
       btn.textContent = 'Confirming…';
 
       try {
-        const res = await fetch(`${API}/api/long-distance/book`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({
-            driverId: selectedDriver.id,
-            from: selectedDriver.from,
-            to: selectedDriver.to,
-            date: selectedDriver.date,
-            seats: selectedSeats,
-            paymentMethod: 'cash',
-            passengerName: user.name || '',
-            passengerPhone: user.phone || '',
-          }),
+        await submitLongDistanceBooking(booking, 'cash', {
+          passengerName: user.name || '',
+          passengerPhone: user.phone || '',
         });
-
         closeModal();
-        showBookingConfirmation('cash');
+        showBookingConfirmation('cash', booking);
       } catch (err) {
-        // Even if backend fails, save locally and confirm
-        closeModal();
-        showBookingConfirmation('cash');
+        alert(err?.message || 'Unable to confirm your cash booking right now.');
       } finally {
         btn.disabled = false;
+        btn.textContent = selectedPayMethod === 'cash' ? 'Confirm (pay cash)' : 'Pay by card';
       }
     }
 
-    function showBookingConfirmation(payMethod) {
+    function showBookingConfirmation(payMethod, driver) {
       const msg = payMethod === 'cash'
-        ? `Booking confirmed! Your driver ${selectedDriver?.name || ''} has been notified and will expect your cash payment on the day. Check your dashboard for trip details.`
-        : `Payment received! Your driver ${selectedDriver?.name || ''} has been notified. Check your dashboard for your trip confirmation.`;
+        ? `Booking confirmed! Your driver ${driver?.name || ''} has been notified and will expect your cash payment on the day. Check your dashboard for trip details.`
+        : `Payment received! Your driver ${driver?.name || ''} has been notified. Check your dashboard for your trip confirmation.`;
 
       // Replace empty state / results with success card
       const layout = document.getElementById('ldResultsLayout');
       if (layout) {
+        document.getElementById('ldBookingNotice')?.remove();
         const notice = document.createElement('div');
+        notice.id = 'ldBookingNotice';
         notice.style.cssText = 'background:var(--grey-50);border:1.5px solid var(--grey-200);border-radius:var(--radius);padding:32px;text-align:center;margin-top:24px;';
         notice.innerHTML = `
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin:0 auto 16px;color:#16a34a;"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
@@ -784,6 +834,7 @@
 
     function proceedPayment() {
       if (!selectedDriver) return;
+      const booking = selectedDriver;
 
       if (selectedPayMethod === 'cash') {
         confirmCashBooking();
@@ -803,31 +854,21 @@
         currency: 'ZAR',
         ref: 'LD_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
         metadata: {
-          driver_id: selectedDriver.id,
-          from: selectedDriver.from,
-          to: selectedDriver.to,
-          date: selectedDriver.date,
+          driver_id: booking.id,
+          from: booking.from,
+          to: booking.to,
+          date: booking.date,
           seats: selectedSeats,
           type: 'long_distance',
         },
-        callback: function(response) {
-          closeModal();
-          // Notify backend of payment
-          const token2 = localStorage.getItem('a2b_token');
-          fetch(`${API}/api/long-distance/book`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token2}` },
-            body: JSON.stringify({
-              driverId: selectedDriver?.id,
-              from: selectedDriver?.from,
-              to: selectedDriver?.to,
-              date: selectedDriver?.date,
-              seats: selectedSeats,
-              paymentMethod: 'card',
-              paystackRef: response.reference,
-            }),
-          }).catch(() => {});
-          showBookingConfirmation('card');
+        callback: async function(response) {
+          try {
+            await submitLongDistanceBooking(booking, 'card', { paystackRef: response.reference });
+            closeModal();
+            showBookingConfirmation('card', booking);
+          } catch (error) {
+            alert(error?.message || `Payment succeeded, but we could not confirm the booking. Please contact support with reference ${response.reference}.`);
+          }
         },
         onClose: function() {},
       });

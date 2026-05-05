@@ -1616,7 +1616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── Long Distance: driver availability toggle ───────────────────────────
   app.post("/api/long-distance/availability", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
-      const userId = req.userId!;
+      const userId = req.auth!.sub;
       const chauffeur = await storage.getChauffeurByUserId(userId);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur profile not found" });
       if (!chauffeur.isApproved) return res.status(403).json({ message: "Account not yet approved" });
@@ -1693,10 +1693,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/long-distance/book", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const {
+        driverId,
+        from,
+        to,
+        date,
+        seats,
+        paymentMethod,
+        paystackRef,
+        passengerName,
+        passengerPhone,
+      } = req.body || {};
+
+      const seatsRequested = Math.max(1, Math.floor(Number(seats) || 1));
+      const method = paymentMethod === "cash" ? "cash" : paymentMethod === "card" ? "card" : null;
+
+      if (!driverId || !from || !to || !date || !method) {
+        return res.status(400).json({ message: "driverId, from, to, date, seats, and a valid payment method are required" });
+      }
+
+      const rider = await storage.getUser(req.auth!.sub);
+      if (!rider) return res.status(404).json({ message: "Passenger not found" });
+
+      const chauffeur = await storage.getChauffeur(driverId);
+      if (!chauffeur || !chauffeur.isApproved || !chauffeur.availableForLongDistance) {
+        return res.status(404).json({ message: "This route is no longer available" });
+      }
+
+      if (chauffeur.userId === rider.id) {
+        return res.status(400).json({ message: "You cannot book your own route" });
+      }
+
+      const seatsAvailable = Number(chauffeur.longDistanceSeatsAvailable || 0);
+      if (seatsAvailable < seatsRequested) {
+        return res.status(409).json({ message: `Only ${seatsAvailable} seat${seatsAvailable === 1 ? "" : "s"} remain on this route` });
+      }
+
+      const chauffeurUser = await storage.getUser(chauffeur.userId);
+      const remainingSeats = seatsAvailable - seatsRequested;
+
+      await storage.updateChauffeur(chauffeur.id, {
+        longDistanceSeatsAvailable: remainingSeats,
+        availableForLongDistance: remainingSeats > 0,
+      });
+
+      const riderFirstName = String((passengerName || rider.name || "Passenger")).trim().split(" ")[0] || "Passenger";
+      const routeFrom = chauffeur.longDistanceFrom || from;
+      const routeTo = chauffeur.longDistanceTo || to;
+      const travelDate = chauffeur.longDistanceDate || date;
+      const paymentNote = method === "cash"
+        ? "The rider selected cash payment for the day of travel."
+        : "Card payment was confirmed online.";
+      const driverBody = `${riderFirstName} booked ${seatsRequested} seat${seatsRequested === 1 ? "" : "s"} for ${routeFrom} to ${routeTo} on ${travelDate}. ${paymentNote}`;
+
+      await storage.createNotification({
+        userId: chauffeur.userId,
+        title: "New long-distance booking",
+        body: driverBody,
+        type: "long_distance",
+      });
+
+      const pushTokens = Array.from(new Set([chauffeur.pushToken, chauffeurUser?.pushToken].filter(Boolean) as string[]));
+      if (pushTokens.length) {
+        sendExpoPushNotification(
+          pushTokens,
+          "New long-distance booking",
+          `${riderFirstName} booked ${seatsRequested} seat${seatsRequested === 1 ? "" : "s"} for ${routeFrom} to ${routeTo}.`,
+          {
+            type: "long_distance:booking",
+            driverId: chauffeur.id,
+            passengerId: rider.id,
+            from: routeFrom,
+            to: routeTo,
+            date: travelDate,
+            seats: seatsRequested,
+            paymentMethod: method,
+            paystackRef: paystackRef || null,
+            passengerPhone: passengerPhone || rider.phone || null,
+          },
+          { urgent: true, channelId: "ride-alerts" },
+        );
+      }
+
+      await storage.createNotification({
+        userId: rider.id,
+        title: "Long-distance trip confirmed",
+        body: `${routeFrom} to ${routeTo} on ${travelDate} is confirmed with ${chauffeurUser?.name || "your driver"}. ${method === "cash" ? "Pay your driver in cash on the day." : "Your card payment has been recorded."}`,
+        type: "long_distance",
+      });
+
+      return res.json({
+        success: true,
+        seatsRemaining: remainingSeats,
+        driverName: chauffeurUser?.name || "Driver",
+        route: { from: routeFrom, to: routeTo, date: travelDate },
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || "Unable to confirm long-distance booking" });
+    }
+  });
+
   // ─── Long Distance: get driver's current availability status ─────────────
   app.get("/api/long-distance/my-availability", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
-      const chauffeur = await storage.getChauffeurByUserId(req.userId!);
+      const chauffeur = await storage.getChauffeurByUserId(req.auth!.sub);
       if (!chauffeur) return res.status(404).json({ message: "Not found" });
       return res.json({
         available: (chauffeur as any).availableForLongDistance || false,

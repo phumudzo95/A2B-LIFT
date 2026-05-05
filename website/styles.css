@@ -222,10 +222,11 @@ ul, ol { list-style:none; }
   display:inline-flex; align-items:center; justify-content:center;
   height:auto; border-radius:14px; overflow:hidden;
   border:none;
+  line-height:0;
   transition:all var(--t);
 }
 .store-btn:hover { transform:translateY(-1px); opacity:0.92; }
-.store-btn img { height:54px; width:auto; max-width:100%; object-fit:contain; }
+.store-btn img { width:150px; height:45px; max-width:100%; object-fit:contain; flex-shrink:0; }
 .store-btn--dark:hover { opacity:0.9; }
 
 /* ── SERVICES GRID ── */

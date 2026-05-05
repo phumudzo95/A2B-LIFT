@@ -161,7 +161,7 @@
   <div class="referral-hero">
     <p class="label label--light">Referral programme</p>
     <h1>Share A2B Lift.<br /><em>Earn every time.</em></h1>
-    <p>Riders earn commission on every trip their network takes. Drivers earn when they bring other drivers on board. One programme — built for everyone.</p>
+    <p>Riders earn 2.5% on their own completed rides and 2.5% when invited riders travel. Drivers earn 2.5% when the drivers they referred complete trips. One wallet, one payout flow.</p>
     <a href="login.html" class="btn btn-white" id="heroJoinBtn">Get your referral link</a>
   </div>
 
@@ -179,7 +179,7 @@
         <!-- Your referral code (shown if logged in) -->
         <div class="referral-code-box" id="riderCodeBox" style="display:none;">
           <h2>Your referral link</h2>
-          <p>Share this link or code with anyone. When they sign up and take their first ride, you start earning.</p>
+          <p>Share this link or code with riders. When they sign up and complete trips, your rewards start building automatically.</p>
           <div class="code-display">
             <span id="riderCodeDisplay">—</span>
             <button class="copy-btn" onclick="copyCode('riderCodeDisplay')">Copy</button>
@@ -202,60 +202,41 @@
           <div class="step-card">
             <div class="step-circle"><span class="step-card-num">1</span></div>
             <h3>Share your link</h3>
-            <p>Every A2B Lift user gets a unique referral code and link. Share it anywhere — WhatsApp, socials, or in person.</p>
+            <p>Every A2B Lift account gets a unique referral code and link. Share it anywhere — WhatsApp, socials, or directly with riders who use the app.</p>
           </div>
           <div class="step-card">
             <div class="step-circle"><span class="step-card-num">2</span></div>
             <h3>Friends sign up & ride</h3>
-            <p>When someone signs up using your code and takes their first trip, they're linked to you for all future rides.</p>
+            <p>When a rider signs up with your code and completes trips, their future completed rides keep generating rewards for you.</p>
           </div>
           <div class="step-card">
             <div class="step-circle"><span class="step-card-num">3</span></div>
             <h3>You earn automatically</h3>
-            <p>A percentage of every ride your network takes goes into your A2B Lift wallet. Weekly payouts, no limits.</p>
+            <p>You earn 2.5% on your own completed rides and another 2.5% when your invited riders complete trips. Rewards land in your wallet and can be withdrawn from R100.</p>
           </div>
         </div>
 
-        <p class="label">Commission structure</p>
-        <h2 class="heading heading--sm">Earn up to 5 levels deep.</h2>
-        <p style="font-size:15px;color:var(--grey-600);max-width:560px;margin-bottom:32px;line-height:1.75;">Your referrals refer others, who refer more. You earn a percentage from all of them — up to 5 generations deep in your network.</p>
+        <p class="label">What you actually earn</p>
+        <h2 class="heading heading--sm">A simple 2.5% model.</h2>
+        <p style="font-size:15px;color:var(--grey-600);max-width:620px;margin-bottom:32px;line-height:1.75;">A2B Lift does not use multi-level commissions. Rewards come from your own completed rides and the completed rides of riders you directly invited.</p>
 
-        <table class="earn-table" style="max-width:640px;margin-bottom:64px;">
-          <thead>
-            <tr>
-              <th>Level</th>
-              <th>Who they are</th>
-              <th style="text-align:right">Your commission</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><span class="level-badge">1</span></td>
-              <td>People you referred directly</td>
-              <td style="text-align:right"><span class="earn-pct">50%</span> <span style="font-size:13px;color:var(--grey-400)">of ride commission</span></td>
-            </tr>
-            <tr>
-              <td><span class="level-badge" style="background:var(--grey-900)">2</span></td>
-              <td>People your referrals referred</td>
-              <td style="text-align:right"><span class="earn-pct">20%</span></td>
-            </tr>
-            <tr>
-              <td><span class="level-badge" style="background:var(--grey-600)">3</span></td>
-              <td>3rd-generation referrals</td>
-              <td style="text-align:right"><span class="earn-pct">13%</span></td>
-            </tr>
-            <tr>
-              <td><span class="level-badge" style="background:var(--grey-400)">4</span></td>
-              <td>4th-generation referrals</td>
-              <td style="text-align:right"><span class="earn-pct">10%</span></td>
-            </tr>
-            <tr>
-              <td><span class="level-badge" style="background:var(--grey-200);color:var(--black)">5</span></td>
-              <td>5th-generation referrals</td>
-              <td style="text-align:right"><span class="earn-pct">7%</span></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="earn-grid" style="margin-bottom:64px;">
+          <div class="earn-card">
+            <div class="earn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 17H3a2 2 0 0 1-2-2V9l2-4h14l2 4v6a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg></div>
+            <h3>2.5% on your own rides</h3>
+            <p>Every completed trip you take earns 2.5% back into your A2B Lift rewards wallet automatically.</p>
+          </div>
+          <div class="earn-card">
+            <div class="earn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            <h3>2.5% on invited rider trips</h3>
+            <p>When riders you directly referred complete trips, you earn another 2.5% from those completed rides.</p>
+          </div>
+          <div class="earn-card">
+            <div class="earn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            <h3>Withdraw from R100</h3>
+            <p>Once your rewards balance reaches R100, you can request a cash-out to your bank account from the app.</p>
+          </div>
+        </div>
 
         <div style="max-width:640px;padding:24px;background:var(--grey-50);border-radius:var(--radius);margin-bottom:24px;">
           <p style="font-size:14px;color:var(--grey-600);line-height:1.7;"><strong style="color:var(--black);">What counts as a commission?</strong> A2B Lift takes a platform fee from every completed ride. Your referral commission is calculated as a percentage of that fee — not a percentage of what the driver or rider pays.</p>
@@ -267,7 +248,7 @@
 
         <div class="referral-code-box" id="driverCodeBox" style="display:none;">
           <h2>Your driver referral code</h2>
-          <p>Share this code with other drivers. When they sign up and complete their first trip, you earn a bonus.</p>
+          <p>Share this code with other drivers. When they sign up and complete trips on A2B Lift, you earn 2.5% from their completed trip activity.</p>
           <div class="code-display">
             <span id="driverCodeDisplay">—</span>
             <button class="copy-btn" onclick="copyCode('driverCodeDisplay')">Copy</button>

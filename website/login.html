@@ -142,8 +142,8 @@
           body: JSON.stringify({ username: email.trim().toLowerCase(), password })
         });
         const data = await res.json();
-        if (res.ok && data.token) {
-          localStorage.setItem('a2b_token', data.token);
+        if (res.ok && data.accessToken) {
+          localStorage.setItem('a2b_token', data.accessToken);
           if (data.user) localStorage.setItem('a2b_user', JSON.stringify(data.user));
           const next = new URLSearchParams(window.location.search).get('next') || 'dashboard.html';
           window.location.href = next;
@@ -179,8 +179,8 @@
           body: JSON.stringify(body)
         });
         const data = await res.json();
-        if (res.ok && data.token) {
-          localStorage.setItem('a2b_token', data.token);
+        if (res.ok && data.accessToken) {
+          localStorage.setItem('a2b_token', data.accessToken);
           if (data.user) localStorage.setItem('a2b_user', JSON.stringify(data.user));
           const next = new URLSearchParams(window.location.search).get('next') || 'dashboard.html';
           window.location.href = next;
