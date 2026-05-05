@@ -210,8 +210,17 @@
       <!-- LONG DISTANCE -->
       <div class="dash-page" id="page-longdistance">
         <h1 class="dash-page-title">Long Distance</h1>
-        <p style="font-size:15px;color:var(--grey-600);margin-bottom:24px;">Search for drivers heading between cities and book a seat.</p>
-        <a href="long-distance.html" class="btn btn-primary" style="margin-bottom:32px;">Open full search →</a>
+        <div class="ld-mini-search" style="margin-bottom:24px;">
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">Search available drivers</h3>
+          <div class="ld-mini-form">
+            <div><label>From</label><input type="text" id="ldTabFrom" placeholder="e.g. Johannesburg" /></div>
+            <div><label>To</label><input type="text" id="ldTabTo" placeholder="e.g. Durban" /></div>
+            <div><label>Date</label><input type="date" id="ldTabDate" /></div>
+            <button class="btn btn-primary" style="align-self:flex-end;padding:11px 20px;" onclick="searchLDTab()">Search</button>
+          </div>
+        </div>
+        <div id="ldTabResults"></div>
+        <a href="long-distance.html" class="btn btn-ghost" style="margin-top:16px;display:inline-flex;">Open full search page →</a>
       </div>
 
       <!-- REFERRAL -->
@@ -266,7 +275,7 @@
       <div style="margin-top:10px;font-size:13px;color:var(--grey-400);">Minimum: R10 &nbsp;·&nbsp; Powered by Paystack</div>
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeTopup()">Cancel</button>
-        <button class="btn btn-primary" onclick="confirmTopup()">Pay with Paystack</button>
+        <button class="btn btn-primary" onclick="confirmTopup()" style="display:flex;align-items:center;gap:8px;justify-content:center;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Pay with Credit/Debit card</button>
       </div>
     </div>
   </div>
@@ -310,20 +319,54 @@
     }
 
     function initDashMap() {
-      // Attach Places Autocomplete to the overview search inputs
-      const fromInput = document.getElementById('ovFrom');
-      const toInput = document.getElementById('ovTo');
-      if (fromInput && typeof google !== 'undefined') {
-        new google.maps.places.Autocomplete(fromInput, {
-          componentRestrictions: { country: 'za' },
-          types: ['(cities)']
-        });
-      }
-      if (toInput && typeof google !== 'undefined') {
-        new google.maps.places.Autocomplete(toInput, {
-          componentRestrictions: { country: 'za' },
-          types: ['(cities)']
-        });
+      if (typeof google === 'undefined') return;
+      const attach = (id, types) => {
+        const el = document.getElementById(id);
+        if (el) new google.maps.places.Autocomplete(el, { componentRestrictions: { country: 'za' }, types });
+      };
+      // Overview quick-search
+      attach('ovFrom', ['(cities)']);
+      attach('ovTo', ['(cities)']);
+      // Driver availability form
+      attach('ldAvFrom', ['(cities)']);
+      attach('ldAvTo', ['(cities)']);
+      // Dashboard LD tab search
+      attach('ldTabFrom', ['(cities)']);
+      attach('ldTabTo', ['(cities)']);
+      // Set min date for LD tab
+      const ldTabDate = document.getElementById('ldTabDate');
+      if (ldTabDate) ldTabDate.min = new Date().toISOString().split('T')[0];
+    }
+
+    async function searchLDTab() {
+      const from = document.getElementById('ldTabFrom').value.trim();
+      const to = document.getElementById('ldTabTo').value.trim();
+      const date = document.getElementById('ldTabDate').value;
+      const resultsEl = document.getElementById('ldTabResults');
+      if (!from || !to) { showNotification('Please enter departure and destination cities.', 'error'); return; }
+      resultsEl.innerHTML = '<p style="color:var(--grey-400);font-size:14px;">Searching…</p>';
+      try {
+        const params = new URLSearchParams({ from, to });
+        if (date) params.set('date', date);
+        const res = await fetch(`${API}/api/long-distance/search?${params}`);
+        const drivers = await res.json();
+        if (!Array.isArray(drivers) || !drivers.length) {
+          resultsEl.innerHTML = '<div class="empty-state"><p>No drivers found for this route. Try different cities or dates.</p></div>';
+          return;
+        }
+        resultsEl.innerHTML = `
+          <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--grey-400);margin-bottom:12px;">${drivers.length} driver${drivers.length===1?'':'s'} available</p>
+          ${drivers.map(d => `
+            <div style="background:var(--white);border:1px solid var(--grey-200);border-radius:12px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+              <div>
+                <div style="font-weight:700;font-size:15px;">${d.name}</div>
+                <div style="font-size:13px;color:var(--grey-400);">${d.vehicleModel||d.vehicleType||'Vehicle'} · ${d.from||from} → ${d.to||to}</div>
+                <div style="font-size:13px;color:var(--grey-400);">${d.longDistanceDate||date||'Flexible'} · ${d.longDistanceSeatsAvailable||'?'} seat${d.longDistanceSeatsAvailable===1?'':'s'} left · R${d.longDistancePricePerSeat||'?'}/seat</div>
+              </div>
+              <a href="long-distance.html?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${encodeURIComponent(date)}" class="btn btn-primary btn-sm">Book seat</a>
+            </div>`).join('')}`;
+      } catch(e) {
+        resultsEl.innerHTML = '<p style="color:var(--grey-400);font-size:14px;">Unable to load results. Please try again.</p>';
       }
     }
 
@@ -390,12 +433,13 @@
         showNotification('Paystack is unavailable. Please try again shortly.', 'error');
         return;
       }
-      if (!window.PAYSTACK_PUBLIC_KEY) {
-        showNotification('Payment configuration not ready. Please refresh and try again.', 'error');
+      const paystackKey = window.PAYSTACK_PUBLIC_KEY || '';
+      if (!paystackKey) {
+        showNotification('Paystack key not configured. Contact support.', 'error');
         return;
       }
       const handler = PaystackPop.setup({
-        key: window.PAYSTACK_PUBLIC_KEY,
+        key: paystackKey,
         email: user.email || user.username || 'user@a2blift.co.za',
         amount: Math.round(amt * 100),
         currency: 'ZAR',

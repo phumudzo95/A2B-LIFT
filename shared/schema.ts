@@ -386,3 +386,39 @@ export type SafetyReport = typeof safetyReports.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type TripEnquiry = typeof tripEnquiries.$inferSelect;
 
+// ─── Referral events ──────────────────────────────────────────────────────
+export const referralEvents = pgTable("referral_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referrerUserId: varchar("referrer_user_id").notNull().references(() => users.id),
+  referredUserId: varchar("referred_user_id").notNull().references(() => users.id),
+  level: integer("level").notNull().default(1),
+  status: text("status").notNull().default("pending"), // pending|qualified|paid
+  rewardAmount: real("reward_amount").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ─── Reward transactions ──────────────────────────────────────────────────
+export const rewardTransactions = pgTable("reward_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  amount: real("amount").notNull(),
+  type: text("type").notNull(), // earned|redeemed|expired
+  description: text("description"),
+  rideId: varchar("ride_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ─── Reward cashouts ──────────────────────────────────────────────────────
+export const rewardCashouts = pgTable("reward_cashouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  points: integer("points").notNull(),
+  cashValue: real("cash_value").notNull(),
+  status: text("status").notNull().default("pending"), // pending|processed|rejected
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type ReferralEvent = typeof referralEvents.$inferSelect;
+export type RewardTransaction = typeof rewardTransactions.$inferSelect;
+export type RewardCashout = typeof rewardCashouts.$inferSelect;
+

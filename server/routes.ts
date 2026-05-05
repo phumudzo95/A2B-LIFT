@@ -346,6 +346,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // ─── Airport Transfer: save booking + notify admins ────────────────────
+  app.post("/api/airport-transfers/book", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const { airport, destination, date, time, flightNumber, passengers, phone } = req.body || {};
+      if (!airport || !destination || !date || !time) {
+        return res.status(400).json({ message: "Airport, destination, date, and time are required" });
+      }
+      const rider = await storage.getUser(req.auth!.sub);
+      if (!rider) return res.status(404).json({ message: "User not found" });
+
+      const riderName = rider.name || rider.username || "Passenger";
+      const summary = `${airport} → ${destination} on ${date} at ${time}${flightNumber ? ` (Flight: ${flightNumber})` : ""}`;
+
+      // Notify the rider
+      await storage.createNotification({
+        userId: rider.id,
+        title: "Airport transfer requested",
+        body: `Your transfer: ${summary}. Our team will confirm your chauffeur shortly.`,
+        type: "airport_transfer",
+      });
+
+      // Notify all admins
+      try {
+        const allUsers = await storage.getAllUsers();
+        const admins = (allUsers || []).filter((u: any) => u.role === "admin");
+        for (const admin of admins) {
+          await storage.createNotification({
+            userId: admin.id,
+            title: "New airport transfer booking",
+            body: `${riderName}: ${summary}. Passengers: ${passengers || 1}. Phone: ${phone || "N/A"}`,
+            type: "airport_transfer",
+          });
+          if (admin.pushToken) {
+            sendExpoPushNotification(
+              [admin.pushToken],
+              "New airport transfer",
+              `${riderName} booked: ${summary}`,
+              { type: "airport_transfer", riderId: rider.id, airport, destination, date, time, phone: phone || "" },
+              { urgent: true, channelId: "ride-alerts" }
+            );
+          }
+        }
+      } catch(e) { /* non-fatal */ }
+
+      return res.json({ success: true, message: "Transfer request received. You will be contacted to confirm." });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || "Could not save airport transfer" });
+    }
+  });
+
+  // ─── Airport Transfer: get rider's pending transfers ──────────────────
+  app.get("/api/airport-transfers/my", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const notifications = await storage.getNotificationsByUser(req.auth!.sub);
+      const transfers = notifications.filter((n: any) => n.type === "airport_transfer");
+      return res.json(transfers);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   // Haversine distance in km between two lat/lng points
   function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
     const R = 6371;

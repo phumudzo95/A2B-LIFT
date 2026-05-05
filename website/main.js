@@ -1,5 +1,37 @@
 /* A2B Lift — main.js */
 
+// ─── Nav auth state: show user name + logout on all pages ─────────────────
+(function initNavAuth() {
+  const token = localStorage.getItem('a2b_token');
+  if (!token) return;
+  let user = null;
+  try { user = JSON.parse(localStorage.getItem('a2b_user') || 'null'); } catch(e) {}
+  if (!user) return;
+
+  const firstName = (user.name || user.username || '').split(' ')[0] || 'Account';
+
+  const logoutHTML = `<button class="btn btn-ghost btn-sm" onclick="(function(){localStorage.removeItem('a2b_token');localStorage.removeItem('a2b_user');window.location.href='index.html';})()">Log out</button>`;
+  const accountHTML = `<a href="dashboard.html" class="btn btn-ghost btn-sm">Hi, ${firstName}</a>`;
+
+  // Desktop nav-actions: replace any "Log in" link
+  const navActions = document.querySelector('.nav-actions');
+  if (navActions) {
+    const loginLink = navActions.querySelector('a[href="login.html"]');
+    if (loginLink) {
+      loginLink.outerHTML = accountHTML + logoutHTML;
+    }
+  }
+
+  // Mobile nav: replace "Log in" link in mobile-cta
+  const mobileCta = document.querySelector('.mobile-cta');
+  if (mobileCta) {
+    const mobileLogin = mobileCta.querySelector('a[href="login.html"]');
+    if (mobileLogin) {
+      mobileLogin.outerHTML = `<a href="dashboard.html" class="btn btn-ghost">Hi, ${firstName}</a><button class="btn btn-primary" onclick="(function(){localStorage.removeItem('a2b_token');localStorage.removeItem('a2b_user');window.location.href='index.html';})()">Log out</button>`;
+    }
+  }
+})();
+
 // ─── Nav scroll shadow ────────────────────────────────────────────────────
 const navEl = document.getElementById('nav');
 if (navEl) {

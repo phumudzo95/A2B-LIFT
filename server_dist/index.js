@@ -84,9 +84,6 @@ var users = (0, import_pg_core.pgTable)("users", {
   role: (0, import_pg_core.text)("role").notNull().default("client"),
   rating: (0, import_pg_core.real)("rating").default(5),
   walletBalance: (0, import_pg_core.real)("wallet_balance").default(0),
-  rewardsBalance: (0, import_pg_core.real)("rewards_balance").default(0),
-  referralCode: (0, import_pg_core.text)("referral_code").unique(),
-  referredByUserId: (0, import_pg_core.varchar)("referred_by_user_id").references(() => users.id),
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
 });
 var chauffeurs = (0, import_pg_core.pgTable)("chauffeurs", {
@@ -102,6 +99,12 @@ var chauffeurs = (0, import_pg_core.pgTable)("chauffeurs", {
   luggageCapacity: (0, import_pg_core.integer)("luggage_capacity").default(2),
   isOnline: (0, import_pg_core.boolean)("is_online").default(false),
   isApproved: (0, import_pg_core.boolean)("is_approved").default(false),
+  availableForLongDistance: (0, import_pg_core.boolean)("available_for_long_distance").default(false),
+  longDistanceFrom: (0, import_pg_core.text)("long_distance_from"),
+  longDistanceTo: (0, import_pg_core.text)("long_distance_to"),
+  longDistanceDate: (0, import_pg_core.text)("long_distance_date"),
+  longDistancePricePerSeat: (0, import_pg_core.real)("long_distance_price_per_seat"),
+  longDistanceSeatsAvailable: (0, import_pg_core.integer)("long_distance_seats_available").default(0),
   earningsTotal: (0, import_pg_core.real)("earnings_total").default(0),
   profilePhoto: (0, import_pg_core.text)("profile_photo"),
   lat: (0, import_pg_core.real)("lat"),
@@ -130,7 +133,6 @@ var rides = (0, import_pg_core.pgTable)("rides", {
   paymentMethod: (0, import_pg_core.text)("payment_method").default("cash"),
   paymentStatus: (0, import_pg_core.text)("payment_status").notNull().default("unpaid"),
   // unpaid|pending|paid|failed|refunded
-  rewardsAmountUsed: (0, import_pg_core.real)("rewards_amount_used").default(0),
   cashSelfieUrl: (0, import_pg_core.text)("cash_selfie_url"),
   livenessStatus: (0, import_pg_core.text)("liveness_status").default("not_required"),
   // not_required|pending|passed|failed
@@ -299,48 +301,6 @@ var walletTransactions = (0, import_pg_core.pgTable)("wallet_transactions", {
   status: (0, import_pg_core.text)("status").default("completed"),
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
 });
-var referralEvents = (0, import_pg_core.pgTable)("referral_events", {
-  id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
-  referrerUserId: (0, import_pg_core.varchar)("referrer_user_id").notNull().references(() => users.id),
-  referredUserId: (0, import_pg_core.varchar)("referred_user_id").notNull().unique().references(() => users.id),
-  referralCodeUsed: (0, import_pg_core.text)("referral_code_used").notNull(),
-  status: (0, import_pg_core.text)("status").notNull().default("registered"),
-  totalRewards: (0, import_pg_core.real)("total_rewards").default(0),
-  firstRewardAt: (0, import_pg_core.timestamp)("first_reward_at"),
-  lastRewardAt: (0, import_pg_core.timestamp)("last_reward_at"),
-  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow(),
-  updatedAt: (0, import_pg_core.timestamp)("updated_at").defaultNow()
-});
-var rewardTransactions = (0, import_pg_core.pgTable)("reward_transactions", {
-  id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
-  userId: (0, import_pg_core.varchar)("user_id").notNull().references(() => users.id),
-  referralEventId: (0, import_pg_core.varchar)("referral_event_id").references(() => referralEvents.id),
-  sourceUserId: (0, import_pg_core.varchar)("source_user_id").references(() => users.id),
-  rideId: (0, import_pg_core.varchar)("ride_id").references(() => rides.id),
-  type: (0, import_pg_core.text)("type").notNull(),
-  amount: (0, import_pg_core.real)("amount").notNull(),
-  balanceBefore: (0, import_pg_core.real)("balance_before").notNull(),
-  balanceAfter: (0, import_pg_core.real)("balance_after").notNull(),
-  description: (0, import_pg_core.text)("description"),
-  status: (0, import_pg_core.text)("status").notNull().default("completed"),
-  reference: (0, import_pg_core.varchar)("reference"),
-  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
-});
-var rewardCashouts = (0, import_pg_core.pgTable)("reward_cashouts", {
-  id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
-  userId: (0, import_pg_core.varchar)("user_id").notNull().references(() => users.id),
-  amount: (0, import_pg_core.real)("amount").notNull(),
-  status: (0, import_pg_core.text)("status").notNull().default("requested"),
-  bankName: (0, import_pg_core.text)("bank_name"),
-  accountNumber: (0, import_pg_core.text)("account_number"),
-  accountHolder: (0, import_pg_core.text)("account_holder"),
-  phone: (0, import_pg_core.text)("phone"),
-  notes: (0, import_pg_core.text)("notes"),
-  reviewedByAdminId: (0, import_pg_core.varchar)("reviewed_by_admin_id").references(() => users.id),
-  requestedAt: (0, import_pg_core.timestamp)("requested_at").defaultNow(),
-  reviewedAt: (0, import_pg_core.timestamp)("reviewed_at"),
-  paidAt: (0, import_pg_core.timestamp)("paid_at")
-});
 var insertUserSchema = (0, import_drizzle_zod.createInsertSchema)(users).pick({
   username: true,
   password: true,
@@ -388,6 +348,35 @@ var insertLivenessSessionSchema = (0, import_drizzle_zod.createInsertSchema)(liv
   errorReason: true,
   expiresAt: true,
   verifiedAt: true
+});
+var referralEvents = (0, import_pg_core.pgTable)("referral_events", {
+  id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
+  referrerUserId: (0, import_pg_core.varchar)("referrer_user_id").notNull().references(() => users.id),
+  referredUserId: (0, import_pg_core.varchar)("referred_user_id").notNull().references(() => users.id),
+  level: (0, import_pg_core.integer)("level").notNull().default(1),
+  status: (0, import_pg_core.text)("status").notNull().default("pending"),
+  // pending|qualified|paid
+  rewardAmount: (0, import_pg_core.real)("reward_amount").default(0),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
+});
+var rewardTransactions = (0, import_pg_core.pgTable)("reward_transactions", {
+  id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
+  userId: (0, import_pg_core.varchar)("user_id").notNull().references(() => users.id),
+  amount: (0, import_pg_core.real)("amount").notNull(),
+  type: (0, import_pg_core.text)("type").notNull(),
+  // earned|redeemed|expired
+  description: (0, import_pg_core.text)("description"),
+  rideId: (0, import_pg_core.varchar)("ride_id"),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
+});
+var rewardCashouts = (0, import_pg_core.pgTable)("reward_cashouts", {
+  id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
+  userId: (0, import_pg_core.varchar)("user_id").notNull().references(() => users.id),
+  points: (0, import_pg_core.integer)("points").notNull(),
+  cashValue: (0, import_pg_core.real)("cash_value").notNull(),
+  status: (0, import_pg_core.text)("status").notNull().default("pending"),
+  // pending|processed|rejected
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
 });
 
 // server/storage.ts
@@ -1066,6 +1055,7 @@ async function sendExpoPushNotification(tokens, title, body, data, options) {
     body,
     data: data || {},
     badge: urgent ? 1 : void 0,
+    priority: urgent ? "high" : "default",
     ttl: urgent ? 0 : void 0,
     channelId,
     interruptionLevel: urgent ? "time-sensitive" : void 0,
@@ -1110,323 +1100,6 @@ function setAuthCookie(res, token) {
     maxAge: 7 * 24 * 60 * 60 * 1e3
   });
 }
-function roundCurrency(value) {
-  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
-}
-var RIDE_CASHBACK_RATE = 0.025;
-var REFERRAL_REWARD_RATE = 0.025;
-function getReferralBaseUrl(req) {
-  const configuredBaseUrl = process.env.PUBLIC_REFERRAL_BASE_URL || process.env.EXPO_PUBLIC_REFERRAL_BASE_URL || process.env.FRONTEND_URL;
-  if (configuredBaseUrl) {
-    return configuredBaseUrl.replace(/\/$/, "");
-  }
-  return getAppBaseUrl(req).replace(/\/$/, "");
-}
-function getReferralEntryUrl(referralCode, req) {
-  return `${getReferralBaseUrl(req)}/referral/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
-}
-function renderReferralEntryPage(options) {
-  const heading = options.referrerName ? `${options.referrerName} invited you to A2B LIFT` : "You were invited to A2B LIFT";
-  return `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>A2B LIFT Referral</title>
-    <style>
-      :root {
-        color-scheme: dark;
-        --bg: #050505;
-        --card: #121212;
-        --border: rgba(255,255,255,0.1);
-        --text: #f5f5f5;
-        --muted: #b0b0b0;
-        --accent: #d4af37;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background:
-          radial-gradient(circle at top, rgba(212,175,55,0.18), transparent 38%),
-          linear-gradient(180deg, #090909 0%, var(--bg) 100%);
-        color: var(--text);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        padding: 24px;
-      }
-      .card {
-        width: min(100%, 460px);
-        border: 1px solid var(--border);
-        border-radius: 24px;
-        background: rgba(18,18,18,0.96);
-        padding: 28px;
-        box-shadow: 0 30px 80px rgba(0,0,0,0.4);
-      }
-      .eyebrow {
-        color: var(--accent);
-        font-size: 12px;
-        letter-spacing: 0.24em;
-        text-transform: uppercase;
-        margin-bottom: 12px;
-      }
-      h1 {
-        font-size: 30px;
-        line-height: 1.1;
-        margin: 0 0 12px;
-      }
-      p {
-        margin: 0;
-        color: var(--muted);
-        line-height: 1.6;
-      }
-      .code {
-        margin: 22px 0;
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        padding: 16px 18px;
-        background: rgba(255,255,255,0.03);
-      }
-      .code-label {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-        color: var(--muted);
-        margin-bottom: 8px;
-      }
-      .code-value {
-        font-size: 28px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-      }
-      .button {
-        display: inline-flex;
-        width: 100%;
-        justify-content: center;
-        align-items: center;
-        padding: 15px 18px;
-        border-radius: 16px;
-        background: var(--accent);
-        color: #111;
-        text-decoration: none;
-        font-weight: 700;
-        margin-top: 6px;
-      }
-      .secondary {
-        background: transparent;
-        color: var(--text);
-        border: 1px solid var(--border);
-        margin-top: 12px;
-      }
-      .hint {
-        margin-top: 16px;
-        font-size: 13px;
-      }
-    </style>
-  </head>
-  <body>
-    <main class="card">
-      <div class="eyebrow">A2B LIFT Referral</div>
-      <h1>${heading}</h1>
-      <p>Open the app to start registration with this referral already applied. Your own 2.5% loyalty cashback starts once you complete rides.</p>
-      <div class="code">
-        <div class="code-label">Referral code</div>
-        <div class="code-value">${options.referralCode}</div>
-      </div>
-      <a class="button" href="${options.deepLinkUrl}">Open A2B LIFT</a>
-      <a class="button secondary" href="javascript:void(0)" onclick="navigator.clipboard && navigator.clipboard.writeText('${options.referralCode}')">Copy Referral Code</a>
-      <p class="hint">If the app does not open automatically, tap Open A2B LIFT or copy the code and register manually inside the app.</p>
-    </main>
-    <script>
-      window.setTimeout(function () {
-        window.location.replace(${JSON.stringify(options.deepLinkUrl)});
-      }, 120);
-    </script>
-  </body>
-</html>`;
-}
-function normalizeReferralCode(rawValue) {
-  if (typeof rawValue !== "string") return null;
-  const cleaned = rawValue.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-  return cleaned || null;
-}
-function toSafeUser(user) {
-  const { password: _pw, ...safeUser } = user;
-  return safeUser;
-}
-async function generateUniqueReferralCode(name, email) {
-  const base = (name || email.split("@")[0] || "A2B").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6) || "A2B";
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const suffix = import_node_crypto.default.randomBytes(2).toString("hex").toUpperCase();
-    const candidate = `${base}${suffix}`;
-    const existing = await storage.getUserByReferralCode(candidate);
-    if (!existing) return candidate;
-  }
-  throw new Error("Unable to generate a unique referral code");
-}
-async function ensureUserReferralCode(user) {
-  if (user.referralCode) {
-    return user;
-  }
-  const referralCode = await generateUniqueReferralCode(user.name, user.username);
-  const updated = await storage.updateUser(user.id, { referralCode });
-  return { ...updated || user, referralCode };
-}
-async function createUserWithReferral(data) {
-  const normalizedReferralCode = normalizeReferralCode(data.referralCode);
-  let referrer;
-  if (normalizedReferralCode) {
-    referrer = await storage.getUserByReferralCode(normalizedReferralCode);
-    if (!referrer) {
-      throw new Error("Referral code is invalid");
-    }
-  }
-  const ownReferralCode = await generateUniqueReferralCode(data.name, data.username);
-  const user = await storage.createUser({
-    username: data.username,
-    password: data.password,
-    name: data.name,
-    phone: data.phone ?? null,
-    role: data.role || "client",
-    referralCode: ownReferralCode,
-    referredByUserId: referrer?.id || null,
-    rewardsBalance: 0
-  });
-  if (referrer && normalizedReferralCode) {
-    await storage.createReferralEvent({
-      referrerUserId: referrer.id,
-      referredUserId: user.id,
-      referralCodeUsed: normalizedReferralCode,
-      status: "registered",
-      totalRewards: 0
-    });
-  }
-  return user;
-}
-async function recordRewardTransaction(options) {
-  const user = await storage.getUser(options.userId);
-  if (!user) throw new Error("Reward wallet user not found");
-  const amount = roundCurrency(options.amount);
-  const balanceBefore = roundCurrency(user.rewardsBalance || 0);
-  const rawBalanceAfter = options.direction === "credit" ? balanceBefore + amount : balanceBefore - amount;
-  const balanceAfter = roundCurrency(rawBalanceAfter);
-  if (balanceAfter < 0) {
-    throw new Error("Insufficient rewards balance");
-  }
-  await storage.updateUser(options.userId, { rewardsBalance: balanceAfter });
-  await storage.createRewardTransaction({
-    userId: options.userId,
-    referralEventId: options.referralEventId || null,
-    sourceUserId: options.sourceUserId || null,
-    rideId: options.rideId || null,
-    type: options.type,
-    amount,
-    balanceBefore,
-    balanceAfter,
-    description: options.description,
-    status: options.status || "completed",
-    reference: options.reference || null
-  });
-  return balanceAfter;
-}
-async function chargeDefaultCardForRide(options) {
-  const { userId, rideId, amount, paymentMethod = "card" } = options;
-  const user = await storage.getUser(userId);
-  if (!user) {
-    throw new Error("User not found");
-  }
-  const cards = await storage.getSavedCardsByUser(userId);
-  const defaultCard = cards.find((card) => card.isDefault) || cards[0];
-  if (!defaultCard) {
-    const error = new Error("No saved card found. Please add a card in your wallet.");
-    error.needsCard = true;
-    throw error;
-  }
-  const reference = `A2B-RIDE-${rideId}-${Date.now()}`;
-  const response = await paystackAPI.post("/transaction/charge_authorization", {
-    authorization_code: defaultCard.paystackAuthCode,
-    email: user.username,
-    amount: Math.round(Number(amount) * 100),
-    currency: "ZAR",
-    reference,
-    metadata: { userId, rideId, paymentMethod }
-  });
-  const txData = response.data.data;
-  if (txData.status !== "success") {
-    const error = new Error("Card charge failed");
-    error.status = txData.status;
-    throw error;
-  }
-  return {
-    reference,
-    defaultCard,
-    paystackAuthCode: defaultCard.paystackAuthCode
-  };
-}
-function getCompletedRideRewardBase(ride) {
-  return roundCurrency(Number(ride.actualFare ?? ride.price ?? 0));
-}
-async function rewardRideCashbackForCompletedRide(userId, ride, sourceLabel) {
-  const existingCashback = await storage.getRewardTransactionByRideAndType(userId, ride.id, "ride_cashback");
-  if (existingCashback) return;
-  const rideTotal = getCompletedRideRewardBase(ride);
-  const cashbackAmount = roundCurrency(rideTotal * RIDE_CASHBACK_RATE);
-  if (cashbackAmount <= 0) return;
-  const balanceAfter = await recordRewardTransaction({
-    userId,
-    type: "ride_cashback",
-    amount: cashbackAmount,
-    direction: "credit",
-    description: `${(RIDE_CASHBACK_RATE * 100).toFixed(1)}% cashback from your completed ${sourceLabel} trip`,
-    rideId: ride.id,
-    reference: `ride_cashback:${ride.id}:${userId}`
-  });
-  await storage.createNotification({
-    userId,
-    title: "Trip Cashback Earned",
-    body: `R ${cashbackAmount.toFixed(2)} was added to your loyalty balance from your completed trip. New balance: R ${balanceAfter.toFixed(2)}.`,
-    type: "reward"
-  });
-}
-async function rewardReferralForCompletedRide(sourceUserId, ride, sourceLabel) {
-  const referralEvent = await storage.getReferralEventByReferredUserId(sourceUserId);
-  if (!referralEvent) return;
-  const existingReferrerReward = await storage.getRewardTransactionByRideAndType(
-    referralEvent.referrerUserId,
-    ride.id,
-    "referral_reward",
-    sourceUserId
-  );
-  if (existingReferrerReward) return;
-  const rideTotal = getCompletedRideRewardBase(ride);
-  const referrerRewardAmount = roundCurrency(rideTotal * REFERRAL_REWARD_RATE);
-  if (referrerRewardAmount <= 0) return;
-  const referrerBalanceAfter = await recordRewardTransaction({
-    userId: referralEvent.referrerUserId,
-    type: "referral_reward",
-    amount: referrerRewardAmount,
-    direction: "credit",
-    description: `${(REFERRAL_REWARD_RATE * 100).toFixed(0)}% referral reward from a completed ${sourceLabel} trip`,
-    referralEventId: referralEvent.id,
-    sourceUserId,
-    rideId: ride.id,
-    reference: `referral_reward_referrer:${ride.id}:${sourceUserId}`
-  });
-  await storage.updateReferralEvent(referralEvent.id, {
-    status: "rewarded",
-    totalRewards: roundCurrency((referralEvent.totalRewards || 0) + referrerRewardAmount),
-    firstRewardAt: referralEvent.firstRewardAt || /* @__PURE__ */ new Date(),
-    lastRewardAt: /* @__PURE__ */ new Date(),
-    updatedAt: /* @__PURE__ */ new Date()
-  });
-  await storage.createNotification({
-    userId: referralEvent.referrerUserId,
-    title: "Referral Reward Earned",
-    body: `R ${referrerRewardAmount.toFixed(2)} was added to your loyalty balance from your completed referral trip. New balance: R ${referrerBalanceAfter.toFixed(2)}.`,
-    type: "reward"
-  });
-}
 function getPaystackConfig() {
   const secret = process.env.PAYSTACK_SECRET_KEY;
   if (!secret) {
@@ -1435,6 +1108,42 @@ function getPaystackConfig() {
   const currency = process.env.PAYSTACK_CURRENCY || "ZAR";
   const callbackUrl = process.env.PAYSTACK_CALLBACK_URL;
   return { secret, currency, callbackUrl };
+}
+function encodeGoogleAuthState(data) {
+  return Buffer.from(JSON.stringify(data)).toString("base64url");
+}
+function decodeGoogleAuthState(rawState) {
+  if (!rawState) return {};
+  try {
+    const parsed = JSON.parse(Buffer.from(rawState, "base64url").toString("utf8"));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function isAllowedGoogleWebRedirect(rawUrl) {
+  if (!rawUrl) return false;
+  try {
+    const parsed = new URL(rawUrl);
+    const exactAllowed = /* @__PURE__ */ new Set([
+      "https://a2blift.com",
+      "https://www.a2blift.com",
+      "https://peaceful-mousse-459c85.netlify.app",
+      "https://api-production-0783.up.railway.app"
+    ]);
+    if (exactAllowed.has(parsed.origin)) return true;
+    if (parsed.hostname.endsWith(".netlify.app")) return true;
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+function buildGoogleWebRedirect(rawUrl, params) {
+  const redirectUrl = new URL(rawUrl);
+  const hashParams = new URLSearchParams(params);
+  redirectUrl.hash = hashParams.toString();
+  return redirectUrl.toString();
 }
 function getAppBaseUrl(req) {
   if (process.env.REPLIT_DEV_DOMAIN) {
@@ -1497,86 +1206,9 @@ async function runMockSelfieQualityCheck(selfieUrl, faceData, challenge) {
   }
   return { passed: true, score: 0.95 };
 }
-var referralRewardsSchemaReady = null;
-function ensureReferralRewardsSchema() {
-  if (!referralRewardsSchemaReady) {
-    referralRewardsSchemaReady = (async () => {
-      await pool2.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS rewards_balance real DEFAULT 0");
-      await pool2.query("ALTER TABLE users ALTER COLUMN rewards_balance SET DEFAULT 0");
-      await pool2.query("UPDATE users SET rewards_balance = 0 WHERE rewards_balance IS NULL");
-      await pool2.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code text");
-      await pool2.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id varchar REFERENCES users(id)");
-      await pool2.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code_unique ON users (referral_code) WHERE referral_code IS NOT NULL");
-      await pool2.query("CREATE INDEX IF NOT EXISTS idx_users_referred_by_user_id ON users (referred_by_user_id)");
-      await pool2.query("ALTER TABLE rides ADD COLUMN IF NOT EXISTS rewards_amount_used real DEFAULT 0");
-      await pool2.query("ALTER TABLE rides ALTER COLUMN rewards_amount_used SET DEFAULT 0");
-      await pool2.query("UPDATE rides SET rewards_amount_used = 0 WHERE rewards_amount_used IS NULL");
-      await pool2.query(`
-        CREATE TABLE IF NOT EXISTS referral_events (
-          id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
-          referrer_user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          referred_user_id varchar NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-          referral_code_used text NOT NULL,
-          status text NOT NULL DEFAULT 'registered',
-          total_rewards real DEFAULT 0,
-          first_reward_at timestamp,
-          last_reward_at timestamp,
-          created_at timestamp DEFAULT now(),
-          updated_at timestamp DEFAULT now()
-        )
-      `);
-      await pool2.query("CREATE INDEX IF NOT EXISTS idx_referral_events_referrer_user_id ON referral_events (referrer_user_id)");
-      await pool2.query("CREATE INDEX IF NOT EXISTS idx_referral_events_status ON referral_events (status)");
-      await pool2.query(`
-        CREATE TABLE IF NOT EXISTS reward_transactions (
-          id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
-          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          referral_event_id varchar REFERENCES referral_events(id) ON DELETE SET NULL,
-          source_user_id varchar REFERENCES users(id) ON DELETE SET NULL,
-          ride_id varchar REFERENCES rides(id) ON DELETE SET NULL,
-          type text NOT NULL,
-          amount real NOT NULL,
-          balance_before real NOT NULL,
-          balance_after real NOT NULL,
-          description text,
-          status text NOT NULL DEFAULT 'completed',
-          reference varchar,
-          created_at timestamp DEFAULT now()
-        )
-      `);
-      await pool2.query("CREATE INDEX IF NOT EXISTS idx_reward_transactions_user_id ON reward_transactions (user_id)");
-      await pool2.query("CREATE INDEX IF NOT EXISTS idx_reward_transactions_ride_id ON reward_transactions (ride_id)");
-      await pool2.query("CREATE INDEX IF NOT EXISTS idx_reward_transactions_referral_event_id ON reward_transactions (referral_event_id)");
-      await pool2.query(`
-        CREATE TABLE IF NOT EXISTS reward_cashouts (
-          id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
-          user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          amount real NOT NULL,
-          status text NOT NULL DEFAULT 'requested',
-          bank_name text,
-          account_number text,
-          account_holder text,
-          phone text,
-          notes text,
-          reviewed_by_admin_id varchar REFERENCES users(id) ON DELETE SET NULL,
-          requested_at timestamp DEFAULT now(),
-          reviewed_at timestamp,
-          paid_at timestamp
-        )
-      `);
-      await pool2.query("CREATE INDEX IF NOT EXISTS idx_reward_cashouts_user_id ON reward_cashouts (user_id)");
-      await pool2.query("CREATE INDEX IF NOT EXISTS idx_reward_cashouts_status ON reward_cashouts (status)");
-    })().catch((error) => {
-      referralRewardsSchemaReady = null;
-      throw error;
-    });
-  }
-  return referralRewardsSchemaReady;
-}
 async function registerRoutes(app2) {
   const httpServer = (0, import_node_http.createServer)(app2);
   await pool2.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo text");
-  await ensureReferralRewardsSchema();
   const SUPABASE_SERVICE_KEY_CONFIGURED = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
   app2.use("/api", authOptional);
   const io = new import_socket.Server(httpServer, {
@@ -1617,6 +1249,63 @@ async function registerRoutes(app2) {
   app2.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: (/* @__PURE__ */ new Date()).toISOString() });
   });
+  app2.get("/api/config", (_req, res) => {
+    res.json({
+      paystackPublicKey: process.env.PAYSTACK_PUBLIC_KEY || ""
+    });
+  });
+  app2.post("/api/airport-transfers/book", requireAuth, async (req, res) => {
+    try {
+      const { airport, destination, date, time, flightNumber, passengers, phone } = req.body || {};
+      if (!airport || !destination || !date || !time) {
+        return res.status(400).json({ message: "Airport, destination, date, and time are required" });
+      }
+      const rider = await storage.getUser(req.auth.sub);
+      if (!rider) return res.status(404).json({ message: "User not found" });
+      const riderName = rider.name || rider.username || "Passenger";
+      const summary = `${airport} \u2192 ${destination} on ${date} at ${time}${flightNumber ? ` (Flight: ${flightNumber})` : ""}`;
+      await storage.createNotification({
+        userId: rider.id,
+        title: "Airport transfer requested",
+        body: `Your transfer: ${summary}. Our team will confirm your chauffeur shortly.`,
+        type: "airport_transfer"
+      });
+      try {
+        const allUsers = await storage.getAllUsers();
+        const admins = (allUsers || []).filter((u) => u.role === "admin");
+        for (const admin of admins) {
+          await storage.createNotification({
+            userId: admin.id,
+            title: "New airport transfer booking",
+            body: `${riderName}: ${summary}. Passengers: ${passengers || 1}. Phone: ${phone || "N/A"}`,
+            type: "airport_transfer"
+          });
+          if (admin.pushToken) {
+            sendExpoPushNotification(
+              [admin.pushToken],
+              "New airport transfer",
+              `${riderName} booked: ${summary}`,
+              { type: "airport_transfer", riderId: rider.id, airport, destination, date, time, phone: phone || "" },
+              { urgent: true, channelId: "ride-alerts" }
+            );
+          }
+        }
+      } catch (e) {
+      }
+      return res.json({ success: true, message: "Transfer request received. You will be contacted to confirm." });
+    } catch (error) {
+      return res.status(500).json({ message: error.message || "Could not save airport transfer" });
+    }
+  });
+  app2.get("/api/airport-transfers/my", requireAuth, async (req, res) => {
+    try {
+      const notifications2 = await storage.getNotificationsByUser(req.auth.sub);
+      const transfers = notifications2.filter((n) => n.type === "airport_transfer");
+      return res.json(transfers);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
   function haversine(lat1, lng1, lat2, lng2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -1636,21 +1325,6 @@ async function registerRoutes(app2) {
     }
     return fallback;
   }
-  app2.get(["/r/:referralCode", "/ref/:referralCode", "/referral/:referralCode"], async (req, res) => {
-    const referralCode = normalizeReferralCode(req.params.referralCode);
-    if (!referralCode) {
-      return res.status(400).type("html").send(renderReferralEntryPage({
-        referralCode: "INVALID",
-        deepLinkUrl: "a2blift://register"
-      }));
-    }
-    const referrer = await storage.getUserByReferralCode(referralCode);
-    return res.type("html").send(renderReferralEntryPage({
-      referralCode,
-      deepLinkUrl: `a2blift://register?ref=${encodeURIComponent(referralCode)}`,
-      referrerName: getUserFirstName(referrer, "Your friend")
-    }));
-  });
   let clientRatingsReady = null;
   function ensureClientRatingsTable() {
     if (!clientRatingsReady) {
@@ -1696,19 +1370,35 @@ async function registerRoutes(app2) {
       if (existing) {
         return res.status(400).json({ message: "An account with this email already exists" });
       }
+      let referrerUser;
+      const normalizedReferralCode = referralCode?.trim().toUpperCase();
+      if (normalizedReferralCode) {
+        referrerUser = await storage.getUserByReferralCode(normalizedReferralCode);
+      }
       const hashedPassword = await import_bcryptjs.default.hash(password, 10);
-      const user = await createUserWithReferral({
+      const user = await storage.createUser({
         username: email,
         password: hashedPassword,
         name: name.trim(),
         phone: phone ? phone.trim() : null,
         role: role || "client",
-        referralCode
+        ...referrerUser ? { referredByUserId: referrerUser.id } : {}
       });
-      const hydratedUser = await ensureUserReferralCode(user);
-      const token = signAccessToken({ sub: hydratedUser.id, role: hydratedUser.role, email: hydratedUser.username, name: hydratedUser.name });
+      if (referrerUser) {
+        try {
+          await storage.createReferralEvent({
+            referrerUserId: referrerUser.id,
+            referredUserId: user.id,
+            referralCodeUsed: normalizedReferralCode,
+            status: "registered"
+          });
+        } catch (refErr) {
+          console.warn("createReferralEvent non-fatal:", refErr.message);
+        }
+      }
+      const token = signAccessToken({ sub: user.id, role: user.role, email: user.username, name: user.name });
       setAuthCookie(res, token);
-      const safeUser = toSafeUser(hydratedUser);
+      const { password: _pw, ...safeUser } = user;
       return res.json({ user: safeUser, accessToken: token });
     } catch (error) {
       if (error.code === "23505") {
@@ -1731,10 +1421,9 @@ async function registerRoutes(app2) {
       if (!valid) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
-      const hydratedUser = await ensureUserReferralCode(user);
-      const token = signAccessToken({ sub: hydratedUser.id, role: hydratedUser.role, email: hydratedUser.username, name: hydratedUser.name });
+      const token = signAccessToken({ sub: user.id, role: user.role, email: user.username, name: user.name });
       setAuthCookie(res, token);
-      const safeUser = toSafeUser(hydratedUser);
+      const { password: _pw, ...safeUser } = user;
       return res.json({ user: safeUser, accessToken: token });
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -1747,139 +1436,8 @@ async function registerRoutes(app2) {
   app2.get("/api/auth/me", requireAuth, async (req, res) => {
     const user = await storage.getUser(req.auth.sub);
     if (!user) return res.status(404).json({ message: "User not found" });
-    const hydratedUser = await ensureUserReferralCode(user);
-    const safeUser = toSafeUser(hydratedUser);
+    const { password: _pw, ...safeUser } = user;
     return res.json(safeUser);
-  });
-  app2.get("/api/referrals/me", requireAuth, async (req, res) => {
-    try {
-      const user = await storage.getUser(req.auth.sub);
-      if (!user) return res.status(404).json({ message: "User not found" });
-      const hydratedUser = await ensureUserReferralCode(user);
-      const [events, rewardTxs, cashouts] = await Promise.all([
-        storage.getReferralEventsByReferrerUserId(hydratedUser.id),
-        storage.getRewardTransactions(hydratedUser.id),
-        storage.getRewardCashoutsByUser(hydratedUser.id)
-      ]);
-      const totalRewardsEarned = rewardTxs.filter((tx) => tx.type === "referral_reward" || tx.type === "ride_cashback").reduce((sum, tx) => sum + (tx.amount || 0), 0);
-      const pendingCashoutAmount = cashouts.filter((cashout) => ["requested", "approved"].includes(cashout.status)).reduce((sum, cashout) => sum + (cashout.amount || 0), 0);
-      return res.json({
-        referralCode: hydratedUser.referralCode,
-        shareUrl: getReferralEntryUrl(hydratedUser.referralCode, req),
-        rewardsBalance: hydratedUser.rewardsBalance || 0,
-        referredCount: events.length,
-        rewardedReferrals: events.filter((event) => event.status === "rewarded").length,
-        totalRewardsEarned: roundCurrency(totalRewardsEarned),
-        pendingCashoutAmount: roundCurrency(pendingCashoutAmount),
-        transactions: rewardTxs,
-        cashouts
-      });
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  });
-  app2.get("/api/rewards/transactions", requireAuth, async (req, res) => {
-    try {
-      const txs = await storage.getRewardTransactions(req.auth.sub);
-      return res.json(txs);
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  });
-  app2.get("/api/rewards/cashouts", requireAuth, async (req, res) => {
-    try {
-      const cashouts = await storage.getRewardCashoutsByUser(req.auth.sub);
-      return res.json(cashouts);
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  });
-  app2.post("/api/rewards/cashout", requireAuth, async (req, res) => {
-    try {
-      const { amount, bankName, accountNumber, accountHolder, phone, notes } = req.body;
-      const user = await storage.getUser(req.auth.sub);
-      if (!user) return res.status(404).json({ message: "User not found" });
-      const requestedAmount = roundCurrency(Number(amount));
-      if (!requestedAmount || requestedAmount <= 0) {
-        return res.status(400).json({ message: "A valid cash-out amount is required" });
-      }
-      if (requestedAmount > (user.rewardsBalance || 0)) {
-        return res.status(400).json({ message: "Insufficient rewards balance" });
-      }
-      const cashout = await storage.createRewardCashout({
-        userId: user.id,
-        amount: requestedAmount,
-        status: "requested",
-        bankName: bankName || null,
-        accountNumber: accountNumber || null,
-        accountHolder: accountHolder || null,
-        phone: phone || user.phone || null,
-        notes: notes || null
-      });
-      const balanceAfter = await recordRewardTransaction({
-        userId: user.id,
-        type: "cashout_request",
-        amount: requestedAmount,
-        direction: "debit",
-        description: "Rewards cash-out request submitted",
-        status: "pending",
-        reference: `reward_cashout:${cashout.id}`
-      });
-      await storage.createNotification({
-        userId: user.id,
-        title: "Cash-Out Requested",
-        body: `Your rewards cash-out request for R ${requestedAmount.toFixed(2)} has been submitted for review. Remaining rewards balance: R ${balanceAfter.toFixed(2)}.`,
-        type: "reward"
-      });
-      return res.json({ success: true, cashout, rewardsBalance: balanceAfter });
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  });
-  app2.get("/api/admin/rewards/cashouts", requireAuth, requireRole(["admin"]), async (_req, res) => {
-    try {
-      const cashouts = await storage.getAllRewardCashouts();
-      return res.json(cashouts);
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  });
-  app2.put("/api/admin/rewards/cashouts/:id", requireAuth, requireRole(["admin"]), async (req, res) => {
-    try {
-      const { status, notes } = req.body;
-      const cashout = await storage.getRewardCashout(req.params.id);
-      if (!cashout) return res.status(404).json({ message: "Cash-out request not found" });
-      if (!["approved", "paid", "rejected"].includes(status)) {
-        return res.status(400).json({ message: "Invalid cash-out status" });
-      }
-      if (status === "rejected" && cashout.status !== "rejected") {
-        await recordRewardTransaction({
-          userId: cashout.userId,
-          type: "cashout_reversal",
-          amount: cashout.amount,
-          direction: "credit",
-          description: "Rewards cash-out request rejected",
-          status: "completed",
-          reference: `reward_cashout_reversal:${cashout.id}`
-        });
-      }
-      const updated = await storage.updateRewardCashout(cashout.id, {
-        status,
-        notes: notes || cashout.notes || null,
-        reviewedByAdminId: req.auth.sub,
-        reviewedAt: /* @__PURE__ */ new Date(),
-        paidAt: status === "paid" ? /* @__PURE__ */ new Date() : cashout.paidAt || null
-      });
-      await storage.createNotification({
-        userId: cashout.userId,
-        title: "Cash-Out Update",
-        body: `Your rewards cash-out request for R ${cashout.amount.toFixed(2)} is now ${status}.`,
-        type: "reward"
-      });
-      return res.json({ success: true, cashout: updated });
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
   });
   const GOOGLE_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY || "";
   const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
@@ -2261,8 +1819,10 @@ async function registerRoutes(app2) {
   app2.get("/api/auth/google/start", (req, res) => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) return res.status(500).send("Google OAuth not configured");
-    const referralCode = normalizeReferralCode(req.query.ref);
     const callbackUrl = `https://api-production-0783.up.railway.app/api/auth/google/callback`;
+    const redirect = typeof req.query.redirect === "string" ? req.query.redirect : "";
+    const platform = req.query.platform === "web" && isAllowedGoogleWebRedirect(redirect) ? "web" : "app";
+    const state = encodeGoogleAuthState(platform === "web" ? { platform, redirect } : { platform: "app" });
     const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", callbackUrl);
@@ -2270,15 +1830,18 @@ async function registerRoutes(app2) {
     url.searchParams.set("scope", "openid email profile");
     url.searchParams.set("access_type", "offline");
     url.searchParams.set("prompt", "select_account");
-    if (referralCode) {
-      url.searchParams.set("state", JSON.stringify({ ref: referralCode }));
-    }
+    url.searchParams.set("state", state);
     return res.redirect(url.toString());
   });
   app2.get("/api/auth/google/callback", async (req, res) => {
     try {
       const { code, error, state } = req.query;
+      const authState = decodeGoogleAuthState(typeof state === "string" ? state : void 0);
+      const isWeb = authState.platform === "web" && isAllowedGoogleWebRedirect(authState.redirect);
       if (error || !code) {
+        if (isWeb) {
+          return res.redirect(buildGoogleWebRedirect(authState.redirect, { error: String(error || "cancelled") }));
+        }
         return res.redirect(`a2blift://auth?error=${encodeURIComponent(error || "cancelled")}`);
       }
       const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -2291,6 +1854,9 @@ async function registerRoutes(app2) {
       });
       const tokens = await tokenRes.json();
       if (tokens.error) {
+        if (isWeb) {
+          return res.redirect(buildGoogleWebRedirect(authState.redirect, { error: String(tokens.error_description || tokens.error) }));
+        }
         return res.redirect(`a2blift://auth?error=${encodeURIComponent(tokens.error_description || tokens.error)}`);
       }
       const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
@@ -2298,36 +1864,32 @@ async function registerRoutes(app2) {
       });
       const googleUser = await userInfoRes.json();
       if (!googleUser.email) {
-        return res.redirect(`a2blift://auth?error=no_email`);
-      }
-      let referralCode = null;
-      if (typeof state === "string" && state.trim()) {
-        try {
-          const parsedState = JSON.parse(state);
-          referralCode = normalizeReferralCode(parsedState?.ref);
-        } catch {
-          referralCode = null;
+        if (isWeb) {
+          return res.redirect(buildGoogleWebRedirect(authState.redirect, { error: "no_email" }));
         }
+        return res.redirect(`a2blift://auth?error=no_email`);
       }
       const email = googleUser.email.trim().toLowerCase();
       let user = await storage.getUserByUsername(email);
       if (!user) {
         const randomPassword = await import_bcryptjs.default.hash(Math.random().toString(36), 10);
-        user = await createUserWithReferral({
-          username: email,
-          password: randomPassword,
-          name: googleUser.name || email.split("@")[0],
-          phone: null,
-          role: "client",
-          referralCode: referralCode || void 0
-        });
+        user = await storage.createUser({ username: email, password: randomPassword, name: googleUser.name || email.split("@")[0], phone: null, role: "client" });
       }
-      const hydratedUser = await ensureUserReferralCode(user);
-      const appToken = signAccessToken({ sub: hydratedUser.id, role: hydratedUser.role, email: hydratedUser.username, name: hydratedUser.name });
-      const { password: _pw, ...safeUser } = hydratedUser;
+      const appToken = signAccessToken({ sub: user.id, role: user.role, email: user.username, name: user.name });
+      const { password: _pw, ...safeUser } = user;
+      if (isWeb) {
+        return res.redirect(buildGoogleWebRedirect(authState.redirect, {
+          accessToken: appToken,
+          user: JSON.stringify(safeUser)
+        }));
+      }
       const payload = encodeURIComponent(JSON.stringify({ user: safeUser, accessToken: appToken }));
       return res.redirect(`a2blift://auth?payload=${payload}`);
     } catch (err) {
+      const authState = decodeGoogleAuthState(typeof req.query.state === "string" ? req.query.state : void 0);
+      if (authState.platform === "web" && isAllowedGoogleWebRedirect(authState.redirect)) {
+        return res.redirect(buildGoogleWebRedirect(authState.redirect, { error: err.message || "oauth_failed" }));
+      }
       return res.redirect(`a2blift://auth?error=${encodeURIComponent(err.message)}`);
     }
   });
@@ -2787,6 +2349,191 @@ async function registerRoutes(app2) {
         })
       );
       return res.json(enriched);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.get("/api/chauffeurs", async (_req, res) => {
+    try {
+      const allChauffeurs = await storage.getAllChauffeurs();
+      const enriched = await Promise.all(
+        allChauffeurs.map(async (c) => {
+          const user = c.userId ? await storage.getUser(c.userId) : null;
+          return {
+            ...c,
+            userName: user?.name || "\u2014",
+            userPhone: user?.phone || c.phone || "\u2014",
+            userEmail: user?.username || "\u2014"
+          };
+        })
+      );
+      return res.json(enriched);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.post("/api/long-distance/availability", requireAuth, async (req, res) => {
+    try {
+      const userId = req.auth.sub;
+      const chauffeur = await storage.getChauffeurByUserId(userId);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur profile not found" });
+      if (!chauffeur.isApproved) return res.status(403).json({ message: "Account not yet approved" });
+      const {
+        available,
+        from,
+        to,
+        date,
+        pricePerSeat,
+        seatsAvailable
+      } = req.body;
+      await storage.updateChauffeur(chauffeur.id, {
+        availableForLongDistance: available,
+        longDistanceFrom: available ? from || null : null,
+        longDistanceTo: available ? to || null : null,
+        longDistanceDate: available ? date || null : null,
+        longDistancePricePerSeat: available ? pricePerSeat || null : null,
+        longDistanceSeatsAvailable: available ? seatsAvailable || 1 : 0
+      });
+      return res.json({ success: true, available });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.get("/api/long-distance/search", async (req, res) => {
+    try {
+      const { from, to, date } = req.query;
+      const allChauffeurs = await storage.getAllChauffeurs();
+      const available = allChauffeurs.filter((c) => {
+        if (!c.availableForLongDistance || !c.isApproved) return false;
+        if (from && c.longDistanceFrom && !c.longDistanceFrom.toLowerCase().includes(from.toLowerCase())) return false;
+        if (to && c.longDistanceTo && !c.longDistanceTo.toLowerCase().includes(to.toLowerCase())) return false;
+        if (date && c.longDistanceDate && c.longDistanceDate !== date) return false;
+        return true;
+      });
+      const enriched = await Promise.all(
+        available.map(async (c) => {
+          const user = c.userId ? await storage.getUser(c.userId) : null;
+          return {
+            id: c.id,
+            name: user?.name || "Driver",
+            photo: c.profilePhoto || user?.profilePhoto || null,
+            vehicleType: c.vehicleType,
+            vehicleModel: c.vehicleModel,
+            carColor: c.carColor,
+            rating: user?.rating || 5,
+            from: c.longDistanceFrom,
+            to: c.longDistanceTo,
+            date: c.longDistanceDate,
+            pricePerSeat: c.longDistancePricePerSeat,
+            seatsAvailable: c.longDistanceSeatsAvailable,
+            lat: c.lat,
+            lng: c.lng
+          };
+        })
+      );
+      return res.json(enriched);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.post("/api/long-distance/book", requireAuth, async (req, res) => {
+    try {
+      const {
+        driverId,
+        from,
+        to,
+        date,
+        seats,
+        paymentMethod,
+        paystackRef,
+        passengerName,
+        passengerPhone
+      } = req.body || {};
+      const seatsRequested = Math.max(1, Math.floor(Number(seats) || 1));
+      const method = paymentMethod === "cash" ? "cash" : paymentMethod === "card" ? "card" : null;
+      if (!driverId || !from || !to || !date || !method) {
+        return res.status(400).json({ message: "driverId, from, to, date, seats, and a valid payment method are required" });
+      }
+      const rider = await storage.getUser(req.auth.sub);
+      if (!rider) return res.status(404).json({ message: "Passenger not found" });
+      const chauffeur = await storage.getChauffeur(driverId);
+      if (!chauffeur || !chauffeur.isApproved || !chauffeur.availableForLongDistance) {
+        return res.status(404).json({ message: "This route is no longer available" });
+      }
+      if (chauffeur.userId === rider.id) {
+        return res.status(400).json({ message: "You cannot book your own route" });
+      }
+      const seatsAvailable = Number(chauffeur.longDistanceSeatsAvailable || 0);
+      if (seatsAvailable < seatsRequested) {
+        return res.status(409).json({ message: `Only ${seatsAvailable} seat${seatsAvailable === 1 ? "" : "s"} remain on this route` });
+      }
+      const chauffeurUser = await storage.getUser(chauffeur.userId);
+      const remainingSeats = seatsAvailable - seatsRequested;
+      await storage.updateChauffeur(chauffeur.id, {
+        longDistanceSeatsAvailable: remainingSeats,
+        availableForLongDistance: remainingSeats > 0
+      });
+      const riderFirstName = String(passengerName || rider.name || "Passenger").trim().split(" ")[0] || "Passenger";
+      const routeFrom = chauffeur.longDistanceFrom || from;
+      const routeTo = chauffeur.longDistanceTo || to;
+      const travelDate = chauffeur.longDistanceDate || date;
+      const paymentNote = method === "cash" ? "The rider selected cash payment for the day of travel." : "Card payment was confirmed online.";
+      const driverBody = `${riderFirstName} booked ${seatsRequested} seat${seatsRequested === 1 ? "" : "s"} for ${routeFrom} to ${routeTo} on ${travelDate}. ${paymentNote}`;
+      await storage.createNotification({
+        userId: chauffeur.userId,
+        title: "New long-distance booking",
+        body: driverBody,
+        type: "long_distance"
+      });
+      const pushTokens = Array.from(new Set([chauffeur.pushToken, chauffeurUser?.pushToken].filter(Boolean)));
+      if (pushTokens.length) {
+        sendExpoPushNotification(
+          pushTokens,
+          "New long-distance booking",
+          `${riderFirstName} booked ${seatsRequested} seat${seatsRequested === 1 ? "" : "s"} for ${routeFrom} to ${routeTo}.`,
+          {
+            type: "long_distance:booking",
+            driverId: chauffeur.id,
+            passengerId: rider.id,
+            from: routeFrom,
+            to: routeTo,
+            date: travelDate,
+            seats: seatsRequested,
+            paymentMethod: method,
+            paystackRef: paystackRef || null,
+            passengerPhone: passengerPhone || rider.phone || null
+          },
+          { urgent: true, channelId: "ride-alerts" }
+        );
+      }
+      await storage.createNotification({
+        userId: rider.id,
+        title: "Long-distance trip confirmed",
+        body: `${routeFrom} to ${routeTo} on ${travelDate} is confirmed with ${chauffeurUser?.name || "your driver"}. ${method === "cash" ? "Pay your driver in cash on the day." : "Your card payment has been recorded."}`,
+        type: "long_distance"
+      });
+      return res.json({
+        success: true,
+        seatsRemaining: remainingSeats,
+        driverName: chauffeurUser?.name || "Driver",
+        route: { from: routeFrom, to: routeTo, date: travelDate }
+      });
+    } catch (error) {
+      return res.status(500).json({ message: error.message || "Unable to confirm long-distance booking" });
+    }
+  });
+  app2.get("/api/long-distance/my-availability", requireAuth, async (req, res) => {
+    try {
+      const chauffeur = await storage.getChauffeurByUserId(req.auth.sub);
+      if (!chauffeur) return res.status(404).json({ message: "Not found" });
+      return res.json({
+        available: chauffeur.availableForLongDistance || false,
+        from: chauffeur.longDistanceFrom || "",
+        to: chauffeur.longDistanceTo || "",
+        date: chauffeur.longDistanceDate || "",
+        pricePerSeat: chauffeur.longDistancePricePerSeat || 0,
+        seatsAvailable: chauffeur.longDistanceSeatsAvailable || 1
+      });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
@@ -3636,24 +3383,18 @@ async function registerRoutes(app2) {
           const alreadyRecorded = existingEarnings.some((e) => e.rideId === ride.id);
           const paymentMethod = ride.paymentMethod || "cash";
           if (!alreadyRecorded) {
-            if (paymentMethod.startsWith("cash")) {
-              const remainingCashAmount = roundCurrency(
-                Math.max((ride.price || 0) - (ride.rewardsAmountUsed || 0), 0)
-              );
-              const digitalAdjustment = roundCurrency(
-                earningsCalc.chauffeurEarnings - remainingCashAmount
-              );
+            if (paymentMethod === "cash") {
               await storage.createEarning({
                 chauffeurId: ride.chauffeurId,
                 rideId: ride.id,
-                amount: digitalAdjustment,
+                amount: -earningsCalc.commission,
                 commission: earningsCalc.commission,
-                type: paymentMethod
+                type: "cash"
               });
               const chauffeur = await storage.getChauffeur(ride.chauffeurId);
               if (chauffeur) {
                 await storage.updateChauffeur(ride.chauffeurId, {
-                  earningsTotal: roundCurrency((chauffeur.earningsTotal || 0) + digitalAdjustment)
+                  earningsTotal: (chauffeur.earningsTotal || 0) - earningsCalc.commission
                 });
               }
             } else {
@@ -3674,6 +3415,66 @@ async function registerRoutes(app2) {
           }
         } catch (earningsErr) {
           console.error("earnings record failed (non-fatal):", earningsErr.message);
+        }
+        try {
+          const DRIVER_REFERRAL_RATE = 0.025;
+          const completingChauffeur = await storage.getChauffeur(ride.chauffeurId);
+          if (completingChauffeur?.userId) {
+            const driverUser = await storage.getUser(completingChauffeur.userId);
+            if (driverUser?.referredByUserId) {
+              const referralCommission = Math.round(ride.price * DRIVER_REFERRAL_RATE * 100) / 100;
+              const alreadyPaid = await storage.getRewardTransactionByRideAndType(
+                driverUser.referredByUserId,
+                ride.id,
+                "driver_referral_commission",
+                completingChauffeur.userId
+              );
+              if (!alreadyPaid && referralCommission > 0) {
+                const referrer = await storage.getUser(driverUser.referredByUserId);
+                if (referrer) {
+                  const balanceBefore = referrer.rewardsBalance || 0;
+                  const balanceAfter = balanceBefore + referralCommission;
+                  await storage.updateUser(referrer.id, { rewardsBalance: balanceAfter });
+                  await storage.createRewardTransaction({
+                    userId: referrer.id,
+                    sourceUserId: completingChauffeur.userId,
+                    rideId: ride.id,
+                    type: "driver_referral_commission",
+                    amount: referralCommission,
+                    balanceBefore,
+                    balanceAfter,
+                    description: `2.5% referral commission from a trip completed by a driver you referred`,
+                    status: "completed",
+                    reference: `drv_ref_${ride.id}_${referrer.id.slice(0, 6)}`
+                  });
+                  const refEvent = await storage.getReferralEventByReferredUserId(completingChauffeur.userId);
+                  if (refEvent) {
+                    await storage.updateReferralEvent(refEvent.id, {
+                      totalRewards: (refEvent.totalRewards || 0) + referralCommission,
+                      lastRewardAt: /* @__PURE__ */ new Date(),
+                      status: "active"
+                    });
+                  }
+                  await storage.createNotification({
+                    userId: referrer.id,
+                    title: "Referral Earnings",
+                    body: `You earned R ${referralCommission.toFixed(2)} \u2014 2.5% from a trip completed by a driver you referred.`,
+                    type: "reward"
+                  });
+                  if (referrer.pushToken) {
+                    sendExpoPushNotification(
+                      [referrer.pushToken],
+                      "\u{1F4B0} Referral Earnings",
+                      `You earned R ${referralCommission.toFixed(2)} from your referred driver's trip!`,
+                      { type: "reward:driver_referral", rideId: ride.id }
+                    );
+                  }
+                }
+              }
+            }
+          }
+        } catch (referralCommErr) {
+          console.error("driver referral commission failed (non-fatal):", referralCommErr.message);
         }
         try {
           await storage.createNotification({
@@ -3697,24 +3498,19 @@ async function registerRoutes(app2) {
         }
         try {
           const paymentMethod = ride.paymentMethod || "cash";
-          if (paymentMethod.startsWith("cash")) {
-            const remainingCashAmount = roundCurrency(
-              Math.max((ride.price || 0) - (ride.rewardsAmountUsed || 0), 0)
-            );
+          if (paymentMethod === "cash") {
             const existingPayments = await storage.getPaymentsByRide(ride.id);
-            if (remainingCashAmount <= 0) {
-              await storage.updateRide(ride.id, { paymentStatus: "paid" });
-            } else if (existingPayments.length === 0) {
+            if (existingPayments.length === 0) {
               await storage.createPayment({
                 rideId: ride.id,
                 payerUserId: ride.clientId,
-                amount: remainingCashAmount,
+                amount: ride.price,
                 method: "cash",
                 status: "paid",
                 provider: "cash",
                 providerRef: `cash_${ride.id}_${Date.now()}`
               });
-              await storage.updateRide(ride.id, { paymentStatus: "paid" });
+              await storage.updateRide(ride.id, { paymentStatus: "paid", paymentMethod: "cash" });
             } else {
               const pendingPayment = existingPayments.find((p) => p.status === "pending" && p.method === "cash");
               if (pendingPayment) {
@@ -3725,12 +3521,6 @@ async function registerRoutes(app2) {
           }
         } catch (payErr) {
           console.error("payment record failed (non-fatal):", payErr.message);
-        }
-        try {
-          await rewardRideCashbackForCompletedRide(ride.clientId, ride, "client");
-          await rewardReferralForCompletedRide(ride.clientId, ride, "client");
-        } catch (rewardErr) {
-          console.error("referral reward failed (non-fatal):", rewardErr.message);
         }
       }
       let clientFirstName = "Client";
@@ -4357,7 +4147,7 @@ async function registerRoutes(app2) {
     }
   });
   const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY || "";
-  const paystackAPI2 = import_axios.default.create({
+  const paystackAPI = import_axios.default.create({
     baseURL: "https://api.paystack.co",
     headers: {
       Authorization: `Bearer ${PAYSTACK_SECRET}`,
@@ -4468,7 +4258,7 @@ async function registerRoutes(app2) {
       }
       const domain = getAppBaseUrl(req);
       const callbackUrl = `${domain}/api/payments/webview-callback?reference=${reference}`;
-      const response = await paystackAPI2.post("/transaction/initialize", {
+      const response = await paystackAPI.post("/transaction/initialize", {
         email,
         amount: Math.round(amount * 100),
         currency: "ZAR",
@@ -4507,7 +4297,7 @@ async function registerRoutes(app2) {
     try {
       const { reference } = req.body;
       const userId = req.auth.sub;
-      const response = await paystackAPI2.get(`/transaction/verify/${reference}`);
+      const response = await paystackAPI.get(`/transaction/verify/${reference}`);
       const txData = response.data.data;
       if (txData.status !== "success") {
         return res.status(400).json({ message: "Payment not successful", status: txData.status });
@@ -4567,7 +4357,7 @@ async function registerRoutes(app2) {
         return res.status(404).json({ message: "Card not found" });
       }
       const reference = `A2B-RIDE-${rideId}-${Date.now()}`;
-      const response = await paystackAPI2.post("/transaction/charge_authorization", {
+      const response = await paystackAPI.post("/transaction/charge_authorization", {
         authorization_code: card.paystackAuthCode,
         email,
         amount: Math.round(amount * 100),
@@ -4612,7 +4402,7 @@ async function registerRoutes(app2) {
       const amount = ride.price || ride.totalPrice || ride.estimatedPrice;
       if (!amount) return res.status(400).json({ message: "Ride has no price set" });
       const reference = `A2B-RIDE-${rideId}-${Date.now()}`;
-      const response = await paystackAPI2.post("/transaction/charge_authorization", {
+      const response = await paystackAPI.post("/transaction/charge_authorization", {
         authorization_code: defaultCard.paystackAuthCode,
         email: user.username,
         amount: Math.round(Number(amount) * 100),
@@ -4725,7 +4515,7 @@ async function registerRoutes(app2) {
       if ((chauffeur.earningsTotal || 0) < amount) {
         return res.status(400).json({ message: `You only have R${(chauffeur.earningsTotal || 0).toFixed(2)} available to withdraw. Please enter a lower amount.` });
       }
-      const recipientRes = await paystackAPI2.post("/transferrecipient", {
+      const recipientRes = await paystackAPI.post("/transferrecipient", {
         type: "nuban",
         name: accountName,
         account_number: accountNumber,
@@ -4734,7 +4524,7 @@ async function registerRoutes(app2) {
       });
       const recipientCode = recipientRes.data.data.recipient_code;
       const transferRef = `A2B-WITHDRAW-${Date.now()}`;
-      const transferRes = await paystackAPI2.post("/transfer", {
+      const transferRes = await paystackAPI.post("/transfer", {
         source: "balance",
         amount: Math.round(amount * 100),
         recipient: recipientCode,
@@ -4770,7 +4560,7 @@ async function registerRoutes(app2) {
   });
   app2.get("/api/wallet/banks", async (_req, res) => {
     try {
-      const response = await paystackAPI2.get("/bank?currency=ZAR&country=south+africa");
+      const response = await paystackAPI.get("/bank?currency=ZAR&country=south+africa");
       const banks = response.data.data.map((b) => ({ name: b.name, code: b.code, id: b.id }));
       return res.json(banks);
     } catch (error) {
@@ -4797,153 +4587,6 @@ async function registerRoutes(app2) {
         { name: "Ubank (Teba Bank)", code: "431010" },
         { name: "VBS Mutual Bank", code: "588000" }
       ]);
-    }
-  });
-  app2.post("/api/payments/pay-mixed", requireAuth, async (req, res) => {
-    let rewardsApplied = 0;
-    let reversalUserId = null;
-    let reversalRideId = null;
-    try {
-      const { rideId, baseMethod } = req.body;
-      const userId = req.auth.sub;
-      reversalUserId = userId;
-      if (!rideId || !baseMethod || !["card", "cash"].includes(baseMethod)) {
-        return res.status(400).json({ message: "rideId and baseMethod are required" });
-      }
-      const [user, ride] = await Promise.all([
-        storage.getUser(userId),
-        storage.getRide(rideId)
-      ]);
-      if (!user) return res.status(404).json({ message: "User not found" });
-      if (!ride) return res.status(404).json({ message: "Ride not found" });
-      if (ride.clientId !== userId) return res.status(403).json({ message: "Forbidden" });
-      if (ride.paymentStatus === "paid") {
-        return res.status(400).json({ message: "Ride is already paid" });
-      }
-      reversalRideId = ride.id;
-      const rideAmount = Number(ride.price || 0);
-      if (!rideAmount || rideAmount <= 0) {
-        return res.status(400).json({ message: "Ride has no price set" });
-      }
-      const rewardsToUse = roundCurrency(Math.min(user.rewardsBalance || 0, rideAmount));
-      if (rewardsToUse <= 0) {
-        return res.status(400).json({ message: "No rewards balance available for this ride" });
-      }
-      rewardsApplied = rewardsToUse;
-      const remainingAmount = roundCurrency(Math.max(rideAmount - rewardsToUse, 0));
-      const rewardsBalance = await recordRewardTransaction({
-        userId,
-        type: "ride_redemption",
-        amount: rewardsToUse,
-        direction: "debit",
-        description: `Rewards applied to ${baseMethod} ride payment`,
-        rideId: ride.id,
-        reference: `ride_mixed_rewards:${ride.id}`
-      });
-      if (baseMethod === "card") {
-        await storage.createPayment({
-          rideId: ride.id,
-          payerUserId: userId,
-          amount: rewardsToUse,
-          method: "rewards",
-          status: "paid",
-          currency: "ZAR",
-          paidAt: /* @__PURE__ */ new Date(),
-          provider: "rewards",
-          providerRef: `mixed_rewards_${ride.id}_${Date.now()}`
-        });
-        let cardSummary = null;
-        if (remainingAmount > 0) {
-          const { reference, defaultCard, paystackAuthCode } = await chargeDefaultCardForRide({
-            userId,
-            rideId: ride.id,
-            amount: remainingAmount,
-            paymentMethod: "card_rewards"
-          });
-          await storage.createPayment({
-            rideId: ride.id,
-            payerUserId: userId,
-            amount: remainingAmount,
-            method: "card",
-            status: "paid",
-            currency: "ZAR",
-            paidAt: /* @__PURE__ */ new Date(),
-            paystackReference: reference,
-            paystackAuthCode
-          });
-          cardSummary = { last4: defaultCard.last4, cardType: defaultCard.cardType };
-        }
-        await storage.updateRide(ride.id, {
-          paymentStatus: "paid",
-          paymentMethod: "card_rewards",
-          rewardsAmountUsed: rewardsToUse
-        });
-        return res.json({
-          success: true,
-          rewardsBalance,
-          rewardsUsed: rewardsToUse,
-          chargedAmount: remainingAmount,
-          card: cardSummary
-        });
-      }
-      await storage.createPayment({
-        rideId: ride.id,
-        payerUserId: userId,
-        amount: rewardsToUse,
-        method: "rewards",
-        status: "paid",
-        currency: "ZAR",
-        paidAt: /* @__PURE__ */ new Date(),
-        provider: "rewards",
-        providerRef: `mixed_rewards_${ride.id}_${Date.now()}`
-      });
-      if (remainingAmount > 0) {
-        await storage.createPayment({
-          rideId: ride.id,
-          payerUserId: userId,
-          amount: remainingAmount,
-          method: "cash",
-          status: "pending",
-          currency: "ZAR",
-          provider: "cash",
-          providerRef: `mixed_cash_${ride.id}_${Date.now()}`
-        });
-      }
-      await storage.updateRide(ride.id, {
-        paymentStatus: remainingAmount > 0 ? "pending" : "paid",
-        paymentMethod: "cash_rewards",
-        rewardsAmountUsed: rewardsToUse
-      });
-      return res.json({
-        success: true,
-        rewardsBalance,
-        rewardsUsed: rewardsToUse,
-        remainingCashAmount: remainingAmount
-      });
-    } catch (error) {
-      console.error("[Mixed Payment]", error.response?.data || error.message);
-      if (rewardsApplied > 0 && reversalUserId && reversalRideId) {
-        try {
-          await recordRewardTransaction({
-            userId: reversalUserId,
-            type: "ride_refund",
-            amount: rewardsApplied,
-            direction: "credit",
-            description: "Rewards returned after mixed payment failed",
-            rideId: reversalRideId,
-            reference: `ride_mixed_refund:${reversalRideId}:${Date.now()}`
-          });
-        } catch (refundError) {
-          console.error("[Mixed Payment Refund]", refundError.message);
-        }
-      }
-      if (error.needsCard) {
-        return res.status(400).json({ message: error.message, needsCard: true });
-      }
-      if (error.status) {
-        return res.status(400).json({ message: error.message, status: error.status });
-      }
-      return res.status(500).json({ message: error.message || "Mixed payment failed" });
     }
   });
   app2.post("/api/payments/webhook", async (req, res) => {
@@ -5080,11 +4723,23 @@ var path = __toESM(require("path"));
 var import_http_proxy_middleware = require("http-proxy-middleware");
 var app = (0, import_express.default)();
 var log = console.log;
+function addUrlOrigin(origins, rawUrl) {
+  if (!rawUrl) return;
+  try {
+    origins.add(new URL(rawUrl).origin);
+  } catch {
+  }
+}
 function setupCors(app2) {
   app2.use((req, res, next) => {
     const origins = /* @__PURE__ */ new Set();
+    origins.add("https://a2blift.com");
+    origins.add("https://www.a2blift.com");
     origins.add("https://a2b-lift.onrender.com");
     origins.add("https://peaceful-mousse-459c85.netlify.app");
+    addUrlOrigin(origins, process.env.FRONTEND_URL);
+    addUrlOrigin(origins, process.env.PUBLIC_REFERRAL_BASE_URL);
+    addUrlOrigin(origins, process.env.EXPO_PUBLIC_REFERRAL_BASE_URL);
     if (process.env.RAILWAY_PUBLIC_DOMAIN) {
       origins.add(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
     }
