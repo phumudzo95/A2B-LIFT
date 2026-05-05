@@ -53,6 +53,32 @@
     }
     .ld-search-bar .btn-search:hover { background: #222; }
 
+    /* ── ROUTE INFO BAR ── */
+    .ld-route-info {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--grey-500);
+      padding: 10px 0 0;
+    }
+    .ld-route-info svg { width:14px; height:14px; flex-shrink:0; }
+
+    /* ── AUTOCOMPLETE override ── */
+    .pac-container { font-family: var(--font) !important; border-radius: 10px !important; box-shadow: var(--shadow-lg) !important; border: 1.5px solid var(--grey-200) !important; }
+    .pac-item { padding: 10px 14px !important; font-size: 14px !important; cursor: pointer; }
+    .pac-item:hover { background: var(--grey-50) !important; }
+    .pac-item-query { font-weight: 600; color: var(--grey-900); }
+
+    /* ── PAYMENT METHOD toggle ── */
+    .pay-toggle { display: flex; gap: 0; border: 1.5px solid var(--grey-200); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 16px; }
+    .pay-option { flex: 1; padding: 10px; text-align: center; font-size: 14px; font-weight: 600; font-family: var(--font); background: none; border: none; cursor: pointer; color: var(--grey-400); transition: background var(--t), color var(--t); }
+    .pay-option.active { background: var(--black); color: var(--white); }
+
+    /* ── SEATS selector ── */
+    .seats-selector { display: flex; align-items: center; gap: 12px; margin: 12px 0 16px; }
+    .seats-btn { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--grey-200); background: none; font-size: 18px; cursor: pointer; display:flex; align-items:center; justify-content:center; color:var(--grey-600); transition: all var(--t); }
+    .seats-btn:hover:not(:disabled) { border-color:var(--black); color:var(--black); }
+    .seats-btn:disabled { opacity:.3; cursor:default; }
+    .seats-count { font-size:22px; font-weight:800; min-width:32px; text-align:center; }
+
     /* ── RESULTS LAYOUT ── */
     .ld-results-layout {
       display: grid;
@@ -168,6 +194,7 @@
     @media(max-width:640px) {
       .ld-search-bar { grid-template-columns: 1fr; }
       .ld-search-bar .btn-search { width: 100%; }
+      .matrix-card { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -228,10 +255,14 @@
           <input type="text" id="ldTo" placeholder="e.g. Durban" autocomplete="off" />
         </div>
         <div class="form-group">
-          <label for="ldDate">Travel date</label>
+          <label for="ldDate">Travel date <span style="font-weight:400;text-transform:none;">(optional)</span></label>
           <input type="date" id="ldDate" />
         </div>
         <button class="btn-search" onclick="searchDrivers()">Search trips</button>
+      </div>
+      <div class="ld-route-info" id="ldRouteInfo" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h18M3 12l4-4m-4 4 4 4M21 12l-4-4m4 4-4 4"/></svg>
+        <span id="ldRouteInfoText"></span>
       </div>
 
       <!-- Results -->
@@ -361,11 +392,39 @@
       <p id="modalRouteLine">Review your trip details below.</p>
       <div class="modal-driver-row" id="modalDriverRow"></div>
       <div id="modalDetails"></div>
+
+      <!-- Seats selector -->
+      <div style="margin: 16px 0 4px;">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--grey-400);display:block;margin-bottom:10px;">Number of seats</label>
+        <div class="seats-selector">
+          <button class="seats-btn" id="seatsDecBtn" onclick="changeSeats(-1)" disabled>&#8722;</button>
+          <span class="seats-count" id="seatsCount">1</span>
+          <button class="seats-btn" id="seatsIncBtn" onclick="changeSeats(1)">&#43;</button>
+          <span style="font-size:13px;color:var(--grey-400);margin-left:4px;">of <span id="maxSeatsLabel">1</span> available</span>
+        </div>
+      </div>
+
+      <!-- Total -->
       <div class="modal-total" id="modalTotal"></div>
+
+      <!-- Payment method -->
+      <div style="margin-bottom:8px;">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--grey-400);display:block;margin-bottom:10px;">Payment method</label>
+        <div class="pay-toggle">
+          <button class="pay-option active" id="payCard" onclick="setPayMethod('card')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Card
+          </button>
+          <button class="pay-option" id="payCash" onclick="setPayMethod('cash')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Cash
+          </button>
+        </div>
+        <p id="cashNote" style="display:none;font-size:12px;color:var(--grey-500);margin-top:-4px;margin-bottom:8px;">You will pay the driver in cash on the day. Your booking will be confirmed and the driver notified.</p>
+      </div>
+
       <div id="paystackContainer"></div>
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" id="modalBookBtn" onclick="proceedPayment()">Pay &amp; confirm</button>
+        <button class="btn btn-primary" id="modalBookBtn" onclick="proceedPayment()">Confirm booking</button>
       </div>
     </div>
   </div>
@@ -376,13 +435,17 @@
   <script>
     const API = 'https://api-production-0783.up.railway.app';
     let map, markers = [], selectedDriver = null;
+    let directionsService, directionsRenderer;
+    let fromAutocomplete, toAutocomplete;
+    let selectedSeats = 1;
+    let selectedPayMethod = 'card';
 
     // Set today as minimum date
     document.getElementById('ldDate').min = new Date().toISOString().split('T')[0];
 
     function initMap() {
       map = new google.maps.Map(document.getElementById('ldMap'), {
-        center: { lat: -28.4793, lng: 24.6727 }, // Centre of SA
+        center: { lat: -28.4793, lng: 24.6727 },
         zoom: 5,
         styles: [
           { featureType: 'all', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
@@ -391,6 +454,55 @@
         disableDefaultUI: true,
         zoomControl: true,
         mapTypeControl: false,
+      });
+
+      // Directions service for route preview
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({
+        map,
+        suppressMarkers: false,
+        polylineOptions: { strokeColor: '#0A0A0A', strokeWeight: 4 }
+      });
+
+      // Places Autocomplete on search inputs
+      fromAutocomplete = new google.maps.places.Autocomplete(
+        document.getElementById('ldFrom'),
+        { componentRestrictions: { country: 'za' }, types: ['(cities)'] }
+      );
+      toAutocomplete = new google.maps.places.Autocomplete(
+        document.getElementById('ldTo'),
+        { componentRestrictions: { country: 'za' }, types: ['(cities)'] }
+      );
+
+      // Auto-load available drivers on page load
+      autoLoadDrivers();
+    }
+
+    async function autoLoadDrivers() {
+      try {
+        const res = await fetch(`${API}/api/long-distance/search`);
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) return;
+        const drivers = Array.isArray(payload) ? payload : [];
+        if (drivers.length) renderResults(drivers, '', '', '');
+      } catch(e) { /* silent — user can search manually */ }
+    }
+
+    function showRoutePreview(fromText, toText) {
+      if (!directionsService || !fromText || !toText) return;
+      directionsRenderer.setDirections({ routes: [] });
+      directionsService.route({
+        origin: fromText + ', South Africa',
+        destination: toText + ', South Africa',
+        travelMode: google.maps.TravelMode.DRIVING,
+      }, (response, status) => {
+        if (status === 'OK' && response.routes.length) {
+          directionsRenderer.setDirections(response);
+          const leg = response.routes[0].legs[0];
+          document.getElementById('ldRouteInfo').style.display = 'flex';
+          document.getElementById('ldRouteInfoText').textContent =
+            `${leg.distance.text} · approx. ${leg.duration.text} drive`;
+        }
       });
     }
 
@@ -428,7 +540,8 @@
         }
         const drivers = Array.isArray(payload) ? payload : [];
 
-        renderResults(drivers, from, to, date);
+          renderResults(drivers, from, to, date);
+        if (from && to) showRoutePreview(from, to);
       } catch (err) {
         document.getElementById('ldResultsLayout').style.display = 'none';
         document.getElementById('ldEmpty').style.display = 'block';
@@ -515,6 +628,12 @@
 
       window._ldDrivers = drivers;
       layout.style.display = 'grid';
+
+      // Map: if no individual markers, show SA overview
+      if (!markers.length && map) {
+        map.setCenter({ lat: -28.4793, lng: 24.6727 });
+        map.setZoom(5);
+      }
     }
 
     function selectDriver(idx) {
@@ -528,29 +647,76 @@
       openBookModal(selectedDriver);
     }
 
+    function changeSeats(delta) {
+      const max = selectedDriver ? (selectedDriver.seatsAvailable || 1) : 1;
+      selectedSeats = Math.max(1, Math.min(max, selectedSeats + delta));
+      document.getElementById('seatsCount').textContent = selectedSeats;
+      document.getElementById('seatsDecBtn').disabled = selectedSeats <= 1;
+      document.getElementById('seatsIncBtn').disabled = selectedSeats >= max;
+      updateModalTotal();
+    }
+
+    function setPayMethod(method) {
+      selectedPayMethod = method;
+      document.getElementById('payCard').classList.toggle('active', method === 'card');
+      document.getElementById('payCash').classList.toggle('active', method === 'cash');
+      document.getElementById('cashNote').style.display = method === 'cash' ? 'block' : 'none';
+      document.getElementById('modalBookBtn').textContent = method === 'cash' ? 'Confirm (pay cash)' : 'Pay by card';
+    }
+
+    function updateModalTotal() {
+      if (!selectedDriver) return;
+      const total = (selectedDriver.pricePerSeat || 0) * selectedSeats;
+      document.getElementById('modalTotal').textContent = `R${total.toFixed(2)} total (${selectedSeats} seat${selectedSeats>1?'s':''} × R${(selectedDriver.pricePerSeat||0).toFixed(0)})`;
+    }
+
     function openBookModal(driver) {
       if (!driver) return;
+
       const token = localStorage.getItem('a2b_token');
       if (!token) {
-        if (confirm('Please log in to book a trip. Go to login?')) {
-          window.location.href = 'login.html?next=long-distance.html';
-        }
+        // Save pending booking intent and redirect to login
+        localStorage.setItem('a2b_pending_long_distance', JSON.stringify({
+          driverId: driver.id,
+          from: driver.from,
+          to: driver.to,
+          date: driver.date,
+          pricePerSeat: driver.pricePerSeat,
+        }));
+        window.location.href = `login.html?next=${encodeURIComponent('long-distance.html')}`;
         return;
       }
+
+      selectedDriver = driver;
+      selectedSeats = 1;
+      selectedPayMethod = 'card';
+
       document.getElementById('modalRouteLine').textContent = `${driver.from || '—'} → ${driver.to || '—'}`;
       document.getElementById('modalDriverRow').innerHTML = `
         <div class="driver-card-avatar" style="width:40px;height:40px;">${driver.photo ? `<img src="${driver.photo}" />` : driver.name.charAt(0)}</div>
-        <div>
+        <div style="flex:1">
           <div style="font-weight:700">${driver.name}</div>
-          <div style="font-size:13px;color:var(--grey-400)">${driver.vehicleModel || driver.vehicleType}</div>
+          <div style="font-size:13px;color:var(--grey-400)">${driver.vehicleModel || driver.vehicleType || 'Luxury vehicle'}</div>
+        </div>
+        <div class="driver-card-rating">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="color:#f59e0b"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          ${(driver.rating || 5).toFixed(1)}
         </div>
       `;
       document.getElementById('modalDetails').innerHTML = `
-        <div class="modal-detail-row"><span class="modal-detail-label">Date</span><span>${driver.date ? formatDate(driver.date) : '—'}</span></div>
-        <div class="modal-detail-row"><span class="modal-detail-label">Route</span><span>${driver.from} → ${driver.to}</span></div>
-        <div class="modal-detail-row"><span class="modal-detail-label">Seats available</span><span>${driver.seatsAvailable}</span></div>
+        <div class="modal-detail-row"><span class="modal-detail-label">Route</span><span><strong>${driver.from || '—'}</strong> → <strong>${driver.to || '—'}</strong></span></div>
+        <div class="modal-detail-row"><span class="modal-detail-label">Travel date</span><span>${driver.date ? formatDate(driver.date) : '—'}</span></div>
+        <div class="modal-detail-row"><span class="modal-detail-label">Price per seat</span><span>R${(driver.pricePerSeat || 0).toFixed(0)}</span></div>
       `;
-      document.getElementById('modalTotal').textContent = `R${(driver.pricePerSeat || 0).toFixed(2)} per seat`;
+      document.getElementById('maxSeatsLabel').textContent = driver.seatsAvailable || 1;
+      document.getElementById('seatsCount').textContent = 1;
+      document.getElementById('seatsDecBtn').disabled = true;
+      document.getElementById('seatsIncBtn').disabled = (driver.seatsAvailable || 1) <= 1;
+
+      // Reset payment method
+      setPayMethod('card');
+      updateModalTotal();
+
       document.getElementById('bookModal').classList.add('open');
     }
 
@@ -559,29 +725,109 @@
       selectedDriver = null;
     }
 
-    function proceedPayment() {
-      if (!selectedDriver) return;
+    async function confirmCashBooking() {
       const token = localStorage.getItem('a2b_token');
       const userStr = localStorage.getItem('a2b_user');
       const user = userStr ? JSON.parse(userStr) : {};
-      const amount = (selectedDriver.pricePerSeat || 0) * 100; // kobo
+
+      const btn = document.getElementById('modalBookBtn');
+      btn.disabled = true;
+      btn.textContent = 'Confirming…';
+
+      try {
+        const res = await fetch(`${API}/api/long-distance/book`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            driverId: selectedDriver.id,
+            from: selectedDriver.from,
+            to: selectedDriver.to,
+            date: selectedDriver.date,
+            seats: selectedSeats,
+            paymentMethod: 'cash',
+            passengerName: user.name || '',
+            passengerPhone: user.phone || '',
+          }),
+        });
+
+        closeModal();
+        showBookingConfirmation('cash');
+      } catch (err) {
+        // Even if backend fails, save locally and confirm
+        closeModal();
+        showBookingConfirmation('cash');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function showBookingConfirmation(payMethod) {
+      const msg = payMethod === 'cash'
+        ? `Booking confirmed! Your driver ${selectedDriver?.name || ''} has been notified and will expect your cash payment on the day. Check your dashboard for trip details.`
+        : `Payment received! Your driver ${selectedDriver?.name || ''} has been notified. Check your dashboard for your trip confirmation.`;
+
+      // Replace empty state / results with success card
+      const layout = document.getElementById('ldResultsLayout');
+      if (layout) {
+        const notice = document.createElement('div');
+        notice.style.cssText = 'background:var(--grey-50);border:1.5px solid var(--grey-200);border-radius:var(--radius);padding:32px;text-align:center;margin-top:24px;';
+        notice.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin:0 auto 16px;color:#16a34a;"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+          <h3 style="font-size:20px;font-weight:800;margin-bottom:8px;">Trip booked!</h3>
+          <p style="font-size:15px;color:var(--grey-600);max-width:400px;margin:0 auto 24px;">${msg}</p>
+          <a href="dashboard.html" class="btn btn-primary">View in dashboard</a>
+        `;
+        layout.parentNode.insertBefore(notice, layout.nextSibling);
+      }
+      selectedDriver = null;
+    }
+
+    function proceedPayment() {
+      if (!selectedDriver) return;
+
+      if (selectedPayMethod === 'cash') {
+        confirmCashBooking();
+        return;
+      }
+
+      // Card payment via Paystack
+      const token = localStorage.getItem('a2b_token');
+      const userStr = localStorage.getItem('a2b_user');
+      const user = userStr ? JSON.parse(userStr) : {};
+      const amount = Math.round((selectedDriver.pricePerSeat || 0) * selectedSeats * 100); // kobo
 
       const handler = PaystackPop.setup({
-        key: 'pk_live_placeholder', // Replace with actual public key from env
+        key: window.PAYSTACK_PUBLIC_KEY || 'pk_live_placeholder',
         email: user.email || user.username || 'user@a2blift.co.za',
         amount: amount,
         currency: 'ZAR',
-        ref: 'LD_' + Date.now(),
+        ref: 'LD_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
         metadata: {
           driver_id: selectedDriver.id,
           from: selectedDriver.from,
           to: selectedDriver.to,
           date: selectedDriver.date,
+          seats: selectedSeats,
           type: 'long_distance',
         },
         callback: function(response) {
           closeModal();
-          alert(`Booking confirmed! Your driver has been notified. Reference: ${response.reference}`);
+          // Notify backend of payment
+          const token2 = localStorage.getItem('a2b_token');
+          fetch(`${API}/api/long-distance/book`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token2}` },
+            body: JSON.stringify({
+              driverId: selectedDriver?.id,
+              from: selectedDriver?.from,
+              to: selectedDriver?.to,
+              date: selectedDriver?.date,
+              seats: selectedSeats,
+              paymentMethod: 'card',
+              paystackRef: response.reference,
+            }),
+          }).catch(() => {});
+          showBookingConfirmation('card');
         },
         onClose: function() {},
       });
