@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Long Distance Travel — A2B Lift</title>
   <meta name="description" content="Search for A2B Lift drivers heading between cities. Book a seat for your long-distance trip across South Africa." />
-  <link rel="icon" type="image/png" href="assets/images/favicon.png?v=20260505" />
-  <link rel="shortcut icon" href="assets/images/favicon.png?v=20260505" />
+  <link rel="icon" type="image/png" href="assets/images/favicon.png?v=20260505b" />
+  <link rel="shortcut icon" href="assets/images/favicon.png?v=20260505b" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -557,6 +557,31 @@
         zoomControl: true,
         mapTypeControl: false,
       });
+
+      // Try to centre map on user's current location and drop a pin
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const userLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            map.setCenter(userLatLng);
+            map.setZoom(11);
+            new google.maps.Marker({
+              position: userLatLng,
+              map,
+              title: 'Your location',
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: '#0A0A0A',
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 3,
+              },
+            });
+          },
+          () => { /* geolocation denied — keep default SA centre */ }
+        );
+      }
 
       // Directions service for route preview
       directionsService = new google.maps.DirectionsService();

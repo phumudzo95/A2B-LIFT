@@ -179,6 +179,29 @@
       directionsRenderer = new google.maps.DirectionsRenderer({ map: airportMap, suppressMarkers: false });
       geocoder = new google.maps.Geocoder();
       new google.maps.places.Autocomplete(document.getElementById('airportDestination'), { componentRestrictions: { country: 'za' } });
+
+      // Show user's current location pin
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const userLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            new google.maps.Marker({
+              position: userLatLng,
+              map: airportMap,
+              title: 'Your location',
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 9,
+                fillColor: '#0A0A0A',
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 3,
+              },
+            });
+          },
+          () => {}
+        );
+      }
     }
 
     function setTodayMin() {

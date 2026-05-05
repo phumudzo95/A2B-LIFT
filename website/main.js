@@ -9,25 +9,29 @@
   if (!user) return;
 
   const firstName = (user.name || user.username || '').split(' ')[0] || 'Account';
+  const isDashboard = window.location.pathname.includes('dashboard.html');
 
-  const logoutHTML = `<button class="btn btn-ghost btn-sm" onclick="(function(){localStorage.removeItem('a2b_token');localStorage.removeItem('a2b_user');window.location.href='index.html';})()">Log out</button>`;
-  const accountHTML = `<a href="dashboard.html" class="btn btn-ghost btn-sm">Hi, ${firstName}</a>`;
-
-  // Desktop nav-actions: replace any "Log in" link
+  // Desktop nav-actions: replace "Log in" with user name (+ logout only on dashboard)
   const navActions = document.querySelector('.nav-actions');
   if (navActions) {
     const loginLink = navActions.querySelector('a[href="login.html"]');
     if (loginLink) {
-      loginLink.outerHTML = accountHTML + logoutHTML;
+      const replacement = isDashboard
+        ? `<a href="dashboard.html" class="btn btn-ghost btn-sm">${firstName}</a><button class="btn btn-ghost btn-sm" onclick="(function(){localStorage.removeItem('a2b_token');localStorage.removeItem('a2b_user');window.location.href='index.html';})()">Log out</button>`
+        : `<a href="dashboard.html" class="btn btn-ghost btn-sm">${firstName}</a>`;
+      loginLink.outerHTML = replacement;
     }
   }
 
-  // Mobile nav: replace "Log in" link in mobile-cta
+  // Mobile nav: same logic
   const mobileCta = document.querySelector('.mobile-cta');
   if (mobileCta) {
     const mobileLogin = mobileCta.querySelector('a[href="login.html"]');
     if (mobileLogin) {
-      mobileLogin.outerHTML = `<a href="dashboard.html" class="btn btn-ghost">Hi, ${firstName}</a><button class="btn btn-primary" onclick="(function(){localStorage.removeItem('a2b_token');localStorage.removeItem('a2b_user');window.location.href='index.html';})()">Log out</button>`;
+      const replacement = isDashboard
+        ? `<a href="dashboard.html" class="btn btn-ghost">${firstName}</a><button class="btn btn-primary" onclick="(function(){localStorage.removeItem('a2b_token');localStorage.removeItem('a2b_user');window.location.href='index.html';})()">Log out</button>`
+        : `<a href="dashboard.html" class="btn btn-ghost">${firstName}</a>`;
+      mobileLogin.outerHTML = replacement;
     }
   }
 })();
