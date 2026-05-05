@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentation — A2B Lift</title>
+  <meta name="description" content="Help guides, API docs, driver onboarding, and terms for A2B Lift." />
+  <link rel="icon" href="../assets/images/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body { display: flex; flex-direction: column; }
+    .docs-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      max-width: var(--max-w);
+      margin: 0 auto;
+      width: 100%;
+      padding: 0 24px;
+      flex: 1;
+      gap: 0;
+    }
+    .docs-sidebar {
+      position: sticky;
+      top: var(--nav-h);
+      height: calc(100vh - var(--nav-h));
+      overflow-y: auto;
+      padding: 40px 0 40px;
+      border-right: 1px solid var(--grey-200);
+    }
+    .docs-sidebar::-webkit-scrollbar { width: 4px; }
+    .docs-sidebar::-webkit-scrollbar-thumb { background: var(--grey-200); border-radius: 4px; }
+    .sidebar-section { margin-bottom: 32px; }
+    .sidebar-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--grey-400);
+      padding: 0 0 10px;
+      margin-bottom: 4px;
+    }
+    .sidebar-link {
+      display: block;
+      padding: 7px 16px 7px 0;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--grey-600);
+      border-radius: 6px;
+      transition: color .15s;
+    }
+    .sidebar-link:hover, .sidebar-link.active { color: var(--black); font-weight: 700; }
+    .sidebar-link.active { color: var(--black); }
+
+    .docs-content {
+      padding: 48px 0 96px 64px;
+      max-width: 720px;
+    }
+    .docs-section { margin-bottom: 72px; scroll-margin-top: calc(var(--nav-h) + 24px); }
+    .docs-section h2 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--grey-200);
+    }
+    .docs-section h3 { font-size: 18px; font-weight: 700; margin: 32px 0 12px; }
+    .docs-section p  { font-size: 15px; color: var(--grey-600); line-height: 1.8; margin-bottom: 16px; }
+    .docs-section ul, .docs-section ol {
+      padding-left: 20px;
+      font-size: 15px;
+      color: var(--grey-600);
+      line-height: 2;
+      margin-bottom: 16px;
+    }
+    .callout {
+      background: var(--grey-50);
+      border-left: 3px solid var(--black);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 16px 20px;
+      margin: 24px 0;
+      font-size: 14px;
+      color: var(--grey-600);
+    }
+    .callout strong { color: var(--black); }
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      background: var(--grey-100);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--grey-900);
+    }
+    .docs-table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; }
+    .docs-table th { text-align: left; padding: 10px 16px; background: var(--grey-50); font-weight: 700; border: 1px solid var(--grey-200); }
+    .docs-table td { padding: 10px 16px; border: 1px solid var(--grey-200); color: var(--grey-600); vertical-align: top; }
+
+    @media(max-width:768px) {
+      .docs-layout { grid-template-columns: 1fr; }
+      .docs-sidebar { display: none; }
+      .docs-content { padding: 32px 0 64px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">
+        <img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img" />
+        <span class="logo-text">A2B<strong>Lift</strong></span>
+      </a>
+      <nav class="nav-links" id="navLinks">
+        <a href="index.html#rides">Rides</a>
+        <a href="index.html#long-distance">Long Distance</a>
+        <a href="index.html#earn">Earn</a>
+        <a href="blog.html">Blog</a>
+        <a href="docs.html" style="color:var(--black);font-weight:700">Docs</a>
+      </nav>
+      <div class="nav-cta">
+        <a href="driver-register.html" class="btn btn-ghost">Become a driver</a>
+        <a href="index.html#download" class="btn btn-primary">Get the app</a>
+      </div>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </header>
+
+  <div style="height: var(--nav-h)"></div>
+
+  <div class="docs-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="docs-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Getting started</div>
+        <a href="#riders"    class="sidebar-link active">For riders</a>
+        <a href="#drivers"   class="sidebar-link">For drivers</a>
+        <a href="#accounts"  class="sidebar-link">Account &amp; login</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Rides</div>
+        <a href="#on-demand"      class="sidebar-link">On-demand rides</a>
+        <a href="#long-distance"  class="sidebar-link">Long distance travel</a>
+        <a href="#advance"        class="sidebar-link">Booking in advance</a>
+        <a href="#cancellations"  class="sidebar-link">Cancellations</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Earnings &amp; payments</div>
+        <a href="#earnings"   class="sidebar-link">Driver earnings</a>
+        <a href="#wallet"     class="sidebar-link">Wallet &amp; payouts</a>
+        <a href="#referrals"  class="sidebar-link">Referral programme</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Safety</div>
+        <a href="#verification" class="sidebar-link">Driver verification</a>
+        <a href="#sos"          class="sidebar-link">SOS &amp; emergency</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Business</div>
+        <a href="#business" class="sidebar-link">Corporate accounts</a>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Legal</div>
+        <a href="#terms"   class="sidebar-link">Terms &amp; conditions</a>
+        <a href="#privacy" class="sidebar-link">Privacy policy</a>
+        <a href="#cookies" class="sidebar-link">Cookie policy</a>
+      </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="docs-content">
+
+      <section class="docs-section" id="riders">
+        <h2>For riders</h2>
+        <p>A2B Lift is a premium ride-hailing and long-distance travel app available on Android and iOS. You can book on-demand rides in your city, or search for drivers posting inter-city routes.</p>
+        <h3>How to book a ride</h3>
+        <ol>
+          <li>Download A2B Lift from the App Store or Google Play.</li>
+          <li>Create an account or sign in with Google.</li>
+          <li>Enter your pickup location and destination.</li>
+          <li>Confirm the fare and your chauffeur is matched instantly.</li>
+          <li>Track your driver in real time and pay in-app.</li>
+        </ol>
+        <div class="callout">
+          <strong>Tip:</strong> Your account works on both the app and the A2B Lift website. No separate login needed.
+        </div>
+      </section>
+
+      <section class="docs-section" id="drivers">
+        <h2>For drivers</h2>
+        <p>Register as an A2B Lift chauffeur to start earning. You choose when you drive and which rides you accept. There is no registration fee.</p>
+        <h3>Requirements</h3>
+        <ul>
+          <li>Valid South African Professional Driving Permit (PrDP)</li>
+          <li>South African ID or passport</li>
+          <li>Roadworthy vehicle (model year 2015 or newer preferred)</li>
+          <li>Vehicle registration papers and insurance</li>
+          <li>Smartphone running Android 8+ or iOS 14+</li>
+        </ul>
+        <h3>Registration steps</h3>
+        <ol>
+          <li>Complete the driver registration form — takes about 5 minutes.</li>
+          <li>Upload your documents (ID, licence, vehicle papers).</li>
+          <li>Our team reviews your application within 48 hours.</li>
+          <li>Once approved, activate your account and start accepting rides.</li>
+        </ol>
+        <a href="driver-register.html" class="btn btn-primary" style="margin-top:8px">Register to drive</a>
+      </section>
+
+      <section class="docs-section" id="accounts">
+        <h2>Account &amp; login</h2>
+        <p>You can create an account with your email and phone number, or sign in with Google. One account gives you access to both the app and the web.</p>
+        <h3>Forgot your password?</h3>
+        <p>Use the "Forgot password" link on the login screen to receive a reset link by email.</p>
+        <h3>Changing your phone number</h3>
+        <p>Contact our support team to change your registered phone number. We'll verify your identity before making the change.</p>
+      </section>
+
+      <section class="docs-section" id="on-demand">
+        <h2>On-demand rides</h2>
+        <p>On-demand rides connect you with a nearby verified chauffeur. The fare is calculated based on distance, time, and current demand. You'll see the price before you confirm.</p>
+        <h3>Fare calculation</h3>
+        <table class="docs-table">
+          <tr><th>Component</th><th>Detail</th></tr>
+          <tr><td>Base fare</td><td>Fixed starting amount depending on vehicle category</td></tr>
+          <tr><td>Distance rate</td><td>Per-kilometre rate based on route</td></tr>
+          <tr><td>Time rate</td><td>Applied when speed drops below 20 km/h</td></tr>
+          <tr><td>Surge pricing</td><td>Applied during high-demand periods — shown clearly before booking</td></tr>
+        </table>
+      </section>
+
+      <section class="docs-section" id="long-distance">
+        <h2>Long distance travel</h2>
+        <p>The A2B Lift long-distance marketplace lets drivers post inter-city routes and passengers book seats. It works differently from on-demand rides.</p>
+        <h3>How it works for passengers</h3>
+        <ol>
+          <li>Search your departure city and destination on the website or app.</li>
+          <li>Browse available drivers, their vehicle, rating, and price per seat.</li>
+          <li>Book and pay for your seat. Payment is held until the trip is completed.</li>
+          <li>Meet your driver at the agreed pickup point on departure day.</li>
+        </ol>
+        <h3>How it works for drivers</h3>
+        <ol>
+          <li>Post a route you're already planning to drive.</li>
+          <li>Set the number of available seats and price per seat.</li>
+          <li>Passengers book and pay. You receive a summary before departure.</li>
+          <li>Complete the trip. Earnings are released to your wallet within 24 hours.</li>
+        </ol>
+        <div class="callout">
+          <strong>Note:</strong> Drivers post routes in advance. You do not respond to live pings for long-distance trips.
+        </div>
+      </section>
+
+      <section class="docs-section" id="advance">
+        <h2>Booking in advance</h2>
+        <p>You can pre-book an on-demand ride up to 90 days in advance. Useful for airport transfers, meetings, or any trip where timing matters.</p>
+        <p>To book in advance, tap "Schedule" when entering your destination in the app.</p>
+      </section>
+
+      <section class="docs-section" id="cancellations">
+        <h2>Cancellations</h2>
+        <h3>On-demand rides</h3>
+        <p>You can cancel an on-demand ride for free within 2 minutes of booking. After that, a small cancellation fee may apply if the driver has already been dispatched.</p>
+        <h3>Long-distance trips</h3>
+        <p>Cancellation policy for long-distance seat bookings:</p>
+        <table class="docs-table">
+          <tr><th>Cancelled</th><th>Refund</th></tr>
+          <tr><td>More than 48 hours before departure</td><td>Full refund</td></tr>
+          <tr><td>24–48 hours before departure</td><td>50% refund</td></tr>
+          <tr><td>Less than 24 hours before departure</td><td>No refund</td></tr>
+        </table>
+      </section>
+
+      <section class="docs-section" id="earnings">
+        <h2>Driver earnings</h2>
+        <p>You keep the majority of every fare. A2B Lift's service fee is deducted automatically before earnings are credited to your wallet.</p>
+        <h3>When do I get paid?</h3>
+        <p>Earnings are credited to your in-app wallet after each completed trip. You can request a payout to your bank account at any time, subject to a minimum withdrawal amount.</p>
+      </section>
+
+      <section class="docs-section" id="wallet">
+        <h2>Wallet &amp; payouts</h2>
+        <p>Your A2B Lift wallet holds your earnings and referral rewards. To withdraw:</p>
+        <ol>
+          <li>Open your wallet in the app.</li>
+          <li>Tap "Withdraw" and enter the amount.</li>
+          <li>Confirm your bank account details.</li>
+          <li>Funds arrive within 1–2 business days.</li>
+        </ol>
+        <div class="callout">
+          <strong>Minimum withdrawal:</strong> R100
+        </div>
+      </section>
+
+      <section class="docs-section" id="referrals">
+        <h2>Referral programme</h2>
+        <p>Earn 2.5% of every fare completed by a driver you referred to A2B Lift. There is no cap and no expiry date — as long as your referred driver is active, you earn.</p>
+        <h3>How to refer a driver</h3>
+        <ol>
+          <li>Open the app and go to Referrals.</li>
+          <li>Share your unique referral link via WhatsApp, SMS, or any other channel.</li>
+          <li>When a driver registers using your link and completes their first trip, you start earning 2.5% of every fare they earn.</li>
+        </ol>
+        <h3>Referral rewards for riders</h3>
+        <p>Riders also earn rewards when they refer new passengers. Check the Referrals tab in the app for your current balance and reward history.</p>
+        <div class="callout">
+          <strong>Referral links work on both the app and the website.</strong> A user who signs up via your referral link on the website is automatically linked to your account.
+        </div>
+      </section>
+
+      <section class="docs-section" id="verification">
+        <h2>Driver verification</h2>
+        <p>Every A2B Lift chauffeur is verified before they can accept rides. We check:</p>
+        <ul>
+          <li>South African ID or valid passport</li>
+          <li>Professional Driving Permit (PrDP)</li>
+          <li>Criminal background record</li>
+          <li>Vehicle roadworthiness certificate</li>
+          <li>Vehicle insurance</li>
+        </ul>
+        <p>Verification typically takes 24–48 hours after all documents have been submitted.</p>
+      </section>
+
+      <section class="docs-section" id="sos">
+        <h2>SOS &amp; emergency</h2>
+        <p>Your safety is our top priority. Every trip includes:</p>
+        <ul>
+          <li>Live GPS tracking visible to you and your trusted contacts</li>
+          <li>In-app SOS button that alerts our safety team and sends your location</li>
+          <li>Trip sharing — send a live link to anyone so they can follow your journey</li>
+        </ul>
+        <p>To use the SOS button, tap the shield icon during an active trip.</p>
+      </section>
+
+      <section class="docs-section" id="business">
+        <h2>Corporate accounts</h2>
+        <p>A2B Lift for Business lets companies manage travel for employees and clients from a single billing account.</p>
+        <p>Features include centralised invoicing, trip reports, spending limits per employee, and priority support.</p>
+        <p>To set up a corporate account, contact us at <a href="mailto:business@a2blift.com" style="color:var(--black);font-weight:600">business@a2blift.com</a>.</p>
+      </section>
+
+      <section class="docs-section" id="terms">
+        <h2>Terms &amp; conditions</h2>
+        <p>By using A2B Lift, you agree to our terms of service. Key points:</p>
+        <ul>
+          <li>You must be 18 or older to create an account.</li>
+          <li>Drivers must hold a valid PrDP and comply with all South African transport regulations.</li>
+          <li>A2B Lift reserves the right to deactivate accounts that violate our community guidelines.</li>
+          <li>Fares shown in the app are final unless a correction is agreed upon by both parties.</li>
+        </ul>
+        <p>For the full legal terms, contact us at <a href="mailto:legal@a2blift.com" style="color:var(--black);font-weight:600">legal@a2blift.com</a>.</p>
+      </section>
+
+      <section class="docs-section" id="privacy">
+        <h2>Privacy policy</h2>
+        <p>A2B Lift collects your name, phone number, email, location data, and payment information to provide and improve our service. We do not sell your personal data to third parties.</p>
+        <h3>Data we collect</h3>
+        <ul>
+          <li>Account information (name, email, phone)</li>
+          <li>Location data during active trips</li>
+          <li>Payment information (processed securely via Paystack)</li>
+          <li>Device and usage information for app performance</li>
+        </ul>
+        <h3>Your rights</h3>
+        <p>You may request access to, correction of, or deletion of your personal data by contacting <a href="mailto:privacy@a2blift.com" style="color:var(--black);font-weight:600">privacy@a2blift.com</a>.</p>
+      </section>
+
+      <section class="docs-section" id="cookies">
+        <h2>Cookie policy</h2>
+        <p>The A2B Lift website uses cookies to remember your preferences and analyse site performance. We do not use advertising cookies.</p>
+        <p>You can disable cookies in your browser settings at any time. Some features of the website may not function correctly without cookies enabled.</p>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a href="index.html" class="logo logo--footer">
+            <img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img" />
+            <span class="logo-text">A2B<strong>Lift</strong></span>
+          </a>
+          <p>Premium rides and long-distance travel across South Africa.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Passengers</h4>
+          <a href="index.html#rides">Book a ride</a>
+          <a href="index.html#long-distance">Long distance</a>
+          <a href="index.html#download">Download app</a>
+        </div>
+        <div class="footer-col">
+          <h4>Drivers</h4>
+          <a href="driver-register.html">Register to drive</a>
+          <a href="#drivers">Driver guide</a>
+          <a href="#referrals">Referral programme</a>
+        </div>
+        <div class="footer-col">
+          <h4>Legal</h4>
+          <a href="#privacy">Privacy policy</a>
+          <a href="#terms">Terms &amp; conditions</a>
+          <a href="#cookies">Cookies</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 A2B Lift. All rights reserved.</p>
+        <p><a href="#privacy">Privacy</a> · <a href="#terms">Terms</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 20), {passive:true});
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('navLinks').classList.toggle('open');
+    });
+    // Highlight active sidebar link on scroll
+    const sections = document.querySelectorAll('.docs-section');
+    const links    = document.querySelectorAll('.sidebar-link');
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          links.forEach(l => l.classList.remove('active'));
+          const active = document.querySelector(`.sidebar-link[href="#${e.target.id}"]`);
+          if (active) active.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-30% 0px -60% 0px' });
+    sections.forEach(s => io.observe(s));
+  </script>
+</body>
+</html>

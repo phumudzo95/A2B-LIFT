@@ -589,7 +589,7 @@ export default function ChauffeurDashboard() {
             name: "Ride Alerts",
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 250, 250, 250],
-            sound: "trip_alert.mp3",
+            sound: "default",
             bypassDnd: true,
             lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
           });
@@ -635,15 +635,6 @@ export default function ChauffeurDashboard() {
       } catch {}
     }
 
-    // Fires when notification arrives while app is in foreground (on any screen)
-    const receivedSub = Notifications.addNotificationReceivedListener(notification => {
-      const data = notification.request.content.data as any;
-      if (data?.type === "ride:new") {
-        setIsOnline(true);
-        void hydrateIncomingRideFromNotification();
-      }
-    });
-    // Fires when user taps a notification from background/locked state
     const sub = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data as any;
       if (data?.type === "ride:new") {
@@ -651,7 +642,7 @@ export default function ChauffeurDashboard() {
         void hydrateIncomingRideFromNotification();
       }
     });
-    return () => { receivedSub.remove(); sub.remove(); };
+    return () => sub.remove();
   }, [chauffeur?.id, currentRide, isExpoGoAndroid]);
 
   // ─── Polling fallback ─────────────────────────────────────────────────────
@@ -1270,7 +1261,6 @@ export default function ChauffeurDashboard() {
     { icon: "car-sport-outline", label: "My Rides", onPress: () => { router.push("/chauffeur/rides"); closeMenu(); }, color: Colors.white },
     { icon: "bar-chart-outline", label: "Earnings", onPress: () => { router.push("/chauffeur/earnings"); closeMenu(); }, color: Colors.white },
     { icon: "wallet-outline", label: "Wallet", onPress: () => { router.push("/chauffeur/wallet"); closeMenu(); }, color: Colors.white },
-    { icon: "gift-outline", label: "Referral & Rewards", onPress: () => { router.push("/chauffeur/referrals"); closeMenu(); }, color: Colors.white },
     { icon: "settings-outline", label: "Settings", onPress: () => { router.push("/chauffeur/settings"); closeMenu(); }, color: Colors.white },
     { icon: "notifications-outline", label: unreadCount > 0 ? `Notifications (${unreadCount})` : "Notifications", onPress: () => { router.push("/chauffeur/notifications"); closeMenu(); }, color: unreadCount > 0 ? Colors.warning : Colors.white },
   ];
@@ -1446,7 +1436,7 @@ export default function ChauffeurDashboard() {
             <Text style={styles.tripsPanelTitle}>
               {availableTrips.length > 0
                 ? `${availableTrips.length} trip${availableTrips.length > 1 ? "s" : ""} available`
-                  : `Searching for trips within ${RIDE_MATCH_RADIUS_KM} km...`}
+                  : "Searching for trips nearby"}
             </Text>
             {availableTrips.length === 0 && <ActivityIndicator size="small" color={Colors.accent} style={{ marginLeft: 4 }} />}
           </View>
@@ -1758,42 +1748,30 @@ export default function ChauffeurDashboard() {
       {/* ─── Post-trip payment popup ─── */}
       <Modal visible={!!completedTrip} transparent animationType="fade" onRequestClose={() => setCompletedTrip(null)}>
         <View style={styles.payPopupOverlay}>
-            <View style={styles.payPopupCard}>
-              {(() => {
-                const completedTripPaymentMethod = String(completedTrip?.paymentMethod || "").toLowerCase();
-                const completedTripRewardsUsed = Number(completedTrip?.rewardsAmountUsed || 0);
-                const completedTripRemainingDue = Math.max(0, getRideClientFare(completedTrip) - completedTripRewardsUsed);
-                const completedTripIsCashLike = completedTripPaymentMethod === "cash" || completedTripPaymentMethod === "cash_rewards";
-                const completedTripIsCardRewards = completedTripPaymentMethod === "card_rewards";
-
-                return completedTripIsCashLike ? (
+          <View style={styles.payPopupCard}>
+            {completedTrip?.paymentMethod === "cash" ? (
               <>
                 <View style={styles.payPopupIconWrap}>
                   <Ionicons name="cash-outline" size={40} color={Colors.success} />
                 </View>
-                <Text style={styles.payPopupTitle}>{completedTripRewardsUsed > 0 ? "Collect Remaining Cash" : "Collect Cash Payment"}</Text>
-                <Text style={styles.payPopupAmount}>R {completedTripRemainingDue.toFixed(0)}</Text>
+                <Text style={styles.payPopupTitle}>Collect Cash Payment</Text>
+                <Text style={styles.payPopupAmount}>R {getRideClientFare(completedTrip).toFixed(0)}</Text>
                 <Text style={styles.payPopupBody}>
-                  {completedTripRewardsUsed > 0
-                    ? `Rewards covered R ${completedTripRewardsUsed.toFixed(0)}. Please collect the remaining R ${completedTripRemainingDue.toFixed(0)} from ${completedTrip?.clientFirstName || (completedTrip?.clientName ? String(completedTrip.clientName).split(" ")[0] : "the client")} before they exit the vehicle. Your net after 15% commission is R ${getRideFare(completedTrip).toFixed(0)}.`
-                    : `Please collect R ${completedTripRemainingDue.toFixed(0)} from ${completedTrip?.clientFirstName || (completedTrip?.clientName ? String(completedTrip.clientName).split(" ")[0] : "the client")} before they exit the vehicle. Your net after 15% commission is R ${getRideFare(completedTrip).toFixed(0)}.`}
+                  Please collect R {getRideClientFare(completedTrip).toFixed(0)} from {completedTrip?.clientFirstName || (completedTrip?.clientName ? String(completedTrip.clientName).split(" ")[0] : "the client")} before they exit the vehicle. Your net after 15% commission is R {getRideFare(completedTrip).toFixed(0)}.
                 </Text>
               </>
-                ) : (
+            ) : (
               <>
                 <View style={styles.payPopupIconWrap}>
-                  <Text style={{ fontSize: 40 }}>{completedTripIsCardRewards ? "🎁" : "💳"}</Text>
+                  <Text style={{ fontSize: 40 }}>💳</Text>
                 </View>
-                <Text style={styles.payPopupTitle}>{completedTripIsCardRewards ? "Card + Rewards Payment" : "Card Payment"}</Text>
+                <Text style={styles.payPopupTitle}>Card Payment</Text>
                 <Text style={styles.payPopupAmount}>R {getRideFare(completedTrip).toFixed(0)}</Text>
                 <Text style={styles.payPopupBody}>
-                  {completedTripIsCardRewards
-                    ? `Rewards covered R ${completedTripRewardsUsed.toFixed(0)} and the remaining R ${completedTripRemainingDue.toFixed(0)} was charged to the rider's card. Your net after 15% commission is R ${getRideFare(completedTrip).toFixed(0)}, which will reflect in your wallet shortly.`
-                    : `Your net after 15% commission is R ${getRideFare(completedTrip).toFixed(0)}, which will reflect in your wallet shortly.`}
+                  Your net after 15% commission is R {getRideFare(completedTrip).toFixed(0)}, which will reflect in your wallet shortly.
                 </Text>
               </>
-                );
-              })()}
+            )}
             <Pressable style={styles.payPopupBtn} onPress={beginClientRating}>
               <Text style={styles.payPopupBtnText}>Continue</Text>
             </Pressable>

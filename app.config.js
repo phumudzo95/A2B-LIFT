@@ -49,7 +49,7 @@ module.exports = {
       versionCode: 50,
       softwareKeyboardLayoutMode: "resize",
       adaptiveIcon: {
-        foregroundImage: "./assets/images/icon.png",
+        foregroundImage: "./assets/images/android-icon-foreground-car.png",
         backgroundColor: "#000000",
       },
       permissions: [

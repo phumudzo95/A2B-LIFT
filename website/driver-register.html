@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Become a Driver — A2B Lift</title>
+  <meta name="description" content="Register as an A2B Lift chauffeur and start earning on your own schedule." />
+  <link rel="icon" href="../assets/images/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .register-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 100vh;
+    }
+    /* Left panel */
+    .register-left {
+      background: var(--black);
+      color: var(--white);
+      padding: calc(var(--nav-h) + 80px) 64px 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+    .register-left .section-label { color: rgba(255,255,255,0.4); }
+    .register-left h1 {
+      font-size: clamp(36px,4vw,56px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -.03em;
+      margin-bottom: 24px;
+    }
+    .register-left p { font-size: 17px; color: rgba(255,255,255,0.55); line-height: 1.75; margin-bottom: 40px; }
+    .perks { display: flex; flex-direction: column; gap: 16px; }
+    .perk  { display: flex; align-items: center; gap: 14px; font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.8); }
+    .perk-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    /* Right panel */
+    .register-right {
+      padding: calc(var(--nav-h) + 60px) 64px 80px;
+      overflow-y: auto;
+      background: var(--white);
+    }
+    .form-header { margin-bottom: 40px; }
+    .form-header h2 { font-size: 28px; font-weight: 800; letter-spacing: -.02em; }
+    .form-header p  { font-size: 15px; color: var(--grey-600); margin-top: 8px; }
+
+    /* Progress steps */
+    .progress-steps {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 40px;
+    }
+    .progress-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--grey-400);
+      flex: 1;
+    }
+    .progress-step.active { color: var(--black); }
+    .progress-step.done   { color: var(--grey-400); }
+    .step-circle {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--grey-200);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .progress-step.active .step-circle { background: var(--black); color: var(--white); border-color: var(--black); }
+    .progress-step.done   .step-circle { background: var(--grey-200); color: var(--grey-600); }
+    .step-line { flex: 1; height: 1px; background: var(--grey-200); margin: 0 8px; }
+
+    /* Form fields */
+    .form-section { display: none; }
+    .form-section.active { display: block; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+    .form-group label { font-size: 13px; font-weight: 700; color: var(--grey-900); }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      padding: 12px 16px;
+      border: 1.5px solid var(--grey-200);
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-family: var(--font);
+      color: var(--grey-900);
+      background: var(--white);
+      transition: border-color .15s;
+      outline: none;
+      width: 100%;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { border-color: var(--black); }
+    .form-group textarea { resize: vertical; min-height: 100px; }
+    .field-hint { font-size: 12px; color: var(--grey-400); }
+
+    /* File upload */
+    .file-upload {
+      border: 1.5px dashed var(--grey-200);
+      border-radius: var(--radius-sm);
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      position: relative;
+    }
+    .file-upload:hover { border-color: var(--black); background: var(--grey-50); }
+    .file-upload input[type=file] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .file-upload-icon { font-size: 28px; margin-bottom: 8px; }
+    .file-upload p { font-size: 13px; color: var(--grey-600); }
+    .file-upload strong { font-size: 14px; color: var(--black); }
+
+    /* Checkbox */
+    .checkbox-group { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+    .checkbox-group input[type=checkbox] { margin-top: 2px; width: 18px; height: 18px; accent-color: var(--black); flex-shrink: 0; }
+    .checkbox-group label { font-size: 14px; color: var(--grey-600); line-height: 1.6; }
+    .checkbox-group a { color: var(--black); font-weight: 600; }
+
+    /* Error */
+    .field-error { font-size: 12px; color: #c0392b; display: none; }
+    .form-group.has-error input,
+    .form-group.has-error select { border-color: #c0392b; }
+    .form-group.has-error .field-error { display: block; }
+
+    /* Nav buttons */
+    .form-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 32px; }
+
+    /* Success state */
+    .success-state {
+      text-align: center;
+      padding: 60px 20px;
+      display: none;
+    }
+    .success-state .success-icon { font-size: 56px; margin-bottom: 24px; }
+    .success-state h2 { font-size: 28px; font-weight: 800; margin-bottom: 12px; }
+    .success-state p  { font-size: 16px; color: var(--grey-600); max-width: 400px; margin: 0 auto 32px; line-height: 1.7; }
+
+    @media(max-width: 900px) {
+      .register-layout { grid-template-columns: 1fr; }
+      .register-left { position: static; height: auto; padding: calc(var(--nav-h) + 40px) 24px 48px; }
+      .register-right { padding: 40px 24px 80px; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="nav" id="nav" style="background:var(--black);border-bottom-color:rgba(255,255,255,0.08)">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">
+        <img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img" />
+        <span class="logo-text" style="color:var(--white)">A2B<strong>Lift</strong></span>
+      </a>
+      <div style="flex:1"></div>
+      <a href="index.html" class="btn btn-ghost" style="color:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.15)">← Back to home</a>
+    </div>
+  </header>
+
+  <div class="register-layout">
+
+    <!-- LEFT PANEL -->
+    <div class="register-left">
+      <div class="section-label">Driver registration</div>
+      <h1>Start earning on your terms</h1>
+      <p>Join A2B Lift as a chauffeur. Drive when you want, earn what you deserve. Registration is free and takes about 5 minutes.</p>
+      <div class="perks">
+        <div class="perk">
+          <div class="perk-icon">💰</div>
+          <span>Keep the majority of every fare</span>
+        </div>
+        <div class="perk">
+          <div class="perk-icon">🕐</div>
+          <span>Set your own hours — full-time or part-time</span>
+        </div>
+        <div class="perk">
+          <div class="perk-icon">🛣️</div>
+          <span>Post long-distance routes and fill your seats</span>
+        </div>
+        <div class="perk">
+          <div class="perk-icon">🤝</div>
+          <span>Earn 2.5% from every driver you refer</span>
+        </div>
+        <div class="perk">
+          <div class="perk-icon">📱</div>
+          <span>Instant payouts to your wallet</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="register-right">
+
+      <!-- Progress steps -->
+      <div class="progress-steps">
+        <div class="progress-step active" id="step-indicator-1">
+          <div class="step-circle">1</div>
+          <span>Personal info</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="progress-step" id="step-indicator-2">
+          <div class="step-circle">2</div>
+          <span>Vehicle</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="progress-step" id="step-indicator-3">
+          <div class="step-circle">3</div>
+          <span>Documents</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="progress-step" id="step-indicator-4">
+          <div class="step-circle">4</div>
+          <span>Confirm</span>
+        </div>
+      </div>
+
+      <div id="formWrap">
+        <!-- ── STEP 1 ── -->
+        <div class="form-section active" id="form-step-1">
+          <div class="form-header">
+            <h2>Personal information</h2>
+            <p>Tell us a bit about yourself.</p>
+          </div>
+          <div class="form-row">
+            <div class="form-group" id="fg-firstName">
+              <label for="firstName">First name</label>
+              <input type="text" id="firstName" name="firstName" placeholder="Thabo" />
+              <span class="field-error">Please enter your first name</span>
+            </div>
+            <div class="form-group" id="fg-lastName">
+              <label for="lastName">Last name</label>
+              <input type="text" id="lastName" name="lastName" placeholder="Mokoena" />
+              <span class="field-error">Please enter your last name</span>
+            </div>
+          </div>
+          <div class="form-group" id="fg-email">
+            <label for="email">Email address</label>
+            <input type="email" id="email" name="email" placeholder="thabo@example.com" />
+            <span class="field-error">Please enter a valid email address</span>
+          </div>
+          <div class="form-group" id="fg-phone">
+            <label for="phone">Phone number</label>
+            <input type="tel" id="phone" name="phone" placeholder="+27 82 123 4567" />
+            <span class="field-hint">Use the number linked to your WhatsApp</span>
+            <span class="field-error">Please enter your phone number</span>
+          </div>
+          <div class="form-group">
+            <label for="city">City you'll mainly drive in</label>
+            <select id="city" name="city">
+              <option value="">Select a city…</option>
+              <option>Cape Town</option>
+              <option>Johannesburg</option>
+              <option>Pretoria</option>
+              <option>Durban</option>
+              <option>Port Elizabeth / Gqeberha</option>
+              <option>Bloemfontein</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="referralCode">Referral code (optional)</label>
+            <input type="text" id="referralCode" name="referralCode" placeholder="e.g. ABC123" />
+            <span class="field-hint">If someone referred you, enter their code here</span>
+          </div>
+          <div class="form-nav">
+            <span></span>
+            <button class="btn btn-primary" onclick="nextStep(2)">Continue →</button>
+          </div>
+        </div>
+
+        <!-- ── STEP 2 ── -->
+        <div class="form-section" id="form-step-2">
+          <div class="form-header">
+            <h2>Your vehicle</h2>
+            <p>Passengers want to know what car they're getting into.</p>
+          </div>
+          <div class="form-row">
+            <div class="form-group" id="fg-vehicleMake">
+              <label for="vehicleMake">Vehicle make</label>
+              <input type="text" id="vehicleMake" name="vehicleMake" placeholder="Toyota" />
+              <span class="field-error">Required</span>
+            </div>
+            <div class="form-group" id="fg-vehicleModel">
+              <label for="vehicleModel">Model</label>
+              <input type="text" id="vehicleModel" name="vehicleModel" placeholder="Quantum" />
+              <span class="field-error">Required</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" id="fg-vehicleYear">
+              <label for="vehicleYear">Year</label>
+              <input type="number" id="vehicleYear" name="vehicleYear" placeholder="2020" min="2000" max="2027" />
+              <span class="field-error">Required</span>
+            </div>
+            <div class="form-group">
+              <label for="vehicleColor">Colour</label>
+              <input type="text" id="vehicleColor" name="vehicleColor" placeholder="White" />
+            </div>
+          </div>
+          <div class="form-group" id="fg-licensePlate">
+            <label for="licensePlate">Registration / number plate</label>
+            <input type="text" id="licensePlate" name="licensePlate" placeholder="CA 123-456" style="text-transform:uppercase" />
+            <span class="field-error">Required</span>
+          </div>
+          <div class="form-group">
+            <label for="vehicleType">Vehicle type</label>
+            <select id="vehicleType" name="vehicleType">
+              <option value="">Select…</option>
+              <option>Sedan</option>
+              <option>SUV / Crossover</option>
+              <option>Minibus / Quantum</option>
+              <option>Luxury sedan</option>
+              <option>Bakkie / Pickup</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="seats">Number of passenger seats</label>
+            <select id="seats" name="seats">
+              <option value="">Select…</option>
+              <option>1</option>
+              <option>2</option>
+              <option>3</option>
+              <option>4</option>
+              <option>5</option>
+              <option>6</option>
+              <option>7</option>
+              <option>8+</option>
+            </select>
+          </div>
+          <div class="form-nav">
+            <button class="btn btn-ghost" onclick="prevStep(1)">← Back</button>
+            <button class="btn btn-primary" onclick="nextStep(3)">Continue →</button>
+          </div>
+        </div>
+
+        <!-- ── STEP 3 ── -->
+        <div class="form-section" id="form-step-3">
+          <div class="form-header">
+            <h2>Upload documents</h2>
+            <p>We verify all documents before approving your account. Files must be clear and legible (JPG, PNG, or PDF — max 5 MB each).</p>
+          </div>
+
+          <div class="form-group">
+            <label>South African ID or Passport</label>
+            <div class="file-upload" id="fu-id">
+              <input type="file" accept="image/*,application/pdf" id="doc-id" name="doc_id" />
+              <div class="file-upload-icon">🪪</div>
+              <strong>Tap to upload</strong>
+              <p>JPG, PNG or PDF · Max 5 MB</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Professional Driving Permit (PrDP)</label>
+            <div class="file-upload" id="fu-prdp">
+              <input type="file" accept="image/*,application/pdf" id="doc-prdp" name="doc_prdp" />
+              <div class="file-upload-icon">🪪</div>
+              <strong>Tap to upload</strong>
+              <p>JPG, PNG or PDF · Max 5 MB</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Vehicle registration papers</label>
+            <div class="file-upload" id="fu-reg">
+              <input type="file" accept="image/*,application/pdf" id="doc-reg" name="doc_reg" />
+              <div class="file-upload-icon">📄</div>
+              <strong>Tap to upload</strong>
+              <p>JPG, PNG or PDF · Max 5 MB</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Roadworthy certificate (optional but recommended)</label>
+            <div class="file-upload">
+              <input type="file" accept="image/*,application/pdf" id="doc-roadworthy" name="doc_roadworthy" />
+              <div class="file-upload-icon">✅</div>
+              <strong>Tap to upload</strong>
+              <p>JPG, PNG or PDF · Max 5 MB</p>
+            </div>
+          </div>
+
+          <div class="form-nav">
+            <button class="btn btn-ghost" onclick="prevStep(2)">← Back</button>
+            <button class="btn btn-primary" onclick="nextStep(4)">Continue →</button>
+          </div>
+        </div>
+
+        <!-- ── STEP 4 ── -->
+        <div class="form-section" id="form-step-4">
+          <div class="form-header">
+            <h2>Almost done</h2>
+            <p>Review and confirm your application.</p>
+          </div>
+
+          <div id="summaryBox" style="background:var(--grey-50);border-radius:var(--radius);padding:24px;margin-bottom:28px;font-size:14px;line-height:2;color:var(--grey-600)">
+            <!-- Summary injected by JS -->
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="agreeTerms" name="agreeTerms" />
+            <label for="agreeTerms">
+              I agree to the A2B Lift <a href="docs.html#terms">Terms &amp; Conditions</a> and <a href="docs.html#privacy">Privacy Policy</a>. I confirm that all information and documents I have submitted are genuine and accurate.
+            </label>
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="agreeVerify" name="agreeVerify" />
+            <label for="agreeVerify">
+              I consent to A2B Lift conducting a background verification check using the information I have provided.
+            </label>
+          </div>
+
+          <div class="form-nav">
+            <button class="btn btn-ghost" onclick="prevStep(3)">← Back</button>
+            <button class="btn btn-primary" id="submitBtn" onclick="submitForm()">Submit application</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUCCESS STATE -->
+      <div class="success-state" id="successState">
+        <div class="success-icon">🎉</div>
+        <h2>Application submitted!</h2>
+        <p>Thank you for applying to drive with A2B Lift. We'll review your documents and get back to you within 48 hours via the email and phone number you provided.</p>
+        <a href="index.html" class="btn btn-primary">Back to home</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 20), {passive:true});
+
+    let currentStep = 1;
+    const totalSteps = 4;
+
+    function showStep(n) {
+      for (let i = 1; i <= totalSteps; i++) {
+        document.getElementById(`form-step-${i}`).classList.toggle('active', i === n);
+        const ind = document.getElementById(`step-indicator-${i}`);
+        ind.classList.remove('active', 'done');
+        if (i < n) ind.classList.add('done');
+        if (i === n) ind.classList.add('active');
+      }
+      currentStep = n;
+    }
+
+    function validateStep(n) {
+      if (n === 1) {
+        let ok = true;
+        const required = ['firstName','lastName','email','phone'];
+        required.forEach(id => {
+          const fg = document.getElementById(`fg-${id}`);
+          const val = document.getElementById(id).value.trim();
+          if (!val) { fg.classList.add('has-error'); ok = false; }
+          else fg.classList.remove('has-error');
+        });
+        const email = document.getElementById('email').value;
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          document.getElementById('fg-email').classList.add('has-error');
+          ok = false;
+        }
+        return ok;
+      }
+      if (n === 2) {
+        let ok = true;
+        ['vehicleMake','vehicleModel','vehicleYear','licensePlate'].forEach(id => {
+          const fg = document.getElementById(`fg-${id}`);
+          if (!document.getElementById(id).value.trim()) { fg.classList.add('has-error'); ok = false; }
+          else fg.classList.remove('has-error');
+        });
+        return ok;
+      }
+      return true;
+    }
+
+    function nextStep(n) {
+      if (!validateStep(currentStep)) return;
+      if (n === 4) buildSummary();
+      showStep(n);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function prevStep(n) { showStep(n); window.scrollTo({top:0,behavior:'smooth'}); }
+
+    function buildSummary() {
+      const get = id => document.getElementById(id)?.value?.trim() || '—';
+      document.getElementById('summaryBox').innerHTML = `
+        <strong style="color:var(--black);display:block;margin-bottom:8px">Your details</strong>
+        <b>Name:</b> ${get('firstName')} ${get('lastName')}<br>
+        <b>Email:</b> ${get('email')}<br>
+        <b>Phone:</b> ${get('phone')}<br>
+        <b>City:</b> ${get('city') || '—'}<br>
+        <b>Vehicle:</b> ${get('vehicleYear')} ${get('vehicleMake')} ${get('vehicleModel')} · ${get('licensePlate')}<br>
+        <b>Seats:</b> ${get('seats') || '—'}<br>
+        ${get('referralCode') !== '—' ? `<b>Referral code:</b> ${get('referralCode')}<br>` : ''}
+      `;
+    }
+
+    async function submitForm() {
+      if (!document.getElementById('agreeTerms').checked || !document.getElementById('agreeVerify').checked) {
+        alert('Please agree to both checkboxes before submitting.');
+        return;
+      }
+
+      const btn = document.getElementById('submitBtn');
+      btn.textContent = 'Submitting…';
+      btn.disabled = true;
+
+      const payload = {
+        name: `${document.getElementById('firstName').value.trim()} ${document.getElementById('lastName').value.trim()}`,
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        city: document.getElementById('city').value,
+        referralCode: document.getElementById('referralCode').value.trim() || undefined,
+        vehicle: {
+          make: document.getElementById('vehicleMake').value.trim(),
+          model: document.getElementById('vehicleModel').value.trim(),
+          year: document.getElementById('vehicleYear').value,
+          color: document.getElementById('vehicleColor').value.trim(),
+          licensePlate: document.getElementById('licensePlate').value.trim().toUpperCase(),
+          type: document.getElementById('vehicleType').value,
+          seats: document.getElementById('seats').value,
+        }
+      };
+
+      try {
+        // Step 1: create account / register
+        const API = 'https://api-production-0783.up.railway.app';
+        const regRes = await fetch(`${API}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: payload.name,
+            email: payload.email,
+            phone: payload.phone,
+            role: 'chauffeur',
+            referralCode: payload.referralCode,
+            // Password will be set on first app login via email magic link
+            password: crypto.randomUUID(),
+          })
+        });
+
+        if (!regRes.ok) {
+          const err = await regRes.json().catch(() => ({}));
+          throw new Error(err.message || 'Registration failed');
+        }
+
+        const { token } = await regRes.json();
+
+        // Step 2: create chauffeur profile
+        await fetch(`${API}/api/chauffeurs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            vehicleMake: payload.vehicle.make,
+            vehicleModel: payload.vehicle.model,
+            vehicleYear: parseInt(payload.vehicle.year),
+            vehicleColor: payload.vehicle.color,
+            licensePlate: payload.vehicle.licensePlate,
+            vehicleType: payload.vehicle.type,
+            city: payload.city,
+          })
+        });
+
+        // Show success
+        document.getElementById('formWrap').style.display = 'none';
+        document.getElementById('successState').style.display = 'block';
+
+      } catch (err) {
+        alert(`Something went wrong: ${err.message}\n\nPlease try again or contact support@a2blift.com`);
+        btn.textContent = 'Submit application';
+        btn.disabled = false;
+      }
+    }
+
+    // File upload labels
+    document.querySelectorAll('.file-upload input[type=file]').forEach(input => {
+      input.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (file) {
+          const wrap = e.target.closest('.file-upload');
+          wrap.querySelector('strong').textContent = file.name;
+          wrap.querySelector('p').textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+          wrap.style.borderColor = 'var(--black)';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

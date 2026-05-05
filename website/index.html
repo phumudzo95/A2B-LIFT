@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A2B Lift — Luxury Rides & Long Distance Travel</title>
+  <meta name="description" content="A2B Lift connects passengers with premium chauffeurs for on-demand rides and long-distance travel across South Africa." />
+  <link rel="icon" href="../assets/images/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       NAVIGATION
+  ═══════════════════════════════════════════════════════════ -->
+  <header class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="/" class="logo">
+        <img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img" />
+        <span class="logo-text">A2B<strong>Lift</strong></span>
+      </a>
+
+      <nav class="nav-links" id="navLinks">
+        <a href="#rides">Rides</a>
+        <a href="#long-distance">Long Distance</a>
+        <a href="#earn">Earn</a>
+        <a href="blog.html">Blog</a>
+        <a href="docs.html">Docs</a>
+      </nav>
+
+      <div class="nav-cta">
+        <a href="driver-register.html" class="btn btn-ghost">Become a driver</a>
+        <a href="#download" class="btn btn-primary">Get the app</a>
+      </div>
+
+      <button class="hamburger" id="hamburger" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       HERO
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">🇿🇦 Now available across South Africa</div>
+      <h1 class="hero-title">Your luxury ride,<br /><em>wherever you're going.</em></h1>
+      <p class="hero-sub">Premium on-demand rides and long-distance travel between cities — all in one app. Book in seconds, ride in style.</p>
+      <div class="hero-actions">
+        <a href="https://apps.apple.com" target="_blank" rel="noopener" class="store-btn">
+          <img src="assets/app-store.svg" alt="Download on the App Store" />
+        </a>
+        <a href="https://play.google.com/store/apps/details?id=com.a2blift" target="_blank" rel="noopener" class="store-btn">
+          <img src="assets/google-play.svg" alt="Get it on Google Play" />
+        </a>
+      </div>
+    </div>
+    <div class="hero-media">
+      <!-- Replace with your own hero photo -->
+      <div class="hero-image-wrap">
+        <img src="../assets/images/LuxuryVan.png" alt="A2B Lift luxury vehicle" class="hero-img" />
+      </div>
+      <div class="hero-stat-pill pill-1"><span class="pill-num">4.9★</span> Rider rating</div>
+      <div class="hero-stat-pill pill-2"><span class="pill-num">2 min</span> avg pickup</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       SERVICES
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="section" id="rides">
+    <div class="container">
+      <div class="section-label">Our services</div>
+      <h2 class="section-title">Everything you need<br />in one app</h2>
+
+      <div class="service-grid">
+        <div class="service-card service-card--featured">
+          <div class="service-icon">🚗</div>
+          <h3>On-Demand Rides</h3>
+          <p>Request a premium chauffeur in seconds. Available 24/7 in your city.</p>
+          <a href="#download" class="service-link">Get started →</a>
+        </div>
+
+        <div class="service-card" id="long-distance">
+          <div class="service-icon">🛣️</div>
+          <h3>Long Distance</h3>
+          <p>Find drivers heading your way. Cape Town ↔ Johannesburg, and more routes every day.</p>
+          <a href="#long-distance-detail" class="service-link">How it works →</a>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon">💼</div>
+          <h3>Corporate Travel</h3>
+          <p>Manage business travel for your team with a single billing account.</p>
+          <a href="docs.html#business" class="service-link">Learn more →</a>
+        </div>
+
+        <div class="service-card">
+          <div class="service-icon">✈️</div>
+          <h3>Airport Transfers</h3>
+          <p>Pre-book your ride to and from the airport. Never stress about timing again.</p>
+          <a href="#download" class="service-link">Book in advance →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       LONG DISTANCE DETAIL
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="section section--dark" id="long-distance-detail">
+    <div class="container">
+      <div class="split-layout">
+        <div class="split-content">
+          <div class="section-label section-label--light">Long Distance Travel</div>
+          <h2 class="section-title section-title--light">Drivers post routes.<br />You find them.</h2>
+          <p class="split-body">Long-distance travel works differently on A2B Lift. Drivers post upcoming trips — the date, route, available seats, and price. You search, you find, you book. No waiting, no surge pricing, no surprises.</p>
+
+          <div class="steps">
+            <div class="step">
+              <span class="step-num">01</span>
+              <div>
+                <strong>Search your route</strong>
+                <p>Enter your departure city and destination. See all drivers going that way.</p>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-num">02</span>
+              <div>
+                <strong>Choose your driver</strong>
+                <p>Browse driver profiles, ratings, vehicle type, and price per seat.</p>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-num">03</span>
+              <div>
+                <strong>Book and pay securely</strong>
+                <p>Reserve your seat instantly. Payment held until trip is complete.</p>
+              </div>
+            </div>
+          </div>
+
+          <a href="#download" class="btn btn-white">Try it now</a>
+        </div>
+
+        <div class="split-media">
+          <!-- Replace with a real route/map screenshot or photo -->
+          <div class="media-placeholder">
+            <div class="route-card">
+              <div class="route-top">
+                <div class="route-cities">
+                  <span>Cape Town</span>
+                  <span class="route-arrow">→</span>
+                  <span>Johannesburg</span>
+                </div>
+                <span class="route-date">Sat 10 May</span>
+              </div>
+              <div class="route-driver">
+                <div class="driver-avatar">T</div>
+                <div>
+                  <strong>Thabo M.</strong>
+                  <span>4.9★ · Toyota Quantum</span>
+                </div>
+                <span class="route-price">R650/seat</span>
+              </div>
+              <div class="route-seats">3 seats left</div>
+            </div>
+            <div class="route-card route-card--2">
+              <div class="route-top">
+                <div class="route-cities">
+                  <span>Cape Town</span>
+                  <span class="route-arrow">→</span>
+                  <span>Johannesburg</span>
+                </div>
+                <span class="route-date">Sun 11 May</span>
+              </div>
+              <div class="route-driver">
+                <div class="driver-avatar">S</div>
+                <div>
+                  <strong>Sipho K.</strong>
+                  <span>4.8★ · Mercedes Vito</span>
+                </div>
+                <span class="route-price">R720/seat</span>
+              </div>
+              <div class="route-seats">2 seats left</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       HOW IT WORKS — RIDERS
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="section" id="how-it-works">
+    <div class="container">
+      <div class="section-label">For passengers</div>
+      <h2 class="section-title">Ride in 3 simple steps</h2>
+
+      <div class="how-grid">
+        <div class="how-step">
+          <div class="how-num">1</div>
+          <!-- Replace with your own screenshot -->
+          <div class="how-img-placeholder">
+            <div class="phone-mock">
+              <div class="phone-screen">
+                <div class="mock-map"></div>
+                <div class="mock-bar">Enter destination…</div>
+              </div>
+            </div>
+          </div>
+          <h3>Open the app</h3>
+          <p>Download A2B Lift and enter where you need to go.</p>
+        </div>
+
+        <div class="how-step">
+          <div class="how-num">2</div>
+          <div class="how-img-placeholder">
+            <div class="phone-mock">
+              <div class="phone-screen">
+                <div class="mock-map"></div>
+                <div class="mock-bar mock-bar--accent">Chauffeur assigned ✓</div>
+              </div>
+            </div>
+          </div>
+          <h3>Get matched instantly</h3>
+          <p>A verified chauffeur is matched to you in seconds.</p>
+        </div>
+
+        <div class="how-step">
+          <div class="how-num">3</div>
+          <div class="how-img-placeholder">
+            <div class="phone-mock">
+              <div class="phone-screen">
+                <div class="mock-map"></div>
+                <div class="mock-bar mock-bar--done">Arrived — R185</div>
+              </div>
+            </div>
+          </div>
+          <h3>Ride and pay in-app</h3>
+          <p>Cashless, safe, and rated after every trip.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       EARN / DRIVER CTA
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="section" id="earn">
+    <div class="container">
+      <div class="section-label">For drivers</div>
+      <h2 class="section-title">Turn your car into income</h2>
+
+      <div class="earn-grid">
+        <div class="earn-card">
+          <div class="earn-icon">🧑‍✈️</div>
+          <h3>Drive on demand</h3>
+          <p>Accept ride requests in your area on your own schedule. Full-time or part-time — you decide.</p>
+          <a href="driver-register.html" class="btn btn-primary">Register to drive</a>
+        </div>
+
+        <div class="earn-card">
+          <div class="earn-icon">🛣️</div>
+          <h3>Post long-distance routes</h3>
+          <p>Already making a trip to Joburg, Durban, or Pretoria? Post your route, fill your seats, earn extra.</p>
+          <a href="driver-register.html" class="btn btn-outline">Post a route</a>
+        </div>
+
+        <div class="earn-card">
+          <div class="earn-icon">🤝</div>
+          <h3>Refer and earn</h3>
+          <p>Earn 2.5% of every trip completed by a driver you referred. Passive income while you drive.</p>
+          <a href="#download" class="btn btn-outline">Get referral link</a>
+        </div>
+      </div>
+
+      <!-- Stats strip -->
+      <div class="stats-strip">
+        <div class="stat">
+          <span class="stat-num">2.5%</span>
+          <span class="stat-label">Referral commission per trip</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-num">24/7</span>
+          <span class="stat-label">Rides available</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-num">4.9★</span>
+          <span class="stat-label">Average driver rating</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-num">R0</span>
+          <span class="stat-label">Registration fee</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       SAFETY
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="section section--grey">
+    <div class="container">
+      <div class="split-layout split-layout--reverse">
+        <div class="split-content">
+          <div class="section-label">Safety first</div>
+          <h2 class="section-title">Every ride is verified and insured</h2>
+          <p class="split-body">We verify every chauffeur's licence, criminal record, and vehicle roadworthiness before they can accept a single ride. Your safety is non-negotiable.</p>
+          <ul class="check-list">
+            <li>✓ Criminal background check</li>
+            <li>✓ Professional driver licence verified</li>
+            <li>✓ Vehicle roadworthiness check</li>
+            <li>✓ Live trip tracking for you and your emergency contacts</li>
+            <li>✓ In-app SOS button</li>
+          </ul>
+        </div>
+        <div class="split-media">
+          <!-- Replace with your own safety photo or illustration -->
+          <div class="safety-placeholder">
+            <div class="safety-badge">
+              <span class="safety-icon">🛡️</span>
+              <span>Verified Chauffeur</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       DOWNLOAD
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="section section--dark" id="download">
+    <div class="container">
+      <div class="download-layout">
+        <div class="download-content">
+          <h2 class="section-title section-title--light">Download A2B Lift</h2>
+          <p class="split-body" style="color:#aaa">Available on iOS and Android. Create one account that works across the app and website.</p>
+          <div class="hero-actions" style="margin-top:2rem">
+            <a href="https://apps.apple.com" target="_blank" rel="noopener" class="store-btn">
+              <img src="assets/app-store.svg" alt="Download on the App Store" />
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=com.a2blift" target="_blank" rel="noopener" class="store-btn">
+              <img src="assets/google-play.svg" alt="Get it on Google Play" />
+            </a>
+          </div>
+          <p class="qr-hint">Or scan the QR code with your phone →</p>
+        </div>
+        <div class="download-qr">
+          <!-- Replace with real QR code image -->
+          <div class="qr-placeholder">
+            <div class="qr-inner">QR</div>
+            <p>Scan to download</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       BLOG / NEWS
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="section" id="blog">
+    <div class="container">
+      <div class="section-header-row">
+        <div>
+          <div class="section-label">News &amp; updates</div>
+          <h2 class="section-title" style="margin-bottom:0">Latest from A2B Lift</h2>
+        </div>
+        <a href="blog.html" class="btn btn-outline">View all articles</a>
+      </div>
+
+      <div class="blog-grid">
+        <article class="blog-card blog-card--featured">
+          <!-- Replace src with your own article image -->
+          <div class="blog-img-placeholder blog-img-placeholder--large"></div>
+          <div class="blog-body">
+            <span class="blog-tag">Company</span>
+            <h3>A2B Lift launches long-distance marketplace in South Africa</h3>
+            <p>Passengers can now search for drivers posting inter-city routes — a first for the country's ride-hailing industry.</p>
+            <a href="blog.html#launch" class="blog-read">Read more →</a>
+          </div>
+        </article>
+
+        <div class="blog-side">
+          <article class="blog-card blog-card--small">
+            <div class="blog-img-placeholder"></div>
+            <div class="blog-body">
+              <span class="blog-tag">Drivers</span>
+              <h3>How to earn 2.5% on every trip your referrals make</h3>
+              <a href="blog.html#referrals" class="blog-read">Read more →</a>
+            </div>
+          </article>
+
+          <article class="blog-card blog-card--small">
+            <div class="blog-img-placeholder"></div>
+            <div class="blog-body">
+              <span class="blog-tag">Safety</span>
+              <h3>What happens during a chauffeur background check</h3>
+              <a href="blog.html#safety" class="blog-read">Read more →</a>
+            </div>
+          </article>
+
+          <article class="blog-card blog-card--small">
+            <div class="blog-img-placeholder"></div>
+            <div class="blog-body">
+              <span class="blog-tag">Riders</span>
+              <h3>5 tips for booking a long-distance trip on A2B Lift</h3>
+              <a href="blog.html#tips" class="blog-read">Read more →</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       FOOTER
+  ═══════════════════════════════════════════════════════════ -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a href="/" class="logo logo--footer">
+            <img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img" />
+            <span class="logo-text">A2B<strong>Lift</strong></span>
+          </a>
+          <p>Premium rides and long-distance travel across South Africa.</p>
+          <div class="social-links">
+            <a href="#" aria-label="Facebook">f</a>
+            <a href="#" aria-label="Instagram">in</a>
+            <a href="#" aria-label="X / Twitter">𝕏</a>
+            <a href="#" aria-label="TikTok">tt</a>
+          </div>
+        </div>
+
+        <div class="footer-col">
+          <h4>Passengers</h4>
+          <a href="#rides">Book a ride</a>
+          <a href="#long-distance">Long distance</a>
+          <a href="#download">Download app</a>
+          <a href="docs.html#riders">Help &amp; support</a>
+        </div>
+
+        <div class="footer-col">
+          <h4>Drivers</h4>
+          <a href="driver-register.html">Register to drive</a>
+          <a href="docs.html#drivers">Driver guide</a>
+          <a href="docs.html#earnings">Earnings &amp; payouts</a>
+          <a href="docs.html#referrals">Referral programme</a>
+        </div>
+
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="blog.html">Blog</a>
+          <a href="docs.html">Documentation</a>
+          <a href="docs.html#privacy">Privacy policy</a>
+          <a href="docs.html#terms">Terms &amp; conditions</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2026 A2B Lift. All rights reserved.</p>
+        <p>
+          <a href="docs.html#privacy">Privacy</a> ·
+          <a href="docs.html#terms">Terms</a> ·
+          <a href="docs.html#cookies">Cookies</a>
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>

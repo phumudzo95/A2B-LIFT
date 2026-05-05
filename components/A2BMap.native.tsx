@@ -378,6 +378,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     overflow: "hidden",
+    backgroundColor: "#0B0B0B",
   },
   map: {
     flex: 1,
