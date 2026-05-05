@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>A2B Lift Launches Long-Distance Marketplace — A2B Lift Blog</title>
+  <meta name="description" content="Passengers can now search for drivers posting inter-city routes. A first for South Africa's ride-hailing industry."/>
+  <link rel="icon" href="../../assets/images/favicon.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../styles.css"/>
+  <style>
+    .article-hero {
+      background: linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);
+      color: var(--white);
+      padding: calc(var(--nav-h) + 72px) 0 80px;
+    }
+    .article-hero .container { max-width: 800px; }
+    .article-hero h1 { font-size: clamp(32px,5vw,56px); font-weight:800; letter-spacing:-0.03em; line-height:1.1; margin:16px 0 20px; }
+    .article-hero p { font-size:20px; color:rgba(255,255,255,0.7); line-height:1.7; }
+    .article-meta-hero { display:flex; gap:16px; align-items:center; flex-wrap:wrap; font-size:13px; color:rgba(255,255,255,0.5); }
+    .article-tag-hero { background:rgba(255,255,255,0.12); padding:4px 12px; border-radius:100px; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
+    .article-featured-img {
+      width:100%; height:420px; object-fit:cover;
+      background:linear-gradient(135deg,#1a1a2e,#333);
+      display:block;
+    }
+    .article-body { max-width:720px; margin:0 auto; padding:64px 24px 96px; }
+    .article-body h2 { font-size:26px; font-weight:800; letter-spacing:-0.02em; margin:48px 0 16px; }
+    .article-body h3 { font-size:20px; font-weight:700; margin:36px 0 12px; }
+    .article-body p { font-size:17px; line-height:1.85; color:#1a1a1a; margin-bottom:22px; }
+    .article-body ul, .article-body ol { padding-left:24px; margin-bottom:22px; }
+    .article-body li { font-size:17px; line-height:1.85; color:#1a1a1a; margin-bottom:8px; }
+    .article-body blockquote { border-left:4px solid var(--black); padding:16px 24px; background:var(--grey-50); border-radius:0 var(--radius-sm) var(--radius-sm) 0; margin:32px 0; }
+    .article-body blockquote p { font-size:18px; font-style:italic; color:var(--grey-800); margin:0; }
+    .article-cta-box { background:var(--black); color:var(--white); border-radius:var(--radius-lg); padding:40px; text-align:center; margin:48px 0; }
+    .article-cta-box h3 { font-size:22px; font-weight:800; margin-bottom:12px; }
+    .article-cta-box p { color:rgba(255,255,255,0.6); margin-bottom:24px; font-size:15px; }
+    .related-articles { background:var(--grey-50); padding:64px 0; }
+    .related-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+    .related-card { background:var(--white); border-radius:var(--radius); border:1px solid var(--grey-200); overflow:hidden; }
+    .related-card .thumb { height:140px; background:linear-gradient(135deg,var(--grey-100),var(--grey-200)); }
+    .related-card .thumb.c1 { background:linear-gradient(135deg,#0d1b0d,#1a3a1a); }
+    .related-card .thumb.c2 { background:linear-gradient(135deg,#1a0d0d,#3a1a1a); }
+    .related-card .thumb.c3 { background:linear-gradient(135deg,#1a0d2e,#2e1a4a); }
+    .related-card-body { padding:20px; }
+    .related-card-body .tag { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--grey-400); margin-bottom:8px; }
+    .related-card-body h4 { font-size:16px; font-weight:700; line-height:1.3; margin-bottom:8px; }
+    .related-card-body a { font-size:13px; font-weight:700; color:var(--black); }
+    @media(max-width:768px){ .related-grid{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <header class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="../index.html" class="logo"><img src="../../assets/images/icon.png" alt="A2B Lift" class="logo-img"/><span class="logo-text">A2B<strong>Lift</strong></span></a>
+      <nav class="nav-links">
+        <a href="../rides.html">Rides</a>
+        <a href="../long-distance.html">Long Distance</a>
+        <a href="../earn.html">Earn</a>
+        <a href="../safety.html">Safety</a>
+        <a href="../blog.html" class="active">Blog</a>
+      </nav>
+      <div class="nav-actions">
+        <a href="../login.html" class="btn btn-ghost btn-sm">Log in</a>
+        <a href="../driver-register.html" class="btn btn-primary btn-sm">Become a driver</a>
+      </div>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+    </div>
+  </header>
+  <div class="mobile-nav" id="mobileNav">
+    <a href="../rides.html">Rides</a><a href="../long-distance.html">Long Distance</a><a href="../earn.html">Earn</a><a href="../safety.html">Safety</a><a href="../blog.html">Blog</a>
+    <div class="mobile-cta"><a href="../login.html" class="btn btn-ghost">Log in</a><a href="../driver-register.html" class="btn btn-primary">Become a driver</a></div>
+  </div>
+
+  <div class="article-hero">
+    <div class="container">
+      <a href="../blog.html" style="font-size:13px;color:rgba(255,255,255,0.5);text-decoration:none;">← Back to Blog</a>
+      <div class="article-meta-hero" style="margin-top:20px;">
+        <span class="article-tag-hero">Company</span>
+        <span>5 May 2026</span>
+        <span>8 min read</span>
+      </div>
+      <h1>A2B Lift launches the long-distance travel marketplace in South Africa</h1>
+      <p>Passengers can now search for drivers posting inter-city routes — a first for South Africa's ride-hailing industry.</p>
+    </div>
+  </div>
+
+  <div style="width:100%;height:420px;background:linear-gradient(160deg,#0f0c29,#302b63,#24243e);"></div>
+
+  <div class="article-body">
+    <p>South Africa has always had two worlds of transport: the informal taxi industry moving millions daily, and the small fleet of premium hire cars serving those who could afford them. Between the two sat a gap no platform had bridged — until now.</p>
+
+    <p>Today, A2B Lift officially opens its long-distance travel marketplace to passengers and drivers across the country. Starting with routes between Johannesburg, Cape Town, Durban, Pretoria, and Polokwane, the platform allows drivers to post upcoming inter-city journeys and passengers to book seats at a fixed price — days or even weeks in advance.</p>
+
+    <blockquote>
+      <p>"We built A2B Lift because South Africans deserve a ride-hailing platform that was designed for our roads, our distances, and our needs — not adapted from somewhere else."</p>
+    </blockquote>
+
+    <h2>How the marketplace works</h2>
+    <p>The concept is straightforward, but the execution required building something entirely new for South Africa.</p>
+
+    <p>Drivers who are making a long-distance trip — whether for work, family, or as a primary income source — can list their journey in the A2B Lift app. They set their departure city, destination, travel date, price per seat, and how many passengers they can take. Once approved and live, their route appears in search results for passengers travelling the same corridor.</p>
+
+    <p>Passengers search by origin, destination, and date. They see all available drivers on an interactive map alongside a list of options showing the driver's name, vehicle, rating, and price. They can book instantly with a card payment through Paystack — South Africa's leading payment platform.</p>
+
+    <h2>Why now, and why A2B Lift?</h2>
+    <p>The idea for long-distance on the platform came directly from drivers. After launch, the most common request from chauffeurs on the platform was a way to monetise the inter-city trips they were already making. A driver heading from Johannesburg to Durban to visit family every second weekend was already spending R1,200 on fuel. Why not cover that cost — or more — by offering seats to passengers going the same way?</p>
+
+    <p>The demand from the passenger side was equally clear. Inter-city bus services can be slow and uncomfortable. Flying is expensive. The informal lift clubs that have existed for decades on commuter corridors like Johannesburg to Polokwane are unregulated and lack any safety infrastructure.</p>
+
+    <h3>Safety at the centre</h3>
+    <p>Safety was the non-negotiable starting point for this feature. Every driver offering long-distance trips on A2B Lift has already passed the full chauffeur verification process:</p>
+    <ul>
+      <li>Valid Professional Driving Permit (PDP)</li>
+      <li>Certified police clearance certificate</li>
+      <li>Vehicle roadworthiness certificate</li>
+      <li>Identity verification and facial recognition</li>
+      <li>Background and criminal record screening</li>
+    </ul>
+    <p>For long-distance specifically, every booking is tracked. Passengers share a live trip link with a trusted contact. In-app emergency assistance is available at all times. The platform captures departure and expected arrival times, and follows up automatically if a trip runs significantly over schedule.</p>
+
+    <h2>The routes available at launch</h2>
+    <p>At launch, drivers can post routes on the following corridors — with more being added as the driver network grows:</p>
+    <ul>
+      <li>Johannesburg ↔ Durban (approximately 560 km)</li>
+      <li>Johannesburg ↔ Cape Town (approximately 1,400 km)</li>
+      <li>Pretoria ↔ Polokwane (approximately 280 km)</li>
+      <li>Johannesburg ↔ Port Elizabeth (approximately 1,050 km)</li>
+      <li>Cape Town ↔ George (approximately 430 km)</li>
+    </ul>
+
+    <h2>What this means for drivers</h2>
+    <p>For drivers on A2B Lift, long distance is an entirely new income stream. A chauffeur with a 7-seater vehicle offering 5 passenger seats on a Johannesburg to Durban run at R700 per seat earns R3,500 per trip — before their platform earnings on any rides taken at either end of the journey.</p>
+
+    <p>The platform handles everything: discovery, booking, payment, communication, and reviews. Drivers are notified of bookings in real-time and can accept or decline within 15 minutes. Once confirmed, the booking is locked in and both parties have full visibility.</p>
+
+    <div class="article-cta-box">
+      <h3>Driving between cities? Earn on every seat.</h3>
+      <p>Register as an A2B Lift chauffeur and start posting your routes today.</p>
+      <a href="../driver-register.html" class="btn btn-white">Register to drive</a>
+    </div>
+
+    <h2>What's coming next</h2>
+    <p>The long-distance marketplace is the most significant launch in A2B Lift's history, but it is far from the last.</p>
+
+    <p>The team is currently building group bookings, which will allow organisations, event planners, and corporate travel managers to reserve entire vehicles for long-distance trips. A subscription tier for frequent inter-city travellers is in design. And multi-city routing — where a single driver can post a trip with intermediate stops — is on the roadmap for later this year.</p>
+
+    <p>If you are travelling between South African cities, A2B Lift is the new way to get there. If you are driving, it is the easiest way to make your journey pay.</p>
+
+    <p style="color:var(--grey-400);font-size:14px;border-top:1px solid var(--grey-200);padding-top:24px;margin-top:32px;">Published 5 May 2026 &mdash; A2B Lift Communications Team</p>
+  </div>
+
+  <div class="related-articles">
+    <div class="container">
+      <p class="label" style="margin-bottom:8px;">Related articles</p>
+      <h2 class="heading heading--sm" style="margin-bottom:32px;">More from A2B Lift</h2>
+      <div class="related-grid">
+        <div class="related-card"><div class="thumb c1"></div><div class="related-card-body"><p class="tag">Drivers</p><h4>Earn while you drive: a complete guide for A2B Lift chauffeurs</h4><a href="earn-as-driver.html">Read more →</a></div></div>
+        <div class="related-card"><div class="thumb c2"></div><div class="related-card-body"><p class="tag">Safety</p><h4>What happens during a chauffeur background check</h4><a href="background-check.html">Read more →</a></div></div>
+        <div class="related-card"><div class="thumb c3"></div><div class="related-card-body"><p class="tag">Riders</p><h4>5 tips for booking a long-distance trip on A2B Lift</h4><a href="long-distance-tips.html">Read more →</a></div></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand"><a href="../index.html" class="logo logo--light"><img src="../../assets/images/icon.png" alt="" class="logo-img"/><span class="logo-text">A2B<strong>Lift</strong></span></a><p>Premium rides and long-distance travel across South Africa.</p></div>
+        <div class="footer-col"><h4>Platform</h4><a href="../rides.html">Book a ride</a><a href="../long-distance.html">Long distance</a><a href="../referral.html">Referrals</a></div>
+        <div class="footer-col"><h4>Drivers</h4><a href="../driver-register.html">Register</a><a href="../earn.html">Earnings</a></div>
+        <div class="footer-col"><h4>Company</h4><a href="../safety.html">Safety</a><a href="../blog.html">Blog</a><a href="../support.html">Support</a></div>
+      </div>
+      <div class="footer-bottom"><p>&copy; 2026 A2B Lift. All rights reserved.</p></div>
+    </div>
+  </footer>
+  <script src="../main.js"></script>
+</body>
+</html>

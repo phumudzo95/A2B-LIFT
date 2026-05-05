@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Support — A2B Lift</title>
+  <meta name="description" content="Get help with A2B Lift. Booking rides, long distance travel, payments, driver registration, safety, and more."/>
+  <link rel="icon" href="../assets/images/favicon.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    .support-hero { background: var(--black); color: var(--white); padding: calc(var(--nav-h) + 56px) 0 56px; text-align: center; }
+    .support-hero h1 { font-size: clamp(36px,5vw,56px); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 16px; }
+    .support-hero p { font-size: 18px; color: rgba(255,255,255,0.6); max-width: 520px; margin: 0 auto 32px; }
+    .support-layout { display: grid; grid-template-columns: 260px 1fr; gap: 48px; max-width: 1100px; margin: 0 auto; padding: 64px 24px 96px; }
+    .support-sidebar { position: sticky; top: calc(var(--nav-h) + 24px); height: fit-content; }
+    .support-sidebar-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--grey-400); margin-bottom: 12px; }
+    .support-nav { display: flex; flex-direction: column; gap: 2px; }
+    .support-nav a { font-size: 14px; font-weight: 600; color: var(--grey-600); padding: 9px 12px; border-radius: var(--radius-sm); text-decoration: none; transition: all var(--t); }
+    .support-nav a:hover { background: var(--grey-100); color: var(--grey-900); }
+    .support-nav-sep { height: 1px; background: var(--grey-200); margin: 8px 0; }
+    .support-section { padding-top: 64px; }
+    .support-section:first-child { padding-top: 0; }
+    .support-main h2 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .section-lead { font-size: 16px; color: var(--grey-600); line-height: 1.75; margin-bottom: 32px; }
+    .faq { border: 1px solid var(--grey-200); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+    .faq-q { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; cursor: pointer; font-weight: 600; font-size: 15px; background: var(--white); transition: background var(--t); }
+    .faq-q:hover { background: var(--grey-50); }
+    .faq-icon { width: 20px; height: 20px; flex-shrink: 0; transition: transform .2s; }
+    .faq.open .faq-icon { transform: rotate(45deg); }
+    .faq-a { display: none; padding: 0 20px 20px; font-size: 15px; color: var(--grey-600); line-height: 1.8; border-top: 1px solid var(--grey-100); }
+    .faq.open .faq-a { display: block; padding-top: 16px; }
+    .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 32px; }
+    .info-card { background: var(--grey-50); border: 1px solid var(--grey-200); border-radius: var(--radius); padding: 20px 24px; }
+    .info-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .info-card p { font-size: 14px; color: var(--grey-600); line-height: 1.7; margin: 0; }
+    .topic-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 1100px; margin: -40px auto 0; padding: 0 24px; }
+    .topic-card { background: var(--white); border: 1px solid var(--grey-200); border-radius: var(--radius-lg); padding: 28px; cursor: pointer; transition: box-shadow var(--t); text-decoration: none; color: var(--black); }
+    .topic-card:hover { box-shadow: var(--shadow); }
+    .topic-icon { width: 40px; height: 40px; margin-bottom: 16px; }
+    .topic-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .topic-card p { font-size: 14px; color: var(--grey-500); line-height: 1.6; margin: 0; }
+    .contact-band { background: var(--grey-50); border: 1px solid var(--grey-200); border-radius: var(--radius-lg); padding: 40px; display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; margin-top: 48px; }
+    .contact-band h3 { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+    .contact-band p { font-size: 15px; color: var(--grey-600); margin: 0; }
+    .contact-methods { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+    @media(max-width: 900px) { .support-layout { grid-template-columns: 1fr; } .support-sidebar { position: static; } .support-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; } .topic-grid { grid-template-columns: repeat(2,1fr); } .info-grid { grid-template-columns: 1fr; } }
+    @media(max-width: 640px) { .topic-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="logo"><img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img"/><span class="logo-text">A2B<strong>Lift</strong></span></a>
+      <nav class="nav-links">
+        <a href="rides.html">Rides</a><a href="long-distance.html">Long Distance</a><a href="earn.html">Earn</a><a href="safety.html">Safety</a><a href="blog.html">Blog</a>
+      </nav>
+      <div class="nav-actions">
+        <a href="login.html" class="btn btn-ghost btn-sm" id="navLogin">Log in</a>
+        <a href="driver-register.html" class="btn btn-primary btn-sm">Become a driver</a>
+      </div>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+    </div>
+  </header>
+  <div class="mobile-nav" id="mobileNav">
+    <a href="rides.html">Rides</a><a href="long-distance.html">Long Distance</a><a href="earn.html">Earn</a><a href="safety.html">Safety</a><a href="blog.html">Blog</a>
+    <div class="mobile-cta"><a href="login.html" class="btn btn-ghost">Log in</a><a href="driver-register.html" class="btn btn-primary">Become a driver</a></div>
+  </div>
+
+  <div class="support-hero">
+    <div class="container">
+      <p class="label label--light">Support</p>
+      <h1>How can we help?</h1>
+      <p>Find answers about booking rides, long-distance travel, payments, driver registration, and more.</p>
+    </div>
+  </div>
+
+  <div class="topic-grid">
+    <a href="#booking" class="topic-card" onclick="scrollTo('booking')">
+      <svg class="topic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <h3>Booking a ride</h3><p>How to request rides, cancel, and manage bookings.</p>
+    </a>
+    <a href="#longdistance" class="topic-card" onclick="scrollTo('longdistance')">
+      <svg class="topic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12H19M12 5l7 7-7 7"/></svg>
+      <h3>Long distance travel</h3><p>Inter-city trips: search, book, and manage your journey.</p>
+    </a>
+    <a href="#payments" class="topic-card" onclick="scrollTo('payments')">
+      <svg class="topic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 12h.01"/></svg>
+      <h3>Payments &amp; wallet</h3><p>Payment methods, wallet top-ups, and refunds.</p>
+    </a>
+    <a href="#drivers" class="topic-card" onclick="scrollTo('drivers')">
+      <svg class="topic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20v-1a8 8 0 0 1 16 0v1"/></svg>
+      <h3>Driver guide</h3><p>Registration, documents, earnings, and going online.</p>
+    </a>
+    <a href="#safety" class="topic-card" onclick="scrollTo('safety')">
+      <svg class="topic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <h3>Safety</h3><p>Safety features, emergency assistance, and reporting incidents.</p>
+    </a>
+    <a href="#referrals" class="topic-card" onclick="scrollTo('referrals')">
+      <svg class="topic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <h3>Referral programme</h3><p>Commission structure, how referrals work, IBO membership.</p>
+    </a>
+  </div>
+
+  <div class="support-layout">
+    <aside class="support-sidebar">
+      <p class="support-sidebar-title">Topics</p>
+      <nav class="support-nav">
+        <a href="#booking" onclick="scrollTo('booking')">Booking a ride</a>
+        <a href="#longdistance" onclick="scrollTo('longdistance')">Long distance</a>
+        <a href="#payments" onclick="scrollTo('payments')">Payments &amp; wallet</a>
+        <a href="#account" onclick="scrollTo('account')">My account</a>
+        <div class="support-nav-sep"></div>
+        <a href="#drivers" onclick="scrollTo('drivers')">Driver guide</a>
+        <a href="#safety" onclick="scrollTo('safety')">Safety</a>
+        <a href="#referrals" onclick="scrollTo('referrals')">Referrals</a>
+        <div class="support-nav-sep"></div>
+        <a href="#privacy" onclick="scrollTo('privacy')">Privacy policy</a>
+        <a href="#terms" onclick="scrollTo('terms')">Terms &amp; conditions</a>
+      </nav>
+    </aside>
+
+    <div class="support-main">
+
+      <div class="support-section" id="booking">
+        <p class="label">Booking</p>
+        <h2>Booking a ride</h2>
+        <p class="section-lead">A2B Lift connects you to professional, verified chauffeurs for on-demand rides and pre-scheduled transfers across South Africa.</p>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How do I book a ride?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Open the A2B Lift app, enter your pickup address and destination, select your ride type (Standard, Premium, or XL), and tap "Request." You'll be matched with the nearest available verified chauffeur. You'll see the driver's name, photo, vehicle, and live location as they approach.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">Can I schedule a ride in advance?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Yes. Tap the calendar icon on the booking screen to choose a future date and time. Scheduled rides are confirmed once a driver accepts, which typically happens within minutes of scheduling.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How do I cancel a booking?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Go to "My trips" in the app, select the active or scheduled ride, and tap "Cancel." Cancellations made more than 5 minutes after the driver has been dispatched may incur a small fee. Free cancellations are available within 2 minutes of booking.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">What types of vehicles can I book?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">A2B Lift offers three tiers: <strong>Standard</strong> (comfortable sedans, up to 4 passengers), <strong>Premium</strong> (luxury vehicles, up to 4 passengers), and <strong>XL</strong> (SUVs and minivans, up to 7 passengers). All vehicles are clean, well-maintained, and less than 5 years old.</div>
+        </div>
+      </div>
+
+      <div class="support-section" id="longdistance">
+        <p class="label">Long distance</p>
+        <h2>Long distance travel</h2>
+        <p class="section-lead">The A2B Lift long-distance marketplace connects passengers with drivers making inter-city trips. Book a seat days or weeks in advance.</p>
+        <div class="info-grid">
+          <div class="info-card"><h4>For passengers</h4><p>Search by origin, destination, and date. Browse available drivers on the map, compare prices and ratings, and book your seat with instant card payment.</p></div>
+          <div class="info-card"><h4>For drivers</h4><p>Post your upcoming inter-city trip in the driver app. Set your price per seat and number of seats. Passengers find and book — you receive payment once the trip is confirmed.</p></div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">Which cities are covered?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">At launch: Johannesburg, Cape Town, Durban, Pretoria, and Polokwane. More cities are added as the driver network grows. Check back closer to your travel date — new routes are added daily.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">What if my driver cancels?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">You receive a full refund to your original payment method or wallet balance within 24 hours. The app will notify you of alternative drivers on the same route and date if available.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">Are all long-distance drivers verified?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Yes. Every driver offering long-distance trips has completed A2B Lift's full chauffeur verification: valid PDP, certified police clearance, roadworthiness certificate, identity verification, and facial recognition.</div>
+        </div>
+      </div>
+
+      <div class="support-section" id="payments">
+        <p class="label">Payments</p>
+        <h2>Payments &amp; wallet</h2>
+        <p class="section-lead">A2B Lift uses Paystack — South Africa's most trusted payment platform — for all transactions. All payments are secure and fully tracked.</p>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">What payment methods are accepted?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">A2B Lift accepts Visa and Mastercard debit and credit cards, as well as payments from your in-app wallet. All cards are stored securely via Paystack — A2B Lift never stores your card details directly.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How does the wallet work?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Your wallet is an in-app balance you can use to pay for rides and long-distance bookings. Top up via card payment in the app. Wallet balances earn bonus reward points on every booking. Referral earnings are also credited to your wallet.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How do I get a refund?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Refunds for cancelled trips are processed automatically within 24 hours. For disputes about completed trips, go to "My trips" → select the trip → "Report an issue." Our team reviews all disputes within 48 hours.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How do reward points work?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">You earn reward points on every completed trip, wallet top-up, and referral. Points can be redeemed for ride credits at a rate of 100 points = R1. Points expire after 12 months of account inactivity.</div>
+        </div>
+      </div>
+
+      <div class="support-section" id="account">
+        <p class="label">Account</p>
+        <h2>My account</h2>
+        <p class="section-lead">Manage your profile, notification settings, saved addresses, and login details.</p>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How do I create an account?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Download the A2B Lift app or sign up on this website. Enter your name, email address, and a password, or sign in with Google. Your account is ready to use immediately after registration.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How do I reset my password?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">On the login screen, tap "Forgot password?" Enter your email address and we'll send a reset link within 2 minutes. The link expires after 1 hour.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How do I delete my account?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Go to Profile → Settings → Delete account. Account deletion is permanent and removes all personal data within 30 days in accordance with POPIA. Trip records may be retained in anonymised form for regulatory compliance.</div>
+        </div>
+      </div>
+
+      <div class="support-section" id="drivers">
+        <p class="label">Drivers</p>
+        <h2>Driver guide</h2>
+        <p class="section-lead">Everything you need to know about registering, getting approved, and earning on A2B Lift as a chauffeur.</p>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">What documents do I need to register?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">You need: valid South African ID or passport, Professional Driving Permit (PDP), certified police clearance (not older than 6 months), vehicle roadworthiness certificate, a selfie for facial recognition, and your vehicle registration document.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How long does approval take?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Most applications are reviewed within 24–48 hours. You'll receive an email and app notification once your application is approved or if additional documents are required.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">When and how do I get paid?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Earnings from completed trips are added to your driver wallet in real time. You can withdraw to your bank account at any time — withdrawals are processed within 1–2 business days. No minimum withdrawal amount and no withdrawal fee.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How do I set up long-distance availability?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">In the driver app, go to Dashboard → Long Distance Availability. Toggle it on, enter your route details, price per seat, and available seats. Your route goes live immediately and appears in passenger search results.</div>
+        </div>
+      </div>
+
+      <div class="support-section" id="safety">
+        <p class="label">Safety</p>
+        <h2>Safety</h2>
+        <p class="section-lead">Your safety is the highest priority for every A2B Lift trip. Here's how we keep you protected.</p>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">What safety features are available in the app?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">During every trip you can: share your real-time location with a trusted contact, access the in-app emergency button (connects to emergency services), view your driver's verified identity and vehicle registration, and rate your driver after the trip. Long-distance trips generate a live tracking link automatically.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">What if my driver asks for cash?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">A2B Lift is a cashless platform. No driver is authorised to request cash. If a driver asks for cash, decline and report immediately via the app. This is a serious policy violation and will result in account suspension pending investigation.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How do I report an incident?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Go to "My trips" → select the trip → "Report an issue." For urgent safety matters, use the in-app emergency button during the trip, which connects to emergency services. Our safety team reviews all reports within 24 hours.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">Are all drivers background checked?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Yes. Every A2B Lift driver must provide a certified police clearance certificate (issued within the last 6 months), pass a facial recognition identity check, hold a valid PDP, and have a roadworthy vehicle. Background checks are renewed annually.</div>
+        </div>
+      </div>
+
+      <div class="support-section" id="referrals">
+        <p class="label">Referrals</p>
+        <h2>Referral programme</h2>
+        <p class="section-lead">Earn ongoing commission when you refer riders or drivers to A2B Lift. The programme supports up to 5 levels of referrals.</p>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How do I get my referral code?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Your referral code is available in the app under Profile → Referral Programme, or on the website after logging in at the <a href="referral.html">referral page</a>. Every account has a unique code assigned automatically at registration.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">What commission percentages apply?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Commission is earned across up to 5 referral levels: Level 1 — 50%, Level 2 — 20%, Level 3 — 13%, Level 4 — 10%, Level 5 — 7%. The commission is calculated on the platform fee, not the total ride fare.</div>
+        </div>
+        <div class="faq" id="matrix" onclick="toggleFAQ(this)">
+          <div class="faq-q">What is the 2×15 matrix?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">IBO (Independent Business Owner) members join a 2-wide × 15-deep forced matrix. New members are automatically placed in available positions — you earn from their activity even without actively recruiting. IBO membership requires a once-off registration fee (R550) and a monthly subscription (R225). See the <a href="referral.html">referral page</a> for full details.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">When are referral earnings paid out?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Referral commission is credited to your A2B Lift wallet weekly every Monday for the previous week's activity. You can withdraw your wallet balance to your bank account at any time.</div>
+        </div>
+      </div>
+
+      <div class="support-section" id="privacy">
+        <p class="label">Legal</p>
+        <h2>Privacy policy</h2>
+        <p class="section-lead">Last updated: 1 May 2026</p>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">What information does A2B Lift collect?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">A2B Lift collects: account information (name, email, phone number), location data during active trips, trip history, payment information (processed securely by Paystack), device information, and communications with drivers or support. For drivers, we also collect identity documents and vehicle information.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">How is my location data used?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Location data is used to match you with nearby drivers, calculate fares, and enable trip tracking. We do not sell your location data to third parties. Location collection stops when a trip ends.</div>
+        </div>
+      </div>
+
+      <div class="support-section" id="terms">
+        <h2>Terms &amp; conditions</h2>
+        <p class="section-lead">Last updated: 1 May 2026</p>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">Who can use A2B Lift?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">A2B Lift is available to individuals 18 years of age or older with a valid South African phone number. The service is currently available within South Africa only.</div>
+        </div>
+        <div class="faq" onclick="toggleFAQ(this)">
+          <div class="faq-q">What behaviour is prohibited?<svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+          <div class="faq-a">Users may not: request rides for purposes other than personal transportation, use abusive or threatening language, damage vehicles, request or offer cash payments, or create multiple accounts to abuse promotional offers. Violations may result in permanent account suspension.</div>
+        </div>
+      </div>
+
+      <div class="contact-band">
+        <div style="flex:1;min-width:220px;">
+          <h3>Still need help?</h3>
+          <p>Our support team is available every day from 06:00 to 22:00.</p>
+          <div class="contact-methods">
+            <a href="mailto:support@a2bliftclub.com" class="btn btn-primary btn-sm">Email support</a>
+            <a href="https://wa.me/27000000000" class="btn btn-ghost btn-sm">WhatsApp</a>
+          </div>
+        </div>
+        <div style="flex:1;min-width:220px;">
+          <h3>App downloads</h3>
+          <p>Download A2B Lift for iOS or Android to get the full experience.</p>
+          <div class="contact-methods">
+            <a href="#" class="btn btn-ghost btn-sm">App Store</a>
+            <a href="#" class="btn btn-ghost btn-sm">Google Play</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand"><a href="index.html" class="logo logo--light"><img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img"/><span class="logo-text">A2B<strong>Lift</strong></span></a><p>Premium rides and long-distance travel across South Africa.</p></div>
+        <div class="footer-col"><h4>Passengers</h4><a href="rides.html">Book a ride</a><a href="long-distance.html">Long distance</a><a href="referral.html">Referral programme</a><a href="support.html">Support</a></div>
+        <div class="footer-col"><h4>Drivers</h4><a href="driver-register.html">Register to drive</a><a href="earn.html">How earnings work</a><a href="referral.html">Referral programme</a><a href="support.html#drivers">Driver guide</a></div>
+        <div class="footer-col"><h4>Company</h4><a href="safety.html">Safety</a><a href="blog.html">Blog</a><a href="support.html">Support</a><a href="support.html#privacy">Privacy policy</a></div>
+      </div>
+      <div class="footer-bottom"><p>&copy; 2026 A2B Lift. All rights reserved.</p><div class="footer-legal"><a href="support.html#privacy">Privacy</a><a href="support.html#terms">Terms</a></div></div>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+  <script>
+    function toggleFAQ(el) { el.classList.toggle('open'); }
+    function scrollTo(id) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    if (window.location.hash) setTimeout(() => scrollTo(window.location.hash.slice(1)), 300);
+    const token = localStorage.getItem('a2b_token');
+    const userStr = localStorage.getItem('a2b_user');
+    if (token && userStr) {
+      const user = JSON.parse(userStr);
+      const navLogin = document.getElementById('navLogin');
+      if (navLogin) { navLogin.textContent = user.name || 'Dashboard'; navLogin.href = 'dashboard.html'; }
+    }
+  </script>
+</body>
+</html>

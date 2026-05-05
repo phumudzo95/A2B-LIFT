@@ -140,7 +140,7 @@ ul, ol { list-style:none; }
 }
 .hero-bg::after {
   content:''; position:absolute; inset:0;
-  background:linear-gradient(105deg, rgba(0,0,0,0.88) 45%, rgba(0,0,0,0.35) 100%);
+  background:linear-gradient(105deg, rgba(0,0,0,0.62) 40%, rgba(0,0,0,0.20) 100%);
 }
 .hero-content {
   position:relative; z-index:1; max-width:var(--max-w);

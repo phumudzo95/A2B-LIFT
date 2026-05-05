@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Dashboard — A2B Lift</title>
+  <link rel="icon" href="../assets/images/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body { background: var(--grey-50); }
+    .dash-layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - var(--nav-h)); max-width: 1200px; margin: 0 auto; padding: 0 24px; gap: 32px; }
+    .dash-sidebar { padding: 40px 0; position: sticky; top: calc(var(--nav-h) + 16px); height: fit-content; }
+    .dash-user { display: flex; align-items: center; gap: 12px; padding: 20px 0; border-bottom: 1px solid var(--grey-200); margin-bottom: 24px; }
+    .dash-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--black); color: var(--white); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; flex-shrink: 0; overflow: hidden; }
+    .dash-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .dash-name { font-weight: 700; font-size: 15px; }
+    .dash-role { font-size: 12px; color: var(--grey-400); text-transform: capitalize; margin-top: 2px; }
+    .dash-nav { display: flex; flex-direction: column; gap: 2px; }
+    .dash-nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; color: var(--grey-600); cursor: pointer; transition: all var(--t); }
+    .dash-nav-item:hover { background: var(--grey-100); color: var(--grey-900); }
+    .dash-nav-item.active { background: var(--black); color: var(--white); }
+    .dash-nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .dash-sidebar-sep { height: 1px; background: var(--grey-200); margin: 16px 0; }
+    .dash-main { padding: 40px 0; }
+    .dash-page { display: none; }
+    .dash-page.active { display: block; }
+    .dash-page-title { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 24px; color: var(--grey-900); }
+    .dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+    .dash-stat { background: var(--white); border-radius: var(--radius); padding: 24px; border: 1px solid var(--grey-200); }
+    .dash-stat-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--grey-400); margin-bottom: 8px; }
+    .dash-stat-value { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
+    .dash-stat-sub { font-size: 13px; color: var(--grey-400); margin-top: 4px; }
+    .trips-table { width: 100%; border-collapse: collapse; background: var(--white); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--grey-200); }
+    .trips-table th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--grey-400); padding: 14px 20px; text-align: left; border-bottom: 1px solid var(--grey-200); background: var(--grey-50); }
+    .trips-table td { padding: 16px 20px; font-size: 14px; border-bottom: 1px solid var(--grey-100); vertical-align: middle; }
+    .trips-table tr:last-child td { border-bottom: none; }
+    .trip-status { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 700; }
+    .trip-status--completed { background: #f0fdf4; color: #16a34a; }
+    .trip-status--pending { background: #fefce8; color: #ca8a04; }
+    .trip-status--cancelled { background: #fef2f2; color: #dc2626; }
+    .trip-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .wallet-card { background: var(--black); color: var(--white); border-radius: var(--radius-lg); padding: 36px; margin-bottom: 24px; position: relative; overflow: hidden; }
+    .wallet-card::before { content: ''; position: absolute; right: -40px; top: -40px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255,255,255,0.04); }
+    .wallet-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); margin-bottom: 8px; }
+    .wallet-balance { font-size: 44px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 4px; }
+    .wallet-actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+    .wallet-transactions { background: var(--white); border-radius: var(--radius); border: 1px solid var(--grey-200); overflow: hidden; }
+    .wallet-tx-header { padding: 20px; font-weight: 700; font-size: 15px; border-bottom: 1px solid var(--grey-200); }
+    .wallet-tx-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--grey-100); font-size: 14px; }
+    .wallet-tx-item:last-child { border-bottom: none; }
+    .wallet-tx-credit { font-weight: 700; color: #16a34a; }
+    .wallet-tx-debit { font-weight: 700; color: #dc2626; }
+    .ld-mini-search { background: var(--white); border-radius: var(--radius); padding: 24px; border: 1px solid var(--grey-200); margin-bottom: 24px; }
+    .ld-mini-search h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+    .ld-mini-form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; }
+    .ld-mini-form label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--grey-400); display: block; margin-bottom: 6px; }
+    .ld-mini-form input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--grey-200); border-radius: var(--radius-sm); font-size: 14px; font-family: var(--font); outline: none; }
+    .ld-mini-form input:focus { border-color: var(--black); }
+    .referral-box { background: linear-gradient(135deg, #0a0a0a, #1a1a1a); color: var(--white); border-radius: var(--radius); padding: 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
+    .referral-box h3 { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+    .referral-box p { font-size: 13px; color: rgba(255,255,255,0.55); }
+    .ref-code-pill { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 16px; flex-shrink: 0; }
+    .ref-code-pill span { font-weight: 800; font-size: 16px; letter-spacing: 0.05em; }
+    .availability-card { background: var(--white); border-radius: var(--radius); padding: 24px; border: 1px solid var(--grey-200); margin-bottom: 24px; }
+    .availability-card h3 { font-weight: 700; font-size: 16px; margin-bottom: 16px; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .toggle-switch { width: 48px; height: 26px; background: var(--grey-200); border-radius: 100px; position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0; }
+    .toggle-switch.on { background: var(--black); }
+    .toggle-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--white); transition: transform .2s; }
+    .toggle-switch.on::after { transform: translateX(22px); }
+    .ld-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .ld-form-grid label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--grey-400); display: block; margin-bottom: 6px; }
+    .ld-form-grid input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--grey-200); border-radius: var(--radius-sm); font-size: 14px; font-family: var(--font); outline: none; }
+    .ld-form-grid input:focus { border-color: var(--black); }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--grey-400); }
+    @media(max-width: 900px) { .dash-layout { grid-template-columns: 1fr; } .dash-sidebar { position: static; padding: 24px 0 0; } .dash-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; } .dash-stats { grid-template-columns: 1fr 1fr; } }
+    @media(max-width: 640px) { .dash-stats { grid-template-columns: 1fr; } .ld-mini-form { grid-template-columns: 1fr; } .ld-form-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="nav" id="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="logo"><img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img" /><span class="logo-text">A2B<strong>Lift</strong></span></a>
+      <nav class="nav-links">
+        <a href="rides.html">Rides</a>
+        <a href="long-distance.html">Long Distance</a>
+        <a href="earn.html">Earn</a>
+        <a href="safety.html">Safety</a>
+        <a href="blog.html">Blog</a>
+      </nav>
+      <div class="nav-actions">
+        <a href="dashboard.html" class="btn btn-ghost btn-sm" id="navUser">My Account</a>
+        <button class="btn btn-primary btn-sm" onclick="logout()">Log out</button>
+      </div>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+    </div>
+  </header>
+  <div class="mobile-nav" id="mobileNav">
+    <a href="rides.html">Rides</a><a href="long-distance.html">Long Distance</a><a href="earn.html">Earn</a><a href="safety.html">Safety</a><a href="blog.html">Blog</a>
+    <div class="mobile-cta"><a href="dashboard.html" class="btn btn-ghost">My Account</a><button class="btn btn-primary" onclick="logout()">Log out</button></div>
+  </div>
+
+  <div style="height:var(--nav-h)"></div>
+
+  <div class="dash-layout container">
+    <aside class="dash-sidebar">
+      <div class="dash-user">
+        <div class="dash-avatar" id="dashAvatar">?</div>
+        <div>
+          <div class="dash-name" id="dashName">Loading…</div>
+          <div class="dash-role" id="dashRole">—</div>
+        </div>
+      </div>
+      <nav class="dash-nav">
+        <div class="dash-nav-item active" onclick="showPage('overview')" id="nav-overview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Overview
+        </div>
+        <div class="dash-nav-item" onclick="showPage('trips')" id="nav-trips">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>My Trips
+        </div>
+        <div class="dash-nav-item" onclick="showPage('wallet')" id="nav-wallet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 12h.01"/></svg>Wallet
+        </div>
+        <div class="dash-nav-item" onclick="showPage('longdistance')" id="nav-longdistance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12H19M12 5l7 7-7 7"/></svg>Long Distance
+        </div>
+        <div class="dash-nav-item" onclick="showPage('referral')" id="nav-referral">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Referrals
+        </div>
+        <div class="dash-sidebar-sep" id="driverSep" style="display:none;"></div>
+        <div class="dash-nav-item" id="nav-availability" style="display:none;" onclick="showPage('availability')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Availability
+        </div>
+      </nav>
+    </aside>
+
+    <main class="dash-main">
+      <!-- OVERVIEW -->
+      <div class="dash-page active" id="page-overview">
+        <h1 class="dash-page-title">Welcome back, <span id="overviewName">—</span></h1>
+        <div class="dash-stats">
+          <div class="dash-stat"><div class="dash-stat-label">Wallet balance</div><div class="dash-stat-value" id="statWallet">R0.00</div><div class="dash-stat-sub">Available to spend</div></div>
+          <div class="dash-stat"><div class="dash-stat-label">Total trips</div><div class="dash-stat-value" id="statTrips">0</div><div class="dash-stat-sub">Completed rides</div></div>
+          <div class="dash-stat"><div class="dash-stat-label">Reward points</div><div class="dash-stat-value" id="statRewards">0</div><div class="dash-stat-sub">Redeemable in app</div></div>
+        </div>
+        <div class="ld-mini-search">
+          <h3>Search long-distance trips</h3>
+          <div class="ld-mini-form">
+            <div><label>From</label><input type="text" id="ovFrom" placeholder="Johannesburg" /></div>
+            <div><label>To</label><input type="text" id="ovTo" placeholder="Durban" /></div>
+            <div><label>Date</label><input type="date" id="ovDate" /></div>
+            <button class="btn btn-primary" style="align-self:flex-end;padding:11px 20px;" onclick="goLongDistance()">Search</button>
+          </div>
+        </div>
+        <div class="referral-box">
+          <div><h3>Refer friends, earn rewards</h3><p>Share your code and earn commission on every ride they take — up to 5 levels deep.</p></div>
+          <div class="ref-code-pill"><span id="ovRefCode">—</span><button class="copy-btn" style="background:rgba(255,255,255,0.15);color:var(--white);border:1px solid rgba(255,255,255,0.2);padding:8px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);" onclick="copyCode('ovRefCode')">Copy</button></div>
+        </div>
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:16px;">Recent trips</h2>
+        <div id="recentTripsTable"></div>
+      </div>
+
+      <!-- TRIPS -->
+      <div class="dash-page" id="page-trips">
+        <h1 class="dash-page-title">My Trips</h1>
+        <div id="allTripsTable"></div>
+      </div>
+
+      <!-- WALLET -->
+      <div class="dash-page" id="page-wallet">
+        <h1 class="dash-page-title">Wallet</h1>
+        <div class="wallet-card">
+          <div class="wallet-label">Available balance</div>
+          <div class="wallet-balance" id="walletBalance">R0.00</div>
+          <div style="font-size:14px;color:rgba(255,255,255,0.5)">Rewards: <span id="walletRewards">0</span> points</div>
+          <div class="wallet-actions">
+            <button class="btn btn-white btn-sm" onclick="topUpWallet()">Top up</button>
+            <a href="support.html#payments" class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.2);">How it works</a>
+          </div>
+        </div>
+        <div class="wallet-transactions">
+          <div class="wallet-tx-header">Recent transactions</div>
+          <div id="walletTxList"></div>
+        </div>
+      </div>
+
+      <!-- LONG DISTANCE -->
+      <div class="dash-page" id="page-longdistance">
+        <h1 class="dash-page-title">Long Distance</h1>
+        <p style="font-size:15px;color:var(--grey-600);margin-bottom:24px;">Search for drivers heading between cities and book a seat.</p>
+        <a href="long-distance.html" class="btn btn-primary" style="margin-bottom:32px;">Open full search →</a>
+      </div>
+
+      <!-- REFERRAL -->
+      <div class="dash-page" id="page-referral">
+        <h1 class="dash-page-title">Referrals</h1>
+        <div class="referral-box">
+          <div><h3>Your referral code</h3><p>Every trip someone in your network takes earns you rewards.</p></div>
+          <div class="ref-code-pill"><span id="refCodeDisplay">—</span><button class="copy-btn" style="background:rgba(255,255,255,0.15);color:var(--white);border:1px solid rgba(255,255,255,0.2);padding:8px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);" onclick="copyCode('refCodeDisplay')">Copy</button></div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px;">
+          <button class="btn btn-primary" onclick="shareRef('whatsapp')">Share on WhatsApp</button>
+          <button class="btn btn-ghost" onclick="shareRef('copy')">Copy link</button>
+        </div>
+        <a href="referral.html" class="btn btn-ghost">View full referral details →</a>
+      </div>
+
+      <!-- DRIVER AVAILABILITY -->
+      <div class="dash-page" id="page-availability">
+        <h1 class="dash-page-title">Long Distance Availability</h1>
+        <div class="availability-card">
+          <h3>Set your availability</h3>
+          <div class="toggle-row">
+            <div><div style="font-weight:600;font-size:15px;">Available for long distance trips</div><div style="font-size:13px;color:var(--grey-400)">Passengers searching your route will see your trip</div></div>
+            <div class="toggle-switch" id="availToggle" onclick="toggleAvailability()"></div>
+          </div>
+          <div id="ldRouteForm" style="display:none;">
+            <div class="ld-form-grid">
+              <div><label>Departing from</label><input type="text" id="ldAvFrom" placeholder="e.g. Johannesburg" /></div>
+              <div><label>Destination</label><input type="text" id="ldAvTo" placeholder="e.g. Durban" /></div>
+              <div><label>Travel date</label><input type="date" id="ldAvDate" /></div>
+              <div><label>Price per seat (R)</label><input type="number" id="ldAvPrice" placeholder="e.g. 600" min="0" /></div>
+              <div><label>Seats available</label><input type="number" id="ldAvSeats" placeholder="e.g. 3" min="1" max="8" /></div>
+            </div>
+            <button class="btn btn-primary" style="margin-top:20px;" onclick="saveAvailability()">Save & go live</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="main.js"></script>
+  <script>
+    const API = 'https://api-production-0783.up.railway.app';
+    let currentUser = null;
+    let availabilityOn = false;
+
+    function logout() {
+      localStorage.removeItem('a2b_token');
+      localStorage.removeItem('a2b_user');
+      window.location.href = 'login.html';
+    }
+
+    function showPage(page) {
+      document.querySelectorAll('.dash-page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.dash-nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('page-' + page).classList.add('active');
+      const navEl = document.getElementById('nav-' + page);
+      if (navEl) navEl.classList.add('active');
+    }
+
+    function copyCode(id) {
+      const text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+      });
+    }
+
+    function shareRef(method) {
+      const code = document.getElementById('refCodeDisplay').textContent;
+      const link = `https://a2bliftclub.com/register?ref=${code}`;
+      const msg = `Join me on A2B Lift! Use my code ${code}: ${link}`;
+      if (method === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+      else { navigator.clipboard.writeText(link); alert('Link copied!'); }
+    }
+
+    function goLongDistance() {
+      const from = document.getElementById('ovFrom').value;
+      const to = document.getElementById('ovTo').value;
+      const date = document.getElementById('ovDate').value;
+      let url = 'long-distance.html';
+      const p = new URLSearchParams();
+      if (from) p.set('from', from);
+      if (to) p.set('to', to);
+      if (date) p.set('date', date);
+      if (p.toString()) url += '?' + p.toString();
+      window.location.href = url;
+    }
+
+    function topUpWallet() {
+      const amt = prompt('Enter amount to top up (R):');
+      if (!amt || isNaN(Number(amt)) || Number(amt) <= 0) return;
+      const userStr = localStorage.getItem('a2b_user');
+      const user = userStr ? JSON.parse(userStr) : {};
+      if (typeof PaystackPop === 'undefined') { alert('Paystack unavailable. Try again shortly.'); return; }
+      const handler = PaystackPop.setup({
+        key: 'pk_live_placeholder',
+        email: user.username || 'user@a2blift.co.za',
+        amount: Number(amt) * 100,
+        currency: 'ZAR',
+        ref: 'WALLET_' + Date.now(),
+        callback: function(r) { alert('Wallet topped up! Ref: ' + r.reference); loadWallet(); },
+        onClose: function() {},
+      });
+      handler.openIframe();
+    }
+
+    async function toggleAvailability() {
+      availabilityOn = !availabilityOn;
+      document.getElementById('availToggle').classList.toggle('on', availabilityOn);
+      document.getElementById('ldRouteForm').style.display = availabilityOn ? 'block' : 'none';
+      if (!availabilityOn) await saveAvailabilityState(false, {});
+    }
+
+    async function saveAvailability() {
+      const from = document.getElementById('ldAvFrom').value;
+      const to = document.getElementById('ldAvTo').value;
+      const date = document.getElementById('ldAvDate').value;
+      const price = Number(document.getElementById('ldAvPrice').value);
+      const seats = Number(document.getElementById('ldAvSeats').value) || 1;
+      if (!from || !to) { alert('Please fill in departure and destination.'); return; }
+      await saveAvailabilityState(true, { from, to, date, pricePerSeat: price, seatsAvailable: seats });
+      alert('Your route is now live!');
+    }
+
+    async function saveAvailabilityState(available, data) {
+      const token = localStorage.getItem('a2b_token');
+      try {
+        await fetch(`${API}/api/long-distance/availability`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ available, ...data }),
+        });
+      } catch(e) { console.error(e); }
+    }
+
+    function renderTripsTable(trips, limit) {
+      const shown = limit ? trips.slice(0, limit) : trips;
+      if (!shown.length) return '<div class="empty-state"><p>No trips yet</p></div>';
+      return `<table class="trips-table">
+        <thead><tr><th>Route</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
+        <tbody>${shown.map(t => `
+          <tr>
+            <td>${t.pickupAddress || 'Pickup'} → ${t.dropoffAddress || 'Dropoff'}</td>
+            <td style="white-space:nowrap;color:var(--grey-400)">${t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-ZA',{day:'numeric',month:'short'}) : '—'}</td>
+            <td style="font-weight:700">${t.price ? 'R' + Number(t.price).toFixed(2) : '—'}</td>
+            <td><span class="trip-status trip-status--${t.status === 'trip_completed' ? 'completed' : t.status?.startsWith('cancel') ? 'cancelled' : 'pending'}"><span class="trip-status-dot"></span>${(t.status || '—').replace('_',' ')}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+    }
+
+    async function loadDashboard() {
+      const token = localStorage.getItem('a2b_token');
+      const userStr = localStorage.getItem('a2b_user');
+      if (!token) { window.location.replace('login.html'); return; }
+      let user = userStr ? JSON.parse(userStr) : {};
+      try {
+        const res = await fetch(`${API}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) { const data = await res.json(); user = data.user || data; localStorage.setItem('a2b_user', JSON.stringify(user)); }
+        else if (res.status === 401) { logout(); return; }
+      } catch(e) {}
+      currentUser = user;
+      const name = user.name || user.username || 'User';
+      const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+      document.getElementById('dashName').textContent = name;
+      document.getElementById('dashRole').textContent = user.role || 'Rider';
+      document.getElementById('overviewName').textContent = name.split(' ')[0];
+      document.getElementById('navUser').textContent = name.split(' ')[0];
+      const avatarEl = document.getElementById('dashAvatar');
+      if (user.profilePhoto) avatarEl.innerHTML = `<img src="${user.profilePhoto}" alt="${name}" />`;
+      else avatarEl.textContent = initials;
+      document.getElementById('statWallet').textContent = 'R' + (user.walletBalance || 0).toFixed(2);
+      document.getElementById('statRewards').textContent = Math.round(user.rewardsBalance || 0);
+      document.getElementById('walletBalance').textContent = 'R' + (user.walletBalance || 0).toFixed(2);
+      document.getElementById('walletRewards').textContent = Math.round(user.rewardsBalance || 0);
+      document.getElementById('ovRefCode').textContent = user.referralCode || '—';
+      document.getElementById('refCodeDisplay').textContent = user.referralCode || '—';
+      if (user.role === 'chauffeur') {
+        document.getElementById('driverSep').style.display = 'block';
+        document.getElementById('nav-availability').style.display = 'flex';
+        loadDriverAvailability();
+      }
+      await loadTrips(user);
+      await loadWallet();
+    }
+
+    async function loadTrips(user) {
+      const token = localStorage.getItem('a2b_token');
+      try {
+        const endpoint = user.role === 'chauffeur'
+          ? `${API}/api/rides/chauffeur/${user.chauffeurId || user.id}`
+          : `${API}/api/rides/client/${user.id}`;
+        const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error();
+        const trips = await res.json();
+        document.getElementById('statTrips').textContent = trips.filter(t => t.status === 'trip_completed').length;
+        document.getElementById('recentTripsTable').innerHTML = renderTripsTable(trips, 5);
+        document.getElementById('allTripsTable').innerHTML = renderTripsTable(trips);
+      } catch(e) {
+        document.getElementById('recentTripsTable').innerHTML = '<p style="color:var(--grey-400);font-size:14px;">Unable to load trips.</p>';
+      }
+    }
+
+    async function loadWallet() {
+      const token = localStorage.getItem('a2b_token');
+      try {
+        const res = await fetch(`${API}/api/wallet/transactions`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error();
+        const txs = await res.json();
+        document.getElementById('walletTxList').innerHTML = txs.slice(0,10).map(tx => `
+          <div class="wallet-tx-item">
+            <div><div style="font-weight:600">${tx.description || tx.type || 'Transaction'}</div><div style="font-size:12px;color:var(--grey-400)">${tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('en-ZA') : ''}</div></div>
+            <div class="${(tx.type === 'credit' || tx.amount > 0) ? 'wallet-tx-credit' : 'wallet-tx-debit'}">${tx.amount > 0 ? '+' : ''}R${Math.abs(tx.amount || 0).toFixed(2)}</div>
+          </div>`).join('') || '<div class="empty-state"><p>No transactions yet</p></div>';
+      } catch(e) {}
+    }
+
+    async function loadDriverAvailability() {
+      const token = localStorage.getItem('a2b_token');
+      try {
+        const res = await fetch(`${API}/api/long-distance/my-availability`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return;
+        const data = await res.json();
+        availabilityOn = data.available;
+        document.getElementById('availToggle').classList.toggle('on', availabilityOn);
+        document.getElementById('ldRouteForm').style.display = availabilityOn ? 'block' : 'none';
+        if (data.from) document.getElementById('ldAvFrom').value = data.from;
+        if (data.to) document.getElementById('ldAvTo').value = data.to;
+        if (data.date) document.getElementById('ldAvDate').value = data.date;
+        if (data.pricePerSeat) document.getElementById('ldAvPrice').value = data.pricePerSeat;
+        if (data.seatsAvailable) document.getElementById('ldAvSeats').value = data.seatsAvailable;
+      } catch(e) {}
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('from')) document.getElementById('ovFrom').value = params.get('from');
+    if (params.get('to')) document.getElementById('ovTo').value = params.get('to');
+    if (params.get('date')) document.getElementById('ovDate').value = params.get('date');
+    document.getElementById('ovDate').min = new Date().toISOString().split('T')[0];
+
+    loadDashboard();
+  </script>
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+</body>
+</html>

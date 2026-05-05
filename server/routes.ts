@@ -1525,6 +1525,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/chauffeurs", async (_req: Request, res: Response) => {
+    try {
+      const allChauffeurs = await storage.getAllChauffeurs();
+      // Enrich with user details (name, username, phone)
+      const enriched = await Promise.all(
+        allChauffeurs.map(async (c) => {
+          const user = c.userId ? await storage.getUser(c.userId) : null;
+          return {
+            ...c,
+            userName: user?.name || "—",
+            userPhone: user?.phone || c.phone || "—",
+            userEmail: user?.username || "—",
+          };
+        })
+      );
+      return res.json(enriched);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ─── Long Distance: driver availability toggle ───────────────────────────
+  app.post("/api/long-distance/availability", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const userId = req.userId!;
+      const chauffeur = await storage.getChauffeurByUserId(userId);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur profile not found" });
+      if (!chauffeur.isApproved) return res.status(403).json({ message: "Account not yet approved" });
+
+      const {
+        available,
+        from,
+        to,
+        date,
+        pricePerSeat,
+        seatsAvailable,
+      } = req.body as {
+        available: boolean;
+        from?: string;
+        to?: string;
+        date?: string;
+        pricePerSeat?: number;
+        seatsAvailable?: number;
+      };
+
+      await storage.updateChauffeur(chauffeur.id, {
+        availableForLongDistance: available,
+        longDistanceFrom: available ? (from || null) : null,
+        longDistanceTo: available ? (to || null) : null,
+        longDistanceDate: available ? (date || null) : null,
+        longDistancePricePerSeat: available ? (pricePerSeat || null) : null,
+        longDistanceSeatsAvailable: available ? (seatsAvailable || 1) : 0,
+      } as any);
+
+      return res.json({ success: true, available });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ─── Long Distance: search available drivers ─────────────────────────────
+  app.get("/api/long-distance/search", async (req: Request, res: Response) => {
+    try {
+      const { from, to, date } = req.query as { from?: string; to?: string; date?: string };
+      const allChauffeurs = await storage.getAllChauffeurs();
+      const available = allChauffeurs.filter((c: any) => {
+        if (!c.availableForLongDistance || !c.isApproved) return false;
+        if (from && c.longDistanceFrom && !c.longDistanceFrom.toLowerCase().includes((from as string).toLowerCase())) return false;
+        if (to && c.longDistanceTo && !c.longDistanceTo.toLowerCase().includes((to as string).toLowerCase())) return false;
+        if (date && c.longDistanceDate && c.longDistanceDate !== date) return false;
+        return true;
+      });
+
+      const enriched = await Promise.all(
+        available.map(async (c: any) => {
+          const user = c.userId ? await storage.getUser(c.userId) : null;
+          return {
+            id: c.id,
+            name: user?.name || "Driver",
+            photo: c.profilePhoto || user?.profilePhoto || null,
+            vehicleType: c.vehicleType,
+            vehicleModel: c.vehicleModel,
+            carColor: c.carColor,
+            rating: user?.rating || 5.0,
+            from: c.longDistanceFrom,
+            to: c.longDistanceTo,
+            date: c.longDistanceDate,
+            pricePerSeat: c.longDistancePricePerSeat,
+            seatsAvailable: c.longDistanceSeatsAvailable,
+            lat: c.lat,
+            lng: c.lng,
+          };
+        })
+      );
+
+      return res.json(enriched);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ─── Long Distance: get driver's current availability status ─────────────
+  app.get("/api/long-distance/my-availability", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const chauffeur = await storage.getChauffeurByUserId(req.userId!);
+      if (!chauffeur) return res.status(404).json({ message: "Not found" });
+      return res.json({
+        available: (chauffeur as any).availableForLongDistance || false,
+        from: (chauffeur as any).longDistanceFrom || "",
+        to: (chauffeur as any).longDistanceTo || "",
+        date: (chauffeur as any).longDistanceDate || "",
+        pricePerSeat: (chauffeur as any).longDistancePricePerSeat || 0,
+        seatsAvailable: (chauffeur as any).longDistanceSeatsAvailable || 1,
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   // -----------------------------
   // Driver Applications + Documents (Admin + Driver)
   // -----------------------------
