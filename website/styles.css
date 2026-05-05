@@ -213,7 +213,7 @@ ul, ol { list-style:none; }
 }
 .page-hero--photo .page-hero-bg::after {
   content:''; position:absolute; inset:0;
-  background:linear-gradient(to top, rgba(0,0,0,0.85) 30%, rgba(0,0,0,0.4) 100%);
+  background:linear-gradient(to top, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.22) 50%, rgba(0,0,0,0.05) 100%);
 }
 .page-hero--photo .container { position:relative; z-index:1; padding-bottom:64px; }
 

@@ -339,6 +339,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Public config for the website (safe, non-secret values only)
+  app.get("/api/config", (_req: Request, res: Response) => {
+    res.json({
+      paystackPublicKey: process.env.PAYSTACK_PUBLIC_KEY || "",
+    });
+  });
+
   // Haversine distance in km between two lat/lng points
   function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
     const R = 6371;

@@ -288,7 +288,7 @@
 
   <!-- HERO -->
   <div class="page-hero page-hero--photo" style="min-height:420px;">
-    <div class="page-hero-bg" style="background-image:url('assets/images/rides.png?v=20260505b'); background-position: center center;"></div>
+    <div class="page-hero-bg" style="background-image:url('assets/images/LuxuryVan.png?v=20260505'); background-position: center center;"></div>
     <div class="container" style="position:relative;z-index:1;padding-bottom:80px;">
       <p class="label label--light">Long Distance</p>
       <div class="ld-proof-kicker">Live routes, map preview, dashboard follow-up</div>
@@ -541,6 +541,11 @@
     document.getElementById('ldDate').min = new Date().toISOString().split('T')[0];
 
     function initMap() {
+      // Always show the results layout so the map is visible immediately
+      document.getElementById('ldResultsLayout').style.display = 'grid';
+      document.getElementById('ldStatus').style.display = 'none';
+      document.getElementById('ldResultsList').innerHTML = '<p style="color:var(--grey-400);font-size:14px;padding:20px 0;">Loading live drivers…</p>';
+
       map = new google.maps.Map(document.getElementById('ldMap'), {
         center: { lat: -28.4793, lng: 24.6727 },
         zoom: 5,
@@ -597,8 +602,10 @@
     }
 
     function setStatus(title, text) {
+      const statusEl = document.getElementById('ldStatus');
       const titleEl = document.getElementById('ldStatusTitle');
       const textEl = document.getElementById('ldStatusText');
+      if (statusEl) statusEl.style.display = 'flex';
       if (titleEl) titleEl.textContent = title;
       if (textEl) textEl.textContent = text;
     }
@@ -681,7 +688,7 @@
         renderResults(drivers, from, to, date);
         if (from && to) showRoutePreview(from, to);
       } catch (err) {
-        document.getElementById('ldResultsLayout').style.display = 'none';
+        document.getElementById('ldResultsLayout').style.display = 'grid';
         document.getElementById('ldEmpty').style.display = 'block';
         document.getElementById('ldEmptyMessage').innerHTML = 'Live routes are temporarily unavailable.<br />Try again shortly or use the popular routes below.';
         setStatus('Search could not be completed', 'The live route feed is temporarily unavailable. Try again shortly or pick a popular route below.');
@@ -697,7 +704,7 @@
       const empty = document.getElementById('ldEmpty');
       const count = document.getElementById('resultsCount');
 
-      layout.style.display = 'none';
+      layout.style.display = 'grid';
       empty.style.display = 'none';
 
       if (!drivers.length) {

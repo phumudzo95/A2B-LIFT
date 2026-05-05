@@ -76,6 +76,26 @@
     .ld-form-grid input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--grey-200); border-radius: var(--radius-sm); font-size: 14px; font-family: var(--font); outline: none; }
     .ld-form-grid input:focus { border-color: var(--black); }
     .empty-state { text-align: center; padding: 60px 20px; color: var(--grey-400); }
+    /* Modal */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:2000; align-items:center; justify-content:center; padding:16px; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:var(--white); border-radius:20px; padding:36px; width:100%; max-width:420px; box-shadow:0 24px 64px rgba(0,0,0,0.18); position:relative; }
+    .modal-box h3 { font-size:22px; font-weight:800; letter-spacing:-0.02em; margin-bottom:6px; }
+    .modal-box p { font-size:15px; color:var(--grey-500); margin-bottom:24px; }
+    .modal-close { position:absolute; top:16px; right:16px; background:var(--grey-100); border:none; border-radius:50%; width:32px; height:32px; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--grey-500); }
+    .modal-close:hover { background:var(--grey-200); }
+    .modal-input-group label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--grey-400); display:block; margin-bottom:8px; }
+    .modal-input-group input { width:100%; padding:14px 16px; border:1.5px solid var(--grey-200); border-radius:10px; font-size:22px; font-weight:700; font-family:var(--font); outline:none; transition:border-color .15s; }
+    .modal-input-group input:focus { border-color:var(--black); }
+    .modal-input-group input.error { border-color:#dc2626; }
+    .modal-actions { display:flex; gap:10px; margin-top:24px; }
+    .modal-actions .btn { flex:1; justify-content:center; }
+    /* Toast */
+    .toast-container { position:fixed; bottom:24px; right:24px; z-index:3000; display:flex; flex-direction:column; gap:10px; pointer-events:none; }
+    .toast { background:var(--black); color:var(--white); padding:14px 20px; border-radius:12px; font-size:14px; font-weight:600; box-shadow:0 8px 32px rgba(0,0,0,0.2); opacity:0; transform:translateY(12px); transition:all .25s; max-width:340px; pointer-events:auto; }
+    .toast.show { opacity:1; transform:translateY(0); }
+    .toast.toast--success { background:#16a34a; }
+    .toast.toast--error { background:#dc2626; }
     @media(max-width: 900px) { .dash-layout { grid-template-columns: 1fr; } .dash-sidebar { position: static; padding: 24px 0 0; } .dash-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; } .dash-stats { grid-template-columns: 1fr 1fr; } }
     @media(max-width: 640px) { .dash-stats { grid-template-columns: 1fr; } .ld-mini-form { grid-template-columns: 1fr; } .ld-form-grid { grid-template-columns: 1fr; } }
   </style>
@@ -233,6 +253,25 @@
   </div>
 
   <script src="main.js"></script>
+  <!-- Topup Modal -->
+  <div class="modal-overlay" id="topupModal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeTopup()">×</button>
+      <h3>Top up wallet</h3>
+      <p>Enter the amount to add to your A2B Lift wallet. You'll be securely redirected to Paystack.</p>
+      <div class="modal-input-group">
+        <label>Amount (R)</label>
+        <input type="number" id="topupAmount" placeholder="e.g. 200" min="10" step="10" />
+      </div>
+      <div style="margin-top:10px;font-size:13px;color:var(--grey-400);">Minimum: R10 &nbsp;·&nbsp; Powered by Paystack</div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeTopup()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmTopup()">Pay with Paystack</button>
+      </div>
+    </div>
+  </div>
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
   <script>
     const API = 'https://api-production-0783.up.railway.app';
     let currentUser = null;
@@ -267,7 +306,35 @@
       const link = `${base}/login.html?ref=${code}#register`;
       const msg = `Join me on A2B Lift! Use my code ${code}: ${link}`;
       if (method === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
-      else { navigator.clipboard.writeText(link); alert('Link copied!'); }
+      else { navigator.clipboard.writeText(link); showNotification('Referral link copied!', 'success'); }
+    }
+
+    function initDashMap() {
+      // Attach Places Autocomplete to the overview search inputs
+      const fromInput = document.getElementById('ovFrom');
+      const toInput = document.getElementById('ovTo');
+      if (fromInput && typeof google !== 'undefined') {
+        new google.maps.places.Autocomplete(fromInput, {
+          componentRestrictions: { country: 'za' },
+          types: ['(cities)']
+        });
+      }
+      if (toInput && typeof google !== 'undefined') {
+        new google.maps.places.Autocomplete(toInput, {
+          componentRestrictions: { country: 'za' },
+          types: ['(cities)']
+        });
+      }
+    }
+
+    async function loadConfig() {
+      try {
+        const res = await fetch(`${API}/api/config`);
+        if (res.ok) {
+          const cfg = await res.json();
+          if (cfg.paystackPublicKey) window.PAYSTACK_PUBLIC_KEY = cfg.paystackPublicKey;
+        }
+      } catch(e) {}
     }
 
     function goLongDistance() {
@@ -283,23 +350,71 @@
       window.location.href = url;
     }
 
+    function showNotification(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast--${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      requestAnimationFrame(() => { requestAnimationFrame(() => toast.classList.add('show')); });
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
     function topUpWallet() {
-      const amt = prompt('Enter amount to top up (R):');
-      if (!amt || isNaN(Number(amt)) || Number(amt) <= 0) return;
+      document.getElementById('topupAmount').value = '';
+      document.getElementById('topupAmount').classList.remove('error');
+      document.getElementById('topupModal').classList.add('open');
+      setTimeout(() => document.getElementById('topupAmount').focus(), 150);
+    }
+
+    function closeTopup() {
+      document.getElementById('topupModal').classList.remove('open');
+    }
+
+    function confirmTopup() {
+      const amtInput = document.getElementById('topupAmount');
+      const amt = Number(amtInput.value);
+      if (!amt || amt < 10) {
+        amtInput.classList.add('error');
+        amtInput.focus();
+        return;
+      }
+      amtInput.classList.remove('error');
+      closeTopup();
       const userStr = localStorage.getItem('a2b_user');
       const user = userStr ? JSON.parse(userStr) : {};
-      if (typeof PaystackPop === 'undefined') { alert('Paystack unavailable. Try again shortly.'); return; }
+      if (typeof PaystackPop === 'undefined') {
+        showNotification('Paystack is unavailable. Please try again shortly.', 'error');
+        return;
+      }
+      if (!window.PAYSTACK_PUBLIC_KEY) {
+        showNotification('Payment configuration not ready. Please refresh and try again.', 'error');
+        return;
+      }
       const handler = PaystackPop.setup({
-        key: 'pk_live_placeholder',
-        email: user.username || 'user@a2blift.co.za',
-        amount: Number(amt) * 100,
+        key: window.PAYSTACK_PUBLIC_KEY,
+        email: user.email || user.username || 'user@a2blift.co.za',
+        amount: Math.round(amt * 100),
         currency: 'ZAR',
         ref: 'WALLET_' + Date.now(),
-        callback: function(r) { alert('Wallet topped up! Ref: ' + r.reference); loadWallet(); },
+        metadata: { userId: user.id },
+        callback: function(r) {
+          showNotification('Wallet topped up! Ref: ' + r.reference, 'success');
+          loadWallet();
+          loadDashboard();
+        },
         onClose: function() {},
       });
       handler.openIframe();
     }
+
+    // Close modal on overlay click
+    document.getElementById('topupModal').addEventListener('click', function(e) {
+      if (e.target === this) closeTopup();
+    });
 
     async function toggleAvailability() {
       availabilityOn = !availabilityOn;
@@ -314,9 +429,9 @@
       const date = document.getElementById('ldAvDate').value;
       const price = Number(document.getElementById('ldAvPrice').value);
       const seats = Number(document.getElementById('ldAvSeats').value) || 1;
-      if (!from || !to) { alert('Please fill in departure and destination.'); return; }
+      if (!from || !to) { showNotification('Please fill in departure and destination.', 'error'); return; }
       await saveAvailabilityState(true, { from, to, date, pricePerSeat: price, seatsAvailable: seats });
-      alert('Your route is now live!');
+      showNotification('Your route is now live!', 'success');
     }
 
     async function saveAvailabilityState(available, data) {
@@ -334,19 +449,23 @@
       const shown = limit ? trips.slice(0, limit) : trips;
       if (!shown.length) return '<div class="empty-state"><p>No trips yet</p></div>';
       return `<table class="trips-table">
-        <thead><tr><th>Route</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
+        <thead><tr><th>Type / Route</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
         <tbody>${shown.map(t => `
           <tr>
-            <td>${t.pickupAddress || 'Pickup'} → ${t.dropoffAddress || 'Dropoff'}</td>
+            <td>
+              ${t._label ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--grey-400);margin-bottom:2px;">${t._label}</div>` : ''}
+              ${t.pickupAddress || 'Pickup'} → ${t.dropoffAddress || 'Dropoff'}
+            </td>
             <td style="white-space:nowrap;color:var(--grey-400)">${t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-ZA',{day:'numeric',month:'short'}) : '—'}</td>
             <td style="font-weight:700">${t.price ? 'R' + Number(t.price).toFixed(2) : '—'}</td>
-            <td><span class="trip-status trip-status--${t.status === 'trip_completed' ? 'completed' : t.status?.startsWith('cancel') ? 'cancelled' : 'pending'}"><span class="trip-status-dot"></span>${(t.status || '—').replace('_',' ')}</span></td>
+            <td><span class="trip-status trip-status--${t.status === 'trip_completed' ? 'completed' : t.status?.startsWith('cancel') ? 'cancelled' : 'pending'}"><span class="trip-status-dot"></span>${(t.status || 'pending').replace('_',' ')}</span></td>
           </tr>`).join('')}
         </tbody>
       </table>`;
     }
 
     async function loadDashboard() {
+      loadConfig(); // fetch Paystack public key + config in background
       const token = localStorage.getItem('a2b_token');
       const userStr = localStorage.getItem('a2b_user');
       if (!token) { window.location.replace('login.html'); return; }
@@ -383,19 +502,37 @@
 
     async function loadTrips(user) {
       const token = localStorage.getItem('a2b_token');
+      let trips = [];
       try {
         const endpoint = user.role === 'chauffeur'
           ? `${API}/api/rides/chauffeur/${user.chauffeurId || user.id}`
           : `${API}/api/rides/client/${user.id}`;
         const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) throw new Error();
-        const trips = await res.json();
-        document.getElementById('statTrips').textContent = trips.filter(t => t.status === 'trip_completed').length;
-        document.getElementById('recentTripsTable').innerHTML = renderTripsTable(trips, 5);
-        document.getElementById('allTripsTable').innerHTML = renderTripsTable(trips);
+        trips = await res.json();
       } catch(e) {
         document.getElementById('recentTripsTable').innerHTML = '<p style="color:var(--grey-400);font-size:14px;">Unable to load trips.</p>';
       }
+
+      // Include any pending airport transfer from localStorage
+      try {
+        const pendingAT = localStorage.getItem('a2b_pending_airport_transfer');
+        if (pendingAT) {
+          const at = JSON.parse(pendingAT);
+          trips = [{
+            pickupAddress: at.destination || 'Your location',
+            dropoffAddress: at.airport || 'Airport',
+            createdAt: at.createdAt,
+            price: null,
+            status: 'pending',
+            _label: 'Airport Transfer',
+          }, ...trips];
+        }
+      } catch(e) {}
+
+      document.getElementById('statTrips').textContent = trips.filter(t => t.status === 'trip_completed').length;
+      document.getElementById('recentTripsTable').innerHTML = renderTripsTable(trips, 5);
+      document.getElementById('allTripsTable').innerHTML = renderTripsTable(trips);
     }
 
     async function loadWallet() {
@@ -438,5 +575,6 @@
     loadDashboard();
   </script>
   <script src="https://js.paystack.co/v1/inline.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDhC2aHuhOQ8ZwuWj2K5XZ5nAElB572-wo&libraries=places&callback=initDashMap" async defer></script>
 </body>
 </html>
