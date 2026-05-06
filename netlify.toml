@@ -3,19 +3,19 @@
 
 [[redirects]]
   from = "/referral/*"
-  to = "https://api-production-0783.up.railway.app/referral/:splat"
+  to = "https://api.a2blift.com/referral/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/ref/*"
-  to = "https://api-production-0783.up.railway.app/ref/:splat"
+  to = "https://api.a2blift.com/ref/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/r/*"
-  to = "https://api-production-0783.up.railway.app/r/:splat"
+  to = "https://api.a2blift.com/r/:splat"
   status = 200
   force = true
 

@@ -272,7 +272,7 @@
 
       // POST to API so the booking is tracked and admins are notified
       try {
-        const res = await fetch('https://api-production-0783.up.railway.app/api/airport-transfers/book', {
+        const res = await fetch('https://api.a2blift.com/api/airport-transfers/book', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ airport: airport.name, destination, date, time, flightNumber, passengers, phone }),
