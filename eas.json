@@ -11,8 +11,7 @@
       "env": {
         "EXPO_PUBLIC_DOMAIN": "https://api.a2blift.com",
         "EXPO_PUBLIC_REFERRAL_BASE_URL": "https://a2blift.com",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "REPLACE_WITH_YOUR_GOOGLE_MAPS_KEY"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co"
       },
       "channel": "development"
     },
@@ -25,8 +24,7 @@
       "env": {
         "EXPO_PUBLIC_DOMAIN": "https://api.a2blift.com",
         "EXPO_PUBLIC_REFERRAL_BASE_URL": "https://a2blift.com",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "REPLACE_WITH_YOUR_GOOGLE_MAPS_KEY"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co"
       },
       "channel": "preview"
     },
@@ -42,8 +40,7 @@
       "env": {
         "EXPO_PUBLIC_DOMAIN": "https://api.a2blift.com",
         "EXPO_PUBLIC_REFERRAL_BASE_URL": "https://a2blift.com",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "REPLACE_WITH_YOUR_GOOGLE_MAPS_KEY"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co"
       },
       "channel": "production"
     }
