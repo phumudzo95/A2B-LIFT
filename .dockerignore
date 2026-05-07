@@ -1,0 +1,11 @@
+node_modules
+.git
+.expo
+dist
+web-build
+builds
+attached_assets
+ios
+android
+*.log
+.DS_Store
