@@ -17,7 +17,7 @@ const GOOGLE_OAUTH_START = "https://api.a2blift.com/api/auth/google/start";
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ ref?: string }>();
-  const { register, setUser } = useAuth();
+  const { register, setUser, pendingReferralCode, setPendingReferralCode } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -29,12 +29,21 @@ export default function RegisterScreen() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (typeof params.ref !== "string") return;
-    const normalizedRef = params.ref.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (normalizedRef) {
-      setReferralCode(normalizedRef);
+    const fromParam =
+      typeof params.ref === "string"
+        ? params.ref.trim().toUpperCase().replace(/[^A-Z0-9]/g, "")
+        : "";
+
+    if (fromParam) {
+      setReferralCode(fromParam);
+      setPendingReferralCode(fromParam).catch(() => {});
+      return;
     }
-  }, [params.ref]);
+
+    if (pendingReferralCode) {
+      setReferralCode(pendingReferralCode);
+    }
+  }, [params.ref, pendingReferralCode, setPendingReferralCode]);
 
   // Handle the deep link callback from the backend OAuth flow
   useEffect(() => {
@@ -93,6 +102,7 @@ export default function RegisterScreen() {
         phone: phone.trim(),
         referralCode: referralCode.trim() || undefined,
       });
+      await setPendingReferralCode(null);
     } catch (e: any) {
       const msg = e.message || "Registration failed.";
       if (msg.includes("already exists") || msg.includes("400")) setError("An account with this email already exists");
