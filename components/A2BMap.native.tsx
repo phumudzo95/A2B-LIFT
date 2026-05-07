@@ -279,7 +279,7 @@ export default function A2BMap({
   }, [routeCoords, zoomToCoords]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: "#0B0B0B" }]}>
       {(loading || !pickupLocation) && (
         <View style={styles.locatingOverlay}>
           <ActivityIndicator size="small" color={Colors.white} />
@@ -294,8 +294,10 @@ export default function A2BMap({
         initialRegion={initialRegionRef.current}
         onMapReady={handleMapReady}
         mapType="standard"
+        userInterfaceStyle="dark"
         loadingEnabled={true}
         loadingBackgroundColor="#0B0B0B"
+        loadingIndicatorColor="#FFFFFF"
         showsUserLocation={true}
         showsMyLocationButton={false}
         showsCompass={false}
