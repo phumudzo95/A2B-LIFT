@@ -5002,6 +5002,19 @@ function setupErrorHandler(app2) {
   });
 }
 (async () => {
+  try {
+    await pool2.query(`
+      ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS available_for_long_distance boolean DEFAULT false;
+      ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_from text;
+      ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_to text;
+      ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_date text;
+      ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_price_per_seat real;
+      ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_seats_available integer DEFAULT 0;
+    `);
+    console.log("[MIGRATION] Long-distance columns ensured \u2705");
+  } catch (err) {
+    console.error("[MIGRATION] Warning: could not apply long-distance migration:", err.message);
+  }
   setupCors(app);
   setupSecurity(app);
   setupBodyParsing(app);

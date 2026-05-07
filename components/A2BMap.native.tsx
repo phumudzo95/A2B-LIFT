@@ -290,7 +290,6 @@ export default function A2BMap({
         ref={mapRef}
         style={styles.map}
         provider={Platform.OS === "web" ? undefined : PROVIDER_GOOGLE}
-        liteMode={Platform.OS === "android"}
         customMapStyle={customMapStyle}
         initialRegion={initialRegionRef.current}
         onMapReady={handleMapReady}

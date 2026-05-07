@@ -7,6 +7,7 @@ import helmet from "helmet";
 import * as fs from "fs";
 import * as path from "path";
 import { createProxyMiddleware } from "http-proxy-middleware";
+import { pool } from "./db";
 
 const app = express();
 const log = console.log;
@@ -357,6 +358,21 @@ function setupErrorHandler(app: express.Application) {
 }
 
 (async () => {
+  // Run startup migrations — idempotent, safe to run on every deploy
+  try {
+    await pool.query(`
+      ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS available_for_long_distance boolean DEFAULT false;
+      ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_from text;
+      ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_to text;
+      ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_date text;
+      ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_price_per_seat real;
+      ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_seats_available integer DEFAULT 0;
+    `);
+    console.log("[MIGRATION] Long-distance columns ensured ✅");
+  } catch (err: any) {
+    console.error("[MIGRATION] Warning: could not apply long-distance migration:", err.message);
+  }
+
   setupCors(app);
   setupSecurity(app);
   setupBodyParsing(app);

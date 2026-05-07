@@ -36,14 +36,29 @@ export async function enablePreciseLocationIfAvailable() {
   }
 }
 
+function withLocationTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Location timeout")), ms),
+    ),
+  ]);
+}
+
 export async function getBestAvailablePosition() {
   await enablePreciseLocationIfAvailable();
 
   try {
-    return await Location.getCurrentPositionAsync({
-      accuracy: HIGH_ACCURACY,
-      mayShowUserSettingsDialog: true,
-    });
+    return await withLocationTimeout(
+      Location.getCurrentPositionAsync({
+        accuracy: HIGH_ACCURACY,
+        mayShowUserSettingsDialog: true,
+      }),
+      8000,
+    );
   } catch {
     try {
       const lastKnown = await Location.getLastKnownPositionAsync({
@@ -54,10 +69,13 @@ export async function getBestAvailablePosition() {
       // ignore and fall through to a simpler retry
     }
 
-    return Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-      mayShowUserSettingsDialog: true,
-    });
+    return withLocationTimeout(
+      Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+        mayShowUserSettingsDialog: true,
+      }),
+      8000,
+    );
   }
 }
 
