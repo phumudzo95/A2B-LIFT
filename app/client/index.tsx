@@ -2328,16 +2328,7 @@ export default function ClientHomeScreen() {
 
             <View style={styles.cashSelfieActionRow}>
               <Pressable
-                style={styles.cashSelfieSecondaryButton}
-                onPress={() => {
-                  setShowCashSelfiePrompt(false);
-                  void proceedWithRide("cash");
-                }}
-              >
-                <Text style={styles.cashSelfieSecondaryButtonText}>Request without selfie</Text>
-              </Pressable>
-              <Pressable
-                style={styles.cashSelfiePrimaryButton}
+                style={[styles.cashSelfiePrimaryButton, { flex: 1 }]}
                 onPress={() => {
                   setShowCashSelfiePrompt(false);
                   setShowCashSelfieCamera(true);

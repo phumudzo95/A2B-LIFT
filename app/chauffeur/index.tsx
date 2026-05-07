@@ -635,6 +635,7 @@ export default function ChauffeurDashboard() {
       } catch {}
     }
 
+    // Response listener: fires when driver TAPS the notification
     const sub = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data as any;
       if (data?.type === "ride:new") {
@@ -642,7 +643,19 @@ export default function ChauffeurDashboard() {
         void hydrateIncomingRideFromNotification();
       }
     });
-    return () => sub.remove();
+
+    // Received listener: fires when notification arrives while app is in foreground or background-resumed
+    const subReceived = Notifications.addNotificationReceivedListener((notification: any) => {
+      const data = notification.request.content.data as any;
+      if (data?.type === "ride:new") {
+        void hydrateIncomingRideFromNotification();
+      }
+    });
+
+    return () => {
+      sub.remove();
+      subReceived.remove();
+    };
   }, [chauffeur?.id, currentRide, isExpoGoAndroid]);
 
   // ─── Polling fallback ─────────────────────────────────────────────────────

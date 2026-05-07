@@ -2,22 +2,19 @@
   publish = "website"
 
 [[redirects]]
-  from = "/referral/*"
-  to = "https://api.a2blift.com/referral/:splat"
-  status = 200
-  force = true
+  from = "/referral/:code"
+  to = "/register.html?ref=:code"
+  status = 302
 
 [[redirects]]
-  from = "/ref/*"
-  to = "https://api.a2blift.com/ref/:splat"
-  status = 200
-  force = true
+  from = "/ref/:code"
+  to = "/register.html?ref=:code"
+  status = 302
 
 [[redirects]]
-  from = "/r/*"
-  to = "https://api.a2blift.com/r/:splat"
-  status = 200
-  force = true
+  from = "/r/:code"
+  to = "/register.html?ref=:code"
+  status = 302
 
 [[headers]]
   for = "/*"

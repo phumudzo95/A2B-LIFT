@@ -13,6 +13,36 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { SocketProvider } from "@/lib/socket-context";
 
+// ─── Global notification handler (runs before any screen mounts) ─────────────
+// This ensures push notifications show alerts + play sound even when the app
+// is foregrounded after being in the background.
+if (Platform.OS !== "web") {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Notifications = require("expo-notifications");
+    if (Platform.OS === "android") {
+      Notifications.setNotificationChannelAsync("ride-alerts", {
+        name: "Ride Alerts",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        sound: "default",
+        bypassDnd: true,
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        showBadge: true,
+      });
+    }
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  } catch {}
+}
+
 SplashScreen.preventAutoHideAsync();
 
 function normalizeReferralCode(value: unknown): string | null {
