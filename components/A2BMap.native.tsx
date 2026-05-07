@@ -280,7 +280,7 @@ export default function A2BMap({
 
   return (
     <View style={[styles.container, { backgroundColor: "#0B0B0B" }]}>
-      {(loading || !pickupLocation) && (
+      {loading && (
         <View style={styles.locatingOverlay}>
           <ActivityIndicator size="small" color={Colors.white} />
           <Text style={styles.locatingText}>Locating you...</Text>

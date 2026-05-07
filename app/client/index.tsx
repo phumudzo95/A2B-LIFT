@@ -1152,13 +1152,13 @@ export default function ClientHomeScreen() {
       if (status === "granted") {
         const loc = await getBestAvailablePosition();
         const nextLocation = toLatLng(loc);
-        await startLocationWatch();
         setLocation((current) => {
           if (pickupFollowsDeviceRef.current || !current) {
             return nextLocation;
           }
           return current;
         });
+        void startLocationWatch();
         await resolvePickupAddress(nextLocation, true);
       } else {
         locationWatchRef.current?.remove();
