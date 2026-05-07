@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useMemo, useCallback } from "react";
 import { View, Text, StyleSheet, ActivityIndicator, Platform } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker, Polyline, UrlTile } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 
@@ -151,6 +151,7 @@ export default function A2BMap({
   const lastCenteredPickupRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastFollowedDriverRef = useRef<{ lat: number; lng: number } | null>(null);
   const customMapStyle = DARK_MAP_STYLE;
+  const useOpenStreetMapTiles = Platform.OS === "android";
 
   // Use user's location for initialRegion if available, else Johannesburg
   const center = pickupLocation || DEFAULT_REGION;
@@ -289,13 +290,13 @@ export default function A2BMap({
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={Platform.OS === "web" ? undefined : PROVIDER_GOOGLE}
+        provider={undefined}
         customMapStyle={customMapStyle}
         initialRegion={initialRegionRef.current}
         onMapReady={handleMapReady}
-        mapType="standard"
+        mapType={useOpenStreetMapTiles ? "none" : "standard"}
+        loadingEnabled={false}
         userInterfaceStyle="dark"
-        loadingEnabled={true}
         loadingBackgroundColor="#0B0B0B"
         loadingIndicatorColor="#FFFFFF"
         showsUserLocation={true}
@@ -307,6 +308,16 @@ export default function A2BMap({
         toolbarEnabled={false}
         mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}
       >
+        {useOpenStreetMapTiles && (
+          <UrlTile
+            urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maximumZ={19}
+            flipY={false}
+            shouldReplaceMapContent={true}
+            zIndex={0}
+          />
+        )}
+
         {pickupLocation && (
           <Marker
             coordinate={{ latitude: pickupLocation.lat, longitude: pickupLocation.lng }}
