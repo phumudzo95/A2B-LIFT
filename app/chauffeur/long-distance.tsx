@@ -27,6 +27,12 @@ interface ChauffeurProfile {
   isApproved: boolean;
   vehicleType?: string | null;
   vehicleModel?: string | null;
+  availableForLongDistance?: boolean | null;
+  longDistanceFrom?: string | null;
+  longDistanceTo?: string | null;
+  longDistanceDate?: string | null;
+  longDistancePricePerSeat?: number | null;
+  longDistanceSeatsAvailable?: number | null;
 }
 
 interface LongDistanceAvailability {
@@ -57,6 +63,15 @@ const defaultAvailability: LongDistanceAvailability = {
 };
 
 const AUTOCOMPLETE_DEBOUNCE_MS = 350;
+
+function isMissingLongDistanceRouteError(error: any) {
+  const message = String(error?.message || "");
+  return (
+    message.includes("Cannot GET /api/long-distance") ||
+    message.includes("Cannot POST /api/long-distance") ||
+    (message.includes("404") && message.includes("long-distance"))
+  );
+}
 
 function normalizeCityLabel(value: string) {
   return value
@@ -132,6 +147,16 @@ export default function ChauffeurLongDistanceScreen() {
       if (profileRes) {
         const profile = await profileRes.json();
         setChauffeur(profile);
+        if (!availabilityRes) {
+          setForm({
+            available: Boolean(profile?.availableForLongDistance),
+            from: profile?.longDistanceFrom || "",
+            to: profile?.longDistanceTo || "",
+            date: profile?.longDistanceDate || "",
+            pricePerSeat: profile?.longDistancePricePerSeat ? String(profile.longDistancePricePerSeat) : "",
+            seatsAvailable: profile?.longDistanceSeatsAvailable ? String(profile.longDistanceSeatsAvailable) : "3",
+          });
+        }
       } else {
         setChauffeur(null);
       }
@@ -256,14 +281,32 @@ export default function ChauffeurLongDistanceScreen() {
 
     setSaving(true);
     try {
-      await apiRequest("POST", "/api/long-distance/availability", {
+      const payload = {
         available: form.available,
         from: form.available ? form.from.trim() : undefined,
         to: form.available ? form.to.trim() : undefined,
         date: form.available ? form.date.trim() : undefined,
         pricePerSeat: form.available ? Number(form.pricePerSeat) : undefined,
         seatsAvailable: form.available ? Number(form.seatsAvailable) : undefined,
-      });
+      };
+
+      try {
+        await apiRequest("POST", "/api/long-distance/availability", payload);
+      } catch (error) {
+        if (!isMissingLongDistanceRouteError(error) || !chauffeur?.id) {
+          throw error;
+        }
+
+        // Fallback for deployments that don't yet expose /api/long-distance routes.
+        await apiRequest("PUT", `/api/chauffeurs/${chauffeur.id}`, {
+          availableForLongDistance: payload.available,
+          longDistanceFrom: payload.available ? payload.from : null,
+          longDistanceTo: payload.available ? payload.to : null,
+          longDistanceDate: payload.available ? payload.date : null,
+          longDistancePricePerSeat: payload.available ? payload.pricePerSeat : null,
+          longDistanceSeatsAvailable: payload.available ? payload.seatsAvailable : 0,
+        });
+      }
 
       setLastUpdatedLabel(new Date().toLocaleString());
       Alert.alert(
