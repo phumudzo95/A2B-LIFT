@@ -3,18 +3,18 @@
 
 [[redirects]]
   from = "/referral/:code"
-  to = "/register.html?ref=:code"
-  status = 302
+  to = "/referral-launch.html"
+  status = 200
 
 [[redirects]]
   from = "/ref/:code"
-  to = "/register.html?ref=:code"
-  status = 302
+  to = "/referral-launch.html"
+  status = 200
 
 [[redirects]]
   from = "/r/:code"
-  to = "/register.html?ref=:code"
-  status = 302
+  to = "/referral-launch.html"
+  status = 200
 
 [[headers]]
   for = "/*"

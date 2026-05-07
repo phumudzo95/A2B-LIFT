@@ -566,6 +566,45 @@ export default function ChauffeurDashboard() {
     return () => stopLocationUpdates();
   }, [isOnline, chauffeur]);
 
+  useEffect(() => {
+    if (!chauffeur || myLocation) return;
+
+    let cancelled = false;
+
+    async function seedInitialLocation() {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (cancelled) return;
+
+        if (status !== "granted") {
+          setMyLocation(JHB_FALLBACK);
+          return;
+        }
+
+        try {
+          const loc = await getBestAvailablePosition();
+          if (!cancelled) {
+            setMyLocation(toLatLng(loc));
+          }
+        } catch {
+          if (!cancelled) {
+            setMyLocation(JHB_FALLBACK);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setMyLocation(JHB_FALLBACK);
+        }
+      }
+    }
+
+    seedInitialLocation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [chauffeur, myLocation]);
+
   // ─── Poll approval status ─────────────────────────────────────────────────
   useEffect(() => {
     if (!chauffeur?.id) return;

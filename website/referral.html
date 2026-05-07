@@ -369,7 +369,7 @@
       const user = userStr ? JSON.parse(userStr) : {};
       const code = user.referralCode || '';
       const base = window.location.origin || 'https://a2blift.com';
-      const link = `${base}/login.html?ref=${code}#register`;
+      const link = `${base}/r/${encodeURIComponent(code)}`;
       const msg = `Join me on A2B Lift — luxury rides across South Africa. Use my referral code ${code} or sign up at: ${link}`;
       if (method === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
       else if (method === 'sms') window.open(`sms:?body=${encodeURIComponent(msg)}`);

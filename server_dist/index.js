@@ -2373,6 +2373,30 @@ async function registerRoutes(app2) {
       return res.status(500).json({ message: error.message });
     }
   });
+  function normalizeLongDistanceCity(value) {
+    return String(value || "").replace(/\([^)]*\)/g, " ").replace(/\b(south africa|sa)\b/gi, " ").split(",")[0].replace(/[^a-zA-Z\s'-]/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  }
+  function formatLongDistanceCity(value) {
+    const normalized = normalizeLongDistanceCity(value);
+    if (!normalized) return "";
+    return normalized.replace(/\b\w+/g, (segment) => segment.charAt(0).toUpperCase() + segment.slice(1));
+  }
+  function isFutureLongDistanceDate(value) {
+    const raw = String(value || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
+    const parsed = /* @__PURE__ */ new Date(`${raw}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return false;
+    const today = /* @__PURE__ */ new Date();
+    today.setHours(0, 0, 0, 0);
+    return parsed.getTime() > today.getTime();
+  }
+  function longDistanceCityMatches(candidate, query) {
+    const normalizedQuery = normalizeLongDistanceCity(query);
+    if (!normalizedQuery) return true;
+    const normalizedCandidate = normalizeLongDistanceCity(candidate);
+    if (!normalizedCandidate) return false;
+    return normalizedCandidate === normalizedQuery || normalizedCandidate.includes(normalizedQuery) || normalizedQuery.includes(normalizedCandidate);
+  }
   app2.post("/api/long-distance/availability", requireAuth, async (req, res) => {
     try {
       const userId = req.auth.sub;
@@ -2387,13 +2411,35 @@ async function registerRoutes(app2) {
         pricePerSeat,
         seatsAvailable
       } = req.body;
+      const normalizedFrom = formatLongDistanceCity(from);
+      const normalizedTo = formatLongDistanceCity(to);
+      const normalizedDate = String(date || "").trim();
+      const numericPricePerSeat = Number(pricePerSeat);
+      const numericSeatsAvailable = Math.max(1, Math.floor(Number(seatsAvailable) || 0));
+      if (available) {
+        if (!normalizedFrom || !normalizedTo) {
+          return res.status(400).json({ message: "Departure city and destination are required" });
+        }
+        if (normalizeLongDistanceCity(normalizedFrom) === normalizeLongDistanceCity(normalizedTo)) {
+          return res.status(400).json({ message: "Departure city and destination must be different" });
+        }
+        if (!isFutureLongDistanceDate(normalizedDate)) {
+          return res.status(400).json({ message: "Travel date must be a future date in YYYY-MM-DD format" });
+        }
+        if (!Number.isFinite(numericPricePerSeat) || numericPricePerSeat <= 0) {
+          return res.status(400).json({ message: "Price per seat must be greater than zero" });
+        }
+        if (!Number.isFinite(numericSeatsAvailable) || numericSeatsAvailable < 1) {
+          return res.status(400).json({ message: "At least one seat must be available" });
+        }
+      }
       await storage.updateChauffeur(chauffeur.id, {
         availableForLongDistance: available,
-        longDistanceFrom: available ? from || null : null,
-        longDistanceTo: available ? to || null : null,
-        longDistanceDate: available ? date || null : null,
-        longDistancePricePerSeat: available ? pricePerSeat || null : null,
-        longDistanceSeatsAvailable: available ? seatsAvailable || 1 : 0
+        longDistanceFrom: available ? normalizedFrom : null,
+        longDistanceTo: available ? normalizedTo : null,
+        longDistanceDate: available ? normalizedDate : null,
+        longDistancePricePerSeat: available ? numericPricePerSeat : null,
+        longDistanceSeatsAvailable: available ? numericSeatsAvailable : 0
       });
       return res.json({ success: true, available });
     } catch (error) {
@@ -2403,12 +2449,15 @@ async function registerRoutes(app2) {
   app2.get("/api/long-distance/search", async (req, res) => {
     try {
       const { from, to, date } = req.query;
+      const normalizedFrom = formatLongDistanceCity(from);
+      const normalizedTo = formatLongDistanceCity(to);
+      const normalizedDate = String(date || "").trim();
       const allChauffeurs = await storage.getAllChauffeurs();
       const available = allChauffeurs.filter((c) => {
         if (!c.availableForLongDistance || !c.isApproved) return false;
-        if (from && c.longDistanceFrom && !c.longDistanceFrom.toLowerCase().includes(from.toLowerCase())) return false;
-        if (to && c.longDistanceTo && !c.longDistanceTo.toLowerCase().includes(to.toLowerCase())) return false;
-        if (date && c.longDistanceDate && c.longDistanceDate !== date) return false;
+        if (!longDistanceCityMatches(c.longDistanceFrom, normalizedFrom)) return false;
+        if (!longDistanceCityMatches(c.longDistanceTo, normalizedTo)) return false;
+        if (normalizedDate && c.longDistanceDate && c.longDistanceDate !== normalizedDate) return false;
         return true;
       });
       const enriched = await Promise.all(
@@ -2422,8 +2471,8 @@ async function registerRoutes(app2) {
             vehicleModel: c.vehicleModel,
             carColor: c.carColor,
             rating: user?.rating || 5,
-            from: c.longDistanceFrom,
-            to: c.longDistanceTo,
+            from: formatLongDistanceCity(c.longDistanceFrom),
+            to: formatLongDistanceCity(c.longDistanceTo),
             date: c.longDistanceDate,
             pricePerSeat: c.longDistancePricePerSeat,
             seatsAvailable: c.longDistanceSeatsAvailable,

@@ -74,7 +74,7 @@ function extractReferralCodeFromUrl(url: string): string | null {
     .split("/")
     .filter(Boolean);
 
-  if (pathSegments.length >= 2 && ["r", "ref"].includes(pathSegments[0])) {
+  if (pathSegments.length >= 2 && ["r", "ref", "referral"].includes(pathSegments[0])) {
     return normalizeReferralCode(pathSegments[1]);
   }
 

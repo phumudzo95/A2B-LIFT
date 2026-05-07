@@ -10,6 +10,8 @@ import Colors from "@/constants/colors";
 
 const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   ride: "car-sport",
+  long_distance: "map",
+  "long_distance:booking": "map",
   wallet: "wallet",
   safety: "shield-checkmark",
   general: "notifications",

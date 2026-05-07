@@ -76,6 +76,9 @@ export default function ChauffeurNotificationsScreen() {
   function getIcon(type: string) {
     switch (type) {
       case "ride": return "car-sport";
+      case "long_distance":
+      case "long_distance:booking":
+        return "map";
       case "approval": return "checkmark-circle";
       case "rejection": return "close-circle";
       case "earning": return "cash";
@@ -86,6 +89,9 @@ export default function ChauffeurNotificationsScreen() {
 
   function getIconColor(type: string) {
     switch (type) {
+      case "long_distance":
+      case "long_distance:booking":
+        return Colors.warning;
       case "approval": return Colors.success;
       case "rejection": return Colors.error;
       case "earning": return Colors.success;

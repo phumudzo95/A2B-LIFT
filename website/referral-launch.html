@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Open A2B Lift</title>
+  <meta name="description" content="Open the A2B Lift app with your referral code." />
+  <link rel="icon" href="assets/images/favicon.png" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050505;
+      --panel: rgba(18, 18, 18, 0.92);
+      --muted: #a1a1aa;
+      --text: #fafafa;
+      --accent: #22c55e;
+      --accent-strong: #16a34a;
+      --border: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(34, 197, 94, 0.2), transparent 36%),
+        linear-gradient(180deg, #0a0a0a, #030303 62%);
+    }
+
+    .card {
+      width: min(100%, 460px);
+      padding: 28px;
+      border-radius: 28px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+      backdrop-filter: blur(18px);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.14);
+    }
+
+    h1 {
+      margin: 20px 0 12px;
+      font-size: clamp(30px, 7vw, 42px);
+      line-height: 1.04;
+      letter-spacing: -0.04em;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .code {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .code strong {
+      font-size: 18px;
+      letter-spacing: 0.08em;
+    }
+
+    .actions {
+      display: grid;
+      gap: 12px;
+      margin-top: 26px;
+    }
+
+    .btn {
+      appearance: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 54px;
+      padding: 0 18px;
+      border-radius: 16px;
+      text-decoration: none;
+      border: 1px solid transparent;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      transition: transform 0.18s ease, opacity 0.18s ease, border-color 0.18s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      color: #041106;
+      background: linear-gradient(135deg, #6cf093, var(--accent));
+    }
+
+    .btn-secondary {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.03);
+      border-color: var(--border);
+    }
+
+    .status {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="eyebrow"><span class="dot"></span> Referral invite</div>
+    <h1>Open A2B Lift</h1>
+    <p id="lead">We are opening the app with your referral code now.</p>
+    <div class="code" id="codeBlock" hidden>
+      Referral code<br />
+      <strong id="codeValue"></strong>
+    </div>
+    <div class="actions">
+      <a id="openAppBtn" class="btn btn-primary" href="#">Open the app</a>
+      <a id="downloadBtn" class="btn btn-secondary" href="https://play.google.com/store/apps/details?id=com.a2blift">Download on Google Play</a>
+      <a id="webBtn" class="btn btn-secondary" href="/login.html#register">Continue on the web</a>
+    </div>
+    <div class="status" id="status">If the app does not open, use the buttons below.</div>
+  </main>
+
+  <script>
+    const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.a2blift";
+
+    function normalizeReferralCode(value) {
+      return String(value || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    }
+
+    function extractReferralCode() {
+      const params = new URLSearchParams(window.location.search);
+      const queryRef = normalizeReferralCode(params.get("ref"));
+      if (queryRef) return queryRef;
+
+      const segments = window.location.pathname.split("/").filter(Boolean);
+      if (segments.length >= 2 && ["r", "ref", "referral"].includes(segments[0])) {
+        return normalizeReferralCode(segments[1]);
+      }
+
+      return "";
+    }
+
+    const referralCode = extractReferralCode();
+    const appUrl = referralCode
+      ? `a2blift://register?ref=${encodeURIComponent(referralCode)}`
+      : "a2blift://register";
+    const webUrl = referralCode
+      ? `/login.html?ref=${encodeURIComponent(referralCode)}#register`
+      : "/login.html#register";
+    const playStoreUrl = referralCode
+      ? `${PLAY_STORE_URL}&referrer=${encodeURIComponent(`ref=${referralCode}`)}`
+      : PLAY_STORE_URL;
+
+    document.getElementById("openAppBtn").href = appUrl;
+    document.getElementById("downloadBtn").href = playStoreUrl;
+    document.getElementById("webBtn").href = webUrl;
+
+    if (referralCode) {
+      document.getElementById("codeBlock").hidden = false;
+      document.getElementById("codeValue").textContent = referralCode;
+    } else {
+      document.getElementById("lead").textContent = "We are opening the app now.";
+    }
+
+    const isAndroid = /android/i.test(navigator.userAgent);
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const status = document.getElementById("status");
+
+    function openApp() {
+      window.location.href = appUrl;
+    }
+
+    const fallbackTimer = window.setTimeout(() => {
+      if (document.visibilityState === "hidden") return;
+
+      if (isAndroid) {
+        status.textContent = "App not detected. Redirecting to Google Play...";
+        window.location.replace(playStoreUrl);
+        return;
+      }
+
+      status.textContent = isIOS
+        ? "App not detected. Use the button below or continue on the web."
+        : "If the app does not open, continue on the web or download it below.";
+    }, 1400);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        window.clearTimeout(fallbackTimer);
+      }
+    });
+
+    window.addEventListener("pagehide", () => window.clearTimeout(fallbackTimer));
+    window.setTimeout(openApp, 120);
+  </script>
+</body>
+</html>

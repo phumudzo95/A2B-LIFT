@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -11,6 +13,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useRef } from "react";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,6 +38,15 @@ interface LongDistanceAvailability {
   seatsAvailable: string;
 }
 
+interface CitySuggestion {
+  placeId: string;
+  description: string;
+  mainText: string;
+  secondaryText: string;
+}
+
+type RouteField = "from" | "to";
+
 const defaultAvailability: LongDistanceAvailability = {
   available: false,
   from: "",
@@ -43,6 +55,34 @@ const defaultAvailability: LongDistanceAvailability = {
   pricePerSeat: "",
   seatsAvailable: "3",
 };
+
+const AUTOCOMPLETE_DEBOUNCE_MS = 350;
+
+function normalizeCityLabel(value: string) {
+  return value
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\b(south africa|sa)\b/gi, " ")
+    .split(",")[0]
+    .replace(/[^a-zA-Z\s'-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function formatDateValue(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateLabel(date: Date) {
+  return date.toLocaleDateString("en-ZA", {
+    weekday: "short",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
 
 export default function ChauffeurLongDistanceScreen() {
   const insets = useSafeAreaInsets();
@@ -53,6 +93,28 @@ export default function ChauffeurLongDistanceScreen() {
   const [chauffeur, setChauffeur] = useState<ChauffeurProfile | null>(null);
   const [form, setForm] = useState<LongDistanceAvailability>(defaultAvailability);
   const [lastUpdatedLabel, setLastUpdatedLabel] = useState<string>("");
+  const [suggestionField, setSuggestionField] = useState<RouteField | null>(null);
+  const [suggestions, setSuggestions] = useState<CitySuggestion[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const autocompleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const dateOptions = useMemo(() => {
+    const upcomingDates: Array<{ value: string; label: string }> = [];
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    for (let offset = 1; offset <= 120; offset += 1) {
+      const nextDate = new Date(start);
+      nextDate.setDate(start.getDate() + offset);
+      upcomingDates.push({
+        value: formatDateValue(nextDate),
+        label: formatDateLabel(nextDate),
+      });
+    }
+
+    return upcomingDates;
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!user) {
@@ -99,6 +161,12 @@ export default function ChauffeurLongDistanceScreen() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    return () => {
+      if (autocompleteTimerRef.current) clearTimeout(autocompleteTimerRef.current);
+    };
+  }, []);
+
   const canSave = useMemo(() => {
     if (!chauffeur?.isApproved || saving) return false;
     if (!form.available) return true;
@@ -114,6 +182,65 @@ export default function ChauffeurLongDistanceScreen() {
 
   function setField<K extends keyof LongDistanceAvailability>(key: K, value: LongDistanceAvailability[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function loadCitySuggestions(query: string) {
+    const trimmedQuery = query.trim();
+    if (trimmedQuery.length < 2) {
+      setSuggestions([]);
+      setSuggestionsLoading(false);
+      return;
+    }
+
+    setSuggestionsLoading(true);
+    try {
+      const res = await apiRequest("GET", `/api/places/autocomplete?input=${encodeURIComponent(trimmedQuery)}`);
+      const payload = await res.json();
+      const predictions = Array.isArray(payload?.predictions) ? payload.predictions : [];
+      const seen = new Set<string>();
+      const citySuggestions: CitySuggestion[] = [];
+
+      for (const prediction of predictions) {
+        const label = normalizeCityLabel(prediction?.mainText || prediction?.description || "");
+        const dedupeKey = label.toLowerCase();
+        if (!label || seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        citySuggestions.push({
+          placeId: String(prediction?.placeId || dedupeKey),
+          description: String(prediction?.description || label),
+          mainText: label,
+          secondaryText: String(prediction?.secondaryText || ""),
+        });
+        if (citySuggestions.length >= 6) break;
+      }
+
+      setSuggestions(citySuggestions);
+    } catch {
+      setSuggestions([]);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  }
+
+  function onRouteFieldChange(field: RouteField, value: string) {
+    setField(field, value);
+    setSuggestionField(field);
+    if (autocompleteTimerRef.current) clearTimeout(autocompleteTimerRef.current);
+    autocompleteTimerRef.current = setTimeout(() => {
+      void loadCitySuggestions(value);
+    }, AUTOCOMPLETE_DEBOUNCE_MS);
+  }
+
+  function applySuggestion(suggestion: CitySuggestion) {
+    if (!suggestionField) return;
+    setField(suggestionField, suggestion.mainText);
+    setSuggestionField(null);
+    setSuggestions([]);
+  }
+
+  function selectTravelDate(value: string) {
+    setField("date", value);
+    setDatePickerVisible(false);
   }
 
   async function saveAvailability() {
@@ -229,38 +356,105 @@ export default function ChauffeurLongDistanceScreen() {
               <Text style={styles.label}>Departure city</Text>
               <TextInput
                 value={form.from}
-                onChangeText={(value) => setField("from", value)}
+                onChangeText={(value) => onRouteFieldChange("from", value)}
+                onFocus={() => {
+                  setSuggestionField("from");
+                  void loadCitySuggestions(form.from);
+                }}
                 placeholder="Johannesburg"
                 placeholderTextColor={Colors.textMuted}
                 style={styles.input}
                 editable={chauffeur?.isApproved}
               />
+              {suggestionField === "from" ? (
+                <View style={styles.suggestionCard}>
+                  {suggestionsLoading ? (
+                    <View style={styles.suggestionLoadingRow}>
+                      <ActivityIndicator size="small" color={Colors.white} />
+                      <Text style={styles.suggestionHint}>Finding matching cities…</Text>
+                    </View>
+                  ) : suggestions.length > 0 ? (
+                    <FlatList
+                      data={suggestions}
+                      keyExtractor={(item) => item.placeId}
+                      keyboardShouldPersistTaps="handled"
+                      renderItem={({ item }) => (
+                        <Pressable style={styles.suggestionRow} onPress={() => applySuggestion(item)}>
+                          <Ionicons name="location-outline" size={16} color={Colors.textSecondary} />
+                          <View style={styles.suggestionTextWrap}>
+                            <Text style={styles.suggestionTitle}>{item.mainText}</Text>
+                            {!!item.secondaryText && <Text style={styles.suggestionSubtitle}>{item.secondaryText}</Text>}
+                          </View>
+                        </Pressable>
+                      )}
+                    />
+                  ) : form.from.trim().length >= 2 ? (
+                    <Text style={styles.suggestionHint}>No matching cities found yet.</Text>
+                  ) : (
+                    <Text style={styles.suggestionHint}>Start typing to pick a city suggestion.</Text>
+                  )}
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Destination</Text>
               <TextInput
                 value={form.to}
-                onChangeText={(value) => setField("to", value)}
+                onChangeText={(value) => onRouteFieldChange("to", value)}
+                onFocus={() => {
+                  setSuggestionField("to");
+                  void loadCitySuggestions(form.to);
+                }}
                 placeholder="Durban"
                 placeholderTextColor={Colors.textMuted}
                 style={styles.input}
                 editable={chauffeur?.isApproved}
               />
+              {suggestionField === "to" ? (
+                <View style={styles.suggestionCard}>
+                  {suggestionsLoading ? (
+                    <View style={styles.suggestionLoadingRow}>
+                      <ActivityIndicator size="small" color={Colors.white} />
+                      <Text style={styles.suggestionHint}>Finding matching cities…</Text>
+                    </View>
+                  ) : suggestions.length > 0 ? (
+                    <FlatList
+                      data={suggestions}
+                      keyExtractor={(item) => item.placeId}
+                      keyboardShouldPersistTaps="handled"
+                      renderItem={({ item }) => (
+                        <Pressable style={styles.suggestionRow} onPress={() => applySuggestion(item)}>
+                          <Ionicons name="location-outline" size={16} color={Colors.textSecondary} />
+                          <View style={styles.suggestionTextWrap}>
+                            <Text style={styles.suggestionTitle}>{item.mainText}</Text>
+                            {!!item.secondaryText && <Text style={styles.suggestionSubtitle}>{item.secondaryText}</Text>}
+                          </View>
+                        </Pressable>
+                      )}
+                    />
+                  ) : form.to.trim().length >= 2 ? (
+                    <Text style={styles.suggestionHint}>No matching cities found yet.</Text>
+                  ) : (
+                    <Text style={styles.suggestionHint}>Start typing to pick a city suggestion.</Text>
+                  )}
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.row}>
               <View style={[styles.inputGroup, styles.halfWidth]}>
                 <Text style={styles.label}>Travel date</Text>
-                <TextInput
-                  value={form.date}
-                  onChangeText={(value) => setField("date", value)}
-                  placeholder="2026-06-15"
-                  placeholderTextColor={Colors.textMuted}
-                  style={styles.input}
-                  autoCapitalize="none"
-                  editable={chauffeur?.isApproved}
-                />
+                <Pressable
+                  style={[styles.input, styles.datePickerButton]}
+                  onPress={() => chauffeur?.isApproved && setDatePickerVisible(true)}
+                  disabled={!chauffeur?.isApproved}
+                >
+                  <Text style={form.date ? styles.datePickerValue : styles.datePickerPlaceholder}>
+                    {form.date ? dateOptions.find((option) => option.value === form.date)?.label || form.date : "Choose a future travel date"}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} />
+                </Pressable>
               </View>
               <View style={[styles.inputGroup, styles.halfWidth]}>
                 <Text style={styles.label}>Price per seat</Text>
@@ -287,11 +481,6 @@ export default function ChauffeurLongDistanceScreen() {
                 keyboardType="number-pad"
                 editable={chauffeur?.isApproved}
               />
-            </View>
-
-            <View style={styles.tipCard}>
-              <Ionicons name="information-circle-outline" size={18} color={Colors.warning} />
-              <Text style={styles.tipText}>Keep the date in YYYY-MM-DD format so your route matches public search exactly.</Text>
             </View>
           </View>
 
@@ -321,6 +510,40 @@ export default function ChauffeurLongDistanceScreen() {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal visible={datePickerVisible} transparent animationType="slide" onRequestClose={() => setDatePickerVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 20 }] }>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Choose travel date</Text>
+              <Pressable onPress={() => setDatePickerVisible(false)} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={18} color={Colors.white} />
+              </Pressable>
+            </View>
+            <Text style={styles.modalSubtitle}>Only future dates are available for long-distance routes.</Text>
+            <FlatList
+              data={dateOptions}
+              keyExtractor={(item) => item.value}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const selected = item.value === form.date;
+                return (
+                  <Pressable
+                    style={[styles.dateOptionRow, selected && styles.dateOptionRowActive]}
+                    onPress={() => selectTravelDate(item.value)}
+                  >
+                    <View style={styles.dateOptionTextWrap}>
+                      <Text style={[styles.dateOptionTitle, selected && styles.dateOptionTitleActive]}>{item.label}</Text>
+                      <Text style={styles.dateOptionValue}>{item.value}</Text>
+                    </View>
+                    {selected ? <Ionicons name="checkmark-circle" size={18} color={Colors.white} /> : null}
+                  </Pressable>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -503,6 +726,23 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 15,
   },
+  datePickerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  datePickerValue: {
+    color: Colors.white,
+    fontSize: 15,
+    flex: 1,
+    paddingRight: 12,
+  },
+  datePickerPlaceholder: {
+    color: Colors.textMuted,
+    fontSize: 15,
+    flex: 1,
+    paddingRight: 12,
+  },
   row: {
     flexDirection: "row",
     gap: 12,
@@ -510,20 +750,46 @@ const styles = StyleSheet.create({
   halfWidth: {
     flex: 1,
   },
-  tipCard: {
-    marginTop: 4,
+  suggestionCard: {
+    borderRadius: 16,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden",
+  },
+  suggestionLoadingRow: {
     flexDirection: "row",
     gap: 10,
-    alignItems: "flex-start",
-    borderRadius: 16,
     padding: 14,
-    backgroundColor: "rgba(255, 183, 77, 0.08)",
+    alignItems: "center",
   },
-  tipText: {
+  suggestionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border,
+  },
+  suggestionTextWrap: {
     flex: 1,
+    gap: 2,
+  },
+  suggestionTitle: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  suggestionSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+  },
+  suggestionHint: {
     color: Colors.textSecondary,
     fontSize: 13,
-    lineHeight: 19,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   summaryCard: {
     borderRadius: 22,
@@ -559,5 +825,79 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 16,
     fontWeight: "800",
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  modalSheet: {
+    maxHeight: "72%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderColor: Colors.border,
+    gap: 10,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  modalTitle: {
+    color: Colors.white,
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  modalSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  modalCloseButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  dateOptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border,
+  },
+  dateOptionRowActive: {
+    backgroundColor: Colors.accent,
+    marginHorizontal: -8,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    borderTopColor: "transparent",
+  },
+  dateOptionTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  dateOptionTitle: {
+    color: Colors.white,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  dateOptionTitleActive: {
+    color: Colors.white,
+  },
+  dateOptionValue: {
+    color: Colors.textSecondary,
+    fontSize: 12,
   },
 });

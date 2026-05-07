@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Image } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
@@ -12,19 +12,29 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_OAUTH_START = "https://api-production-0783.up.railway.app/api/auth/google/start";
+const GOOGLE_OAUTH_START = "https://api.a2blift.com/api/auth/google/start";
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ ref?: string }>();
   const { register, setUser } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (typeof params.ref !== "string") return;
+    const normalizedRef = params.ref.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (normalizedRef) {
+      setReferralCode(normalizedRef);
+    }
+  }, [params.ref]);
 
   // Handle the deep link callback from the backend OAuth flow
   useEffect(() => {
@@ -76,7 +86,13 @@ export default function RegisterScreen() {
     if (password.length < 4) { setError("Password must be at least 4 characters"); return; }
     setLoading(true); setError("");
     try {
-      await register({ username: email.trim().toLowerCase(), password, name: name.trim(), phone: phone.trim(), referralCode: referralCode.trim() || undefined });
+      await register({
+        username: email.trim().toLowerCase(),
+        password,
+        name: name.trim(),
+        phone: phone.trim(),
+        referralCode: referralCode.trim() || undefined,
+      });
     } catch (e: any) {
       const msg = e.message || "Registration failed.";
       if (msg.includes("already exists") || msg.includes("400")) setError("An account with this email already exists");
@@ -131,6 +147,23 @@ export default function RegisterScreen() {
               <Ionicons name="call-outline" size={18} color={Colors.textMuted} />
               <TextInput style={styles.input} placeholder="Optional" placeholderTextColor={Colors.textMuted}
                 value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Referral Code</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="gift-outline" size={18} color={Colors.textMuted} />
+              <TextInput
+                style={styles.input}
+                placeholder="Optional"
+                placeholderTextColor={Colors.textMuted}
+                value={referralCode}
+                onChangeText={(value) => setReferralCode(value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                maxLength={20}
+              />
             </View>
           </View>
 
@@ -230,8 +263,6 @@ const styles = StyleSheet.create({
   dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
   dividerText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted },
   googleBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: "#ffffff", paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: "#e0e0e0" },
-  googleIconWrap: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#4285F4", alignItems: "center", justifyContent: "center" },
-  googleG: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
   googleBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#1a1a1a" },
   googleIconWrap: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e0e0e0", alignItems: "center", justifyContent: "center" },
   googleG: { fontSize: 13, fontWeight: "700", color: "#4285F4" },

@@ -1,16 +1,16 @@
 headersOrigin = "config"
+redirectsOrigin = "config"
 plugins = []
-redirects = []
 
 [functions]
 
 [functions."*"]
 
 [build]
-publish = "/home/runner/workspace"
+publish = "/Users/mac/A2B-LIFT/website"
 publishOrigin = "config"
 commandOrigin = "ui"
-command = "npm run build"
+command = "npm run server:build"
 
 [build.environment]
 
@@ -32,3 +32,39 @@ for = "/*"
 [headers.values]
 X-Frame-Options = "DENY"
 X-Content-Type-Options = "nosniff"
+
+[[redirects]]
+from = "/referral/:code"
+to = "/login.html?ref=:code#register"
+status = 302.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/ref/:code"
+to = "/login.html?ref=:code#register"
+status = 302.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/r/:code"
+to = "/login.html?ref=:code#register"
+status = 302.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]

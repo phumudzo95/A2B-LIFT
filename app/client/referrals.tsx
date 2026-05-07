@@ -128,9 +128,8 @@ function transactionPrefix(type: string) {
 }
 
 function buildReferralShareUrl(referralCode?: string | null, shareUrl?: string | null) {
-  if (shareUrl?.trim()) return shareUrl.trim();
-  if (!referralCode?.trim()) return "";
-  return `${FALLBACK_REFERRAL_BASE_URL.replace(/\/$/, "")}/referral/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
+  if (!referralCode?.trim()) return shareUrl?.trim() || "";
+  return `${FALLBACK_REFERRAL_BASE_URL.replace(/\/$/, "")}/r/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
 }
 
 function getReferralActivityDate(person: ReferredPerson) {
