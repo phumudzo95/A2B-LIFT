@@ -131,6 +131,7 @@ export default function ChauffeurDashboard() {
   const incomingSlide = useRef(new Animated.Value(300)).current;
   const notificationsRef = useRef<any>(null);
   const locationWatchRef = useRef<Location.LocationSubscription | null>(null);
+  const currentRideRef = useRef<any>(null);
   const isExpoGoAndroid = Platform.OS === "android" && Constants.appOwnership === "expo";
 
   function getClientFirstName(name?: string | null, fallback = "Client") {
@@ -545,8 +546,9 @@ export default function ChauffeurDashboard() {
     };
   }, [chauffeur?.id]);
 
-  // ─── Persist current ride ─────────────────────────────────────────────────
+  // ─── Persist current ride + keep ref in sync (for notification closures) ──
   useEffect(() => {
+    currentRideRef.current = currentRide;
     if (currentRide) {
       AsyncStorage.setItem("a2b_current_ride", JSON.stringify(currentRide)).catch(() => {});
     } else {
@@ -610,17 +612,13 @@ export default function ChauffeurDashboard() {
     if (Platform.OS === "web" || isExpoGoAndroid) return;
     const Notifications = notificationsRef.current;
     if (!Notifications) return;
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
+
+    // NOTE: setNotificationHandler is intentionally NOT called here.
+    // It is set once at app startup in _layout.tsx to avoid race conditions.
+
     async function hydrateIncomingRideFromNotification() {
-      if (!chauffeur?.id || currentRide) return;
+      // Use ref so we always have the latest currentRide value
+      if (!chauffeur?.id || currentRideRef.current) return;
       try {
         const res = await apiRequest("GET", `/api/rides/chauffeur-pending/${chauffeur.id}`);
         if (!res.ok) return;
@@ -636,7 +634,7 @@ export default function ChauffeurDashboard() {
     }
 
     // Response listener: fires when driver TAPS the notification
-    const sub = Notifications.addNotificationResponseReceivedListener(response => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response: any) => {
       const data = response.notification.request.content.data as any;
       if (data?.type === "ride:new") {
         setIsOnline(true);
@@ -656,7 +654,7 @@ export default function ChauffeurDashboard() {
       sub.remove();
       subReceived.remove();
     };
-  }, [chauffeur?.id, currentRide, isExpoGoAndroid]);
+  }, [chauffeur?.id, isExpoGoAndroid]);
 
   // ─── Polling fallback ─────────────────────────────────────────────────────
   useEffect(() => {

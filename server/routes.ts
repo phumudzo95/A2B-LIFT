@@ -49,7 +49,7 @@ async function sendExpoPushNotification(
       data: data || {},
       badge: urgent ? 1 : undefined,
       priority: urgent ? "high" : "default",
-      ttl: urgent ? 0 : undefined,
+      ttl: urgent ? 300 : 3600, // 5 min for urgent (ride alerts), 1hr for others
       channelId,
       interruptionLevel: urgent ? "time-sensitive" : undefined,
       android: channelId ? { channelId, sound: "default", priority: urgent ? "max" : "high" } : undefined,

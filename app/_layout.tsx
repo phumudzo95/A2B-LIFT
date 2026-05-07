@@ -14,13 +14,15 @@ import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { SocketProvider } from "@/lib/socket-context";
 
 // ─── Global notification handler (runs before any screen mounts) ─────────────
-// This ensures push notifications show alerts + play sound even when the app
-// is foregrounded after being in the background.
+// Set ONCE at module level. The chauffeur dashboard no longer re-sets this,
+// preventing race conditions between the two calls.
 if (Platform.OS !== "web") {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const Notifications = require("expo-notifications");
     if (Platform.OS === "android") {
+      // Create the channel synchronously at startup so the OS knows about it
+      // before any push arrives (even if the app is cold-started by a push)
       Notifications.setNotificationChannelAsync("ride-alerts", {
         name: "Ride Alerts",
         importance: Notifications.AndroidImportance.MAX,
@@ -29,8 +31,18 @@ if (Platform.OS !== "web") {
         bypassDnd: true,
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         showBadge: true,
+        enableLights: true,
+        lightColor: "#22c55e",
+      });
+      // Also keep a standard channel for non-ride alerts
+      Notifications.setNotificationChannelAsync("default", {
+        name: "General",
+        importance: Notifications.AndroidImportance.DEFAULT,
+        sound: "default",
       });
     }
+    // This handler controls foreground notification presentation.
+    // It is set ONCE here so all screens inherit it automatically.
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,

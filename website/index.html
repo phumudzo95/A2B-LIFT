@@ -4,395 +4,467 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>A2B Lift — Premium Rides &amp; Long Distance Travel in South Africa</title>
-  <meta name="description" content="A2B Lift connects passengers with professional chauffeurs for on-demand rides and long-distance travel across South Africa. Book in seconds, ride in comfort." />
-  <link rel="icon" type="image/png" href="assets/images/favicon.png?v=20260505b" />
-  <link rel="shortcut icon" href="assets/images/favicon.png?v=20260505b" />
+  <meta name="description" content="A2B Lift connects you with verified professional chauffeurs for on-demand rides and long-distance travel across South Africa. Download the app." />
+  <link rel="canonical" href="https://a2blift.co.za/" />
+  <link rel="icon" href="../assets/images/icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-  <!-- NAV -->
+  <!-- Announcement bar -->
+  <div class="announce-bar">
+    Now available in Johannesburg, Pretoria &amp; Cape Town.
+    <a href="driver-register.html"> Register to drive →</a>
+  </div>
+
+  <!-- ── NAV ── -->
   <header class="nav" id="nav">
     <div class="nav-inner">
-      <a href="index.html" class="logo">
-        <img src="assets/images/icon.png" alt="A2B Lift" class="logo-img" />
-        <span class="logo-text">A2B<strong>Lift</strong></span>
+      <a href="/" class="logo">
+        <img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img" />
+        <span class="logo-wordmark">A2B<span>Lift</span></span>
       </a>
+
       <nav class="nav-links" id="navLinks">
-        <a href="rides.html">Rides</a>
-        <a href="long-distance.html">Long Distance</a>
-        <a href="earn.html">Earn</a>
+        <div class="nav-dropdown">
+          <a href="rides.html">Rides</a>
+          <div class="dropdown-menu">
+            <a href="rides.html">On-Demand Rides</a>
+            <a href="rides.html#long-distance">Long Distance</a>
+            <a href="rides.html#airport">Airport Transfers</a>
+            <a href="rides.html#corporate">Corporate Travel</a>
+          </div>
+        </div>
         <a href="safety.html">Safety</a>
+        <a href="driver-register.html">Drive with us</a>
         <a href="blog.html">Blog</a>
+        <a href="docs.html">Help</a>
       </nav>
+
       <div class="nav-actions">
-        <a href="login.html" class="btn btn-ghost btn-sm">Log in</a>
-        <a href="driver-register.html" class="btn btn-primary btn-sm">Become a driver</a>
+        <button class="btn btn-ghost" id="loginBtn" onclick="openModal()">Sign in</button>
+        <a href="driver-register.html" class="btn btn-primary">Get the app</a>
       </div>
-      <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+
+      <button class="hamburger" id="hamburger" aria-label="Open menu">
         <span></span><span></span><span></span>
       </button>
     </div>
   </header>
 
-  <!-- MOBILE NAV -->
+  <!-- Mobile nav -->
   <div class="mobile-nav" id="mobileNav">
     <a href="rides.html">Rides</a>
-    <a href="long-distance.html">Long Distance</a>
-    <a href="earn.html">Earn</a>
+    <a href="rides.html#long-distance">Long Distance</a>
     <a href="safety.html">Safety</a>
+    <a href="driver-register.html">Drive with us</a>
     <a href="blog.html">Blog</a>
-    <div class="mobile-cta">
-      <a href="login.html" class="btn btn-ghost">Log in</a>
-      <a href="driver-register.html" class="btn btn-primary">Become a driver</a>
+    <a href="docs.html">Help</a>
+    <div class="mobile-actions">
+      <button class="btn btn-primary" style="justify-content:center" onclick="openModal()">Sign in</button>
+      <a href="driver-register.html" class="btn btn-outline" style="justify-content:center">Become a driver</a>
     </div>
   </div>
 
-  <!-- HERO -->
-  <section class="hero hero--light">
-    <div class="hero-bg"></div>
-    <div class="hero-content container">
-      <h1 class="hero-title">Luxury travel,<br /><em>booked in one place.</em></h1>
-      <p class="hero-sub">On-demand rides, airport transfers, corporate travel, and long-distance journeys across South Africa with one A2B Lift account.</p>
+  <!-- ── HERO ── -->
+  <section class="hero">
+    <div class="hero-left reveal">
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        Available across South Africa
+      </div>
+      <h1 class="hero-title">
+        Your ride,<br />
+        <em>wherever you're going.</em>
+      </h1>
+      <p class="hero-sub">
+        Professional chauffeurs. On-demand rides. Long-distance travel between cities — all in one app. Book in seconds, travel with confidence.
+      </p>
       <div class="hero-actions">
-        <a href="https://apps.apple.com" target="_blank" rel="noopener" class="store-btn store-btn--dark">
-          <img src="assets/apple.png" alt="Download on the App Store" />
-        </a>
-        <a href="https://play.google.com/store/apps/details?id=com.a2blift" target="_blank" rel="noopener" class="store-btn store-btn--dark">
-          <img src="assets/google.png" alt="Get it on Google Play" />
-        </a>
-        <a href="rides.html" class="btn btn-primary">Book a ride</a>
-      </div>
-      <div class="hero-stats">
-        <div>
-          <span class="hero-stat-num">4.9</span>
-          <p class="hero-stat-label">Average rider rating</p>
-        </div>
-        <div>
-          <span class="hero-stat-num">2 min</span>
-          <p class="hero-stat-label">Average pickup time</p>
-        </div>
-        <div>
-          <span class="hero-stat-num">R0</span>
-          <p class="hero-stat-label">Driver registration</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- SERVICES -->
-  <section class="section">
-    <div class="container">
-      <p class="label">What we offer</p>
-      <h2 class="heading">Everything you need,<br />one app.</h2>
-      <div class="service-grid">
-        <a href="rides.html" class="service-card service-card--dark">
-          <div class="service-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 17H3a2 2 0 0 1-2-2V9l2-4h14l2 4v6a2 2 0 0 1-2 2h-2"/>
-              <rect x="7" y="14" width="10" height="6" rx="1"/>
-              <circle cx="9" cy="17" r="1"/><circle cx="15" cy="17" r="1"/>
-            </svg>
-          </div>
-          <h3>On-Demand Rides</h3>
-          <p class="service-desc">Request a professional chauffeur in seconds. Available 24/7 across the city.</p>
-          <span class="service-link">
-            Book a ride
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        <!-- Apple App Store -->
+        <a href="https://apps.apple.com" target="_blank" rel="noopener" class="store-btn">
+          <svg class="store-btn-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          <span class="store-btn-text">
+            <small>Download on the</small>
+            <strong>App Store</strong>
           </span>
         </a>
-        <a href="long-distance.html" class="service-card">
-          <div class="service-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 12h18M3 12l4-4m-4 4 4 4M21 12l-4-4m4 4-4 4"/>
-            </svg>
-          </div>
-          <h3>Long Distance</h3>
-          <p class="service-desc">Search real drivers posting inter-city routes, compare prices, and reserve your seat before you travel.</p>
-          <span class="service-link">
-            Find a route
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
-          </span>
-        </a>
-        <a href="corporate-travel.html" class="service-card">
-          <div class="service-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-            </svg>
-          </div>
-          <h3>Corporate Travel</h3>
-          <p class="service-desc">Book executive transfers, team movements, and account-managed travel with centralised billing.</p>
-          <span class="service-link">
-            Book corporate travel
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
-          </span>
-        </a>
-        <a href="airport-transfers.html" class="service-card">
-          <div class="service-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.4 2 2 0 0 1 3.62 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.12 6.12l.86-.86a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-            </svg>
-          </div>
-          <h3>Airport Transfers</h3>
-          <p class="service-desc">Pre-book with a live map, add your flight number, and meet a driver who tracks your arrival in real time.</p>
-          <span class="service-link">
-            Pre-book now
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        <!-- Google Play -->
+        <a href="https://play.google.com/store/apps/details?id=com.a2blift" target="_blank" rel="noopener" class="store-btn">
+          <svg class="store-btn-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.199a1 1 0 010 1.984l-1.99 1.15-2.58-2.58 2.58-2.581 1.99 1.027zm-13.59-7.33l10.937 6.333-2.302 2.302-8.635-8.635z"/></svg>
+          <span class="store-btn-text">
+            <small>Get it on</small>
+            <strong>Google Play</strong>
           </span>
         </a>
       </div>
-    </div>
-  </section>
 
-  <!-- LONG DISTANCE HIGHLIGHT -->
-  <section class="section section--dark">
-    <div class="container">
-      <div class="split">
-        <div class="split-body">
-          <p class="label label--light">Long Distance Travel</p>
-          <h2 class="heading heading--light">Drivers post routes.<br /><em>You find them.</em></h2>
-          <p class="split-desc">Long-distance travel works differently on A2B Lift. Drivers post upcoming trips — the date, route, available seats, and price. You search, find, and book. No waiting, no surge pricing, no surprises.</p>
-          <div class="steps">
-            <div class="step">
-              <span class="step-num">01</span>
-              <div>
-                <strong>Search your route</strong>
-                <p>Enter your departure and destination. See every driver making that trip.</p>
-              </div>
-            </div>
-            <div class="step">
-              <span class="step-num">02</span>
-              <div>
-                <strong>Choose your driver</strong>
-                <p>Compare ratings, vehicle type, price per seat, and departure time.</p>
-              </div>
-            </div>
-            <div class="step">
-              <span class="step-num">03</span>
-              <div>
-                <strong>Book &amp; pay securely</strong>
-                <p>Reserve your seat instantly. Payment held safely until the trip is complete.</p>
-              </div>
-            </div>
-          </div>
-          <a href="long-distance.html" class="btn btn-white">See how it works</a>
+      <div class="hero-trust">
+        <div class="trust-item">
+          <span class="trust-num">4.9</span>
+          <span class="trust-label">Average rating</span>
         </div>
-        <div class="split-visual">
-          <div class="route-cards">
-            <div class="route-card">
-              <div class="route-header">
-                <div class="route-cities">
-                  <span>Cape Town</span>
-                  <svg class="route-sep" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
-                  <span>Johannesburg</span>
-                </div>
-                <span class="route-date">Sat, 10 May</span>
-              </div>
-              <div class="route-driver">
-                <div class="driver-avatar">T</div>
-                <div class="driver-info">
-                  <strong>Thabo M.</strong>
-                  <span>4.9 &middot; Toyota Quantum</span>
-                </div>
-                <span class="route-price">R650/seat</span>
-              </div>
-              <span class="route-seats">3 seats remaining</span>
-            </div>
-            <div class="route-card">
-              <div class="route-header">
-                <div class="route-cities">
-                  <span>Cape Town</span>
-                  <svg class="route-sep" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
-                  <span>Johannesburg</span>
-                </div>
-                <span class="route-date">Sun, 11 May</span>
-              </div>
-              <div class="route-driver">
-                <div class="driver-avatar">S</div>
-                <div class="driver-info">
-                  <strong>Sipho K.</strong>
-                  <span>4.8 &middot; Mercedes Vito</span>
-                </div>
-                <span class="route-price">R720/seat</span>
-              </div>
-              <span class="route-seats">2 seats remaining</span>
-            </div>
-          </div>
+        <div class="trust-divider"></div>
+        <div class="trust-item">
+          <span class="trust-num">2 min</span>
+          <span class="trust-label">Avg pickup time</span>
+        </div>
+        <div class="trust-divider"></div>
+        <div class="trust-item">
+          <span class="trust-num">24/7</span>
+          <span class="trust-label">Available</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <!-- Real photo from Unsplash: luxury car interior / chauffeur -->
+      <img
+        src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1200&q=85&auto=format&fit=crop"
+        alt="Premium chauffeur vehicle"
+        loading="eager"
+      />
+      <div class="hero-right-overlay"></div>
+
+      <!-- Floating stat cards -->
+      <div class="hero-card hero-card-1">
+        <div class="hero-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
+        <div class="hero-card-body">
+          <span class="hero-card-val">4.9★</span>
+          <span class="hero-card-lbl">Driver rating</span>
+        </div>
+      </div>
+      <div class="hero-card hero-card-2">
+        <div class="hero-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="hero-card-body">
+          <span class="hero-card-val">2 min</span>
+          <span class="hero-card-lbl">Avg arrival</span>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- HOW IT WORKS -->
-  <section class="section section--grey">
+  <!-- ── SERVICES ── -->
+  <section class="section" id="services">
     <div class="container">
-      <p class="label">For passengers</p>
-      <h2 class="heading">Ride in three steps.</h2>
-      <div class="steps-grid">
-        <div class="step-card">
-          <div class="step-circle">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>
+      <div class="section-head reveal">
+        <div class="section-head-left">
+          <div class="overline">What we offer</div>
+          <h2 class="section-title">Built for every<br />kind of journey</h2>
+        </div>
+        <a href="rides.html" class="btn btn-outline">All services</a>
+      </div>
+
+      <div class="services-grid reveal">
+        <div class="service-item service-item--featured">
+          <div class="service-photo">
+            <img
+              src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&q=80&auto=format&fit=crop"
+              alt="On-demand ride"
+              loading="lazy"
+            />
+          </div>
+          <div class="service-num">01</div>
+          <h3 class="service-name">On-Demand Rides</h3>
+          <p class="service-desc">Request a verified chauffeur in seconds. Available in your city, around the clock.</p>
+          <a href="rides.html" class="service-link">Book a ride</a>
+        </div>
+
+        <div class="service-item">
+          <div class="service-photo">
+            <img
+              src="https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&q=80&auto=format&fit=crop"
+              alt="Long distance travel"
+              loading="lazy"
+            />
+          </div>
+          <div class="service-num">02</div>
+          <h3 class="service-name">Long Distance</h3>
+          <p class="service-desc">Drivers post upcoming inter-city routes. Find one going your way, book your seat.</p>
+          <a href="rides.html#long-distance" class="service-link">Find routes</a>
+        </div>
+
+        <div class="service-item">
+          <div class="service-photo">
+            <img
+              src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&q=80&auto=format&fit=crop"
+              alt="Airport transfer"
+              loading="lazy"
+            />
+          </div>
+          <div class="service-num">03</div>
+          <h3 class="service-name">Airport Transfers</h3>
+          <p class="service-desc">Pre-book your ride to OR Tambo, Cape Town International, and King Shaka.</p>
+          <a href="rides.html#airport" class="service-link">Pre-book now</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── LONG DISTANCE ── -->
+  <section class="route-section" id="long-distance">
+    <div class="route-photo">
+      <img
+        src="https://images.unsplash.com/photo-1464219789935-c2d9d9aba644?w=1200&q=85&auto=format&fit=crop"
+        alt="South African highway"
+        loading="lazy"
+      />
+      <div class="route-photo-overlay"></div>
+
+      <!-- Live route card overlay -->
+      <div class="route-preview">
+        <div class="route-preview-header">
+          <div class="route-preview-cities">
+            <span>Cape Town</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            <span>Johannesburg</span>
+          </div>
+          <span class="route-preview-date">Sat 10 May</span>
+        </div>
+        <div class="route-preview-body">
+          <div class="route-driver-row">
+            <div class="driver-avatar-circle">
+              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&q=80&auto=format&fit=crop&crop=face" alt="Driver" />
+            </div>
+            <div class="route-driver-info">
+              <strong>Thabo M.</strong>
+              <span>4.9 · Toyota Quantum</span>
+            </div>
+            <span class="route-price">R650</span>
+          </div>
+          <div class="route-driver-row">
+            <div class="driver-avatar-circle">
+              <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&q=80&auto=format&fit=crop&crop=face" alt="Driver" />
+            </div>
+            <div class="route-driver-info">
+              <strong>Sipho K.</strong>
+              <span>4.8 · Mercedes Vito</span>
+            </div>
+            <span class="route-price">R720</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="route-content reveal">
+      <div>
+        <div class="overline">Long Distance Travel</div>
+        <h2 class="section-title">Drivers post routes.<br />You find them.</h2>
+        <p class="body-lg">Long-distance travel works differently on A2B Lift. Drivers post their upcoming trips — the date, route, seats available and price. Browse, book, and go. No surprises.</p>
+      </div>
+
+      <div class="route-steps">
+        <div class="route-step">
+          <div class="route-step-num">1</div>
+          <div class="route-step-body">
+            <strong>Search your route</strong>
+            <p>Enter your departure and destination. See all drivers going that way on your date.</p>
+          </div>
+        </div>
+        <div class="route-step">
+          <div class="route-step-num">2</div>
+          <div class="route-step-body">
+            <strong>Choose your driver</strong>
+            <p>Browse profiles, ratings, vehicle type, and price per seat. Pick who you trust.</p>
+          </div>
+        </div>
+        <div class="route-step">
+          <div class="route-step-num">3</div>
+          <div class="route-step-body">
+            <strong>Book and pay securely</strong>
+            <p>Reserve your seat instantly. Payment is held until the trip is complete.</p>
+          </div>
+        </div>
+      </div>
+
+      <a href="rides.html#long-distance" class="btn btn-primary">Find a route</a>
+    </div>
+  </section>
+
+  <!-- ── STATS ── -->
+  <div class="stats-row reveal">
+    <div class="stat-item">
+      <div class="stat-val">R0</div>
+      <div class="stat-desc">Registration fee for drivers</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">4.9</div>
+      <div class="stat-desc">Average driver rating across all trips</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">2 min</div>
+      <div class="stat-desc">Average time from request to pickup</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val">24/7</div>
+      <div class="stat-desc">Rides available every day of the year</div>
+    </div>
+  </div>
+
+  <!-- ── DRIVER ── -->
+  <section class="driver-section" id="drive">
+    <div class="driver-content reveal">
+      <div>
+        <div class="overline">For drivers</div>
+        <h2 class="section-title section-title--light">Turn your car<br /><em>into income.</em></h2>
+        <p class="body-lg body-lg--light">Join hundreds of professional chauffeurs already earning with A2B Lift. Set your own hours, choose your rides, and get paid directly to your account.</p>
+      </div>
+
+      <div class="driver-benefits">
+        <div class="driver-benefit">
+          <div class="benefit-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="benefit-text">
+            <strong>Keep more of what you earn</strong>
+            Industry-leading commission structure. Transparent, fair, and paid weekly.
+          </div>
+        </div>
+        <div class="driver-benefit">
+          <div class="benefit-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="benefit-text">
+            <strong>Work on your schedule</strong>
+            Go online when you want. Accept the rides that fit your day.
+          </div>
+        </div>
+        <div class="driver-benefit">
+          <div class="benefit-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="benefit-text">
+            <strong>Earn from referrals</strong>
+            Refer other drivers and earn 2.5% of every trip they complete — passively.
+          </div>
+        </div>
+        <div class="driver-benefit">
+          <div class="benefit-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="benefit-text">
+            <strong>Post long-distance routes</strong>
+            Making a trip between cities? Fill your seats and cover your fuel.
+          </div>
+        </div>
+      </div>
+
+      <a href="driver-register.html" class="btn btn-gold btn-lg">Register to drive</a>
+    </div>
+
+    <div class="driver-photo">
+      <img
+        src="https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=900&q=85&auto=format&fit=crop&crop=center"
+        alt="Professional driver"
+        loading="lazy"
+      />
+      <div class="driver-photo-overlay"></div>
+      <div class="driver-earning-pill">
+        <div class="pill-label">Monthly earnings</div>
+        <div class="pill-amount">R18 400</div>
+        <div class="pill-period">Top drivers, full-time</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SAFETY ── -->
+  <section class="section section--grey" id="safety">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="section-head-left">
+          <div class="overline">Safety</div>
+          <h2 class="section-title">Every ride is<br />verified and tracked</h2>
+        </div>
+        <a href="safety.html" class="btn btn-outline">Our safety standards</a>
+      </div>
+
+      <div class="safety-grid reveal">
+        <div class="safety-item">
+          <div class="safety-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
             </svg>
           </div>
-          <p class="step-card-num">STEP 01</p>
-          <h3>Open the app</h3>
-          <p>Download A2B Lift and enter your pickup and destination. Instant fare estimate before you confirm.</p>
+          <div>
+            <div class="safety-item-title">Background-checked drivers</div>
+            <div class="safety-item-desc">Every chauffeur passes a criminal background check and professional driver licence verification before being approved on the platform.</div>
+          </div>
         </div>
-        <div class="step-card">
-          <div class="step-circle">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+
+        <div class="safety-item">
+          <div class="safety-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
           </div>
-          <p class="step-card-num">STEP 02</p>
-          <h3>Get matched instantly</h3>
-          <p>A verified, rated chauffeur is assigned within seconds. Track their arrival live on the map.</p>
+          <div>
+            <div class="safety-item-title">Live trip tracking</div>
+            <div class="safety-item-desc">Every trip is tracked in real time. Share your live location with trusted contacts, and your emergency number is one tap away at all times.</div>
+          </div>
         </div>
-        <div class="step-card">
-          <div class="step-circle">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+
+        <div class="safety-item">
+          <div class="safety-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
             </svg>
           </div>
-          <p class="step-card-num">STEP 03</p>
-          <h3>Ride and pay in-app</h3>
-          <p>Completely cashless. Fare is charged automatically. Rate your driver after every trip.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- STATS -->
-  <section class="section">
-    <div class="container">
-      <div class="stats-bar">
-        <div class="stat-item">
-          <span class="stat-num">4.9</span>
-          <span class="stat-label">Average driver rating</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-num">2 min</span>
-          <span class="stat-label">Average pickup time</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-num">2.5%</span>
-          <span class="stat-label">Driver referral commission</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-num">R0</span>
-          <span class="stat-label">Registration fee</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- EARN / DRIVE CTA -->
-  <section class="section">
-    <div class="container">
-      <div class="split split--rev">
-        <div class="split-body">
-          <p class="label">For drivers</p>
-          <h2 class="heading">Turn your car<br /><em>into income.</em></h2>
-          <p class="split-desc">Whether you drive full-time or just when it suits you, A2B Lift gives you the freedom to earn on your own schedule — in your city or between them.</p>
-          <ul class="checklist">
-            <li>
-              <span class="check-icon"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg></span>
-              No registration fee
-            </li>
-            <li>
-              <span class="check-icon"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg></span>
-              Earn 2.5% from every driver you refer
-            </li>
-            <li>
-              <span class="check-icon"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg></span>
-              Post long-distance routes and fill seats
-            </li>
-            <li>
-              <span class="check-icon"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg></span>
-              Weekly payouts direct to your wallet
-            </li>
-          </ul>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;">
-            <a href="driver-register.html" class="btn btn-primary">Register to drive</a>
-            <a href="earn.html" class="btn btn-outline">See how earning works</a>
+          <div>
+            <div class="safety-item-title">Identity verified riders</div>
+            <div class="safety-item-desc">Clients verify their identity with a selfie during registration. Drivers can see who is requesting before they accept, creating mutual accountability.</div>
           </div>
         </div>
-        <div class="split-visual split-visual-ratio">
-          <img
-            src="assets/images/earn.png?v=20260506"
-            alt="A2B Lift driver"
-            loading="lazy"
-          />
+
+        <div class="safety-item">
+          <div class="safety-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.72A2 2 0 012.18 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="safety-item-title">Vehicle roadworthiness</div>
+            <div class="safety-item-desc">All vehicles are checked for a valid roadworthy certificate before the driver can go online. Minimum vehicle standards are enforced by category.</div>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- SAFETY BAND -->
-  <section class="section section--grey">
+  <!-- ── DOWNLOAD ── -->
+  <section class="section section--dark" id="download">
     <div class="container">
-      <div class="split">
-        <div class="split-visual split-visual-ratio">
-          <img
-            src="https://images.unsplash.com/photo-1580060839134-75a5edca2e99?auto=format&fit=crop&w=900&q=80"
-            alt="Safe travel in South Africa"
-            loading="lazy"
-          />
-        </div>
-        <div class="split-body">
-          <p class="label">Safety first</p>
-          <h2 class="heading">Every ride is<br /><em>verified &amp; insured.</em></h2>
-          <p class="split-desc">We verify every chauffeur's licence, criminal record, and vehicle roadworthiness before they can accept a single ride. Your safety is non-negotiable.</p>
-          <ul class="checklist">
-            <li>
-              <span class="check-icon"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg></span>
-              Criminal background check
-            </li>
-            <li>
-              <span class="check-icon"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg></span>
-              Professional driver licence verified
-            </li>
-            <li>
-              <span class="check-icon"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg></span>
-              Live trip tracking for you and emergency contacts
-            </li>
-            <li>
-              <span class="check-icon"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg></span>
-              In-app SOS button
-            </li>
-          </ul>
-          <a href="safety.html" class="btn btn-primary">Our safety standards</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- DOWNLOAD -->
-  <section class="section section--dark">
-    <div class="container">
-      <div class="download-grid">
-        <div>
-          <p class="label label--light">Download the app</p>
-          <h2 class="heading heading--light">A2B Lift in your pocket.</h2>
-          <p style="font-size:17px;color:rgba(255,255,255,0.55);line-height:1.75;margin-bottom:36px;max-width:460px;">Available on iOS and Android. One account works seamlessly across the app and website — sign up once, ride everywhere.</p>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <div class="download-wrap">
+        <div class="download-content">
+          <div class="overline" style="color:rgba(255,255,255,0.45);">Get the app</div>
+          <h2 class="section-title section-title--light">A2B Lift in your<br />pocket</h2>
+          <p class="body-lg body-lg--light" style="max-width:400px">Available on iOS and Android. Book rides, find routes, track your driver, and manage payments — all from one app.</p>
+          <div class="app-badges">
             <a href="https://apps.apple.com" target="_blank" rel="noopener" class="store-btn">
-              <img src="assets/apple.png" alt="Download on the App Store" />
+              <svg class="store-btn-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              <span class="store-btn-text">
+                <small>Download on the</small>
+                <strong>App Store</strong>
+              </span>
             </a>
             <a href="https://play.google.com/store/apps/details?id=com.a2blift" target="_blank" rel="noopener" class="store-btn">
-              <img src="assets/google.png" alt="Get it on Google Play" />
+              <svg class="store-btn-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.199a1 1 0 010 1.984l-1.99 1.15-2.58-2.58 2.58-2.581 1.99 1.027zm-13.59-7.33l10.937 6.333-2.302 2.302-8.635-8.635z"/></svg>
+              <span class="store-btn-text">
+                <small>Get it on</small>
+                <strong>Google Play</strong>
+              </span>
             </a>
           </div>
         </div>
-        <div class="download-phones">
+        <div class="download-media">
           <img
-            src="https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&w=500&q=80"
-            alt="A2B Lift app"
-            style="height:380px;width:auto;border-radius:16px;object-fit:cover;"
+            src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&q=85&auto=format&fit=crop&crop=top"
+            alt="A2B Lift app on phone"
             loading="lazy"
           />
         </div>
@@ -400,123 +472,197 @@
     </div>
   </section>
 
-  <!-- BLOG PREVIEW -->
-  <section class="section">
+  <!-- ── BLOG ── -->
+  <section class="section" id="blog">
     <div class="container">
-      <div class="blog-section-header">
-        <div>
-          <p class="label">News &amp; updates</p>
-          <h2 class="heading" style="margin-bottom:0;">Latest from A2B Lift</h2>
+      <div class="section-head reveal">
+        <div class="section-head-left">
+          <div class="overline">News &amp; updates</div>
+          <h2 class="section-title">Latest from<br />A2B Lift</h2>
         </div>
-        <a href="blog.html" class="btn btn-outline">View all articles</a>
+        <a href="blog.html" class="btn btn-outline">All articles</a>
       </div>
-      <div class="blog-grid">
-        <article class="blog-card blog-card--featured">
-          <div class="blog-card-img">
-            <img src="https://images.unsplash.com/photo-1494515843206-f3117d3f51b7?auto=format&fit=crop&w=900&q=80" alt="Long distance travel South Africa" loading="lazy" />
+
+      <div class="blog-grid reveal">
+        <article class="article-card article-card--large">
+          <div class="article-photo">
+            <img
+              src="https://images.unsplash.com/photo-1590650046871-92c887180603?w=1200&q=80&auto=format&fit=crop"
+              alt="A2B Lift launch"
+              loading="lazy"
+            />
           </div>
-          <div class="blog-card-body">
-            <span class="blog-tag">Company</span>
-            <h3>A2B Lift launches long-distance ride marketplace in South Africa</h3>
-            <p>Passengers can now search for drivers posting inter-city routes — a first for the country's ride-hailing industry.</p>
-            <a href="blog/a2b-launch.html" class="blog-read">Read article</a>
+          <div class="article-body">
+            <span class="article-tag">Company</span>
+            <h3 class="article-title">A2B Lift launches long-distance marketplace across South Africa</h3>
+            <p class="article-excerpt">Passengers can now search for drivers posting inter-city routes — a first for the country's ride-hailing industry. Here's how it works.</p>
+            <span class="article-meta">12 April 2026 · 4 min read</span>
           </div>
         </article>
-        <div class="blog-side">
-          <article class="blog-card blog-card--sm">
-            <div class="blog-card-img">
-              <img src="https://images.unsplash.com/photo-1559829604-00d1bc6b7b03?auto=format&fit=crop&w=300&q=80" alt="Driver earnings" loading="lazy" />
-            </div>
-            <div class="blog-card-body">
-              <span class="blog-tag">Drivers</span>
-              <h3>How to earn 2.5% on every trip your referrals make</h3>
-              <a href="blog/earn-as-driver.html" class="blog-read">Read</a>
-            </div>
-          </article>
-          <article class="blog-card blog-card--sm">
-            <div class="blog-card-img">
-              <img src="https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=300&q=80" alt="City safety" loading="lazy" />
-            </div>
-            <div class="blog-card-body">
-              <span class="blog-tag">Safety</span>
-              <h3>What happens during a chauffeur background check</h3>
-              <a href="blog.html" class="blog-read">Read</a>
-            </div>
-          </article>
-          <article class="blog-card blog-card--sm">
-            <div class="blog-card-img">
-              <img src="https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=300&q=80" alt="Long distance tips" loading="lazy" />
-            </div>
-            <div class="blog-card-body">
-              <span class="blog-tag">Riders</span>
-              <h3>5 tips for booking a long-distance trip on A2B Lift</h3>
-              <a href="blog/long-distance-tips.html" class="blog-read">Read</a>
-            </div>
-          </article>
-        </div>
+
+        <article class="article-card">
+          <div class="article-photo">
+            <img
+              src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&q=80&auto=format&fit=crop"
+              alt="Driver earnings"
+              loading="lazy"
+            />
+          </div>
+          <div class="article-body">
+            <span class="article-tag">Drivers</span>
+            <h3 class="article-title">How the referral commission programme works</h3>
+            <p class="article-excerpt">Earn 2.5% of every trip your referred drivers complete — with no cap.</p>
+            <span class="article-meta">5 April 2026 · 3 min read</span>
+          </div>
+        </article>
       </div>
     </div>
   </section>
 
-  <!-- FOOTER -->
+  <!-- ── FOOTER ── -->
   <footer class="footer">
     <div class="container">
       <div class="footer-top">
         <div class="footer-brand">
-          <a href="index.html" class="logo logo--light">
-            <img src="assets/images/icon.png" alt="A2B Lift" class="logo-img" />
-            <span class="logo-text">A2B<strong>Lift</strong></span>
+          <a href="/" class="logo footer-logo">
+            <img src="../assets/images/icon.png" alt="A2B Lift" class="logo-img" />
+            <span class="logo-wordmark">A2B<span>Lift</span></span>
           </a>
-          <p>Premium rides and long-distance travel across South Africa.</p>
-          <div class="social-row">
+          <p class="footer-desc">Premium rides and long-distance travel across South Africa. Safe, verified, and available 24/7.</p>
+          <div class="footer-social">
             <a href="#" class="social-btn" aria-label="Facebook">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
             </a>
             <a href="#" class="social-btn" aria-label="Instagram">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
             </a>
             <a href="#" class="social-btn" aria-label="X / Twitter">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
             </a>
             <a href="#" class="social-btn" aria-label="TikTok">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.2 8.2 0 0 0 4.78 1.53V6.78a4.85 4.85 0 0 1-1.01-.09z"/></svg>
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.28 8.28 0 004.84 1.55V6.79a4.85 4.85 0 01-1.07-.1z"/></svg>
             </a>
           </div>
         </div>
+
         <div class="footer-col">
           <h4>Passengers</h4>
           <a href="rides.html">Book a ride</a>
-          <a href="long-distance.html">Long distance</a>
-          <a href="airport-transfers.html">Airport transfers</a>
-          <a href="support.html">Help &amp; support</a>
+          <a href="rides.html#long-distance">Long distance</a>
+          <a href="rides.html#airport">Airport transfers</a>
+          <a href="docs.html">Help &amp; support</a>
         </div>
+
         <div class="footer-col">
           <h4>Drivers</h4>
           <a href="driver-register.html">Register to drive</a>
-          <a href="earn.html">How earnings work</a>
-          <a href="referral.html">Referral programme</a>
-          <a href="support.html#drivers">Driver guide</a>
+          <a href="docs.html#earnings">Earnings &amp; payouts</a>
+          <a href="docs.html#referrals">Referral programme</a>
+          <a href="docs.html#drivers">Driver guide</a>
         </div>
+
         <div class="footer-col">
           <h4>Company</h4>
-          <a href="about.html">About us</a>
-          <a href="safety.html">Safety</a>
           <a href="blog.html">Blog</a>
-          <a href="support.html">Support</a>
-          <a href="support.html#privacy">Privacy policy</a>
-          <a href="support.html#terms">Terms &amp; conditions</a>
+          <a href="safety.html">Safety</a>
+          <a href="docs.html#privacy">Privacy policy</a>
+          <a href="docs.html#terms">Terms &amp; conditions</a>
         </div>
       </div>
+
       <div class="footer-bottom">
-        <p>&copy; 2026 A2B Lift. All rights reserved.</p>
-        <div class="footer-legal">
-          <a href="support.html#privacy">Privacy</a>
-          <a href="support.html#terms">Terms</a>
-          <a href="support.html">Cookies</a>
+        <p>© 2026 A2B Lift. All rights reserved. RAM Tech Solutions.</p>
+        <div>
+          <a href="docs.html#privacy">Privacy</a>
+          <a href="docs.html#terms">Terms</a>
+          <a href="docs.html#cookies">Cookies</a>
         </div>
       </div>
     </div>
   </footer>
+
+  <!-- ── LOGIN MODAL ── -->
+  <div class="modal-overlay" id="loginModal" onclick="closeModalOutside(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Welcome back</h2>
+          <p class="modal-sub">Sign in to your A2B Lift account</p>
+        </div>
+        <button class="modal-close" onclick="closeModal()" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Tabs -->
+        <div class="modal-tabs">
+          <div class="modal-tab active" onclick="switchTab('signin')">Sign in</div>
+          <div class="modal-tab" onclick="switchTab('signup')">Create account</div>
+        </div>
+
+        <!-- Sign in -->
+        <div id="tab-signin" class="tab-content active">
+          <button class="btn-social" onclick="handleGoogleAuth()">
+            <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            Continue with Google
+          </button>
+
+          <div class="form-divider">or</div>
+
+          <form onsubmit="handleSignIn(event)">
+            <div class="form-group">
+              <label class="form-label">Email address</label>
+              <input type="email" class="form-input" placeholder="you@example.com" required />
+            </div>
+            <div class="form-group">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <label class="form-label" style="margin:0">Password</label>
+                <span class="form-forgot" onclick="handleForgotPassword()">Forgot password?</span>
+              </div>
+              <input type="password" class="form-input" placeholder="••••••••" required />
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg form-submit">Sign in</button>
+          </form>
+        </div>
+
+        <!-- Sign up -->
+        <div id="tab-signup" class="tab-content">
+          <button class="btn-social" onclick="handleGoogleAuth()">
+            <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            Continue with Google
+          </button>
+
+          <div class="form-divider">or</div>
+
+          <form onsubmit="handleSignUp(event)">
+            <div class="form-group">
+              <label class="form-label">Full name</label>
+              <input type="text" class="form-input" placeholder="Your full name" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email address</label>
+              <input type="email" class="form-input" placeholder="you@example.com" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone number</label>
+              <input type="tel" class="form-input" placeholder="+27 000 000 0000" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input type="password" class="form-input" placeholder="At least 8 characters" required minlength="8" />
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg form-submit">Create account</button>
+          </form>
+        </div>
+
+        <p class="modal-footer-note">
+          By continuing, you agree to our
+          <a href="docs.html#terms">Terms of Service</a> and
+          <a href="docs.html#privacy">Privacy Policy</a>.
+        </p>
+      </div>
+    </div>
+  </div>
 
   <script src="main.js"></script>
 </body>
