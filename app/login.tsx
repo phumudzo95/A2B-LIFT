@@ -125,6 +125,18 @@ export default function LoginScreen() {
           <Text style={styles.subtitle}>Sign in to your A2B LIFT account</Text>
         </View>
 
+        {!!pendingReferralCode && (
+          <View style={styles.referralNotice}>
+            <Ionicons name="gift-outline" size={18} color={Colors.white} />
+            <View style={styles.referralNoticeCopy}>
+              <Text style={styles.referralNoticeTitle}>Referral saved</Text>
+              <Text style={styles.referralNoticeText}>
+                Code {pendingReferralCode} will be applied when you create your account.
+              </Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.form}>
           {!!error && (
             <View style={styles.errorBox}>
@@ -180,6 +192,20 @@ const styles = StyleSheet.create({
   header: { marginTop: 20, marginBottom: 36 },
   title: { fontSize: 28, fontFamily: "Inter_700Bold", color: Colors.white, marginBottom: 8 },
   subtitle: { fontSize: 15, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  referralNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+  },
+  referralNoticeCopy: { flex: 1, gap: 4 },
+  referralNoticeTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  referralNoticeText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 19 },
   form: { gap: 16 },
   errorBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,77,77,0.1)", padding: 12, borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,77,77,0.2)" },
   errorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.error },
