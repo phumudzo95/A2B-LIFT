@@ -41,6 +41,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const DRIVER_SHARE = 0.85;
 const ROUTE_REFRESH_MIN_DISTANCE_KM = 0.2;
 const ROUTE_REFRESH_MAX_AGE_MS = 5 * 60 * 1000;
+const RIDE_ALERT_SUPPRESSION_MS = 30 * 60 * 1000;
 
 interface ClientReview {
   id: string;
@@ -119,6 +120,7 @@ export default function ChauffeurDashboard() {
   const tripAlertEnabledRef = useRef(false);
   const seenRideIdRef = useRef<string | null>(null);
   const suppressedRideAlertIdRef = useRef<string | null>(null);
+  const suppressedRideIdsRef = useRef<Record<string, number>>({});
   const clientSummaryCacheRef = useRef<Record<string, ClientSummary>>({});
   const lastSpokenNavKeyRef = useRef<string | null>(null);
   const routeContextRef = useRef<string | null>(null);
@@ -417,6 +419,27 @@ export default function ChauffeurDashboard() {
 
   useEffect(() => { return () => { void stopTripAlert(); }; }, []);
 
+  function suppressRideAlert(rideId?: string | null) {
+    const normalizedId = String(rideId || "").trim();
+    if (!normalizedId) return;
+    suppressedRideAlertIdRef.current = normalizedId;
+    suppressedRideIdsRef.current[normalizedId] = Date.now();
+  }
+
+  function isRideAlertSuppressed(rideId?: string | null) {
+    const normalizedId = String(rideId || "").trim();
+    if (!normalizedId) return false;
+
+    const now = Date.now();
+    for (const [id, stampedAt] of Object.entries(suppressedRideIdsRef.current)) {
+      if (now - stampedAt > RIDE_ALERT_SUPPRESSION_MS) {
+        delete suppressedRideIdsRef.current[id];
+      }
+    }
+
+    return Boolean(suppressedRideIdsRef.current[normalizedId]);
+  }
+
   useEffect(() => {
     return () => {
       Speech.stop();
@@ -474,6 +497,7 @@ export default function ChauffeurDashboard() {
   useEffect(() => {
     const handleNewRide = (ride: any) => {
       if (isOnline && chauffeur?.isApproved && !currentRide) {
+        if (isRideAlertSuppressed(ride?.id)) return;
         seenRideIdRef.current = ride.id || null;
         setAvailableTrips((prev) => prev.filter((trip) => trip.id !== ride.id));
         void enrichRideClientDetails(ride, "Client").then((enrichedRide) => {
@@ -492,6 +516,7 @@ export default function ChauffeurDashboard() {
   useEffect(() => {
     const clearRideFromDiscovery = (ride: any) => {
       if (!ride?.id) return;
+      suppressRideAlert(ride.id);
       let clearedIncomingRide = false;
       setAvailableTrips((prev) => prev.filter((trip) => trip.id !== ride.id));
       setIncomingRide((prev: any) => {
@@ -663,6 +688,7 @@ export default function ChauffeurDashboard() {
         if (!res.ok) return;
         const ride = await res.json();
         if (!ride?.id) return;
+        if (isRideAlertSuppressed(ride.id)) return;
         seenRideIdRef.current = ride.id;
         const enrichedRide = await enrichRideClientDetails(ride, "Client");
         setIncomingRide(enrichedRide);
@@ -705,6 +731,7 @@ export default function ChauffeurDashboard() {
         if (!res.ok) return;
         const ride = await res.json();
         if (ride?.id && ride.id !== seenRideIdRef.current) {
+          if (isRideAlertSuppressed(ride.id)) return;
           seenRideIdRef.current = ride.id;
           const enrichedRide = await enrichRideClientDetails(ride, "Client");
           setIncomingRide(enrichedRide);
@@ -730,7 +757,8 @@ export default function ChauffeurDashboard() {
         if (!res.ok) return;
         const trips = await res.json();
         if (Array.isArray(trips)) {
-          const enrichedTrips = await Promise.all(trips.map((trip: any) => enrichRideClientDetails(trip, "Client")));
+          const visibleTrips = trips.filter((trip: any) => !isRideAlertSuppressed(trip?.id));
+          const enrichedTrips = await Promise.all(visibleTrips.map((trip: any) => enrichRideClientDetails(trip, "Client")));
           setAvailableTrips(enrichedTrips);
         }
       } catch {}
@@ -1135,7 +1163,7 @@ export default function ChauffeurDashboard() {
   async function acceptRide() {
     if (!incomingRide || !chauffeur) return;
     const pendingRide = incomingRide;
-    suppressedRideAlertIdRef.current = pendingRide.id || null;
+    suppressRideAlert(pendingRide.id);
     setIncomingRide(null);
     stopTripAlert();
     try {
@@ -1174,7 +1202,7 @@ export default function ChauffeurDashboard() {
   }
 
   function declineRide() {
-    suppressedRideAlertIdRef.current = incomingRide?.id || null;
+    suppressRideAlert(incomingRide?.id);
     stopTripAlert();
     setIncomingRide(null);
     setRideEta(null);
@@ -1182,7 +1210,7 @@ export default function ChauffeurDashboard() {
 
   async function acceptTripFromList(trip: any) {
     if (!chauffeur || acceptingTripId) return;
-    suppressedRideAlertIdRef.current = trip.id || null;
+    suppressRideAlert(trip.id);
     stopTripAlert();
     setAcceptingTripId(trip.id);
     try {
@@ -1237,6 +1265,7 @@ export default function ChauffeurDashboard() {
         clientPhone: ride?.clientPhone || currentRide?.clientPhone,
       }, "Client");
       if (status === "trip_completed" || status === "cancelled") {
+        suppressRideAlert(currentRide.id);
         if (status === "trip_completed") setCompletedTrip(rideWithName);
         setCurrentRide(null);
         setRoutePolyline(null);
