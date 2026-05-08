@@ -127,8 +127,12 @@ function transactionPrefix(type: string) {
 }
 
 function buildReferralShareUrl(referralCode?: string | null, shareUrl?: string | null) {
-  if (!referralCode?.trim()) return shareUrl?.trim() || "";
-  return `${REFERRAL_LINK_BASE_URL.replace(/\/$/, "")}/r/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
+  const code = referralCode?.trim().toUpperCase();
+  if (!code) return shareUrl?.trim() || "";
+  // Direct Play Store deep-link with referrer – opens the Play Store app immediately
+  // on Android (no browser). Google Play passes the referrer param to the installed
+  // app via the Install Referrer API so the code survives through install.
+  return `https://play.google.com/store/apps/details?id=com.a2blift&referrer=ref%3D${encodeURIComponent(code)}`;
 }
 
 function getReferralActivityDate(person: ReferredPerson) {
