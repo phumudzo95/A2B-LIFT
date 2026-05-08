@@ -4,10 +4,17 @@ const googleMapsApiKey =
   process.env.GOOGLE_API_KEY ||
   "";
 
+const defaultPamolProjectId = "f282a582-7512-48d6-b563-13aa571d9115";
+const easOwner = process.env.EXPO_PUBLIC_EAS_OWNER || "pamol-digital";
+const easProjectId =
+  process.env.EXPO_PUBLIC_EAS_PROJECT_ID ||
+  (easOwner === "pamol-digital" ? defaultPamolProjectId : undefined);
+
 module.exports = {
   expo: {
     name: "A2B LIFT",
     slug: "a2b-lift",
+    owner: easOwner,
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
@@ -117,14 +124,22 @@ module.exports = {
       reactCompiler: false,
     },
     extra: {
-      eas: {
-        projectId: "f282a582-7512-48d6-b563-13aa571d9115",
-      },
+      ...(easProjectId
+        ? {
+            eas: {
+              projectId: easProjectId,
+            },
+          }
+        : {}),
       googleMapsApiKey,
     },
     runtimeVersion: "1.0.44",
-    updates: {
-      url: "https://u.expo.dev/f282a582-7512-48d6-b563-13aa571d9115",
-    },
+    ...(easProjectId
+      ? {
+          updates: {
+            url: `https://u.expo.dev/${easProjectId}`,
+          },
+        }
+      : {}),
   },
 };
