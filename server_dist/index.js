@@ -5026,6 +5026,7 @@ async function configureExpoAndLanding(app2) {
     app2.use(import_express.default.static(path.resolve(process.cwd(), "static-build")));
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) return next();
+      if (req.path === "/r" || req.path.startsWith("/r/")) return next();
       const platform = req.header("expo-platform");
       if (allowMetroProxy && (platform === "ios" || platform === "android")) {
         log(`[Metro proxy] ${platform} manifest \u2192 Metro:${metroPort}`);
@@ -5037,6 +5038,7 @@ async function configureExpoAndLanding(app2) {
   } else if (allowMetroProxy) {
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) return next();
+      if (req.path === "/r" || req.path.startsWith("/r/")) return next();
       if (req.path === "/admin" || req.path === "/a2b-admin" || req.path.startsWith("/admin/") || req.path.startsWith("/a2b-admin/")) return next();
       if (req.path.startsWith("/socket.io")) return next();
       const platform = req.header("expo-platform") || "web";
@@ -5046,6 +5048,7 @@ async function configureExpoAndLanding(app2) {
   } else {
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) return next();
+      if (req.path === "/r" || req.path.startsWith("/r/")) return next();
       if (req.path === "/admin" || req.path === "/a2b-admin" || req.path.startsWith("/admin/") || req.path.startsWith("/a2b-admin/")) return next();
       if (req.path.startsWith("/socket.io")) return next();
       return res.status(404).json({ message: "Web build not available on this deployment" });

@@ -305,6 +305,7 @@ async function configureExpoAndLanding(app: express.Application) {
     // Catch-all for SPA routing — still proxy native manifests
     app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.path.startsWith("/api")) return next();
+      if (req.path === "/r" || req.path.startsWith("/r/")) return next();
       const platform = req.header("expo-platform");
       if (allowMetroProxy && (platform === "ios" || platform === "android")) {
         log(`[Metro proxy] ${platform} manifest → Metro:${metroPort}`);
@@ -317,6 +318,7 @@ async function configureExpoAndLanding(app: express.Application) {
     // No static build — proxy everything (web + native) to Metro
     app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.path.startsWith("/api")) return next();
+      if (req.path === "/r" || req.path.startsWith("/r/")) return next();
       if (req.path === "/admin" || req.path === "/a2b-admin" || req.path.startsWith("/admin/") || req.path.startsWith("/a2b-admin/")) return next(); // handled above
       if (req.path.startsWith("/socket.io")) return next(); // let Socket.IO handle this
       const platform = req.header("expo-platform") || "web";
@@ -327,6 +329,7 @@ async function configureExpoAndLanding(app: express.Application) {
     // Production + no static build: avoid proxy loops; keep API/admin routes only.
     app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.path.startsWith("/api")) return next();
+      if (req.path === "/r" || req.path.startsWith("/r/")) return next();
       if (req.path === "/admin" || req.path === "/a2b-admin" || req.path.startsWith("/admin/") || req.path.startsWith("/a2b-admin/")) return next();
       if (req.path.startsWith("/socket.io")) return next();
       return res.status(404).json({ message: "Web build not available on this deployment" });
