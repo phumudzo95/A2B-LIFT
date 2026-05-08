@@ -249,9 +249,15 @@ export class DatabaseStorage implements IStorage {
     id: string,
     data: Partial<Chauffeur>,
   ): Promise<Chauffeur | undefined> {
+    const sanitizedEntries = Object.entries(data || {}).filter(([, value]) => value !== undefined);
+    if (sanitizedEntries.length === 0) {
+      return this.getChauffeur(id);
+    }
+
+    const sanitizedData = Object.fromEntries(sanitizedEntries) as Partial<Chauffeur>;
     const [chauffeur] = await db
       .update(chauffeurs)
-      .set(data)
+      .set(sanitizedData)
       .where(eq(chauffeurs.id, id))
       .returning();
     return chauffeur;

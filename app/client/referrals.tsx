@@ -66,10 +66,9 @@ type ReferralDashboardResponse = ReferralSummary & {
   cashouts?: RewardCashout[];
 };
 
-const FALLBACK_REFERRAL_BASE_URL =
-  process.env.EXPO_PUBLIC_REFERRAL_BASE_URL ||
-  process.env.EXPO_PUBLIC_DOMAIN ||
-  "https://a2blift.com";
+const REFERRAL_LINK_BASE_URL =
+  process.env.EXPO_PUBLIC_REFERRAL_LINK_BASE_URL ||
+  "https://api.a2blift.com";
 const MIN_CASHOUT_AMOUNT = 100;
 const REFERRAL_PREVIEW_COUNT = 5;
 const REFERRALS_REFRESH_INTERVAL_MS = 60000;
@@ -129,7 +128,7 @@ function transactionPrefix(type: string) {
 
 function buildReferralShareUrl(referralCode?: string | null, shareUrl?: string | null) {
   if (!referralCode?.trim()) return shareUrl?.trim() || "";
-  return `${FALLBACK_REFERRAL_BASE_URL.replace(/\/$/, "")}/r/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
+  return `${REFERRAL_LINK_BASE_URL.replace(/\/$/, "")}/r/${encodeURIComponent(referralCode.trim().toUpperCase())}`;
 }
 
 function getReferralActivityDate(person: ReferredPerson) {

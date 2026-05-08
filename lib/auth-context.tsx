@@ -6,7 +6,10 @@ import React, {
   useMemo,
   ReactNode,
 } from "react";
+import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Application from "expo-application";
+import * as Linking from "expo-linking";
 import { apiRequest } from "@/lib/query-client";
 
 interface AuthUser {
@@ -50,6 +53,58 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function normalizeReferralCode(value?: string | null) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function extractReferralCodeFromUrl(rawUrl?: string | null) {
+  if (!rawUrl) return "";
+
+  try {
+    const parsed = Linking.parse(rawUrl);
+    const queryParams = parsed.queryParams || {};
+    const fromQuery = normalizeReferralCode(
+      String(
+        queryParams.ref ||
+        queryParams.referral ||
+        queryParams.referralCode ||
+        queryParams.code ||
+        "",
+      ),
+    );
+    if (fromQuery) return fromQuery;
+
+    const path = String(parsed.path || "");
+    const routeMatch = path.match(/(?:^|\/)r\/?([A-Za-z0-9_-]+)/i);
+    if (routeMatch?.[1]) {
+      return normalizeReferralCode(routeMatch[1]);
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
+}
+
+function extractReferralCodeFromInstallReferrer(rawReferrer?: string | null) {
+  if (!rawReferrer) return "";
+  try {
+    const params = new URLSearchParams(rawReferrer);
+    return normalizeReferralCode(
+      params.get("ref") ||
+      params.get("referral") ||
+      params.get("referralCode") ||
+      params.get("code") ||
+      "",
+    );
+  } catch {
+    return "";
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -59,6 +114,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadUser();
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const maybeStoreReferral = async (candidate?: string | null) => {
+      const normalized = normalizeReferralCode(candidate);
+      if (!isActive || !normalized) return;
+      if (user) return;
+      await setPendingReferralCode(normalized);
+    };
+
+    Linking.getInitialURL()
+      .then((url) => maybeStoreReferral(extractReferralCodeFromUrl(url)))
+      .catch(() => {});
+
+    const sub = Linking.addEventListener("url", ({ url }) => {
+      void maybeStoreReferral(extractReferralCodeFromUrl(url));
+    });
+
+    if (Platform.OS === "android") {
+      Application.getInstallReferrerAsync()
+        .then((referrer) => maybeStoreReferral(extractReferralCodeFromInstallReferrer(referrer)))
+        .catch(() => {});
+    }
+
+    return () => {
+      isActive = false;
+      sub.remove();
+    };
+  }, [setPendingReferralCode, user]);
 
   async function loadUser() {
     try {

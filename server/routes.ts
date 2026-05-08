@@ -1725,6 +1725,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     );
   }
 
+  app.get("/r/:code", (req: Request, res: Response) => {
+    const normalizedCode = String(req.params.code || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "");
+
+    if (!normalizedCode) {
+      return res.status(400).send("Invalid referral code");
+    }
+
+    const androidPackage = "com.a2blift";
+    const iosAppStoreUrl = "https://a2blift.com/register";
+    const deepLink = `a2blift://register?ref=${encodeURIComponent(normalizedCode)}`;
+    const playStoreUrl = `https://play.google.com/store/apps/details?id=${androidPackage}&referrer=${encodeURIComponent(`ref=${normalizedCode}`)}`;
+    const intentUrl = `intent://register?ref=${encodeURIComponent(normalizedCode)}#Intent;scheme=a2blift;package=${androidPackage};S.browser_fallback_url=${encodeURIComponent(playStoreUrl)};end`;
+
+    const userAgent = String(req.headers["user-agent"] || "").toLowerCase();
+    const isAndroid = userAgent.includes("android");
+    const isIos = /(iphone|ipad|ipod)/.test(userAgent);
+
+    const openUrl = isAndroid ? intentUrl : deepLink;
+    const fallbackUrl = isAndroid ? playStoreUrl : iosAppStoreUrl;
+
+    if (!isAndroid && !isIos) {
+      return res.redirect(302, `https://a2blift.com/register?ref=${encodeURIComponent(normalizedCode)}`);
+    }
+
+    const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>A2B LIFT Referral</title>
+    <meta http-equiv="refresh" content="2;url=${fallbackUrl}" />
+    <style>
+      body { margin: 0; background: #070707; color: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+      .card { width: 100%; max-width: 440px; background: #111; border: 1px solid #222; border-radius: 18px; padding: 24px; }
+      h1 { margin: 0 0 12px; font-size: 24px; }
+      p { margin: 0 0 16px; color: #bdbdbd; line-height: 1.45; }
+      a { display: inline-block; margin-right: 10px; margin-top: 8px; text-decoration: none; font-weight: 600; border-radius: 10px; padding: 10px 14px; }
+      .primary { background: #fff; color: #000; }
+      .secondary { background: #1c1c1c; color: #fff; border: 1px solid #2a2a2a; }
+      .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #8ad7ff; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Opening A2B LIFT...</h1>
+        <p>Referral code <span class="code">${normalizedCode}</span> will be applied automatically.</p>
+        <a class="primary" href="${openUrl}">Open app</a>
+        <a class="secondary" href="${fallbackUrl}">Get app</a>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var openUrl = ${JSON.stringify(openUrl)};
+        var fallbackUrl = ${JSON.stringify(fallbackUrl)};
+        window.location.replace(openUrl);
+        setTimeout(function () { window.location.replace(fallbackUrl); }, 1400);
+      })();
+    </script>
+  </body>
+</html>`;
+
+    res.setHeader("content-type", "text/html; charset=utf-8");
+    return res.status(200).send(html);
+  });
+
   // ─── Long Distance: driver availability toggle ───────────────────────────
   app.post("/api/long-distance/availability", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
