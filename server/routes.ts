@@ -472,6 +472,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return clientRatingsReady;
   }
 
+  function normalizeReferralCode(rawValue: unknown): string {
+    return String(rawValue || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "");
+  }
+
+  async function generateUniqueReferralCode(name: string, email: string): Promise<string> {
+    const seed = normalizeReferralCode(name || email || "A2B") || "A2B";
+    const base = seed.slice(0, 6);
+
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const suffix = Math.floor(1000 + Math.random() * 9000).toString();
+      const candidate = `${base}${suffix}`;
+      const existing = await storage.getUserByReferralCode(candidate);
+      if (!existing) return candidate;
+    }
+
+    return `${base}${Date.now().toString().slice(-6)}`;
+  }
+
+  async function getUserRewardsBalance(userId: string): Promise<number> {
+    try {
+      const result = await pool.query(
+        "SELECT COALESCE(rewards_balance, 0) AS rewards_balance FROM users WHERE id = $1 LIMIT 1",
+        [userId],
+      );
+      return Number(result.rows?.[0]?.rewards_balance || 0);
+    } catch {
+      return 0;
+    }
+  }
+
+  async function ensureUserReferralCode(user: any): Promise<string> {
+    const existing = normalizeReferralCode(user?.referralCode || user?.referral_code);
+    if (existing) return existing;
+
+    const generated = await generateUniqueReferralCode(user?.name || "A2B", user?.username || "");
+    try {
+      await pool.query("UPDATE users SET referral_code = $1 WHERE id = $2", [generated, user.id]);
+      return generated;
+    } catch {
+      return generated;
+    }
+  }
+
+  async function hydrateAuthUser(user: any) {
+    const { password: _pw, ...safeUser } = user;
+    const referralCode = await ensureUserReferralCode(user);
+    const rewardsBalance = Number(
+      safeUser?.rewardsBalance ??
+      safeUser?.rewards_balance ??
+      (await getUserRewardsBalance(user.id)),
+    );
+
+    return {
+      ...safeUser,
+      referralCode,
+      rewardsBalance,
+    };
+  }
+
   // -----------------------------
   // Auth (JWT)
   // -----------------------------
@@ -530,7 +592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const token = signAccessToken({ sub: user.id, role: user.role as UserRole, email: user.username, name: user.name });
       setAuthCookie(res, token);
-      const { password: _pw, ...safeUser } = user;
+      const safeUser = await hydrateAuthUser(user);
       return res.json({ user: safeUser, accessToken: token });
     } catch (error: any) {
       if (error.code === "23505") {
@@ -556,7 +618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const token = signAccessToken({ sub: user.id, role: user.role as UserRole, email: user.username, name: user.name });
       setAuthCookie(res, token);
-      const { password: _pw, ...safeUser } = user;
+      const safeUser = await hydrateAuthUser(user);
       return res.json({ user: safeUser, accessToken: token });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -571,8 +633,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/me", requireAuth, async (req: AuthedRequest, res: Response) => {
     const user = await storage.getUser(req.auth!.sub);
     if (!user) return res.status(404).json({ message: "User not found" });
-    const { password: _pw, ...safeUser } = user;
+    const safeUser = await hydrateAuthUser(user);
     return res.json(safeUser);
+  });
+
+  app.get("/api/referrals/me", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const user = await storage.getUser(req.auth!.sub);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const hydratedUser = await hydrateAuthUser(user);
+      const [referralEvents, transactions, cashouts] = await Promise.all([
+        storage.getReferralEventsByReferrerUserId(user.id),
+        storage.getRewardTransactions(user.id),
+        storage.getRewardCashoutsByUser(user.id),
+      ]);
+
+      const referredPeople = await Promise.all(
+        (referralEvents || []).map(async (event) => {
+          const referredUser = event?.referredUserId ? await storage.getUser(event.referredUserId) : null;
+          return {
+            id: event.id,
+            name: referredUser?.name || "A2B User",
+            joinedAt: event.createdAt,
+            firstRewardAt: event.firstRewardAt || null,
+            lastRewardAt: event.lastRewardAt || null,
+            rewardedAt: event.status === "rewarded" ? (event.lastRewardAt || event.firstRewardAt || event.updatedAt || event.createdAt) : null,
+            totalRewards: Number(event.totalRewards || 0),
+            status: event.status || "registered",
+          };
+        }),
+      );
+
+      const totalRewardsEarned = (transactions || [])
+        .filter((tx) => Number(tx.amount || 0) > 0 && tx.status !== "failed")
+        .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+      const pendingCashoutAmount = (cashouts || [])
+        .filter((cashout) => ["pending", "processing"].includes(String(cashout.status || "").toLowerCase()))
+        .reduce((sum, cashout) => sum + Number(cashout.amount || 0), 0);
+
+      const rewardedReferrals = (referralEvents || []).filter(
+        (event) => Number(event.totalRewards || 0) > 0 || event.status === "rewarded",
+      ).length;
+
+      const referralBase =
+        process.env.EXPO_PUBLIC_REFERRAL_LINK_BASE_URL ||
+        process.env.EXPO_PUBLIC_DOMAIN ||
+        "https://api.a2blift.com";
+
+      return res.json({
+        referralCode: hydratedUser.referralCode,
+        shareUrl: `${String(referralBase).replace(/\/$/, "")}/r/${encodeURIComponent(hydratedUser.referralCode)}`,
+        rewardsBalance: Number(hydratedUser.rewardsBalance || 0),
+        referredCount: referralEvents.length,
+        rewardedReferrals,
+        totalRewardsEarned,
+        pendingCashoutAmount,
+        referredPeople,
+        transactions,
+        cashouts,
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || "Failed to load referral dashboard" });
+    }
+  });
+
+  app.get("/api/rewards/transactions", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const rows = await storage.getRewardTransactions(req.auth!.sub);
+      return res.json(rows || []);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || "Failed to load reward transactions" });
+    }
+  });
+
+  app.get("/api/rewards/cashouts", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const rows = await storage.getRewardCashoutsByUser(req.auth!.sub);
+      return res.json(rows || []);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || "Failed to load reward cashouts" });
+    }
+  });
+
+  app.post("/api/rewards/cashout", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const amount = Number(req.body?.amount || 0);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+
+      if (amount < 100) {
+        return res.status(400).json({ message: "Minimum cash-out amount is R 100.00" });
+      }
+
+      const balance = await getUserRewardsBalance(req.auth!.sub);
+      if (amount > balance) {
+        return res.status(400).json({ message: "Requested amount exceeds available rewards balance" });
+      }
+
+      const created = await storage.createRewardCashout({
+        userId: req.auth!.sub,
+        amount,
+        bankName: req.body?.bankName || null,
+        accountHolder: req.body?.accountHolder || null,
+        accountNumber: req.body?.accountNumber || null,
+        status: "pending",
+      });
+
+      return res.status(201).json(created);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || "Failed to submit cash-out request" });
+    }
   });
 
   // -----------------------------
@@ -1736,63 +1909,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const androidPackage = "com.a2blift";
-    const iosAppStoreUrl = "https://a2blift.com/register";
-    const deepLink = `a2blift://register?ref=${encodeURIComponent(normalizedCode)}`;
+    const iosAppStoreBase =
+      process.env.IOS_APP_STORE_URL ||
+      process.env.EXPO_PUBLIC_IOS_APP_STORE_URL ||
+      "https://apps.apple.com/app/id982107779";
+    const iosAppStoreUrl = `${iosAppStoreBase}${iosAppStoreBase.includes("?") ? "&" : "?"}ref=${encodeURIComponent(normalizedCode)}`;
     const playStoreUrl = `https://play.google.com/store/apps/details?id=${androidPackage}&referrer=${encodeURIComponent(`ref=${normalizedCode}`)}`;
-    const intentUrl = `intent://register?ref=${encodeURIComponent(normalizedCode)}#Intent;scheme=a2blift;package=${androidPackage};S.browser_fallback_url=${encodeURIComponent(playStoreUrl)};end`;
 
     const userAgent = String(req.headers["user-agent"] || "").toLowerCase();
     const isAndroid = userAgent.includes("android");
     const isIos = /(iphone|ipad|ipod)/.test(userAgent);
 
-    const openUrl = isAndroid ? intentUrl : deepLink;
-    const fallbackUrl = isAndroid ? playStoreUrl : iosAppStoreUrl;
-
-    if (!isAndroid && !isIos) {
-      return res.redirect(302, `https://a2blift.com/register?ref=${encodeURIComponent(normalizedCode)}`);
+    if (isAndroid) {
+      return res.redirect(302, playStoreUrl);
     }
 
-    const html = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>A2B LIFT Referral</title>
-    <meta http-equiv="refresh" content="2;url=${fallbackUrl}" />
-    <style>
-      body { margin: 0; background: #070707; color: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-      .wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-      .card { width: 100%; max-width: 440px; background: #111; border: 1px solid #222; border-radius: 18px; padding: 24px; }
-      h1 { margin: 0 0 12px; font-size: 24px; }
-      p { margin: 0 0 16px; color: #bdbdbd; line-height: 1.45; }
-      a { display: inline-block; margin-right: 10px; margin-top: 8px; text-decoration: none; font-weight: 600; border-radius: 10px; padding: 10px 14px; }
-      .primary { background: #fff; color: #000; }
-      .secondary { background: #1c1c1c; color: #fff; border: 1px solid #2a2a2a; }
-      .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #8ad7ff; }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <div class="card">
-        <h1>Opening A2B LIFT...</h1>
-        <p>Referral code <span class="code">${normalizedCode}</span> will be applied automatically.</p>
-        <a class="primary" href="${openUrl}">Open app</a>
-        <a class="secondary" href="${fallbackUrl}">Get app</a>
-      </div>
-    </div>
-    <script>
-      (function () {
-        var openUrl = ${JSON.stringify(openUrl)};
-        var fallbackUrl = ${JSON.stringify(fallbackUrl)};
-        window.location.replace(openUrl);
-        setTimeout(function () { window.location.replace(fallbackUrl); }, 1400);
-      })();
-    </script>
-  </body>
-</html>`;
+    if (isIos) {
+      return res.redirect(302, iosAppStoreUrl);
+    }
 
-    res.setHeader("content-type", "text/html; charset=utf-8");
-    return res.status(200).send(html);
+    return res.redirect(302, `https://a2blift.com/register?ref=${encodeURIComponent(normalizedCode)}`);
   });
 
   // ─── Long Distance: driver availability toggle ───────────────────────────

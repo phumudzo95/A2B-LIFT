@@ -66,9 +66,10 @@ type ReferralDashboardResponse = ReferralSummary & {
   cashouts?: RewardCashout[];
 };
 
-const REFERRAL_LINK_BASE_URL =
-  process.env.EXPO_PUBLIC_REFERRAL_LINK_BASE_URL ||
-  "https://api.a2blift.com";
+const IOS_APP_STORE_URL =
+  process.env.EXPO_PUBLIC_IOS_APP_STORE_URL ||
+  "https://apps.apple.com/app/id982107779";
+const ANDROID_PACKAGE_ID = "com.a2blift";
 const MIN_CASHOUT_AMOUNT = 100;
 const REFERRAL_PREVIEW_COUNT = 5;
 const REFERRALS_REFRESH_INTERVAL_MS = 60000;
@@ -126,13 +127,24 @@ function transactionPrefix(type: string) {
   return "+";
 }
 
+function buildStoreReferralUrl(referralCode: string, target: "android" | "ios" | "auto" = "auto") {
+  const normalizedCode = referralCode.trim().toUpperCase();
+  const resolvedTarget = target === "auto"
+    ? (Platform.OS === "ios" ? "ios" : "android")
+    : target;
+
+  if (resolvedTarget === "ios") {
+    const separator = IOS_APP_STORE_URL.includes("?") ? "&" : "?";
+    return `${IOS_APP_STORE_URL}${separator}ref=${encodeURIComponent(normalizedCode)}`;
+  }
+
+  return `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE_ID}&referrer=ref%3D${encodeURIComponent(normalizedCode)}`;
+}
+
 function buildReferralShareUrl(referralCode?: string | null, shareUrl?: string | null) {
   const code = referralCode?.trim().toUpperCase();
   if (!code) return shareUrl?.trim() || "";
-  // Direct Play Store deep-link with referrer – opens the Play Store app immediately
-  // on Android (no browser). Google Play passes the referrer param to the installed
-  // app via the Install Referrer API so the code survives through install.
-  return `https://play.google.com/store/apps/details?id=com.a2blift&referrer=ref%3D${encodeURIComponent(code)}`;
+  return buildStoreReferralUrl(code);
 }
 
 function getReferralActivityDate(person: ReferredPerson) {
@@ -301,6 +313,8 @@ export default function ReferralsScreen() {
   async function handleShareReferral() {
     const referralCode = summary?.referralCode || user?.referralCode || "";
     const shareUrl = buildReferralShareUrl(referralCode, summary?.shareUrl);
+    const androidStoreUrl = referralCode ? buildStoreReferralUrl(referralCode, "android") : "";
+    const iosStoreUrl = referralCode ? buildStoreReferralUrl(referralCode, "ios") : "";
     if (!referralCode || !shareUrl) {
       Alert.alert("Invite Unavailable", "Your referral link is still being prepared. Please try again in a moment.");
       return;
@@ -308,7 +322,11 @@ export default function ReferralsScreen() {
 
     try {
       await Share.share({
-        message: `Join A2B LIFT with my referral code ${referralCode}. Tap this link to open the app and start registration: ${shareUrl}`,
+        message:
+          `Join A2B LIFT with my referral code ${referralCode}.\n\n` +
+          `Android download: ${androidStoreUrl}\n` +
+          `iPhone download: ${iosStoreUrl}\n\n` +
+          `After installing, sign up and enter code ${referralCode} if prompted.`,
         url: shareUrl,
       });
     } catch (error: any) {

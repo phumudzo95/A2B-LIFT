@@ -294,7 +294,7 @@ export default function A2BMap({
         initialRegion={initialRegionRef.current}
         onMapReady={handleMapReady}
         mapType="standard"
-        loadingEnabled={true}
+        loadingEnabled={false}
         userInterfaceStyle="dark"
         loadingBackgroundColor="#0B0B0B"
         loadingIndicatorColor="#FFFFFF"
