@@ -16,10 +16,11 @@
       "channel": "development"
     },
     "preview": {
-      "distribution": "internal",
+      "distribution": "store",
+      "autoIncrement": true,
       "environment": "preview",
       "android": {
-        "buildType": "apk"
+        "buildType": "app-bundle"
       },
       "env": {
         "EXPO_PUBLIC_EAS_OWNER": "pamol-digital",
