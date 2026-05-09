@@ -662,12 +662,17 @@ export default function ChauffeurDashboard() {
         }
         const { status } = await Notifications.requestPermissionsAsync();
         if (status !== "granted") return;
-        const tokenData = await Notifications.getExpoPushTokenAsync();
+        const projectId =
+          Constants.easConfig?.projectId ||
+          Constants.expoConfig?.extra?.eas?.projectId;
+        const tokenData = await Notifications.getExpoPushTokenAsync(
+          projectId ? { projectId } : undefined,
+        );
         if (tokenData?.data) {
           await apiRequest("PUT", `/api/chauffeurs/${chauffeur.id}/push-token`, { pushToken: tokenData.data });
         }
       } catch (e: any) {
-        console.log("[push] Registration:", e.message);
+        console.log("[push] Chauffeur registration:", e?.message || e);
       }
     })();
   }, [chauffeur?.id, isExpoGoAndroid]);

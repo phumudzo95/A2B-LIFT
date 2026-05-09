@@ -219,7 +219,7 @@ export default function ChauffeurLongDistanceScreen() {
 
     setSuggestionsLoading(true);
     try {
-      const res = await apiRequest("GET", `/api/places/autocomplete?input=${encodeURIComponent(trimmedQuery)}`);
+      const res = await apiRequest("GET", `/api/places/autocomplete?cityOnly=1&input=${encodeURIComponent(trimmedQuery)}`);
       const payload = await res.json();
       const predictions = Array.isArray(payload?.predictions) ? payload.predictions : [];
       const seen = new Set<string>();

@@ -1070,7 +1070,7 @@ function hasFreshChauffeurLocation(chauffeur) {
 async function sendExpoPushNotification(tokens, title, body, data, options) {
   const urgent = options?.urgent ?? false;
   const channelId = options?.channelId || (urgent ? "ride-alerts" : "default");
-  const messages2 = tokens.filter((t) => t && t.startsWith("ExponentPushToken[")).map((to) => ({
+  const messages2 = tokens.filter((t) => t && (t.startsWith("ExponentPushToken[") || t.startsWith("ExpoPushToken["))).map((to) => ({
     to,
     sound: "default",
     title,
@@ -1097,9 +1097,7 @@ async function sendExpoPushNotification(tokens, title, body, data, options) {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        "Accept-Encoding": "gzip, deflate",
-        // Use the Expo push API v2 which supports android sub-objects
-        "expo-platform": "android"
+        "Accept-Encoding": "gzip, deflate"
       },
       timeout: 8e3
     });
@@ -1684,10 +1682,18 @@ async function registerRoutes(app2) {
       secondaryText: locality || fallbackDisplayName?.split(",").slice(1).join(", ").trim() || "South Africa"
     };
   }
-  async function nominatimSearch(query, limit = 6) {
+  function isCityLikeNominatimResult(result) {
+    const type = String(result?.type || result?.addresstype || "").toLowerCase();
+    const className = String(result?.class || "").toLowerCase();
+    const cityTypes = ["city", "town", "village", "municipality", "hamlet", "suburb"];
+    return cityTypes.includes(type) || className === "place" && cityTypes.includes(type);
+  }
+  async function nominatimSearch(query, limit = 6, options) {
+    const cityOnly = options?.cityOnly ?? false;
     const url = `${NOMINATIM_BASE_URL}/search?format=jsonv2&addressdetails=1&limit=${limit}&countrycodes=za&q=${encodeURIComponent(query)}`;
-    const results = await fetchMapsJson(url);
-    if (!Array.isArray(results)) return [];
+    const rawResults = await fetchMapsJson(url);
+    if (!Array.isArray(rawResults)) return [];
+    const results = cityOnly ? rawResults.filter((result) => isCityLikeNominatimResult(result)) : rawResults;
     return results.map((result) => {
       const formatted = formatNominatimAddress(result.address, result.display_name);
       return {
@@ -1739,11 +1745,15 @@ async function registerRoutes(app2) {
   app2.get("/api/places/autocomplete", async (req, res) => {
     try {
       const input = req.query.input;
+      const cityOnly = ["1", "true", "yes", "city", "cities"].includes(
+        String(req.query.cityOnly || req.query.mode || "").toLowerCase()
+      );
       const sessionToken = typeof req.query.sessionToken === "string" ? req.query.sessionToken : typeof req.query.sessiontoken === "string" ? req.query.sessiontoken : "";
       if (!input || input.trim().length < 2) return res.json({ predictions: [] });
       if (GOOGLE_KEY) {
         const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
-        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en${tokenQuery}&key=${GOOGLE_KEY}`;
+        const typeQuery = cityOnly ? "&types=(cities)" : "";
+        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en${typeQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
         const r = await fetchMapsJson(url);
         const mappedPredictions = Array.isArray(r.predictions) ? r.predictions.slice(0, 6).map((p) => ({
           placeId: p.place_id,
@@ -1760,8 +1770,12 @@ async function registerRoutes(app2) {
           const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input)}&components=country:ZA&key=${GOOGLE_KEY}`;
           const geocodeResponse = await fetchMapsJson(geocodeUrl);
           if (geocodeResponse.status === "OK" && Array.isArray(geocodeResponse.results) && geocodeResponse.results.length > 0) {
+            const geocodeResults = cityOnly ? geocodeResponse.results.filter((result) => {
+              const types = Array.isArray(result?.types) ? result.types : [];
+              return types.includes("locality") || types.includes("postal_town") || types.includes("administrative_area_level_2");
+            }) : geocodeResponse.results;
             return res.json({
-              predictions: geocodeResponse.results.slice(0, 5).map((result) => ({
+              predictions: geocodeResults.slice(0, 5).map((result) => ({
                 placeId: result.place_id,
                 description: result.formatted_address,
                 mainText: result.address_components?.[0]?.long_name || result.formatted_address.split(",")[0],
@@ -1774,7 +1788,7 @@ async function registerRoutes(app2) {
         }
         console.warn("[maps] Google autocomplete fallback engaged:", r.status || "unknown");
       }
-      const osmPredictions = await nominatimSearch(input, 6);
+      const osmPredictions = await nominatimSearch(input, 6, { cityOnly });
       return res.json({ predictions: osmPredictions });
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -1946,7 +1960,7 @@ async function registerRoutes(app2) {
       if (!pushToken || typeof pushToken !== "string") {
         return res.status(400).json({ message: "pushToken is required" });
       }
-      if (!pushToken.startsWith("ExponentPushToken[")) {
+      if (!pushToken.startsWith("ExponentPushToken[") && !pushToken.startsWith("ExpoPushToken[")) {
         return res.status(400).json({ message: "Invalid Expo push token" });
       }
       const updatedUser = await storage.updateUser(req.params.id, { pushToken });
@@ -2226,6 +2240,12 @@ async function registerRoutes(app2) {
   app2.put("/api/chauffeurs/:id/push-token", requireAuth, async (req, res) => {
     try {
       const { pushToken } = req.body;
+      if (!pushToken || typeof pushToken !== "string") {
+        return res.status(400).json({ message: "pushToken is required" });
+      }
+      if (!pushToken.startsWith("ExponentPushToken[") && !pushToken.startsWith("ExpoPushToken[")) {
+        return res.status(400).json({ message: "Invalid Expo push token" });
+      }
       const chauffeur = await storage.getChauffeur(req.params.id);
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
       if (chauffeur.userId !== req.auth.sub && req.auth.role !== "admin") {

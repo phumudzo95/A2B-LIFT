@@ -516,11 +516,18 @@ export default function ClientHomeScreen() {
         }
         const { status } = await Notifications.requestPermissionsAsync();
         if (status !== "granted") return;
-        const tokenData = await Notifications.getExpoPushTokenAsync();
+        const projectId =
+          Constants.easConfig?.projectId ||
+          Constants.expoConfig?.extra?.eas?.projectId;
+        const tokenData = await Notifications.getExpoPushTokenAsync(
+          projectId ? { projectId } : undefined,
+        );
         if (tokenData?.data) {
           await apiRequest("PUT", `/api/users/${user.id}/push-token`, { pushToken: tokenData.data });
         }
-      } catch {}
+      } catch (error: any) {
+        console.log("[push] Client registration:", error?.message || error);
+      }
     })();
   }, [user?.id, isExpoGoAndroid]);
 

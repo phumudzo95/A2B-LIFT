@@ -63,6 +63,22 @@ EXPO_PUBLIC_REFERRAL_BASE_URL=https://a2blift.com
 2. Fill in all required values (especially `DATABASE_URL` and `JWT_SECRET`)
 3. The server will automatically load these variables on startup via `dotenv`
 
+## Expo Cloud Build Switching
+
+Use cloud builds to avoid local build instability and slow native compile times.
+
+- Current account (from app config / env):
+	- `npm run build:apk:cloud`
+	- `npm run build:aab:cloud`
+- Pascal account (`pascal225`):
+	1. Export Pascal project id once in your shell:
+		 - `export EXPO_PUBLIC_EAS_PROJECT_ID_PASCAL="your-pascal-project-id"`
+	2. Build using Pascal account:
+		 - `npm run build:apk:cloud:pascal`
+		 - `npm run build:aab:cloud:pascal`
+
+This does not change your app code. It only switches Expo owner/project for the build command.
+
 ## Notes
 
 - **DATABASE_URL**: Your PostgreSQL connection string. If using Supabase, you can get this from your Supabase project settings.

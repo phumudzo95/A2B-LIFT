@@ -151,6 +151,20 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      <Pressable
+        style={({ pressed }) => [styles.referralCard, pressed && { opacity: 0.9 }]}
+        onPress={() => router.push("/client/referrals")}
+      >
+        <View style={styles.referralCardIcon}>
+          <Ionicons name="gift-outline" size={18} color={Colors.white} />
+        </View>
+        <View style={styles.referralCardCopy}>
+          <Text style={styles.referralCardTitle}>Referral Club</Text>
+          <Text style={styles.referralCardText}>Invite friends, track rewards, and share your referral code.</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+      </Pressable>
+
       {recentReviews.length > 0 && (
         <View style={styles.reviewsCard}>
           <Text style={styles.reviewsTitle}>Recent Ratings</Text>
@@ -204,6 +218,14 @@ export default function ProfileScreen() {
             <Ionicons name="settings-outline" size={20} color={Colors.white} />
           </View>
           <Text style={styles.menuText}>Settings</Text>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        </Pressable>
+
+        <Pressable style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]} onPress={() => router.push("/client/referrals")}>
+          <View style={styles.menuIconCircle}>
+            <Ionicons name="gift-outline" size={20} color={Colors.white} />
+          </View>
+          <Text style={styles.menuText}>Referral & Rewards</Text>
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </Pressable>
       </View>
@@ -283,6 +305,28 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white },
   statLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center" },
   statDivider: { width: 1, alignSelf: "stretch", backgroundColor: Colors.border },
+  referralCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 16,
+  },
+  referralCardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: Colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  referralCardCopy: { flex: 1, gap: 2 },
+  referralCardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  referralCardText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 17 },
   reviewsCard: { backgroundColor: Colors.card, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: Colors.border, marginBottom: 16, gap: 12 },
   reviewsTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: Colors.white },
   reviewItem: { backgroundColor: Colors.surface, borderRadius: 14, padding: 12, gap: 6, borderWidth: 1, borderColor: Colors.border },
