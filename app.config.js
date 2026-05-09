@@ -5,10 +5,11 @@ const googleMapsApiKey =
   "";
 
 const defaultPamolProjectId = "f282a582-7512-48d6-b563-13aa571d9115";
-const easOwner = process.env.EXPO_PUBLIC_EAS_OWNER || "pamol-digital";
+const defaultPascalProjectId = "eb3b8747-40b2-4aad-b118-e64339bfeea0";
+const easOwner = process.env.EXPO_PUBLIC_EAS_OWNER || "pascal225";
 const easProjectId =
   process.env.EXPO_PUBLIC_EAS_PROJECT_ID ||
-  (easOwner === "pamol-digital" ? defaultPamolProjectId : undefined);
+  (easOwner === "pascal225" ? defaultPascalProjectId : defaultPamolProjectId);
 
 module.exports = {
   expo: {
