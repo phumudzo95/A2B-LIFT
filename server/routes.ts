@@ -38,7 +38,7 @@ async function sendExpoPushNotification(
   options?: { urgent?: boolean; channelId?: string },
 ) {
   const urgent = options?.urgent ?? false;
-  const channelId = options?.channelId || (urgent ? "ride-alerts" : undefined);
+  const channelId = options?.channelId || (urgent ? "ride-alerts" : "default");
   const messages = tokens
     .filter(t => t && t.startsWith("ExponentPushToken["))
     .map(to => ({
@@ -48,17 +48,38 @@ async function sendExpoPushNotification(
       body,
       data: data || {},
       badge: urgent ? 1 : undefined,
-      priority: urgent ? "high" : "default",
-      ttl: urgent ? 300 : 3600, // 5 min for urgent (ride alerts), 1hr for others
+      priority: urgent ? "high" : "normal",
+      ttl: urgent ? 300 : 3600,
       channelId,
-      interruptionLevel: urgent ? "time-sensitive" : undefined,
-      android: channelId ? { channelId, sound: "default", priority: urgent ? "max" : "high" } : undefined,
+      // iOS: mark as time-sensitive so it breaks through Focus modes
+      interruptionLevel: urgent ? "time-sensitive" : "active",
+      // Android: explicit channel + max priority on the notification object
+      android: {
+        channelId,
+        sound: "default",
+        priority: urgent ? "max" : "high",
+        sticky: false,
+        vibrate: urgent ? [0, 250, 250, 250] : undefined,
+      },
     }));
   if (messages.length === 0) return;
   try {
-    await axios.post("https://exp.host/--/api/v2/push/send", messages, {
-      headers: { "Content-Type": "application/json", Accept: "application/json", "Accept-Encoding": "gzip, deflate" },
-      timeout: 5000,
+    const res = await axios.post("https://exp.host/--/api/v2/push/send", messages, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "Accept-Encoding": "gzip, deflate",
+        // Use the Expo push API v2 which supports android sub-objects
+        "expo-platform": "android",
+      },
+      timeout: 8000,
+    });
+    // Log any per-message errors from Expo
+    const results = Array.isArray(res.data?.data) ? res.data.data : [];
+    results.forEach((r: any, i: number) => {
+      if (r?.status === "error") {
+        console.error(`[push] Token ${tokens[i]} error: ${r.message} (${r.details?.error})`);
+      }
     });
   } catch (e: any) {
     console.error("[push] Failed to send Expo push notification:", e.message);

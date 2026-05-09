@@ -423,7 +423,13 @@ export default function ReferralsScreen() {
 
             <View style={styles.linkPill}>
               <Ionicons name="link-outline" size={15} color="#181818" />
-              <Text style={styles.linkPillText} numberOfLines={1}>{buildReferralShareUrl(summary?.referralCode || user?.referralCode, summary?.shareUrl) || "Link unavailable"}</Text>
+              <Text style={styles.linkPillText} numberOfLines={1}>
+                {(() => {
+                  const code = summary?.referralCode || user?.referralCode;
+                  if (!code) return "Loading your link...";
+                  return buildStoreReferralUrl(code.trim().toUpperCase(), Platform.OS === "ios" ? "ios" : "android");
+                })()}
+              </Text>
             </View>
 
             <Pressable style={styles.primaryAction} onPress={handleShareReferral}>

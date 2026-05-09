@@ -294,10 +294,10 @@ export default function A2BMap({
         initialRegion={initialRegionRef.current}
         onMapReady={handleMapReady}
         mapType="standard"
-        loadingEnabled={false}
-        userInterfaceStyle="dark"
+        loadingEnabled={true}
         loadingBackgroundColor="#0B0B0B"
         loadingIndicatorColor="#FFFFFF"
+        userInterfaceStyle="dark"
         showsUserLocation={true}
         showsMyLocationButton={false}
         showsCompass={false}

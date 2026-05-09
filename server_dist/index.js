@@ -1052,7 +1052,7 @@ function hasFreshChauffeurLocation(chauffeur) {
 }
 async function sendExpoPushNotification(tokens, title, body, data, options) {
   const urgent = options?.urgent ?? false;
-  const channelId = options?.channelId || (urgent ? "ride-alerts" : void 0);
+  const channelId = options?.channelId || (urgent ? "ride-alerts" : "default");
   const messages2 = tokens.filter((t) => t && t.startsWith("ExponentPushToken[")).map((to) => ({
     to,
     sound: "default",
@@ -1060,18 +1060,37 @@ async function sendExpoPushNotification(tokens, title, body, data, options) {
     body,
     data: data || {},
     badge: urgent ? 1 : void 0,
-    priority: urgent ? "high" : "default",
+    priority: urgent ? "high" : "normal",
     ttl: urgent ? 300 : 3600,
-    // 5 min for urgent (ride alerts), 1hr for others
     channelId,
-    interruptionLevel: urgent ? "time-sensitive" : void 0,
-    android: channelId ? { channelId, sound: "default", priority: urgent ? "max" : "high" } : void 0
+    // iOS: mark as time-sensitive so it breaks through Focus modes
+    interruptionLevel: urgent ? "time-sensitive" : "active",
+    // Android: explicit channel + max priority on the notification object
+    android: {
+      channelId,
+      sound: "default",
+      priority: urgent ? "max" : "high",
+      sticky: false,
+      vibrate: urgent ? [0, 250, 250, 250] : void 0
+    }
   }));
   if (messages2.length === 0) return;
   try {
-    await import_axios.default.post("https://exp.host/--/api/v2/push/send", messages2, {
-      headers: { "Content-Type": "application/json", Accept: "application/json", "Accept-Encoding": "gzip, deflate" },
-      timeout: 5e3
+    const res = await import_axios.default.post("https://exp.host/--/api/v2/push/send", messages2, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "Accept-Encoding": "gzip, deflate",
+        // Use the Expo push API v2 which supports android sub-objects
+        "expo-platform": "android"
+      },
+      timeout: 8e3
+    });
+    const results = Array.isArray(res.data?.data) ? res.data.data : [];
+    results.forEach((r, i) => {
+      if (r?.status === "error") {
+        console.error(`[push] Token ${tokens[i]} error: ${r.message} (${r.details?.error})`);
+      }
     });
   } catch (e) {
     console.error("[push] Failed to send Expo push notification:", e.message);
