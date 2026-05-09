@@ -83,6 +83,9 @@ var users = (0, import_pg_core.pgTable)("users", {
   // client (passenger) | chauffeur (driver) | admin
   role: (0, import_pg_core.text)("role").notNull().default("client"),
   rating: (0, import_pg_core.real)("rating").default(5),
+  rewardsBalance: (0, import_pg_core.real)("rewards_balance").default(0),
+  referralCode: (0, import_pg_core.text)("referral_code").unique(),
+  referredByUserId: (0, import_pg_core.varchar)("referred_by_user_id").references(() => users.id),
   walletBalance: (0, import_pg_core.real)("wallet_balance").default(0),
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
 });
@@ -146,6 +149,7 @@ var rides = (0, import_pg_core.pgTable)("rides", {
   actualFare: (0, import_pg_core.real)("actual_fare"),
   routeCurrency: (0, import_pg_core.text)("route_currency").default("ZAR"),
   routeSelectedAt: (0, import_pg_core.timestamp)("route_selected_at"),
+  rewardsAmountUsed: (0, import_pg_core.real)("rewards_amount_used").default(0),
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow(),
   completedAt: (0, import_pg_core.timestamp)("completed_at")
 });
@@ -352,31 +356,44 @@ var insertLivenessSessionSchema = (0, import_drizzle_zod.createInsertSchema)(liv
 var referralEvents = (0, import_pg_core.pgTable)("referral_events", {
   id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
   referrerUserId: (0, import_pg_core.varchar)("referrer_user_id").notNull().references(() => users.id),
-  referredUserId: (0, import_pg_core.varchar)("referred_user_id").notNull().references(() => users.id),
-  level: (0, import_pg_core.integer)("level").notNull().default(1),
-  status: (0, import_pg_core.text)("status").notNull().default("pending"),
-  // pending|qualified|paid
-  rewardAmount: (0, import_pg_core.real)("reward_amount").default(0),
-  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
+  referredUserId: (0, import_pg_core.varchar)("referred_user_id").notNull().unique().references(() => users.id),
+  referralCodeUsed: (0, import_pg_core.text)("referral_code_used").notNull(),
+  status: (0, import_pg_core.text)("status").notNull().default("registered"),
+  totalRewards: (0, import_pg_core.real)("total_rewards").default(0),
+  firstRewardAt: (0, import_pg_core.timestamp)("first_reward_at"),
+  lastRewardAt: (0, import_pg_core.timestamp)("last_reward_at"),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow(),
+  updatedAt: (0, import_pg_core.timestamp)("updated_at").defaultNow()
 });
 var rewardTransactions = (0, import_pg_core.pgTable)("reward_transactions", {
   id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
   userId: (0, import_pg_core.varchar)("user_id").notNull().references(() => users.id),
+  referralEventId: (0, import_pg_core.varchar)("referral_event_id").references(() => referralEvents.id),
+  sourceUserId: (0, import_pg_core.varchar)("source_user_id").references(() => users.id),
+  rideId: (0, import_pg_core.varchar)("ride_id").references(() => rides.id),
+  reference: (0, import_pg_core.varchar)("reference"),
   amount: (0, import_pg_core.real)("amount").notNull(),
+  balanceBefore: (0, import_pg_core.real)("balance_before").notNull(),
+  balanceAfter: (0, import_pg_core.real)("balance_after").notNull(),
   type: (0, import_pg_core.text)("type").notNull(),
-  // earned|redeemed|expired
   description: (0, import_pg_core.text)("description"),
-  rideId: (0, import_pg_core.varchar)("ride_id"),
+  status: (0, import_pg_core.text)("status").notNull().default("completed"),
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
 });
 var rewardCashouts = (0, import_pg_core.pgTable)("reward_cashouts", {
   id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
   userId: (0, import_pg_core.varchar)("user_id").notNull().references(() => users.id),
-  points: (0, import_pg_core.integer)("points").notNull(),
-  cashValue: (0, import_pg_core.real)("cash_value").notNull(),
-  status: (0, import_pg_core.text)("status").notNull().default("pending"),
-  // pending|processed|rejected
-  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
+  amount: (0, import_pg_core.real)("amount").notNull(),
+  status: (0, import_pg_core.text)("status").notNull().default("requested"),
+  bankName: (0, import_pg_core.text)("bank_name"),
+  accountNumber: (0, import_pg_core.text)("account_number"),
+  accountHolder: (0, import_pg_core.text)("account_holder"),
+  phone: (0, import_pg_core.text)("phone"),
+  notes: (0, import_pg_core.text)("notes"),
+  reviewedByAdminId: (0, import_pg_core.varchar)("reviewed_by_admin_id").references(() => users.id),
+  requestedAt: (0, import_pg_core.timestamp)("requested_at").defaultNow(),
+  reviewedAt: (0, import_pg_core.timestamp)("reviewed_at"),
+  paidAt: (0, import_pg_core.timestamp)("paid_at")
 });
 
 // server/storage.ts

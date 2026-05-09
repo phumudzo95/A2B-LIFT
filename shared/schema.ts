@@ -24,6 +24,9 @@ export const users = pgTable("users", {
   // client (passenger) | chauffeur (driver) | admin
   role: text("role").notNull().default("client"),
   rating: real("rating").default(5.0),
+  rewardsBalance: real("rewards_balance").default(0),
+  referralCode: text("referral_code").unique(),
+  referredByUserId: varchar("referred_by_user_id").references(() => users.id),
   walletBalance: real("wallet_balance").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -96,6 +99,7 @@ export const rides = pgTable("rides", {
   actualFare: real("actual_fare"),
   routeCurrency: text("route_currency").default("ZAR"),
   routeSelectedAt: timestamp("route_selected_at"),
+  rewardsAmountUsed: real("rewards_amount_used").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
 });
@@ -390,21 +394,30 @@ export type TripEnquiry = typeof tripEnquiries.$inferSelect;
 export const referralEvents = pgTable("referral_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   referrerUserId: varchar("referrer_user_id").notNull().references(() => users.id),
-  referredUserId: varchar("referred_user_id").notNull().references(() => users.id),
-  level: integer("level").notNull().default(1),
-  status: text("status").notNull().default("pending"), // pending|qualified|paid
-  rewardAmount: real("reward_amount").default(0),
+  referredUserId: varchar("referred_user_id").notNull().unique().references(() => users.id),
+  referralCodeUsed: text("referral_code_used").notNull(),
+  status: text("status").notNull().default("registered"),
+  totalRewards: real("total_rewards").default(0),
+  firstRewardAt: timestamp("first_reward_at"),
+  lastRewardAt: timestamp("last_reward_at"),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // ─── Reward transactions ──────────────────────────────────────────────────
 export const rewardTransactions = pgTable("reward_transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
+  referralEventId: varchar("referral_event_id").references(() => referralEvents.id),
+  sourceUserId: varchar("source_user_id").references(() => users.id),
+  rideId: varchar("ride_id").references(() => rides.id),
+  reference: varchar("reference"),
   amount: real("amount").notNull(),
-  type: text("type").notNull(), // earned|redeemed|expired
+  balanceBefore: real("balance_before").notNull(),
+  balanceAfter: real("balance_after").notNull(),
+  type: text("type").notNull(),
   description: text("description"),
-  rideId: varchar("ride_id"),
+  status: text("status").notNull().default("completed"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -412,10 +425,17 @@ export const rewardTransactions = pgTable("reward_transactions", {
 export const rewardCashouts = pgTable("reward_cashouts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
-  points: integer("points").notNull(),
-  cashValue: real("cash_value").notNull(),
-  status: text("status").notNull().default("pending"), // pending|processed|rejected
-  createdAt: timestamp("created_at").defaultNow(),
+  amount: real("amount").notNull(),
+  status: text("status").notNull().default("requested"),
+  bankName: text("bank_name"),
+  accountNumber: text("account_number"),
+  accountHolder: text("account_holder"),
+  phone: text("phone"),
+  notes: text("notes"),
+  reviewedByAdminId: varchar("reviewed_by_admin_id").references(() => users.id),
+  requestedAt: timestamp("requested_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  paidAt: timestamp("paid_at"),
 });
 
 export type ReferralEvent = typeof referralEvents.$inferSelect;

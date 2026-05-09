@@ -98,7 +98,8 @@ function AuthGate() {
       pathname === "/role-select";
 
     if (user && isGuestOnly) {
-      // Restore last mode, or default to role-select
+      // Restore last mode, defaulting straight to dashboard for returning users.
+      // role-select remains available when users explicitly navigate there.
       AsyncStorage.getItem("a2b_last_mode").then(lastMode => {
         if (user.role === "chauffeur") {
           if (lastMode === "client") {
@@ -106,16 +107,16 @@ function AuthGate() {
           } else {
             router.replace("/chauffeur");
           }
-        } else if (lastMode === "client") {
-          router.replace("/client");
+        } else if (lastMode === "chauffeur") {
+          router.replace("/chauffeur");
         } else {
-          router.replace("/role-select");
+          router.replace("/client");
         }
       }).catch(() => {
         if (user.role === "chauffeur") {
           router.replace("/chauffeur");
         } else {
-          router.replace("/role-select");
+          router.replace("/client");
         }
       });
     } else if (!user && isProtected) {

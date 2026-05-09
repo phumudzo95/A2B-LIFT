@@ -282,6 +282,25 @@ export default function ReferralsScreen() {
         }
       }
 
+      if (!nextSummary?.referralCode) {
+        try {
+          const meRes = await apiRequest("GET", "/api/auth/me");
+          const mePayload = await meRes.json();
+          const fallbackCode = String(mePayload?.referralCode || "").trim().toUpperCase();
+          if (fallbackCode) {
+            nextSummary = {
+              referralCode: fallbackCode,
+              shareUrl: buildReferralShareUrl(fallbackCode, mePayload?.shareUrl),
+              rewardsBalance: Number(mePayload?.rewardsBalance || 0),
+              referredCount: nextSummary?.referredCount || 0,
+              rewardedReferrals: nextSummary?.rewardedReferrals || 0,
+              totalRewardsEarned: nextSummary?.totalRewardsEarned || 0,
+              pendingCashoutAmount: nextSummary?.pendingCashoutAmount || 0,
+            };
+          }
+        } catch {}
+      }
+
       setSummary(nextSummary);
       setReferredPeople(Array.isArray(nextReferredPeople) ? nextReferredPeople : []);
       setTransactions(Array.isArray(nextTransactions) ? nextTransactions : []);
@@ -313,8 +332,6 @@ export default function ReferralsScreen() {
   async function handleShareReferral() {
     const referralCode = summary?.referralCode || user?.referralCode || "";
     const shareUrl = buildReferralShareUrl(referralCode, summary?.shareUrl);
-    const androidStoreUrl = referralCode ? buildStoreReferralUrl(referralCode, "android") : "";
-    const iosStoreUrl = referralCode ? buildStoreReferralUrl(referralCode, "ios") : "";
     if (!referralCode || !shareUrl) {
       Alert.alert("Invite Unavailable", "Your referral link is still being prepared. Please try again in a moment.");
       return;
@@ -322,11 +339,7 @@ export default function ReferralsScreen() {
 
     try {
       await Share.share({
-        message:
-          `Join A2B LIFT with my referral code ${referralCode}.\n\n` +
-          `Android download: ${androidStoreUrl}\n` +
-          `iPhone download: ${iosStoreUrl}\n\n` +
-          `After installing, sign up and enter code ${referralCode} if prompted.`,
+        message: `Join A2B LIFT with my referral code ${referralCode} Tap this link to open the app and start registration: ${shareUrl}`,
         url: shareUrl,
       });
     } catch (error: any) {

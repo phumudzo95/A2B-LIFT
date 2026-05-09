@@ -22,6 +22,9 @@ interface AuthUser {
   role: string;
   rating: number | null;
   walletBalance: number | null;
+  rewardsBalance?: number | null;
+  referralCode?: string | null;
+  referredByUserId?: string | null;
   createdAt?: string | null;
 }
 

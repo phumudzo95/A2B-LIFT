@@ -16,7 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_OAUTH_START = "https://api-production-0783.up.railway.app/api/auth/google/start";
+const GOOGLE_OAUTH_START = "https://api.a2blift.com/api/auth/google/start";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
