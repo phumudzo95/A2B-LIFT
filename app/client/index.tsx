@@ -295,6 +295,22 @@ const SIGNIFICANT_LOCATION_SHIFT_KM = 0.03;
 const DRIVER_MARKER_SHIFT_KM = 0.01;
 const AUTOCOMPLETE_DEBOUNCE_MS = 400;
 
+const SOUTH_AFRICA_BOUNDS = {
+  minLat: -35,
+  maxLat: -22,
+  minLng: 16,
+  maxLng: 33,
+};
+
+function isWithinSouthAfricaBounds(lat: number, lng: number) {
+  return (
+    lat >= SOUTH_AFRICA_BOUNDS.minLat &&
+    lat <= SOUTH_AFRICA_BOUNDS.maxLat &&
+    lng >= SOUTH_AFRICA_BOUNDS.minLng &&
+    lng <= SOUTH_AFRICA_BOUNDS.maxLng
+  );
+}
+
 function createPlacesSessionToken() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -327,13 +343,13 @@ function formatNativeReverseGeocode(address?: Location.LocationGeocodedAddress |
 
 async function buildNativeLocationSuggestions(query: string) {
   try {
-    const results = await Location.geocodeAsync(query);
+    const results = await Location.geocodeAsync(`${query}, South Africa`);
     const uniqueResults = results.filter((result, index, all) => {
       return all.findIndex((candidate) =>
         Math.abs(candidate.latitude - result.latitude) < 0.0001 &&
         Math.abs(candidate.longitude - result.longitude) < 0.0001,
       ) === index;
-    }).slice(0, 5);
+    }).filter((result) => isWithinSouthAfricaBounds(result.latitude, result.longitude)).slice(0, 5);
 
     const suggestions = await Promise.all(
       uniqueResults.map(async (result, index) => {
@@ -769,9 +785,14 @@ export default function ClientHomeScreen() {
       // Last resort: expo-location geocoder (native only)
       if (!coords && Platform.OS !== "web") {
         try {
-          const results = await Location.geocodeAsync(suggestion.description);
+          const results = await Location.geocodeAsync(`${suggestion.description}, South Africa`);
           if (results.length > 0) {
-            coords = { lat: results[0].latitude, lng: results[0].longitude };
+            const best = results.find((result) =>
+              isWithinSouthAfricaBounds(result.latitude, result.longitude),
+            );
+            if (best) {
+              coords = { lat: best.latitude, lng: best.longitude };
+            }
           }
         } catch {}
       }
@@ -1185,21 +1206,26 @@ export default function ClientHomeScreen() {
 
   async function geocodeDestination(): Promise<{ lat: number; lng: number } | null> {
     if (!dropoffAddress.trim()) return null;
-    if (Platform.OS !== "web") {
-      try {
-        const results = await Location.geocodeAsync(dropoffAddress);
-        if (results.length > 0) {
-          return { lat: results[0].latitude, lng: results[0].longitude };
-        }
-      } catch {}
-    }
     try {
-      const res = await apiRequest("GET", `/api/geocode?address=${encodeURIComponent(dropoffAddress)}`);
+      const res = await apiRequest("GET", `/api/geocode?address=${encodeURIComponent(`${dropoffAddress}, South Africa`)}`);
       const data = await res.json();
-      if (data.lat && data.lng) {
+      if (data.lat && data.lng && isWithinSouthAfricaBounds(data.lat, data.lng)) {
         return { lat: data.lat, lng: data.lng };
       }
     } catch {}
+
+    if (Platform.OS !== "web") {
+      try {
+        const results = await Location.geocodeAsync(`${dropoffAddress}, South Africa`);
+        const best = results.find((result) =>
+          isWithinSouthAfricaBounds(result.latitude, result.longitude),
+        );
+        if (best) {
+          return { lat: best.latitude, lng: best.longitude };
+        }
+      } catch {}
+    }
+
     return null;
   }
 

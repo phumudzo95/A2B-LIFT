@@ -938,7 +938,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (GOOGLE_KEY) {
         const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
         const typeQuery = cityOnly ? "&types=(cities)" : "";
-        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en${typeQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
+        const zaBiasQuery = "&location=-30.5595,22.9375&radius=1200000&strictbounds=true";
+        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en${typeQuery}${zaBiasQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
         const r = await fetchMapsJson(url);
         const mappedPredictions = Array.isArray(r.predictions)
           ? r.predictions.slice(0, 6).map((p: any) => ({
