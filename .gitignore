@@ -23,8 +23,13 @@ android/
 
 # App store credentials (never commit these)
 google-play-key.json
+credentials.json
+credentials/
 *.provisionprofile
 AuthKey_*.p8
+
+# local build artifacts
+build-*.apk
 
 # Metro
 .metro-health-check*
