@@ -655,7 +655,7 @@ export default function ChauffeurDashboard() {
             name: "Ride Alerts",
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 250, 250, 250],
-            sound: "trip-alert.wav",
+            sound: "trip_alert.wav",
             bypassDnd: true,
             lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
           });

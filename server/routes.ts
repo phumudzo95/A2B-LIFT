@@ -39,7 +39,7 @@ async function sendExpoPushNotification(
 ) {
   const urgent = options?.urgent ?? false;
   const channelId = options?.channelId || (urgent ? "ride-alerts-v2" : "default");
-  const sound = urgent ? "trip-alert.wav" : "default";
+  const sound = urgent ? "trip_alert.wav" : "default";
   const messages = tokens
     .filter(t => t && (t.startsWith("ExponentPushToken[") || t.startsWith("ExpoPushToken[")))
     .map(to => ({

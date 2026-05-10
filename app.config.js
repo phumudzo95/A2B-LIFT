@@ -100,7 +100,7 @@ module.exports = {
           icon: "./assets/images/icon.png",
           color: "#0a0a0a",
           defaultChannel: "ride-alerts-v2",
-          sounds: ["./assets/trip-alert.wav"],
+          sounds: ["./assets/trip_alert.wav"],
           mode: "production",
         },
       ],
