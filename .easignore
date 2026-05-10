@@ -1,4 +1,6 @@
 # Directories not needed for EAS builds
+node_modules/
+.netlify-deploy/
 builds/
 build-tools/
 server_dist/
