@@ -54,7 +54,7 @@ module.exports = {
     },
     android: {
       package: "com.a2blift",
-      versionCode: 50,
+      versionCode: 80,
       softwareKeyboardLayoutMode: "resize",
       adaptiveIcon: {
         foregroundImage: "./assets/images/android-icon-foreground-car.png",
