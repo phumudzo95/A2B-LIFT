@@ -152,6 +152,23 @@ export default function A2BMap({
   const lastFollowedDriverRef = useRef<{ lat: number; lng: number } | null>(null);
   const customMapStyle = DARK_MAP_STYLE;
 
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    console.log("[A2BMap] mount", {
+      loading,
+      showDriver,
+      followDriver,
+      hasPickup: !!pickupLocation,
+      hasDropoff: !!dropoffLocation,
+      hasDriver: !!driverLocation,
+      nearbyDrivers: nearbyDrivers.length,
+      hasRoutePolyline: !!routePolyline,
+    });
+    return () => {
+      console.log("[A2BMap] unmount");
+    };
+  }, []);
+
   // Use user's location for initialRegion if available, else Johannesburg
   const center = pickupLocation || DEFAULT_REGION;
   const initialRegionRef = useRef({
@@ -206,9 +223,34 @@ export default function A2BMap({
 
   function handleMapReady() {
     mapReadyRef.current = true;
+    if (Platform.OS === "android") {
+      console.log("[A2BMap] onMapReady", {
+        loading,
+        showDriver,
+        followDriver,
+        hasPickup: !!pickupLocation,
+        hasDropoff: !!dropoffLocation,
+        hasDriver: !!driverLocation,
+        routeCoords: routeCoords.length,
+      });
+    }
     fitMap();
     setTimeout(fitMap, 400);
   }
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    console.log("[A2BMap] render state", {
+      loading,
+      showDriver,
+      followDriver,
+      hasPickup: !!pickupLocation,
+      hasDropoff: !!dropoffLocation,
+      hasDriver: !!driverLocation,
+      nearbyDrivers: nearbyDrivers.length,
+      routeCoords: routeCoords.length,
+    });
+  }, [loading, showDriver, followDriver, pickupLocation?.lat, pickupLocation?.lng, dropoffLocation?.lat, dropoffLocation?.lng, driverLocation?.lat, driverLocation?.lng, nearbyDrivers.length, routeCoords.length]);
 
   // Zoom to user location when GPS first arrives (no route/dropoff set yet)
   useEffect(() => {
