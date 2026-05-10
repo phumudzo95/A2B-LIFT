@@ -735,21 +735,28 @@ export default function ClientHomeScreen() {
         const res = await apiRequest("GET", `/api/places/autocomplete?input=${encodeURIComponent(query)}&sessionToken=${encodeURIComponent(sessionToken)}${biasQuery}`);
         const data = await res.json();
         const predictions = Array.isArray(data.predictions) ? data.predictions : [];
+        console.log("🔍 [AUTOCOMPLETE] Query:", query);
+        console.log("🔍 [AUTOCOMPLETE] API Response predictions:", JSON.stringify(predictions, null, 2));
         if (predictions.length > 0) {
+          console.log("🔍 [AUTOCOMPLETE] Setting suggestions with", predictions.length, "items");
           setLocationSuggestions(predictions);
           return;
         }
 
         if (Platform.OS !== "web") {
+          console.log("🔍 [AUTOCOMPLETE] No predictions from API, using native geocoding fallback");
           const nativeSuggestions = await buildNativeLocationSuggestions(query);
+          console.log("🔍 [AUTOCOMPLETE] Native suggestions:", JSON.stringify(nativeSuggestions, null, 2));
           setLocationSuggestions(nativeSuggestions);
           return;
         }
 
         setLocationSuggestions([]);
       } catch {
+        console.log("🔍 [AUTOCOMPLETE] Error in API call, using native fallback");
         if (Platform.OS !== "web") {
           const nativeSuggestions = await buildNativeLocationSuggestions(query);
+          console.log("🔍 [AUTOCOMPLETE] Native fallback suggestions:", JSON.stringify(nativeSuggestions, null, 2));
           setLocationSuggestions(nativeSuggestions);
         } else {
           setLocationSuggestions([]);
@@ -2470,7 +2477,10 @@ export default function ClientHomeScreen() {
             renderItem={({ item }) => (
               <Pressable
                 style={({ pressed }) => [styles.suggestionRow, pressed && { backgroundColor: Colors.surface }]}
-                onPress={() => selectSuggestion(item)}
+                onPress={() => {
+                  console.log("🔍 [AUTOCOMPLETE] Selected suggestion:", JSON.stringify(item, null, 2));
+                  selectSuggestion(item);
+                }}
               >
                 <View style={styles.suggestionIcon}>
                   <Ionicons name="location-outline" size={18} color={Colors.textSecondary} />
