@@ -21,18 +21,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import Constants from "expo-constants";
 import * as Location from "expo-location";
+import * as TaskManager from "expo-task-manager";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
 import { useAuth } from "@/lib/auth-context";
 import {
+  HIGH_ACCURACY,
   RIDE_MATCH_RADIUS_KM,
   getBestAvailablePosition,
   toLatLng,
   watchBestPosition,
 } from "@/lib/location-utils";
-import { apiRequest } from "@/lib/query-client";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useSocket } from "@/lib/socket-context";
 import Colors from "@/constants/colors";
 import A2BMap from "@/components/A2BMap";
@@ -42,6 +44,48 @@ const DRIVER_SHARE = 0.85;
 const ROUTE_REFRESH_MIN_DISTANCE_KM = 0.2;
 const ROUTE_REFRESH_MAX_AGE_MS = 5 * 60 * 1000;
 const RIDE_ALERT_SUPPRESSION_MS = 30 * 60 * 1000;
+const DRIVER_LOCATION_TASK_NAME = "a2b-driver-location-task";
+const DRIVER_LOCATION_TASK_STATE_KEY = "a2b_driver_location_task_state";
+const DRIVER_LOCATION_REST_MIN_INTERVAL_MS = 10000;
+
+type DriverLocationTaskState = {
+  chauffeurId?: string;
+  isOnline?: boolean;
+};
+
+async function postChauffeurLocation(chauffeurId: string, lat: number, lng: number) {
+  const token = await AsyncStorage.getItem("a2b_token");
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  await fetch(new URL(`/api/chauffeurs/${chauffeurId}/location`, getApiUrl()).toString(), {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ lat, lng }),
+  });
+}
+
+if (Platform.OS !== "web") {
+  TaskManager.defineTask(DRIVER_LOCATION_TASK_NAME, async ({ data, error }) => {
+    if (error) {
+      console.log("[driver-location-task]", error.message);
+      return;
+    }
+
+    try {
+      const rawState = await AsyncStorage.getItem(DRIVER_LOCATION_TASK_STATE_KEY);
+      const state = rawState ? (JSON.parse(rawState) as DriverLocationTaskState) : {};
+      if (!state.isOnline || !state.chauffeurId) return;
+
+      const locations = (data as { locations?: Location.LocationObject[] } | undefined)?.locations || [];
+      const latest = locations[locations.length - 1];
+      if (!latest?.coords) return;
+
+      await postChauffeurLocation(state.chauffeurId, latest.coords.latitude, latest.coords.longitude);
+    } catch (taskError: any) {
+      console.log("[driver-location-task] update failed:", taskError?.message || taskError);
+    }
+  });
+}
 
 interface ClientReview {
   id: string;
@@ -133,6 +177,7 @@ export default function ChauffeurDashboard() {
   const incomingSlide = useRef(new Animated.Value(300)).current;
   const notificationsRef = useRef<any>(null);
   const locationWatchRef = useRef<Location.LocationSubscription | null>(null);
+  const lastLocationRestPostRef = useRef(0);
   const currentRideRef = useRef<any>(null);
   const isExpoGoAndroid = Platform.OS === "android" && Constants.appOwnership === "expo";
 
@@ -651,7 +696,7 @@ export default function ChauffeurDashboard() {
         const Notifications = notificationsRef.current;
         if (!Notifications) return;
         if (Platform.OS === "android") {
-          await Notifications.setNotificationChannelAsync("ride-alerts-v2", {
+          await Notifications.setNotificationChannelAsync("ride-alerts-v3", {
             name: "Ride Alerts",
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 250, 250, 250],
@@ -670,12 +715,15 @@ export default function ChauffeurDashboard() {
         );
         if (tokenData?.data) {
           await apiRequest("PUT", `/api/chauffeurs/${chauffeur.id}/push-token`, { pushToken: tokenData.data });
+          if (user?.id) {
+            await apiRequest("PUT", `/api/users/${user.id}/push-token`, { pushToken: tokenData.data });
+          }
         }
       } catch (e: any) {
         console.log("[push] Chauffeur registration:", e?.message || e);
       }
     })();
-  }, [chauffeur?.id, isExpoGoAndroid]);
+  }, [chauffeur?.id, isExpoGoAndroid, user?.id]);
 
   useEffect(() => {
     if (Platform.OS === "web" || isExpoGoAndroid) return;
@@ -978,14 +1026,70 @@ export default function ChauffeurDashboard() {
     setMyLocation(next);
     if (chauffeur?.id) {
       emit("chauffeur:location", { chauffeurId: chauffeur.id, lat: next.lat, lng: next.lng });
+      const now = Date.now();
+      if (now - lastLocationRestPostRef.current >= DRIVER_LOCATION_REST_MIN_INTERVAL_MS) {
+        lastLocationRestPostRef.current = now;
+        postChauffeurLocation(chauffeur.id, next.lat, next.lng).catch(() => {});
+      }
+    }
+  }
+
+  async function startBackgroundLocationTask(activeChauffeurId: string) {
+    if (Platform.OS === "web" || isExpoGoAndroid) return;
+    try {
+      await AsyncStorage.setItem(
+        DRIVER_LOCATION_TASK_STATE_KEY,
+        JSON.stringify({ chauffeurId: activeChauffeurId, isOnline: true }),
+      );
+
+      const foreground = await Location.requestForegroundPermissionsAsync();
+      if (foreground.status !== "granted") return;
+
+      if (Platform.OS === "android") {
+        const background = await Location.requestBackgroundPermissionsAsync();
+        if (background.status !== "granted") return;
+      }
+
+      const alreadyRunning = await Location.hasStartedLocationUpdatesAsync(DRIVER_LOCATION_TASK_NAME);
+      if (alreadyRunning) return;
+
+      await Location.startLocationUpdatesAsync(DRIVER_LOCATION_TASK_NAME, {
+        accuracy: HIGH_ACCURACY,
+        distanceInterval: 10,
+        timeInterval: 15000,
+        pausesUpdatesAutomatically: false,
+        foregroundService: {
+          notificationTitle: "A2B LIFT driver mode",
+          notificationBody: "Searching for trips nearby",
+          notificationColor: "#0a0a0a",
+        },
+      });
+    } catch (e: any) {
+      console.log("[driver-location-task] start:", e?.message || e);
+    }
+  }
+
+  async function stopBackgroundLocationTask() {
+    if (Platform.OS === "web" || isExpoGoAndroid) return;
+    try {
+      await AsyncStorage.setItem(DRIVER_LOCATION_TASK_STATE_KEY, JSON.stringify({ isOnline: false }));
+      const running = await Location.hasStartedLocationUpdatesAsync(DRIVER_LOCATION_TASK_NAME);
+      if (running) {
+        await Location.stopLocationUpdatesAsync(DRIVER_LOCATION_TASK_NAME);
+      }
+    } catch (e: any) {
+      console.log("[driver-location-task] stop:", e?.message || e);
     }
   }
 
   async function startLocationUpdates() {
     try {
-      stopLocationUpdates();
+      stopForegroundLocationUpdates();
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") { setMyLocation(JHB_FALLBACK); return; }
+      if (chauffeur?.id) {
+        void startBackgroundLocationTask(chauffeur.id);
+      }
 
       try {
         const loc = await getBestAvailablePosition();
@@ -1010,10 +1114,15 @@ export default function ChauffeurDashboard() {
     } catch { setMyLocation(JHB_FALLBACK); }
   }
 
-  function stopLocationUpdates() {
+  function stopForegroundLocationUpdates() {
     locationWatchRef.current?.remove();
     locationWatchRef.current = null;
     if (locationInterval) { clearInterval(locationInterval); setLocationIntervalId(null); }
+  }
+
+  function stopLocationUpdates() {
+    stopForegroundLocationUpdates();
+    void stopBackgroundLocationTask();
   }
 
   async function fetchDriverRoute(destLat: number, destLng: number, options?: { routeKey?: string }): Promise<boolean> {

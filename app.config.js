@@ -69,6 +69,11 @@ module.exports = {
         "android.permission.INTERNET",
         "android.permission.VIBRATE",
         "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.WAKE_LOCK",
       ],
       config: {
         googleMaps: {
@@ -99,7 +104,7 @@ module.exports = {
         {
           icon: "./assets/images/icon.png",
           color: "#0a0a0a",
-          defaultChannel: "ride-alerts-v2",
+          defaultChannel: "ride-alerts-v3",
           sounds: ["./assets/trip_alert.wav"],
           mode: "production",
         },
@@ -110,7 +115,7 @@ module.exports = {
           locationAlwaysAndWhenInUsePermission: "A2B LIFT uses your location to connect you with nearby drivers and navigate your trip.",
           locationWhenInUsePermission: "A2B LIFT needs your location to show nearby drivers and navigate to your destination.",
           isIosBackgroundLocationEnabled: false,
-          isAndroidBackgroundLocationEnabled: false,
+          isAndroidBackgroundLocationEnabled: true,
         },
       ],
       [

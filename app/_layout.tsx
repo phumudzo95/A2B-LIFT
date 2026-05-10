@@ -13,7 +13,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { SocketProvider } from "@/lib/socket-context";
 
-const RIDE_ALERT_CHANNEL_ID = "ride-alerts-v2";
+const RIDE_ALERT_CHANNEL_ID = "ride-alerts-v3";
 const RIDE_ALERT_SOUND = "trip_alert.wav";
 
 // ─── Global notification handler (runs before any screen mounts) ─────────────
