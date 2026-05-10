@@ -25,6 +25,8 @@ import { apiRequest } from "@/lib/query-client";
 interface ChauffeurProfile {
   id: string;
   isApproved: boolean;
+  lat?: number | null;
+  lng?: number | null;
   vehicleType?: string | null;
   vehicleModel?: string | null;
   availableForLongDistance?: boolean | null;
@@ -219,7 +221,11 @@ export default function ChauffeurLongDistanceScreen() {
 
     setSuggestionsLoading(true);
     try {
-      const res = await apiRequest("GET", `/api/places/autocomplete?cityOnly=1&input=${encodeURIComponent(trimmedQuery)}`);
+      const biasQuery =
+        typeof chauffeur?.lat === "number" && typeof chauffeur?.lng === "number"
+          ? `&lat=${encodeURIComponent(String(chauffeur.lat))}&lng=${encodeURIComponent(String(chauffeur.lng))}`
+          : "";
+      const res = await apiRequest("GET", `/api/places/autocomplete?cityOnly=1&input=${encodeURIComponent(trimmedQuery)}${biasQuery}`);
       const payload = await res.json();
       const predictions = Array.isArray(payload?.predictions) ? payload.predictions : [];
       const seen = new Set<string>();

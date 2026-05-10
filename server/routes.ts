@@ -858,9 +858,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return cityTypes.includes(type) || (className === "place" && cityTypes.includes(type));
   }
 
-  async function nominatimSearch(query: string, limit = 6, options?: { cityOnly?: boolean }) {
+  function isValidCoordinate(value: unknown) {
+    const n = Number(value);
+    return Number.isFinite(n);
+  }
+
+  async function nominatimSearch(
+    query: string,
+    limit = 6,
+    options?: { cityOnly?: boolean; lat?: number | null; lng?: number | null },
+  ) {
     const cityOnly = options?.cityOnly ?? false;
-    const url = `${NOMINATIM_BASE_URL}/search?format=jsonv2&addressdetails=1&limit=${limit}&countrycodes=za&q=${encodeURIComponent(query)}`;
+    const hasBias =
+      typeof options?.lat === "number" &&
+      Number.isFinite(options.lat) &&
+      typeof options?.lng === "number" &&
+      Number.isFinite(options.lng);
+    const biasQuery = hasBias
+      ? `&viewbox=${options!.lng - 1.2},${options!.lat + 1.2},${options!.lng + 1.2},${options!.lat - 1.2}&bounded=1`
+      : "";
+    const url = `${NOMINATIM_BASE_URL}/search?format=jsonv2&addressdetails=1&limit=${limit}&countrycodes=za${biasQuery}&q=${encodeURIComponent(query)}`;
     const rawResults = await fetchMapsJson(url);
     if (!Array.isArray(rawResults)) return [];
 
@@ -925,6 +942,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/places/autocomplete", async (req: Request, res: Response) => {
     try {
       const input = req.query.input as string;
+      const lat = isValidCoordinate(req.query.lat) ? Number(req.query.lat) : null;
+      const lng = isValidCoordinate(req.query.lng) ? Number(req.query.lng) : null;
+      const hasLocationBias = lat !== null && lng !== null;
       const cityOnly = ["1", "true", "yes", "city", "cities"].includes(
         String(req.query.cityOnly || req.query.mode || "").toLowerCase(),
       );
@@ -938,7 +958,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (GOOGLE_KEY) {
         const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
         const typeQuery = cityOnly ? "&types=(cities)" : "";
-        const zaBiasQuery = "&location=-30.5595,22.9375&radius=1200000&strictbounds=true";
+        const zaBiasQuery = hasLocationBias
+          ? `&location=${lat},${lng}&radius=${cityOnly ? 220000 : 90000}`
+          : "&location=-30.5595,22.9375&radius=1200000";
         const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en${typeQuery}${zaBiasQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
         const r = await fetchMapsJson(url);
         const mappedPredictions = Array.isArray(r.predictions)
@@ -986,7 +1008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn("[maps] Google autocomplete fallback engaged:", r.status || "unknown");
       }
 
-      const osmPredictions = await nominatimSearch(input, 6, { cityOnly });
+      const osmPredictions = await nominatimSearch(input, 6, { cityOnly, lat, lng });
       return res.json({ predictions: osmPredictions });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -1071,7 +1093,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .status(400)
           .json({ message: "Origin and destination coordinates are required" });
       }
-      const apiKey = process.env.GOOGLE_API_KEY;
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
       if (!apiKey) {
         return res
           .status(500)

@@ -725,7 +725,13 @@ export default function ClientHomeScreen() {
     autocompleteTimerRef.current = setTimeout(async () => {
       setSuggestionsLoading(true);
       try {
-        const res = await apiRequest("GET", `/api/places/autocomplete?input=${encodeURIComponent(query)}&sessionToken=${encodeURIComponent(sessionToken)}`);
+        const biasCoords = locationPickerTarget === "pickup"
+          ? location
+          : dropoffCoords || location;
+        const biasQuery = biasCoords
+          ? `&lat=${encodeURIComponent(String(biasCoords.lat))}&lng=${encodeURIComponent(String(biasCoords.lng))}`
+          : "";
+        const res = await apiRequest("GET", `/api/places/autocomplete?input=${encodeURIComponent(query)}&sessionToken=${encodeURIComponent(sessionToken)}${biasQuery}`);
         const data = await res.json();
         const predictions = Array.isArray(data.predictions) ? data.predictions : [];
         if (predictions.length > 0) {
@@ -774,7 +780,7 @@ export default function ClientHomeScreen() {
       // Fallback: geocode the description text directly
       if (!coords) {
         try {
-          const res = await apiRequest("GET", `/api/geocode?address=${encodeURIComponent(suggestion.description)}`);
+          const res = await apiRequest("GET", `/api/geocode?address=${encodeURIComponent(`${suggestion.description}, South Africa`)}`);
           const data = await res.json();
           if (data.lat && data.lng) {
             coords = { lat: data.lat, lng: data.lng };
