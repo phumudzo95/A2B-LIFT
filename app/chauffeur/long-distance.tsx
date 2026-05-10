@@ -223,13 +223,44 @@ export default function ChauffeurLongDistanceScreen() {
 
     setSuggestionsLoading(true);
     try {
-      const biasQuery =
+      const biasCoords =
         typeof chauffeur?.lat === "number" && typeof chauffeur?.lng === "number"
-          ? `&lat=${encodeURIComponent(String(chauffeur.lat))}&lng=${encodeURIComponent(String(chauffeur.lng))}`
+          ? { lat: chauffeur.lat, lng: chauffeur.lng }
+          : null;
+
+      let predictions: any[] = [];
+
+      // Prefer direct Google Places from the mobile app; this avoids server-side
+      // fallback matching from Nominatim when Google API is restricted for server IPs.
+      const googleKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+      if (googleKey && Platform.OS !== "web") {
+        try {
+          const locationBias = biasCoords
+            ? `&location=${biasCoords.lat},${biasCoords.lng}&radius=220000`
+            : "&location=-26.2041,28.0473&radius=1200000";
+          const googleUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(trimmedQuery)}&components=country:za&language=en&types=(cities)${locationBias}&key=${googleKey}`;
+          const googleRes = await fetch(googleUrl);
+          const googleData = await googleRes.json();
+          if (googleData.status === "OK" && Array.isArray(googleData.predictions)) {
+            predictions = googleData.predictions.slice(0, 8).map((p: any) => ({
+              placeId: p.place_id,
+              description: p.description,
+              mainText: p.structured_formatting?.main_text || p.description?.split(",")?.[0] || "",
+              secondaryText: p.structured_formatting?.secondary_text || "",
+            }));
+          }
+        } catch {}
+      }
+
+      if (predictions.length === 0) {
+        const biasQuery = biasCoords
+          ? `&lat=${encodeURIComponent(String(biasCoords.lat))}&lng=${encodeURIComponent(String(biasCoords.lng))}`
           : "";
-      const res = await apiRequest("GET", `/api/places/autocomplete?cityOnly=1&input=${encodeURIComponent(trimmedQuery)}${biasQuery}`);
-      const payload = await res.json();
-      const predictions = Array.isArray(payload?.predictions) ? payload.predictions : [];
+        const res = await apiRequest("GET", `/api/places/autocomplete?cityOnly=1&input=${encodeURIComponent(trimmedQuery)}${biasQuery}`);
+        const payload = await res.json();
+        predictions = Array.isArray(payload?.predictions) ? payload.predictions : [];
+      }
+
       const seen = new Set<string>();
       const citySuggestions: CitySuggestion[] = [];
 
