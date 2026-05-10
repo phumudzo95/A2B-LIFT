@@ -66,6 +66,7 @@ const defaultAvailability: LongDistanceAvailability = {
 
 const AUTOCOMPLETE_DEBOUNCE_MS = 350;
 
+
 function isMissingLongDistanceRouteError(error: any) {
   const message = String(error?.message || "");
   return (
@@ -84,6 +85,7 @@ function normalizeCityLabel(value: string) {
     .replace(/\s+/g, " ")
     .trim();
 }
+
 
 function formatDateValue(date: Date) {
   const year = date.getFullYear();

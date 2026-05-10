@@ -387,6 +387,7 @@ async function buildNativeLocationSuggestions(query: string) {
   }
 }
 
+
 function mergeNearbyDrivers(current: NearbyDriverState[], incoming: NearbyDriverState[]) {
   const sortedIncoming = [...incoming].sort((left, right) => left.id.localeCompare(right.id));
   const currentById = new Map(current.map((driver) => [driver.id, driver]));
