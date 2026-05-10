@@ -33,7 +33,7 @@
     },
     "maptest": {
       "distribution": "internal",
-      "credentialsSource": "local",
+      "credentialsSource": "remote",
       "environment": "preview",
       "android": {
         "buildType": "apk"
@@ -49,7 +49,7 @@
       "channel": "preview"
     },
     "production": {
-      "credentialsSource": "local",
+      "credentialsSource": "remote",
       "environment": "production",
       "android": {
         "buildType": "app-bundle"
