@@ -1069,10 +1069,11 @@ function hasFreshChauffeurLocation(chauffeur) {
 }
 async function sendExpoPushNotification(tokens, title, body, data, options) {
   const urgent = options?.urgent ?? false;
-  const channelId = options?.channelId || (urgent ? "ride-alerts" : "default");
+  const channelId = options?.channelId || (urgent ? "ride-alerts-v3" : "default");
+  const sound = urgent ? "trip_alert.wav" : "default";
   const messages2 = tokens.filter((t) => t && (t.startsWith("ExponentPushToken[") || t.startsWith("ExpoPushToken["))).map((to) => ({
     to,
-    sound: "default",
+    sound,
     title,
     body,
     data: data || {},
@@ -1085,7 +1086,7 @@ async function sendExpoPushNotification(tokens, title, body, data, options) {
     // Android: explicit channel + max priority on the notification object
     android: {
       channelId,
-      sound: "default",
+      sound,
       priority: urgent ? "max" : "high",
       sticky: false,
       vibrate: urgent ? [0, 250, 250, 250] : void 0
@@ -1326,7 +1327,7 @@ async function registerRoutes(app2) {
               "New airport transfer",
               `${riderName} booked: ${summary}`,
               { type: "airport_transfer", riderId: rider.id, airport, destination, date, time, phone: phone || "" },
-              { urgent: true, channelId: "ride-alerts" }
+              { urgent: true, channelId: "ride-alerts-v3" }
             );
           }
         }
@@ -1622,6 +1623,46 @@ async function registerRoutes(app2) {
   const DIRECTIONS_CACHE_TTL_MS = 5 * 60 * 1e3;
   const DIRECTIONS_CACHE_MAX_ENTRIES = 250;
   const directionsCache = /* @__PURE__ */ new Map();
+  const SA_DEFAULT_BIAS = { lat: -25.7479, lng: 28.2293 };
+  const SOUTH_AFRICAN_CITY_SUGGESTIONS = [
+    ["Pretoria", "Gauteng", -25.7479, 28.2293],
+    ["Johannesburg", "Gauteng", -26.2041, 28.0473],
+    ["Sandton", "Gauteng", -26.1076, 28.0567],
+    ["Midrand", "Gauteng", -25.9992, 28.1263],
+    ["Centurion", "Gauteng", -25.864, 28.1881],
+    ["Soweto", "Gauteng", -26.2485, 27.854],
+    ["Benoni", "Gauteng", -26.1885, 28.3208],
+    ["Boksburg", "Gauteng", -26.2326, 28.24],
+    ["Kempton Park", "Gauteng", -26.1, 28.2333],
+    ["Roodepoort", "Gauteng", -26.1625, 27.8725],
+    ["Vereeniging", "Gauteng", -26.6731, 27.9261],
+    ["Cape Town", "Western Cape", -33.9249, 18.4241],
+    ["Stellenbosch", "Western Cape", -33.9321, 18.8602],
+    ["Paarl", "Western Cape", -33.7342, 18.9621],
+    ["George", "Western Cape", -33.9648, 22.4617],
+    ["Durban", "KwaZulu-Natal", -29.8587, 31.0218],
+    ["Pietermaritzburg", "KwaZulu-Natal", -29.6006, 30.3794],
+    ["Richards Bay", "KwaZulu-Natal", -28.7807, 32.0383],
+    ["Newcastle", "KwaZulu-Natal", -27.757, 29.9318],
+    ["Bloemfontein", "Free State", -29.0852, 26.1596],
+    ["Welkom", "Free State", -27.9777, 26.7351],
+    ["Gqeberha", "Eastern Cape", -33.9608, 25.6022],
+    ["Port Elizabeth", "Eastern Cape", -33.9608, 25.6022],
+    ["East London", "Eastern Cape", -33.0192, 27.8999],
+    ["Mthatha", "Eastern Cape", -31.5889, 28.7844],
+    ["Polokwane", "Limpopo", -23.9045, 29.4689],
+    ["Tzaneen", "Limpopo", -23.8332, 30.1635],
+    ["Thohoyandou", "Limpopo", -22.9456, 30.4849],
+    ["Mbombela", "Mpumalanga", -25.4753, 30.9694],
+    ["Nelspruit", "Mpumalanga", -25.4753, 30.9694],
+    ["Witbank", "Mpumalanga", -25.877, 29.201],
+    ["Emalahleni", "Mpumalanga", -25.877, 29.201],
+    ["Rustenburg", "North West", -25.6676, 27.2421],
+    ["Mahikeng", "North West", -25.8652, 25.6442],
+    ["Klerksdorp", "North West", -26.8521, 26.6667],
+    ["Kimberley", "Northern Cape", -28.7282, 24.7499],
+    ["Upington", "Northern Cape", -28.4478, 21.2561]
+  ];
   async function fetchMapsJson(url) {
     const response = await fetch(url, {
       headers: {
@@ -1688,15 +1729,104 @@ async function registerRoutes(app2) {
     const cityTypes = ["city", "town", "village", "municipality", "hamlet", "suburb"];
     return cityTypes.includes(type) || className === "place" && cityTypes.includes(type);
   }
+  function isValidCoordinate(value) {
+    const n = Number(value);
+    return Number.isFinite(n);
+  }
+  function normalizeMapsQuery(value) {
+    return value.trim().replace(/\bpretorious\b/gi, "Pretorius").replace(/\bpretoriaus\b/gi, "Pretorius").replace(/\s+/g, " ");
+  }
+  function hasLocalityHint(query) {
+    return SOUTH_AFRICAN_CITY_SUGGESTIONS.some(
+      ([city]) => new RegExp(`\\b${city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(query)
+    );
+  }
+  function buildAddressSearchQueries(input, lat, lng) {
+    const normalized = normalizeMapsQuery(input);
+    const queries = /* @__PURE__ */ new Set();
+    queries.add(normalized);
+    const lower = normalized.toLowerCase();
+    const bias = lat != null && lng != null ? { lat, lng } : SA_DEFAULT_BIAS;
+    const nearPretoria = haversine(bias.lat, bias.lng, -25.7479, 28.2293) < 130;
+    const looksPretoriaSpecific = /\bpretorius\b/i.test(normalized) || nearPretoria;
+    if (!hasLocalityHint(normalized)) {
+      if (looksPretoriaSpecific) {
+        queries.add(`${normalized}, Pretoria, Gauteng`);
+        queries.add(`${normalized}, Arcadia, Pretoria`);
+        queries.add(`${normalized}, Pretoria Central`);
+      }
+      queries.add(`${normalized}, South Africa`);
+    }
+    if (lower !== input.toLowerCase()) {
+      queries.add(`${normalized}, South Africa`);
+    }
+    return Array.from(queries);
+  }
+  function scoreMapsPrediction(prediction, input, lat, lng) {
+    const normalizedInput = normalizeMapsQuery(input).toLowerCase();
+    const haystack = `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`.toLowerCase();
+    let score = 0;
+    if (haystack.includes("south africa")) score += 8;
+    if (haystack.includes("gauteng")) score += 8;
+    if (haystack.includes("pretoria")) score += 18;
+    if (normalizedInput.includes("pretorius") && haystack.includes("pretorius")) score += 30;
+    if (/^\d+/.test(normalizedInput) && haystack.includes(normalizedInput.match(/^\d+/)?.[0] || "")) score += 10;
+    if (prediction.lat != null && prediction.lng != null) {
+      const bias = lat != null && lng != null ? { lat, lng } : SA_DEFAULT_BIAS;
+      const distanceKm = haversine(bias.lat, bias.lng, prediction.lat, prediction.lng);
+      score += Math.max(0, 35 - distanceKm / 4);
+    }
+    if (haystack.includes("cape town") && normalizedInput.includes("pretorius")) score -= 12;
+    if (haystack.includes("buffalo city")) score -= 20;
+    return score;
+  }
+  function southAfricanCityFallback(input, lat, lng) {
+    const query = normalizeMapsQuery(input).toLowerCase();
+    if (query.length < 2) return [];
+    const bias = lat != null && lng != null ? { lat, lng } : null;
+    return SOUTH_AFRICAN_CITY_SUGGESTIONS.map(([city, province, cityLat, cityLng]) => {
+      const cityLower = city.toLowerCase();
+      const starts = cityLower.startsWith(query);
+      const includes = cityLower.includes(query);
+      if (!starts && !includes) return null;
+      const distanceBoost = bias ? Math.max(0, 10 - haversine(bias.lat, bias.lng, cityLat, cityLng) / 80) : 0;
+      return {
+        placeId: `sa-city:${cityLower.replace(/\s+/g, "-")}`,
+        description: `${city}, ${province}, South Africa`,
+        mainText: city,
+        secondaryText: `${province}, South Africa`,
+        lat: cityLat,
+        lng: cityLng,
+        score: (starts ? 50 : 25) + distanceBoost
+      };
+    }).filter(Boolean).sort((a, b) => b.score - a.score).slice(0, 8).map(({ score: _score, ...prediction }) => prediction);
+  }
   async function nominatimSearch(query, limit = 6, options) {
+    const normalizedQuery = normalizeMapsQuery(query);
     const cityOnly = options?.cityOnly ?? false;
-    const url = `${NOMINATIM_BASE_URL}/search?format=jsonv2&addressdetails=1&limit=${limit}&countrycodes=za&q=${encodeURIComponent(query)}`;
-    const rawResults = await fetchMapsJson(url);
-    if (!Array.isArray(rawResults)) return [];
-    const results = cityOnly ? rawResults.filter((result) => isCityLikeNominatimResult(result)) : rawResults;
+    const hasBias = typeof options?.lat === "number" && Number.isFinite(options.lat) && typeof options?.lng === "number" && Number.isFinite(options.lng);
+    const biasLat = hasBias ? Number(options.lat) : null;
+    const biasLng = hasBias ? Number(options.lng) : null;
+    const searchQueries = cityOnly ? [normalizedQuery] : buildAddressSearchQueries(normalizedQuery, options?.lat, options?.lng);
+    const allRawResults = [];
+    for (const searchQuery of searchQueries) {
+      const biasQuery = hasBias ? `&viewbox=${biasLng - 1.6},${biasLat + 1.6},${biasLng + 1.6},${biasLat - 1.6}&bounded=0` : "";
+      const url = `${NOMINATIM_BASE_URL}/search?format=jsonv2&addressdetails=1&limit=${Math.max(limit, 8)}&countrycodes=za${biasQuery}&q=${encodeURIComponent(searchQuery)}`;
+      const rawResults = await fetchMapsJson(url);
+      if (Array.isArray(rawResults)) allRawResults.push(...rawResults);
+      if (allRawResults.length >= limit * 3) break;
+    }
+    if (allRawResults.length === 0) return [];
+    const seen = /* @__PURE__ */ new Set();
+    const results = (cityOnly ? allRawResults.filter((result) => isCityLikeNominatimResult(result)) : allRawResults).filter((result) => {
+      const key = `${result.place_id || ""}:${result.lat || ""}:${result.lon || ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     return results.map((result) => {
       const formatted = formatNominatimAddress(result.address, result.display_name);
-      return {
+      const prediction = {
         placeId: `nominatim:${result.place_id}`,
         description: formatted.description || result.display_name,
         mainText: formatted.mainText,
@@ -1704,7 +1834,11 @@ async function registerRoutes(app2) {
         lat: result.lat ? Number(result.lat) : null,
         lng: result.lon ? Number(result.lon) : null
       };
-    });
+      return {
+        ...prediction,
+        score: scoreMapsPrediction(prediction, normalizedQuery, options?.lat, options?.lng)
+      };
+    }).sort((a, b) => b.score - a.score).slice(0, limit).map(({ score: _score, ...prediction }) => prediction);
   }
   async function nominatimReverse(lat, lng) {
     const url = `${NOMINATIM_BASE_URL}/reverse?format=jsonv2&addressdetails=1&lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lng))}&zoom=18`;
@@ -1745,30 +1879,43 @@ async function registerRoutes(app2) {
   app2.get("/api/places/autocomplete", async (req, res) => {
     try {
       const input = req.query.input;
+      const lat = isValidCoordinate(req.query.lat) ? Number(req.query.lat) : null;
+      const lng = isValidCoordinate(req.query.lng) ? Number(req.query.lng) : null;
+      const hasLocationBias = lat !== null && lng !== null;
       const cityOnly = ["1", "true", "yes", "city", "cities"].includes(
         String(req.query.cityOnly || req.query.mode || "").toLowerCase()
       );
       const sessionToken = typeof req.query.sessionToken === "string" ? req.query.sessionToken : typeof req.query.sessiontoken === "string" ? req.query.sessiontoken : "";
       if (!input || input.trim().length < 2) return res.json({ predictions: [] });
+      const normalizedInput = normalizeMapsQuery(input);
+      const staticCityPredictions = cityOnly ? southAfricanCityFallback(normalizedInput, lat, lng) : [];
       if (GOOGLE_KEY) {
         const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
-        const typeQuery = cityOnly ? "&types=(cities)" : "";
-        const zaBiasQuery = "&location=-30.5595,22.9375&radius=1200000&strictbounds=true";
-        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:za&language=en${typeQuery}${zaBiasQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
+        const typeQuery = cityOnly ? "&types=(cities)" : "&types=address";
+        const zaBiasQuery = hasLocationBias ? `&location=${lat},${lng}&radius=${cityOnly ? 22e4 : 9e4}` : `&location=${SA_DEFAULT_BIAS.lat},${SA_DEFAULT_BIAS.lng}&radius=${cityOnly ? 45e4 : 16e4}`;
+        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(normalizedInput)}&components=country:za&region=za&language=en${typeQuery}${zaBiasQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
         const r = await fetchMapsJson(url);
-        const mappedPredictions = Array.isArray(r.predictions) ? r.predictions.slice(0, 6).map((p) => ({
-          placeId: p.place_id,
-          description: p.description,
-          mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
-          secondaryText: p.structured_formatting?.secondary_text || "",
-          lat: null,
-          lng: null
-        })) : [];
+        const mappedPredictions = Array.isArray(r.predictions) ? r.predictions.slice(0, 8).map((p) => {
+          const prediction = {
+            placeId: p.place_id,
+            description: p.description,
+            mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
+            secondaryText: p.structured_formatting?.secondary_text || "",
+            lat: null,
+            lng: null
+          };
+          return {
+            ...prediction,
+            score: scoreMapsPrediction(prediction, normalizedInput, lat, lng)
+          };
+        }).sort((a, b) => b.score - a.score).slice(0, 6).map(({ score: _score, ...prediction }) => prediction) : [];
         if (r.status === "OK" && r.predictions.length > 0) {
-          return res.json({ predictions: mappedPredictions });
+          return res.json({
+            predictions: cityOnly ? [...staticCityPredictions, ...mappedPredictions].slice(0, 8) : mappedPredictions
+          });
         }
-        if (input.trim().length >= 3) {
-          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input)}&components=country:ZA&key=${GOOGLE_KEY}`;
+        if (normalizedInput.trim().length >= 3) {
+          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(`${normalizedInput}, South Africa`)}&components=country:ZA&region=za&key=${GOOGLE_KEY}`;
           const geocodeResponse = await fetchMapsJson(geocodeUrl);
           if (geocodeResponse.status === "OK" && Array.isArray(geocodeResponse.results) && geocodeResponse.results.length > 0) {
             const geocodeResults = cityOnly ? geocodeResponse.results.filter((result) => {
@@ -1789,7 +1936,17 @@ async function registerRoutes(app2) {
         }
         console.warn("[maps] Google autocomplete fallback engaged:", r.status || "unknown");
       }
-      const osmPredictions = await nominatimSearch(input, 6, { cityOnly });
+      const osmPredictions = await nominatimSearch(normalizedInput, cityOnly ? 8 : 6, { cityOnly, lat, lng });
+      if (cityOnly) {
+        const seenCities = /* @__PURE__ */ new Set();
+        const cityPredictions = [...staticCityPredictions, ...osmPredictions].filter((prediction) => {
+          const key = String(prediction.mainText || prediction.description || "").toLowerCase();
+          if (!key || seenCities.has(key)) return false;
+          seenCities.add(key);
+          return true;
+        });
+        return res.json({ predictions: cityPredictions.slice(0, 8) });
+      }
       return res.json({ predictions: osmPredictions });
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -1858,7 +2015,7 @@ async function registerRoutes(app2) {
       if (!originLat || !originLng || !destLat || !destLng) {
         return res.status(400).json({ message: "Origin and destination coordinates are required" });
       }
-      const apiKey = process.env.GOOGLE_API_KEY;
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ message: "Google Maps API key not configured" });
       }
@@ -2253,6 +2410,33 @@ async function registerRoutes(app2) {
         return res.status(403).json({ message: "Forbidden" });
       }
       await storage.updateChauffeur(req.params.id, { pushToken });
+      return res.json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.put("/api/chauffeurs/:id/location", requireAuth, async (req, res) => {
+    try {
+      const chauffeurId = String(req.params.id);
+      const chauffeur = await storage.getChauffeur(chauffeurId);
+      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
+      if (chauffeur.userId !== req.auth.sub && req.auth.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const lat = Number(req.body?.lat);
+      const lng = Number(req.body?.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return res.status(400).json({ message: "Valid lat and lng are required" });
+      }
+      if (lat < -35 || lat > -22 || lng < 16 || lng > 33) {
+        return res.status(400).json({ message: "Location must be inside South Africa" });
+      }
+      await storage.updateChauffeur(chauffeurId, {
+        lat,
+        lng,
+        locationUpdatedAt: /* @__PURE__ */ new Date()
+      });
+      io.emit("location:update", { chauffeurId, lat, lng });
       return res.json({ success: true });
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -2772,7 +2956,7 @@ async function registerRoutes(app2) {
             paystackRef: paystackRef || null,
             passengerPhone: passengerPhone || rider.phone || null
           },
-          { urgent: true, channelId: "ride-alerts" }
+          { urgent: true, channelId: "ride-alerts-v3" }
         );
       }
       await storage.createNotification({
@@ -3205,6 +3389,19 @@ async function registerRoutes(app2) {
         ...c,
         distKm: haversine(pickupLat, pickupLng, Number(c.lat), Number(c.lng))
       })).filter((c) => c.distKm <= RIDE_MATCH_RADIUS_KM).sort((a, b) => a.distKm - b.distKm).slice(0, 10);
+      async function getDriverPushTokens(drivers) {
+        const tokens = /* @__PURE__ */ new Set();
+        await Promise.all(drivers.map(async (driver) => {
+          if (driver?.pushToken) tokens.add(driver.pushToken);
+          if (!driver?.userId) return;
+          try {
+            const driverUser = await storage.getUser(driver.userId);
+            if (driverUser?.pushToken) tokens.add(driverUser.pushToken);
+          } catch {
+          }
+        }));
+        return Array.from(tokens);
+      }
       if (nearbyChauffeurs.length > 0) {
         const sockets = await io.fetchSockets();
         let notified = 0;
@@ -3218,7 +3415,7 @@ async function registerRoutes(app2) {
         if (notified === 0) {
           io.emit("ride:new", enrichedRide);
         }
-        const pushTokens = nearbyChauffeurs.map((c) => c.pushToken).filter(Boolean);
+        const pushTokens = await getDriverPushTokens(nearbyChauffeurs);
         if (pushTokens.length > 0) {
           sendExpoPushNotification(
             pushTokens,
@@ -3231,7 +3428,7 @@ async function registerRoutes(app2) {
       } else {
         io.emit("ride:new", enrichedRide);
         const allDrivers = (await storage.getAllChauffeurs()).filter((c) => c.isOnline && c.isApproved && hasFreshChauffeurLocation(c));
-        const pushTokens = allDrivers.map((c) => c.pushToken).filter(Boolean);
+        const pushTokens = await getDriverPushTokens(allDrivers);
         if (pushTokens.length > 0) {
           sendExpoPushNotification(
             pushTokens,
