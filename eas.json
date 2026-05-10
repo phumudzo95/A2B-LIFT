@@ -17,7 +17,6 @@
     },
     "preview": {
       "distribution": "store",
-      "autoIncrement": true,
       "environment": "preview",
       "android": {
         "buildType": "app-bundle"
@@ -34,7 +33,6 @@
     },
     "maptest": {
       "distribution": "internal",
-      "autoIncrement": true,
       "credentialsSource": "local",
       "environment": "preview",
       "android": {
