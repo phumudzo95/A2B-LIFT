@@ -651,11 +651,11 @@ export default function ChauffeurDashboard() {
         const Notifications = notificationsRef.current;
         if (!Notifications) return;
         if (Platform.OS === "android") {
-          await Notifications.setNotificationChannelAsync("ride-alerts", {
+          await Notifications.setNotificationChannelAsync("ride-alerts-v2", {
             name: "Ride Alerts",
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 250, 250, 250],
-            sound: "default",
+            sound: "trip-alert.wav",
             bypassDnd: true,
             lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
           });

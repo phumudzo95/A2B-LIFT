@@ -13,6 +13,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { SocketProvider } from "@/lib/socket-context";
 
+const RIDE_ALERT_CHANNEL_ID = "ride-alerts-v2";
+const RIDE_ALERT_SOUND = "trip-alert.wav";
+
 // ─── Global notification handler (runs before any screen mounts) ─────────────
 // Set ONCE at module level. The chauffeur dashboard no longer re-sets this,
 // preventing race conditions between the two calls.
@@ -23,11 +26,11 @@ if (Platform.OS !== "web") {
     if (Platform.OS === "android") {
       // Create the channel synchronously at startup so the OS knows about it
       // before any push arrives (even if the app is cold-started by a push)
-      Notifications.setNotificationChannelAsync("ride-alerts", {
+      Notifications.setNotificationChannelAsync(RIDE_ALERT_CHANNEL_ID, {
         name: "Ride Alerts",
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        sound: "default",
+        sound: RIDE_ALERT_SOUND,
         bypassDnd: true,
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         showBadge: true,

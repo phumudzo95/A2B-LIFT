@@ -66,6 +66,23 @@
         "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co"
       },
       "channel": "production"
+    },
+    "maptest-a2b": {
+      "distribution": "internal",
+      "credentialsSource": "local",
+      "environment": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_EAS_OWNER": "a2bliftclub",
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "8ccd04f4-997e-44f6-9a40-bac2550cb75f",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDhC2aHuhOQ8ZwuWj2K5XZ5nAElB572-wo",
+        "EXPO_PUBLIC_DOMAIN": "https://api.a2blift.com",
+        "EXPO_PUBLIC_REFERRAL_BASE_URL": "https://a2blift.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zzwkieiktbhptvgsqerd.supabase.co"
+      },
+      "channel": "preview"
     }
   },
   "submit": {

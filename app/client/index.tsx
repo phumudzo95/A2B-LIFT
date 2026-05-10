@@ -730,32 +730,8 @@ export default function ClientHomeScreen() {
           ? location
           : dropoffCoords || location;
 
-        // Call Google Places API directly from the app (Android key works from the app itself)
-        const googleKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-        if (googleKey && Platform.OS !== "web") {
-          try {
-            const locationBias = biasCoords
-              ? `&location=${biasCoords.lat},${biasCoords.lng}&radius=90000`
-              : "&location=-26.2041,28.0473&radius=1200000";
-            const googleUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&components=country:za&language=en&sessiontoken=${encodeURIComponent(sessionToken)}${locationBias}&key=${googleKey}`;
-            const googleRes = await fetch(googleUrl);
-            const googleData = await googleRes.json();
-            if (googleData.status === "OK" && Array.isArray(googleData.predictions) && googleData.predictions.length > 0) {
-              const mapped = googleData.predictions.slice(0, 6).map((p: any) => ({
-                placeId: p.place_id,
-                description: p.description,
-                mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
-                secondaryText: p.structured_formatting?.secondary_text || "",
-                lat: null,
-                lng: null,
-              }));
-              setLocationSuggestions(mapped);
-              return;
-            }
-          } catch {}
-        }
-
-        // Fallback: server-side lookup (Nominatim)
+        // Use the Railway backend lookup so Android-restricted native keys are not used for Places REST calls.
+        // Fallback: server-side lookup (Google on Railway, then Nominatim).
         const biasQuery = biasCoords
           ? `&lat=${encodeURIComponent(String(biasCoords.lat))}&lng=${encodeURIComponent(String(biasCoords.lng))}`
           : "";
@@ -792,33 +768,17 @@ export default function ClientHomeScreen() {
       setSuggestionsLoading(true);
       const sessionToken = placesSessionTokenRef.current;
       let coords = (suggestion.lat && suggestion.lng) ? { lat: suggestion.lat, lng: suggestion.lng } : null;
-
       if (!coords) {
-        // Try Google Places Details directly from app first (works with Android-restricted key)
-        const googleKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-        if (googleKey && Platform.OS !== "web" && !suggestion.placeId.startsWith("nominatim:") && !suggestion.placeId.startsWith("native:")) {
-          try {
-            const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
-            const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(suggestion.placeId)}&fields=geometry${tokenQuery}&key=${googleKey}`;
-            const detailsRes = await fetch(detailsUrl);
-            const detailsData = await detailsRes.json();
-            if (detailsData.status === "OK" && detailsData.result?.geometry?.location) {
-              coords = { lat: detailsData.result.geometry.location.lat, lng: detailsData.result.geometry.location.lng };
-            }
-          } catch {}
-        }
-
+        // Resolve Google place ids through the Railway backend instead of direct mobile REST.
         // Fallback: server-side details endpoint
-        if (!coords) {
-          try {
-            const tokenQuery = sessionToken ? `&sessionToken=${encodeURIComponent(sessionToken)}` : "";
-            const res = await apiRequest("GET", `/api/places/details?placeId=${encodeURIComponent(suggestion.placeId)}${tokenQuery}`);
-            const data = await res.json();
-            if (data.lat && data.lng) {
-              coords = { lat: data.lat, lng: data.lng };
-            }
-          } catch {}
-        }
+        try {
+          const tokenQuery = sessionToken ? `&sessionToken=${encodeURIComponent(sessionToken)}` : "";
+          const res = await apiRequest("GET", `/api/places/details?placeId=${encodeURIComponent(suggestion.placeId)}${tokenQuery}`);
+          const data = await res.json();
+          if (data.lat && data.lng) {
+            coords = { lat: data.lat, lng: data.lng };
+          }
+        } catch {}
       }
 
       // Fallback: geocode the description text directly

@@ -38,12 +38,13 @@ async function sendExpoPushNotification(
   options?: { urgent?: boolean; channelId?: string },
 ) {
   const urgent = options?.urgent ?? false;
-  const channelId = options?.channelId || (urgent ? "ride-alerts" : "default");
+  const channelId = options?.channelId || (urgent ? "ride-alerts-v2" : "default");
+  const sound = urgent ? "trip-alert.wav" : "default";
   const messages = tokens
     .filter(t => t && (t.startsWith("ExponentPushToken[") || t.startsWith("ExpoPushToken[")))
     .map(to => ({
       to,
-      sound: "default",
+      sound,
       title,
       body,
       data: data || {},
@@ -56,7 +57,7 @@ async function sendExpoPushNotification(
       // Android: explicit channel + max priority on the notification object
       android: {
         channelId,
-        sound: "default",
+        sound,
         priority: urgent ? "max" : "high",
         sticky: false,
         vibrate: urgent ? [0, 250, 250, 250] : undefined,
@@ -403,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               "New airport transfer",
               `${riderName} booked: ${summary}`,
               { type: "airport_transfer", riderId: rider.id, airport, destination, date, time, phone: phone || "" },
-              { urgent: true, channelId: "ride-alerts" }
+              { urgent: true, channelId: "ride-alerts-v2" }
             );
           }
         }
@@ -2190,7 +2191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             paystackRef: paystackRef || null,
             passengerPhone: passengerPhone || rider.phone || null,
           },
-          { urgent: true, channelId: "ride-alerts" },
+          { urgent: true, channelId: "ride-alerts-v2" },
         );
       }
 
