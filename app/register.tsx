@@ -13,6 +13,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_OAUTH_START = "https://api.a2blift.com/api/auth/google/start";
+const NEEDS_ROLE_SELECT_KEY = "a2b_needs_role_select";
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
@@ -64,6 +65,7 @@ export default function RegisterScreen() {
       const payload = JSON.parse(decodeURIComponent(payloadStr));
       await AsyncStorage.setItem("a2b_user", JSON.stringify(payload.user));
       if (payload.accessToken) await AsyncStorage.setItem("a2b_token", payload.accessToken);
+      await AsyncStorage.setItem(NEEDS_ROLE_SELECT_KEY, "1");
       // Fetch the latest user profile from the server so the role is always current
       try {
         const meRes = await apiRequest("GET", "/api/auth/me");
@@ -102,6 +104,7 @@ export default function RegisterScreen() {
         phone: phone.trim(),
         referralCode: referralCode.trim() || undefined,
       });
+      await AsyncStorage.setItem(NEEDS_ROLE_SELECT_KEY, "1");
       await setPendingReferralCode(null);
     } catch (e: any) {
       const msg = e.message || "Registration failed.";

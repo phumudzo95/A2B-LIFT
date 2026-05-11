@@ -387,6 +387,40 @@ async function buildNativeLocationSuggestions(query: string) {
   }
 }
 
+function normalizeAddressSearchQuery(value: string) {
+  return value
+    .trim()
+    .replace(/\bpretorious\b/gi, "Pretorius")
+    .replace(/\bpretoriaus\b/gi, "Pretorius")
+    .replace(/\s+/g, " ");
+}
+
+function shouldDeferAddressAutocomplete(query: string) {
+  const normalized = normalizeAddressSearchQuery(query).toLowerCase();
+  const startsWithNumber = /^\d+\s+/.test(normalized);
+  if (!startsWithNumber) return false;
+
+  const alphaTokens = normalized.match(/[a-z]{2,}/g) || [];
+  return alphaTokens.length === 1 && alphaTokens[0].length < 6;
+}
+
+function filterAddressPredictions(
+  query: string,
+  predictions: { description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
+) {
+  const normalized = normalizeAddressSearchQuery(query).toLowerCase();
+  const significantTokens = (normalized.match(/[a-z]{5,}/g) || []).filter(
+    (token) => !["south", "africa"].includes(token),
+  );
+
+  if (significantTokens.length === 0) return predictions;
+
+  return predictions.filter((prediction) => {
+    const haystack = `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`.toLowerCase();
+    return significantTokens.every((token) => haystack.includes(token));
+  });
+}
+
 
 function mergeNearbyDrivers(current: NearbyDriverState[], incoming: NearbyDriverState[]) {
   const sortedIncoming = [...incoming].sort((left, right) => left.id.localeCompare(right.id));
@@ -726,6 +760,11 @@ export default function ClientHomeScreen() {
     autocompleteTimerRef.current = setTimeout(async () => {
       setSuggestionsLoading(true);
       try {
+        if (shouldDeferAddressAutocomplete(query)) {
+          setLocationSuggestions([]);
+          return;
+        }
+
         const biasCoords = locationPickerTarget === "pickup"
           ? location
           : dropoffCoords || location;
@@ -738,8 +777,14 @@ export default function ClientHomeScreen() {
         const res = await apiRequest("GET", `/api/places/autocomplete?input=${encodeURIComponent(query)}&sessionToken=${encodeURIComponent(sessionToken)}${biasQuery}`);
         const data = await res.json();
         const predictions = Array.isArray(data.predictions) ? data.predictions : [];
+        const filteredPredictions = filterAddressPredictions(query, predictions);
+        if (filteredPredictions.length > 0) {
+          setLocationSuggestions(filteredPredictions);
+          return;
+        }
+
         if (predictions.length > 0) {
-          setLocationSuggestions(predictions);
+          setLocationSuggestions([]);
           return;
         }
 

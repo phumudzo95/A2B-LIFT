@@ -424,7 +424,12 @@ export default function ChauffeurDashboard() {
     tripAlertEnabledRef.current = true;
     try {
       if (Platform.OS === "web") return;
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+      });
       if (tripAlertTokenRef.current !== alertToken || !tripAlertEnabledRef.current) {
         return;
       }

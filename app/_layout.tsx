@@ -15,6 +15,7 @@ import { SocketProvider } from "@/lib/socket-context";
 
 const RIDE_ALERT_CHANNEL_ID = "ride-alerts-v3";
 const RIDE_ALERT_SOUND = "trip_alert.wav";
+const NEEDS_ROLE_SELECT_KEY = "a2b_needs_role_select";
 
 // ─── Global notification handler (runs before any screen mounts) ─────────────
 // Set ONCE at module level. The chauffeur dashboard no longer re-sets this,
@@ -103,7 +104,16 @@ function AuthGate() {
     if (user && isGuestOnly) {
       // Restore last mode, defaulting straight to dashboard for returning users.
       // role-select remains available when users explicitly navigate there.
-      AsyncStorage.getItem("a2b_last_mode").then(lastMode => {
+      Promise.all([
+        AsyncStorage.getItem(NEEDS_ROLE_SELECT_KEY),
+        AsyncStorage.getItem("a2b_last_mode"),
+      ]).then(async ([needsRoleSelect, lastMode]) => {
+        if (needsRoleSelect === "1") {
+          await AsyncStorage.removeItem(NEEDS_ROLE_SELECT_KEY);
+          router.replace("/role-select");
+          return;
+        }
+
         if (user.role === "chauffeur") {
           if (lastMode === "client") {
             router.replace("/client");
