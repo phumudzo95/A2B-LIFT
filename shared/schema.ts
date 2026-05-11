@@ -41,6 +41,7 @@ export const chauffeurs = pgTable("chauffeurs", {
     .references(() => users.id),
   carMake: text("car_make"),
   vehicleModel: text("vehicle_model").notNull(),
+  vehicleYear: integer("vehicle_year"),
   plateNumber: text("plate_number").notNull(),
   vehicleType: text("vehicle_type").notNull(),
   carColor: text("car_color").notNull(),

@@ -299,6 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
   await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo text");
+  await pool.query("ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS vehicle_year integer");
 
   const SUPABASE_SERVICE_KEY_CONFIGURED = !!(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -950,18 +951,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const score = (result: any) => {
         const types = Array.isArray(result?.types) ? result.types : [];
         const components = Array.isArray(result?.address_components) ? result.address_components : [];
+        const formattedAddress = normalizeMapsQuery(result?.formatted_address || "").toLowerCase();
         const hasType = (type: string) => types.includes(type);
         const hasComponent = (type: string) => components.some((component: any) => component?.types?.includes(type) && component?.long_name);
+        const hasSuburbLikeComponent = hasComponent("sublocality_level_1") || hasComponent("sublocality") || hasComponent("neighborhood");
+        const hasCityLikeComponent = hasComponent("locality") || hasComponent("administrative_area_level_2");
         let total = 0;
 
-        if (hasType("street_address")) total += 120;
-        if (hasType("premise")) total += 70;
-        if (hasType("subpremise")) total += 60;
-        if (hasType("route")) total += 45;
-        if (hasComponent("street_number")) total += 40;
-        if (hasComponent("route")) total += 30;
-        if (hasType("plus_code")) total -= 25;
-        if (hasType("political")) total -= 5;
+        if (hasType("street_address")) total += 160;
+        if (hasType("premise")) total += 90;
+        if (hasType("establishment") || hasType("point_of_interest")) total += 70;
+        if (hasType("subpremise")) total += 70;
+        if (hasType("route")) total += 60;
+        if (hasComponent("street_number")) total += 55;
+        if (hasComponent("route")) total += 45;
+        if (hasSuburbLikeComponent) total += 28;
+        if (hasCityLikeComponent) total += 18;
+        if (hasType("plus_code")) total -= 40;
+        if (hasType("political")) total -= 25;
+        if (/\bward\b/.test(formattedAddress)) total -= 160;
+        if (/\b(municipality|district municipality|administrative area|province)\b/.test(formattedAddress)) total -= 60;
+        if (!hasComponent("street_number") && !hasComponent("route") && !hasSuburbLikeComponent && !hasCityLikeComponent) {
+          total -= 35;
+        }
 
         return total;
       };
@@ -1033,6 +1045,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (haystack.includes("gauteng")) score += 8;
     if (haystack.includes("pretoria")) score += 18;
     if (normalizedInput.includes("pretorius") && haystack.includes("pretorius")) score += 30;
+    if (/\bward\b/.test(haystack)) score -= 45;
+    if (/\b(municipality|district municipality|administrative area)\b/.test(haystack)) score -= 35;
     if (leadingNumber && new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) score += 25;
     if (leadingNumber && !new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) score -= 30;
 
@@ -1360,9 +1374,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const province = get("administrative_area_level_1");
           const mainText = route ? `${streetNumber ? streetNumber + " " : ""}${route}` : best.formatted_address.split(",")[0];
           const secondaryParts = [suburb, city, province].filter(Boolean);
+          const composedDescription = [mainText, ...secondaryParts]
+            .filter((part, index, parts) => Boolean(part) && parts.indexOf(part) === index)
+            .join(", ");
           return res.json({
             placeId: best.place_id,
-            description: best.formatted_address,
+            description: composedDescription || best.formatted_address,
             mainText,
             secondaryText: secondaryParts.join(", "),
             lat: parseFloat(lat as string),
@@ -1770,6 +1787,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chauffeurs", authOptional, async (req: AuthedRequest, res: Response) => {
     try {
       const userId = req.body.userId;
+      const currentYear = new Date().getFullYear();
+      const rawVehicleYear = req.body.vehicleYear;
 
       // If authenticated, only allow creating/updating own chauffeur profile (unless admin)
       if (req.auth && req.auth.role !== "admin" && req.auth.sub !== userId) {
@@ -1796,10 +1815,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userId) return res.status(400).json({ message: "userId is required" });
       let chauffeur;
       const existingChauffeur = await storage.getChauffeurByUserId(userId);
+      const normalizedVehicleYear = rawVehicleYear == null || rawVehicleYear === ""
+        ? existingChauffeur?.vehicleYear ?? null
+        : Number.parseInt(String(rawVehicleYear), 10);
+
+      if (!Number.isFinite(normalizedVehicleYear) || normalizedVehicleYear == null) {
+        return res.status(400).json({ message: "vehicleYear is required" });
+      }
+      if (normalizedVehicleYear < 2015 || normalizedVehicleYear > currentYear + 1) {
+        return res.status(400).json({ message: `vehicleYear must be between 2015 and ${currentYear + 1}` });
+      }
+
       if (existingChauffeur) {
         chauffeur = await storage.updateChauffeur(existingChauffeur.id, {
           carMake: req.body.carMake || existingChauffeur.carMake,
           vehicleModel: req.body.vehicleModel || existingChauffeur.vehicleModel,
+          vehicleYear: normalizedVehicleYear,
           plateNumber: req.body.plateNumber || existingChauffeur.plateNumber,
           vehicleType: req.body.vehicleType || existingChauffeur.vehicleType,
           carColor: req.body.carColor || existingChauffeur.carColor,
@@ -1809,7 +1840,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profilePhoto: req.body.profilePhoto || existingChauffeur.profilePhoto,
         });
       } else {
-        chauffeur = await storage.createChauffeur(req.body);
+        chauffeur = await storage.createChauffeur({
+          ...req.body,
+          vehicleYear: normalizedVehicleYear,
+        });
       }
       await storage.updateUser(req.body.userId, { role: "chauffeur" });
 

@@ -39,6 +39,9 @@ const CAR_DOCS = [
 ];
 
 const ALL_DOCS = [...DRIVER_DOCS, ...CAR_DOCS];
+const OPTIONAL_DOC_IDS = new Set(["pdrp_certificate", "passenger_liability_insurance", "dekra_report"]);
+const MIN_VEHICLE_YEAR = 2015;
+const MAX_VEHICLE_YEAR = new Date().getFullYear() + 1;
 
 type Step = "vehicle" | "documents" | "photo";
 
@@ -50,6 +53,7 @@ export default function ChauffeurRegisterScreen() {
   // Vehicle fields
   const [carMake, setCarMake] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
+  const [vehicleYear, setVehicleYear] = useState("");
   const [plateNumber, setPlateNumber] = useState("");
   const [phone, setPhone] = useState(user?.phone || "");
   const [vehicleType, setVehicleType] = useState(VEHICLE_CATEGORIES[0].id);
@@ -123,15 +127,24 @@ export default function ChauffeurRegisterScreen() {
   }
 
   function validateVehicle(): boolean {
-    if (!carMake.trim() || !vehicleModel.trim() || !plateNumber.trim() || !phone.trim()) {
+    const parsedVehicleYear = Number.parseInt(vehicleYear.trim(), 10);
+    if (!carMake.trim() || !vehicleModel.trim() || !vehicleYear.trim() || !plateNumber.trim() || !phone.trim()) {
       setError("Please fill in all required vehicle fields");
+      return false;
+    }
+    if (!Number.isFinite(parsedVehicleYear)) {
+      setError("Please enter a valid car model year");
+      return false;
+    }
+    if (parsedVehicleYear < MIN_VEHICLE_YEAR || parsedVehicleYear > MAX_VEHICLE_YEAR) {
+      setError(`Vehicle model year must be between ${MIN_VEHICLE_YEAR} and ${MAX_VEHICLE_YEAR}`);
       return false;
     }
     setError(""); return true;
   }
 
   function validateDocuments(): boolean {
-    const missing = ALL_DOCS.filter(d => !documents[d.id]);
+    const missing = ALL_DOCS.filter(d => !OPTIONAL_DOC_IDS.has(d.id) && !documents[d.id]);
     if (missing.length > 0) {
       setError(`Please upload: ${missing.map(d => d.label).join(", ")}`);
       return false;
@@ -149,6 +162,7 @@ export default function ChauffeurRegisterScreen() {
         userId: user.id,
         carMake: carMake.trim(),
         vehicleModel: vehicleModel.trim(),
+        vehicleYear: Number.parseInt(vehicleYear.trim(), 10),
         plateNumber: plateNumber.trim().toUpperCase(),
         vehicleType,
         carColor,
@@ -255,6 +269,21 @@ export default function ChauffeurRegisterScreen() {
             </View>
 
             <View style={styles.inputGroup}>
+              <Text style={styles.label}>Model Year * (2015 or newer)</Text>
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 2018"
+                  placeholderTextColor={Colors.textMuted}
+                  value={vehicleYear}
+                  onChangeText={setVehicleYear}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
               <Text style={styles.label}>Plate Number *</Text>
               <View style={styles.inputWrapper}>
                 <TextInput style={styles.input} placeholder="e.g. CA 123 456" placeholderTextColor={Colors.textMuted} value={plateNumber} onChangeText={setPlateNumber} autoCapitalize="characters" />
@@ -322,7 +351,7 @@ export default function ChauffeurRegisterScreen() {
           <View style={styles.header}>
             <StepIndicator current={2} />
             <Text style={styles.title}>Upload Documents</Text>
-            <Text style={styles.subtitle}>Step 2 of 3 — Required for compliance & verification</Text>
+            <Text style={styles.subtitle}>Step 2 of 3 — Required items must be uploaded; optional items can be added later</Text>
           </View>
 
           {!!error && <View style={styles.errorBox}><Ionicons name="alert-circle" size={16} color={Colors.error} /><Text style={styles.errorText}>{error}</Text></View>}
@@ -343,7 +372,7 @@ export default function ChauffeurRegisterScreen() {
                     <Ionicons name={uploaded ? "checkmark" : doc.icon} size={20} color={uploaded ? Colors.success : Colors.textSecondary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.docLabel}>{doc.label}</Text>
+                    <Text style={styles.docLabel}>{doc.label}{OPTIONAL_DOC_IDS.has(doc.id) ? " (Optional)" : ""}</Text>
                     <Text style={styles.docHint}>{uploaded ? `✓ ${uploaded.name}` : doc.hint}</Text>
                   </View>
                   <Ionicons name={uploaded ? "checkmark-circle" : "cloud-upload-outline"} size={20} color={uploaded ? Colors.success : Colors.textMuted} />
@@ -363,7 +392,7 @@ export default function ChauffeurRegisterScreen() {
                     <Ionicons name={uploaded ? "checkmark" : doc.icon} size={20} color={uploaded ? Colors.success : Colors.textSecondary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.docLabel}>{doc.label}</Text>
+                    <Text style={styles.docLabel}>{doc.label}{OPTIONAL_DOC_IDS.has(doc.id) ? " (Optional)" : ""}</Text>
                     <Text style={styles.docHint}>{uploaded ? `✓ ${uploaded.name}` : doc.hint}</Text>
                   </View>
                   <Ionicons name={uploaded ? "checkmark-circle" : "cloud-upload-outline"} size={20} color={uploaded ? Colors.success : Colors.textMuted} />

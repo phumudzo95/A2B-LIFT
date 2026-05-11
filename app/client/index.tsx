@@ -450,6 +450,31 @@ function scoreResolvedAddress(description?: string | null) {
   return score;
 }
 
+function buildResolvedAddressLabel(result?: {
+  description?: string | null;
+  mainText?: string | null;
+  secondaryText?: string | null;
+}) {
+  if (!result) return null;
+
+  const rawDescription = result.description?.trim() || null;
+  const composedDescription = [result.mainText?.trim(), result.secondaryText?.trim()]
+    .filter(Boolean)
+    .join(", ") || null;
+
+  if (!rawDescription) return composedDescription;
+  if (!composedDescription) return rawDescription;
+
+  const rawLooksAdministrative = /\b(ward|municipality|district municipality|administrative area)\b/i.test(rawDescription);
+  if (rawLooksAdministrative && scoreResolvedAddress(composedDescription) >= 0) {
+    return composedDescription;
+  }
+
+  return scoreResolvedAddress(composedDescription) > scoreResolvedAddress(rawDescription)
+    ? composedDescription
+    : rawDescription;
+}
+
 function shouldDeferAddressAutocomplete(query: string) {
   const normalized = normalizeAddressSearchQuery(query).toLowerCase();
   const startsWithNumber = /^\d+\s+/.test(normalized);
@@ -473,6 +498,7 @@ function filterAddressPredictions(
     (left, right) => scoreAddressPrediction(query, right) - scoreAddressPrediction(query, left),
   );
 
+  if (!/^\d+\s+/.test(normalized)) return rankedPredictions;
   if (significantTokens.length === 0 && !leadingNumber) return rankedPredictions;
 
   const filteredPredictions = rankedPredictions.filter((prediction) => {
@@ -529,6 +555,7 @@ export default function ClientHomeScreen() {
   const { on, off } = useSocket();
   const bottomPanelOffset = Platform.OS === "ios" ? 72 : 8;
   const bottomPanelPadding = insets.bottom + 20;
+  const idleBottomSheetPadding = Math.max(insets.bottom + (Platform.OS === "ios" ? 10 : 6), 16);
 
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
@@ -862,7 +889,7 @@ export default function ClientHomeScreen() {
         }
 
         if (predictions.length > 0) {
-          setLocationSuggestions([]);
+          setLocationSuggestions(predictions);
           return;
         }
 
@@ -935,7 +962,7 @@ export default function ClientHomeScreen() {
         return;
       }
 
-      const address = suggestion.description;
+      const address = buildResolvedAddressLabel(suggestion) || suggestion.description;
       if (locationPickerTarget === "pickup") {
         pickupFollowsDeviceRef.current = false;
         locationWatchRef.current?.remove();
@@ -974,8 +1001,9 @@ export default function ClientHomeScreen() {
     try {
       const res = await apiRequest("GET", `/api/places/reverse?lat=${coords.lat}&lng=${coords.lng}`);
       const data = await res.json();
-      if (typeof data.description === "string" && data.description.trim()) {
-        description = data.description.trim();
+      const resolvedDescription = buildResolvedAddressLabel(data);
+      if (resolvedDescription) {
+        description = resolvedDescription;
       }
     } catch {}
 
@@ -1754,12 +1782,12 @@ export default function ClientHomeScreen() {
       </View>
 
       {rideStatus === "idle" && (
-        <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset }]}>
+        <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: idleBottomSheetPadding }]}>
           <View style={styles.sheetHandle} />
           <ScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: bottomPanelPadding }}
+            contentContainerStyle={{ paddingBottom: 8 }}
           >
             <Text style={styles.sheetTitle}>Where to?</Text>
 
