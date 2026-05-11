@@ -54,7 +54,7 @@ module.exports = () => withReactNativeMapsAndroidKey({
     },
     android: {
       package: "com.a2blift",
-      versionCode: 80,
+      versionCode: 83,
       softwareKeyboardLayoutMode: "resize",
       adaptiveIcon: {
         foregroundImage: "./assets/images/android-icon-foreground-car.png",
