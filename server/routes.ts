@@ -970,6 +970,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return score;
   }
 
+  function filterAddressAutocompletePredictions(
+    input: string,
+    predictions: { description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
+  ) {
+    const normalizedInput = normalizeMapsQuery(input).toLowerCase();
+    if (!/^\d+\s+/.test(normalizedInput)) return predictions;
+
+    const significantTokens = (normalizedInput.match(/[a-z]{5,}/g) || []).filter(
+      (token) => !["south", "africa"].includes(token),
+    );
+    if (significantTokens.length === 0) return predictions;
+
+    return predictions.filter((prediction) => {
+      const haystack = `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`.toLowerCase();
+      return significantTokens.every((token) => haystack.includes(token));
+    });
+  }
+
   function southAfricanCityFallback(input: string, lat?: number | null, lng?: number | null) {
     const query = normalizeMapsQuery(input).toLowerCase();
     if (query.length < 2) return [];
@@ -1147,12 +1165,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .slice(0, 6)
               .map(({ score: _score, ...prediction }: any) => prediction)
           : [];
+        const filteredPredictions = cityOnly
+          ? mappedPredictions
+          : filterAddressAutocompletePredictions(normalizedInput, mappedPredictions);
 
         if (r.status === "OK" && r.predictions.length > 0) {
           return res.json({
             predictions: cityOnly
               ? [...staticCityPredictions, ...mappedPredictions].slice(0, 8)
-              : mappedPredictions,
+              : filteredPredictions,
           });
         }
 
@@ -1187,6 +1208,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const osmPredictions = await nominatimSearch(normalizedInput, cityOnly ? 8 : 6, { cityOnly, lat, lng });
+      const filteredOsmPredictions = cityOnly
+        ? osmPredictions
+        : filterAddressAutocompletePredictions(normalizedInput, osmPredictions);
       if (cityOnly) {
         const seenCities = new Set<string>();
         const cityPredictions = [...staticCityPredictions, ...osmPredictions].filter((prediction: any) => {
@@ -1198,7 +1222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ predictions: cityPredictions.slice(0, 8) });
       }
 
-      return res.json({ predictions: osmPredictions });
+      return res.json({ predictions: filteredOsmPredictions });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
