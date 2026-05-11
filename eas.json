@@ -69,7 +69,7 @@
     },
     "maptest-a2b": {
       "distribution": "internal",
-      "credentialsSource": "local",
+      "credentialsSource": "remote",
       "environment": "preview",
       "android": {
         "buildType": "apk"
