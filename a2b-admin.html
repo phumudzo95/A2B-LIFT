@@ -124,6 +124,8 @@ tbody tr[style*="cursor:pointer"]:hover { background:#f0f0ee; }
 .btn-detail { background:var(--bg); color:var(--text); border-color:var(--border); }
 .btn-detail:hover { background:#ececea; }
 .btn-paid { background:var(--blue-bg); color:var(--blue); border-color:#b8d0f0; }
+.btn-delete { background:var(--red-bg); color:var(--red); border-color:#f0c0b8; }
+.btn-delete:hover { background:#fce0dc; }
 .action-cell { display:flex; gap:6px; flex-wrap:wrap; }
 
 /* EMPTY / LOADING */
@@ -653,6 +655,7 @@ function renderChauffeurTable(tableId, data, showActions) {
         ${!c.isApproved ? `<button class="btn-sm btn-approve" onclick="approveChauf('${c.id}')">✓ Approve</button>` : ''}
         <button class="btn-sm btn-detail" onclick="chaufDetail('${c.id}')">Details</button>
         <button class="btn-sm btn-detail" onclick="viewDocs('${c.id}','${(c.userName||'Driver').replace(/'/g,"\\'")}')">📄 Docs</button>
+        <button class="btn-sm btn-delete" onclick="event.stopPropagation();confirmDelete('driver','${c.id}','${(c.userName||'this driver').replace(/'/g,"\\'")}')">🗑</button>
       </div></td>
     </tr>`).join('')}
     </tbody></table>`;
@@ -693,6 +696,7 @@ function chaufDetail(id) {
     <button class="btn-lg btn-outline" onclick="closeModal()">Close</button>
     <button class="btn-lg btn-outline" onclick="closeModal();viewDocs('${c.id}','${(c.userName||'Driver').replace(/'/g,"\\'")}')">📄 View Docs</button>
     ${!c.isApproved ? `<button class="btn-lg btn-green" onclick="approveChauf('${c.id}');closeModal()">✓ Approve</button>` : ''}
+    <button class="btn-lg btn-red" onclick="closeModal();confirmDelete('driver','${c.id}','${(c.userName||'this driver').replace(/'/g,"\\'")}')">🗑 Delete Driver</button>
   `;
   openModal();
 }
@@ -726,6 +730,7 @@ async function viewDocs(chauffeurId, name) {
         <div class="doc-label">${label}</div>
         ${isImg ? `<img class="doc-img" src="${d.url}" onerror="this.style.display='none'" />` : `<div style="font-size:36px;margin:12px 0">📄</div>`}
         <a class="doc-link" href="${d.url}" target="_blank">View / Download ↗</a>
+        <button class="btn-sm btn-delete" style="margin-top:8px;width:100%" onclick="confirmDelete('document','${d.id}','${label.replace(/'/g,"\\'")}')">🗑 Delete</button>
       </div>`;
     }
     html += '</div>';
@@ -748,7 +753,7 @@ async function loadRides() {
     }
     allRides = rides;
     document.getElementById('rides-table').innerHTML = `<table>
-      <thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th></tr></thead>
+      <thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th><th></th></tr></thead>
       <tbody>${rides.map(r => `<tr style="cursor:pointer" onclick="rideDetail('${r.id}')">
         <td style="max-width:160px;font-size:13px">${r.pickupAddress || 'N/A'}</td>
         <td style="max-width:160px;font-size:13px">${r.dropoffAddress || 'N/A'}</td>
@@ -756,6 +761,7 @@ async function loadRides() {
         <td style="font-weight:700;color:var(--green)">R ${r.actualFare != null ? r.actualFare : (r.price || '—')}</td>
         <td><span class="badge ${r.paymentStatus === 'paid' ? 'b-paid' : 'b-pending'}">${r.paymentStatus || 'unpaid'}</span></td>
         <td style="font-size:12px">${fmt(r.createdAt)}</td>
+        <td><button class="btn-sm btn-delete" onclick="event.stopPropagation();confirmDelete('ride','${r.id}','trip ${(r.pickupAddress||'').slice(0,20).replace(/'/g,"\\'")}…')">🗑</button></td>
       </tr>`).join('')}
       </tbody></table>`;
   } catch(e) {
@@ -913,7 +919,7 @@ async function loadPay() {
     }
     allPayments = payments;
     document.getElementById('pay-table').innerHTML = `<table>
-      <thead><tr><th>Rider</th><th>Route</th><th>Method</th><th>Amount</th><th>Status</th><th>Reference</th><th>Date</th></tr></thead>
+      <thead><tr><th>Rider</th><th>Route</th><th>Method</th><th>Amount</th><th>Status</th><th>Reference</th><th>Date</th><th></th></tr></thead>
       <tbody>${payments.map((p, idx) => `<tr style="cursor:pointer" onclick="payDetail(${idx})">
         <td><div style="font-weight:600">${p.riderName || '—'}</div><div style="font-size:11px;color:var(--muted)">${p.riderEmail || ''}</div></td>
         <td style="font-size:12px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.rideRoute||'').replace(/"/g,'&quot;')}">${p.rideRoute || '—'}</td>
@@ -922,6 +928,7 @@ async function loadPay() {
         <td><span class="badge b-${p.status === 'paid' ? 'paid' : p.status === 'failed' ? 'failed' : 'pending'}">${p.status || '—'}</span></td>
         <td style="font-size:11px;color:var(--muted);font-family:var(--mono)">${p.paystackReference ? p.paystackReference.slice(0,18)+'…' : '—'}</td>
         <td style="font-size:12px">${fmtFull(p.paidAt || p.createdAt)}</td>
+        <td>${p.id ? `<button class="btn-sm btn-delete" onclick="event.stopPropagation();confirmDelete('payment','${p.id}','R${Number(p.amount||0).toFixed(2)} payment')">🗑</button>` : ''}</td>
       </tr>`).join('')}
       </tbody></table>`;
   } catch(e) {
@@ -973,7 +980,7 @@ function renderFilteredWd() {
   const w = document.getElementById('wd-table');
   if (!list.length) { w.innerHTML = emptyState('🏦', 'No withdrawal requests', 'Driver withdrawal requests appear here'); return; }
   w.innerHTML = `<table>
-    <thead><tr><th>Driver</th><th>Bank</th><th>Account</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+    <thead><tr><th>Driver</th><th>Bank</th><th>Account</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead>
     <tbody>${list.map(wd => `<tr style="cursor:pointer" onclick="wdDetail('${wd.id}')">
       <td style="font-size:13px;font-weight:600">${wd.accountHolder || ('ID …' + (wd.chauffeurId||'').slice(-6))}</td>
       <td>${wd.bankName || '—'}</td>
@@ -981,6 +988,7 @@ function renderFilteredWd() {
       <td style="font-weight:700;color:var(--green)">R ${Number(wd.amount||0).toFixed(2)}</td>
       <td><span class="badge b-${wd.status}">${wd.status}</span></td>
       <td style="font-size:12px">${fmt(wd.processedAt || wd.createdAt)}</td>
+      <td><button class="btn-sm btn-delete" onclick="event.stopPropagation();confirmDelete('withdrawal','${wd.id}','R${Number(wd.amount||0).toFixed(2)} withdrawal')">🗑</button></td>
     </tr>`).join('')}
     </tbody></table>`;
 }
@@ -1059,7 +1067,7 @@ function renderFilteredSafe() {
       <td style="font-size:12px;color:var(--muted);max-width:160px">${(s.aiResponse||'—').slice(0,60)}${(s.aiResponse||'').length>60?'…':''}</td>
       <td><span class="badge b-${s.status}">${s.status}</span></td>
       <td style="font-size:12px">${fmt(s.createdAt)}</td>
-      <td>${s.status === 'open' ? `<button class="btn-sm btn-approve" onclick="resolveReport('${s.id}')">Mark Resolved</button>` : '<span style="font-size:12px;color:var(--muted-light)">Done</span>'}</td>
+      <td><div class="action-cell">${s.status === 'open' ? `<button class="btn-sm btn-approve" onclick="resolveReport('${s.id}')">Mark Resolved</button>` : '<span style="font-size:12px;color:var(--muted-light)">Done</span>'}<button class="btn-sm btn-delete" onclick="event.stopPropagation();confirmDelete('safety-report','${s.id}','this safety report')">🗑</button></div></td>
     </tr>`).join('')}
     </tbody></table>`;
 }
@@ -1089,7 +1097,7 @@ async function loadUsers() {
       return;
     }
     document.getElementById('users-table').innerHTML = `<table>
-      <thead><tr><th>Name</th><th>Username</th><th>Phone</th><th>Role</th><th>Rating</th><th>Wallet Balance</th><th>Joined</th></tr></thead>
+      <thead><tr><th>Name</th><th>Username</th><th>Phone</th><th>Role</th><th>Rating</th><th>Wallet Balance</th><th>Joined</th><th></th></tr></thead>
       <tbody>${users.map(u => `<tr>
         <td style="font-weight:600">${u.name || '—'}</td>
         <td style="color:var(--muted);font-size:13px">@${u.username || '—'}</td>
@@ -1098,11 +1106,39 @@ async function loadUsers() {
         <td>⭐ ${Number(u.rating || 5).toFixed(1)}</td>
         <td style="font-weight:600;color:var(--green)">R ${Number(u.walletBalance || 0).toFixed(2)}</td>
         <td style="font-size:12px">${fmt(u.createdAt)}</td>
+        <td>${u.role !== 'admin' ? `<button class="btn-sm btn-delete" onclick="event.stopPropagation();confirmDelete('user','${u.id}','${(u.name||u.username||'this user').replace(/'/g,"\\'")}')" title="Delete user">🗑</button>` : ''}</td>
       </tr>`).join('')}
       </tbody></table>`;
   } catch(e) {
     document.getElementById('users-table').innerHTML = emptyState('❌', 'Failed to load users', e.message);
   }
+}
+
+// ── DELETE ──
+async function confirmDelete(type, id, label) {
+  if (!confirm(`Delete ${label}?\n\nThis is permanent and cannot be undone.`)) return;
+  const endpoints = {
+    driver: '/api/chauffeurs/' + id,
+    ride: '/api/admin/rides/' + id,
+    user: '/api/admin/users/' + id,
+    withdrawal: '/api/admin/withdrawals/' + id,
+    'safety-report': '/api/admin/safety-reports/' + id,
+    payment: '/api/admin/payments/' + id,
+    document: '/api/admin/documents/' + id,
+  };
+  const url = endpoints[type];
+  if (!url) { toast('❌ Unknown delete type', 'err'); return; }
+  try {
+    const res = await apiFetch(url, { method: 'DELETE' });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(body || res.status);
+    }
+    toast('🗑 Deleted successfully', 'ok');
+    // Reload the relevant section
+    const reloaders = { driver: loadChauf, ride: loadRides, user: loadUsers, withdrawal: loadWd, 'safety-report': loadSafe, payment: loadPay, document: loadChauf };
+    reloaders[type]?.();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
 }
 
 // ── SEARCH ──

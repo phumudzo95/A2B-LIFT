@@ -5074,5 +5074,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Admin hard-delete routes ─────────────────────────────────────────────────
+
+  app.delete("/api/admin/rides/:id", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const deleted = await storage.deleteRide(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Ride not found" });
+      return res.json({ message: "Ride deleted" });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/admin/users/:id", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      // Cascade: remove chauffeur profile + driver application first to avoid FK violations
+      const chauffeur = await storage.getChauffeurByUserId(req.params.id);
+      if (chauffeur) {
+        const app = await storage.getDriverApplicationByUserId(req.params.id);
+        if (app) await storage.deleteDriverApplication(app.id);
+        await storage.deleteChauffeur(chauffeur.id);
+      }
+      const deleted = await storage.deleteUser(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "User not found" });
+      return res.json({ message: "User deleted" });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/admin/withdrawals/:id", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const deleted = await storage.deleteWithdrawal(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Withdrawal not found" });
+      return res.json({ message: "Withdrawal deleted" });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/admin/safety-reports/:id", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const deleted = await storage.deleteSafetyReport(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Safety report not found" });
+      return res.json({ message: "Safety report deleted" });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/admin/payments/:id", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const deleted = await storage.deletePayment(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Payment not found" });
+      return res.json({ message: "Payment deleted" });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/admin/documents/:id", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const deleted = await storage.deleteDocument(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Document not found" });
+      return res.json({ message: "Document deleted" });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   return httpServer;
 }

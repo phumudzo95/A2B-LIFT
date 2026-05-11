@@ -800,6 +800,38 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return enquiry;
   }
+
+  // ── Admin hard-delete helpers ────────────────────────────────────────────────
+
+  async deleteRide(id: string): Promise<boolean> {
+    const deleted = await db.delete(rides).where(eq(rides.id, id)).returning();
+    return deleted.length > 0;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const deleted = await db.delete(users).where(eq(users.id, id)).returning();
+    return deleted.length > 0;
+  }
+
+  async deleteWithdrawal(id: string): Promise<boolean> {
+    const deleted = await db.delete(withdrawals).where(eq(withdrawals.id, id)).returning();
+    return deleted.length > 0;
+  }
+
+  async deleteSafetyReport(id: string): Promise<boolean> {
+    const deleted = await db.delete(safetyReports).where(eq(safetyReports.id, id)).returning();
+    return deleted.length > 0;
+  }
+
+  async deletePayment(id: string): Promise<boolean> {
+    const deleted = await db.delete(payments).where(eq(payments.id, id)).returning();
+    return deleted.length > 0;
+  }
+
+  async deleteDocument(id: string): Promise<boolean> {
+    const deleted = await db.delete(documents).where(eq(documents.id, id)).returning();
+    return deleted.length > 0;
+  }
 }
 
 export const storage = new DatabaseStorage();
