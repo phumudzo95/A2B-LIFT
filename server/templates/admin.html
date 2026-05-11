@@ -123,6 +123,8 @@ tbody tr:hover { background:#fafaf8; }
 .btn-detail { background:var(--bg); color:var(--text); border-color:var(--border); }
 .btn-detail:hover { background:#ececea; }
 .btn-paid { background:var(--blue-bg); color:var(--blue); border-color:#b8d0f0; }
+.btn-delete { background:var(--red-bg); color:var(--red); border-color:#f0c0b8; }
+.btn-delete:hover { background:#fce0dc; }
 .action-cell { display:flex; gap:6px; flex-wrap:wrap; }
 
 /* EMPTY / LOADING */
@@ -1041,6 +1043,7 @@ function chaufDetail(id) {
     <button class="btn-lg btn-outline" onclick="closeModal();editChauf('${c.id}')">✏ Edit</button>
     ${!c.isApproved ? `<button class="btn-lg btn-green" onclick="closeModal();approveChauf('${c.id}')">✓ Approve</button>` : ''}
     ${!c.isApproved ? `<button class="btn-lg" style="background:var(--red);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer" onclick="closeModal();rejectChauf('${c.id}')">✕ Reject</button>` : ''}
+    <button class="btn-lg btn-delete" onclick="closeModal();deleteChauf('${c.id}','${(c.userName||'this driver').replace(/'/g,"\\'")}')">🗑 Delete Driver</button>
   `;
   openModal();
 }
@@ -1074,6 +1077,7 @@ async function viewDocs(chauffeurId, name) {
         <div class="doc-label">${label}</div>
         ${isImg ? `<img class="doc-img" src="${d.url}" onerror="this.style.display='none'" />` : `<div style="font-size:36px;margin:12px 0">📄</div>`}
         <a class="doc-link" href="${d.url}" target="_blank">View / Download ↗</a>
+        <button class="btn-sm btn-delete" style="margin-top:8px;width:100%" onclick="adminDelete('document','${d.id}','${label.replace(/'/g,"\\'")}')">🗑 Delete</button>
       </div>`;
     }
     html += '</div>';
@@ -1095,7 +1099,7 @@ async function loadRides() {
       return;
     }
     document.getElementById('rides-table').innerHTML = `<table>
-      <thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th></tr></thead>
+      <thead><tr><th>Pickup</th><th>Dropoff</th><th>Status</th><th>Price</th><th>Payment</th><th>Date</th><th></th></tr></thead>
       <tbody>${rides.map(r => `<tr>
         <td style="max-width:180px;font-size:13px">${r.pickupAddress || 'N/A'}</td>
         <td style="max-width:180px;font-size:13px">${r.dropoffAddress || 'N/A'}</td>
@@ -1103,6 +1107,7 @@ async function loadRides() {
         <td style="font-weight:700;color:var(--green)">R ${r.price || '—'}</td>
         <td><span class="badge ${r.paymentStatus === 'paid' ? 'b-paid' : 'b-pending'}">${r.paymentStatus || 'unpaid'}</span></td>
         <td style="font-size:12px">${fmt(r.createdAt)}</td>
+        <td><button class="btn-sm btn-delete" onclick="event.stopPropagation();adminDelete('ride','${r.id}','trip from ${(r.pickupAddress||'').slice(0,20).replace(/'/g,"\\'")}')">🗑</button></td>
       </tr>`).join('')}
       </tbody></table>`;
   } catch(e) {
@@ -1153,7 +1158,7 @@ async function loadPay() {
       return;
     }
     document.getElementById('pay-table').innerHTML = `<table>
-      <thead><tr><th>Rider</th><th>Route</th><th>Method</th><th>Amount</th><th>Status</th><th>Reference</th><th>Date</th></tr></thead>
+      <thead><tr><th>Rider</th><th>Route</th><th>Method</th><th>Amount</th><th>Status</th><th>Reference</th><th>Date</th><th></th></tr></thead>
       <tbody>${payments.map(p => `<tr>
         <td><div style="font-weight:600">${p.riderName || '—'}</div><div style="font-size:11px;color:var(--muted)">${p.riderEmail || ''}</div></td>
         <td style="font-size:12px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.rideRoute||'').replace(/"/g,'&quot;')}">${p.rideRoute || '—'}</td>
@@ -1162,6 +1167,7 @@ async function loadPay() {
         <td><span class="badge b-${p.status === 'paid' ? 'paid' : p.status === 'failed' ? 'failed' : 'pending'}">${p.status || '—'}</span></td>
         <td style="font-size:11px;color:var(--muted);font-family:var(--mono)">${p.paystackReference ? p.paystackReference.slice(0,18)+'…' : '—'}</td>
         <td style="font-size:12px">${fmtFull(p.paidAt || p.createdAt)}</td>
+        <td>${p.id ? `<button class="btn-sm btn-delete" onclick="event.stopPropagation();adminDelete('payment','${p.id}','R${Number(p.amount||0).toFixed(2)} payment')">🗑</button>` : ''}</td>
       </tr>`).join('')}
       </tbody></table>`;
   } catch(e) {
@@ -1274,6 +1280,7 @@ function renderFilteredWd() {
         ${wd.status === 'pending' ? `<button class="btn-sm btn-approve" onclick="actWd('${wd.id}','approved')">✓ Approve</button><button class="btn-sm btn-reject" onclick="actWd('${wd.id}','rejected')">✕ Reject</button>` : ''}
         ${wd.status === 'approved' ? `<button class="btn-sm btn-paid" onclick="actWd('${wd.id}','paid')">Mark Paid</button>` : ''}
         ${wd.status === 'paid' || wd.status === 'rejected' ? '<span style="font-size:12px;color:var(--muted-light)">Done</span>' : ''}
+        <button class="btn-sm btn-delete" onclick="event.stopPropagation();adminDelete('withdrawal','${wd.id}','R${Number(wd.amount||0).toFixed(2)} withdrawal')">🗑</button>
       </div></td>
     </tr>`).join('')}
     </tbody></table>`;
@@ -1324,7 +1331,7 @@ function renderFilteredSafe() {
       <td style="font-size:12px;color:var(--muted);max-width:160px">${(s.aiResponse||'—').slice(0,60)}${(s.aiResponse||'').length>60?'…':''}</td>
       <td><span class="badge b-${s.status}">${s.status}</span></td>
       <td style="font-size:12px">${fmt(s.createdAt)}</td>
-      <td>${s.status === 'open' ? `<button class="btn-sm btn-approve" onclick="resolveReport('${s.id}')">Mark Resolved</button>` : '<span style="font-size:12px;color:var(--muted-light)">Done</span>'}</td>
+      <td><div class="action-cell">${s.status === 'open' ? `<button class="btn-sm btn-approve" onclick="resolveReport('${s.id}')">Mark Resolved</button>` : '<span style="font-size:12px;color:var(--muted-light)">Done</span>'}<button class="btn-sm btn-delete" onclick="event.stopPropagation();adminDelete('safety-report','${s.id}','this safety report')">🗑</button></div></td>
     </tr>`).join('')}
     </tbody></table>`;
 }
@@ -1354,7 +1361,7 @@ async function loadUsers() {
       return;
     }
     document.getElementById('users-table').innerHTML = `<table>
-      <thead><tr><th>Name</th><th>Username</th><th>Phone</th><th>Role</th><th>Rating</th><th>Wallet Balance</th><th>Joined</th></tr></thead>
+      <thead><tr><th>Name</th><th>Username</th><th>Phone</th><th>Role</th><th>Rating</th><th>Wallet Balance</th><th>Joined</th><th></th></tr></thead>
       <tbody>${users.map(u => `<tr>
         <td style="font-weight:600">${u.name || '—'}</td>
         <td style="color:var(--muted);font-size:13px">@${u.username || '—'}</td>
@@ -1363,11 +1370,34 @@ async function loadUsers() {
         <td>⭐ ${Number(u.rating || 5).toFixed(1)}</td>
         <td style="font-weight:600;color:var(--green)">R ${Number(u.walletBalance || 0).toFixed(2)}</td>
         <td style="font-size:12px">${fmt(u.createdAt)}</td>
+        <td>${u.role !== 'admin' ? `<button class="btn-sm btn-delete" onclick="event.stopPropagation();adminDelete('user','${u.id}','${(u.name||u.username||'this user').replace(/'/g,"\\'")}')">🗑</button>` : ''}</td>
       </tr>`).join('')}
       </tbody></table>`;
   } catch(e) {
     document.getElementById('users-table').innerHTML = emptyState('❌', 'Failed to load users', e.message);
   }
+}
+
+// ── ADMIN DELETE ──
+async function adminDelete(type, id, label) {
+  if (!confirm('Delete ' + label + '?\n\nThis is permanent and cannot be undone.')) return;
+  const endpoints = {
+    ride: '/api/admin/rides/' + id,
+    user: '/api/admin/users/' + id,
+    withdrawal: '/api/admin/withdrawals/' + id,
+    'safety-report': '/api/admin/safety-reports/' + id,
+    payment: '/api/admin/payments/' + id,
+    document: '/api/admin/documents/' + id,
+  };
+  const url = endpoints[type];
+  if (!url) { toast('❌ Unknown type', 'err'); return; }
+  try {
+    const res = await apiFetch(url, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await res.text());
+    toast('🗑 Deleted successfully', 'ok');
+    const reloaders = { ride: loadRides, user: loadUsers, withdrawal: loadWd, 'safety-report': loadSafe, payment: loadPay, document: loadChauf };
+    reloaders[type]?.();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
 }
 
 // ── SEARCH ──
