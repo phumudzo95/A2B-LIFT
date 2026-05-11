@@ -790,7 +790,7 @@ export default function ClientHomeScreen() {
 
         if (Platform.OS !== "web") {
           const nativeSuggestions = await buildNativeLocationSuggestions(query);
-          setLocationSuggestions(nativeSuggestions);
+          setLocationSuggestions(filterAddressPredictions(query, nativeSuggestions));
           return;
         }
 
@@ -798,7 +798,7 @@ export default function ClientHomeScreen() {
       } catch {
         if (Platform.OS !== "web") {
           const nativeSuggestions = await buildNativeLocationSuggestions(query);
-          setLocationSuggestions(nativeSuggestions);
+          setLocationSuggestions(filterAddressPredictions(query, nativeSuggestions));
         } else {
           setLocationSuggestions([]);
         }

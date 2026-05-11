@@ -73,10 +73,12 @@ export default function RegisterScreen() {
           const freshUser = await meRes.json();
           await AsyncStorage.setItem("a2b_user", JSON.stringify(freshUser));
           setUser(freshUser);
+          router.replace("/role-select");
           return;
         }
       } catch {}
       setUser(payload.user);
+      router.replace("/role-select");
       // AuthGate handles navigation when user state changes
     } catch {
       setError("Google sign up failed. Please try again.");
@@ -97,6 +99,7 @@ export default function RegisterScreen() {
     if (password.length < 4) { setError("Password must be at least 4 characters"); return; }
     setLoading(true); setError("");
     try {
+      await AsyncStorage.setItem(NEEDS_ROLE_SELECT_KEY, "1");
       await register({
         username: email.trim().toLowerCase(),
         password,
@@ -104,9 +107,10 @@ export default function RegisterScreen() {
         phone: phone.trim(),
         referralCode: referralCode.trim() || undefined,
       });
-      await AsyncStorage.setItem(NEEDS_ROLE_SELECT_KEY, "1");
       await setPendingReferralCode(null);
+      router.replace("/role-select");
     } catch (e: any) {
+      await AsyncStorage.removeItem(NEEDS_ROLE_SELECT_KEY);
       const msg = e.message || "Registration failed.";
       if (msg.includes("already exists") || msg.includes("400")) setError("An account with this email already exists");
       else if (msg.includes("500") || msg.includes("Database")) setError("Server error. Please try again.");
