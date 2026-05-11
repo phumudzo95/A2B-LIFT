@@ -669,21 +669,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getRewardCashoutsByUser(user.id),
       ]);
 
-      const referredPeople = await Promise.all(
-        (referralEvents || []).map(async (event) => {
-          const referredUser = event?.referredUserId ? await storage.getUser(event.referredUserId) : null;
-          return {
-            id: event.id,
-            name: referredUser?.name || "A2B User",
-            joinedAt: event.createdAt,
-            firstRewardAt: event.firstRewardAt || null,
-            lastRewardAt: event.lastRewardAt || null,
-            rewardedAt: event.status === "rewarded" ? (event.lastRewardAt || event.firstRewardAt || event.updatedAt || event.createdAt) : null,
-            totalRewards: Number(event.totalRewards || 0),
-            status: event.status || "registered",
-          };
-        }),
-      );
+      const referredUserIds = (referralEvents || [])
+        .map((event) => event.referredUserId)
+        .filter(Boolean) as string[];
+
+      const referredUsersMap = new Map<string, { id: string; name: string | null }>();
+      if (referredUserIds.length > 0) {
+        try {
+          const result = await pool.query(
+            "SELECT id, name FROM users WHERE id = ANY($1)",
+            [referredUserIds],
+          );
+          for (const row of result.rows) {
+            referredUsersMap.set(row.id, row);
+          }
+        } catch {}
+      }
+
+      const referredPeople = (referralEvents || []).map((event) => {
+        const referredUser = event?.referredUserId ? referredUsersMap.get(event.referredUserId) : null;
+        return {
+          id: event.id,
+          name: referredUser?.name || "A2B User",
+          joinedAt: event.createdAt,
+          firstRewardAt: event.firstRewardAt || null,
+          lastRewardAt: event.lastRewardAt || null,
+          rewardedAt: event.status === "rewarded" ? (event.lastRewardAt || event.firstRewardAt || event.updatedAt || event.createdAt) : null,
+          totalRewards: Number(event.totalRewards || 0),
+          status: event.status || "registered",
+        };
+      });
 
       const totalRewardsEarned = (transactions || [])
         .filter((tx) => Number(tx.amount || 0) > 0 && tx.status !== "failed")
@@ -904,12 +919,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return Number.isFinite(n);
   }
 
+  const ADDRESS_TERM_NORMALIZATIONS: Array<[RegExp, string]> = [
+    [/\bpretorious\b/gi, "Pretorius"],
+    [/\bpretoriaus\b/gi, "Pretorius"],
+    [/\bst\.?\b/gi, "Street"],
+    [/\bave\.?\b/gi, "Avenue"],
+    [/\brd\.?\b/gi, "Road"],
+    [/\bdr\.?\b/gi, "Drive"],
+    [/\bln\.?\b/gi, "Lane"],
+    [/\bcl\.?\b/gi, "Close"],
+    [/\bblvd\.?\b/gi, "Boulevard"],
+    [/\bcres\.?\b/gi, "Crescent"],
+  ];
+
   function normalizeMapsQuery(value: string) {
-    return value
-      .trim()
-      .replace(/\bpretorious\b/gi, "Pretorius")
-      .replace(/\bpretoriaus\b/gi, "Pretorius")
-      .replace(/\s+/g, " ");
+    return ADDRESS_TERM_NORMALIZATIONS.reduce(
+      (normalized, [pattern, replacement]) => normalized.replace(pattern, replacement),
+      value.trim(),
+    ).replace(/\s+/g, " ");
+  }
+
+  function extractAddressTokens(value: string) {
+    return normalizeMapsQuery(value)
+      .toLowerCase()
+      .match(/[a-z]{3,}/g)?.filter((token) => !["south", "africa"].includes(token)) || [];
+  }
+
+  function chooseBestReverseGeocodeResult(results: any[]) {
+    return [...results].sort((left, right) => {
+      const score = (result: any) => {
+        const types = Array.isArray(result?.types) ? result.types : [];
+        const components = Array.isArray(result?.address_components) ? result.address_components : [];
+        const hasType = (type: string) => types.includes(type);
+        const hasComponent = (type: string) => components.some((component: any) => component?.types?.includes(type) && component?.long_name);
+        let total = 0;
+
+        if (hasType("street_address")) total += 120;
+        if (hasType("premise")) total += 70;
+        if (hasType("subpremise")) total += 60;
+        if (hasType("route")) total += 45;
+        if (hasComponent("street_number")) total += 40;
+        if (hasComponent("route")) total += 30;
+        if (hasType("plus_code")) total -= 25;
+        if (hasType("political")) total -= 5;
+
+        return total;
+      };
+
+      return score(right) - score(left);
+    })[0];
+  }
+
+  function rankAddressAutocompletePredictions(
+    input: string,
+    predictions: { description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
+    lat?: number | null,
+    lng?: number | null,
+  ) {
+    return [...predictions].sort(
+      (left, right) => scoreMapsPrediction(right, input, lat, lng) - scoreMapsPrediction(left, input, lat, lng),
+    );
   }
 
   function hasLocalityHint(query: string) {
@@ -951,14 +1020,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     lng?: number | null,
   ) {
     const normalizedInput = normalizeMapsQuery(input).toLowerCase();
-    const haystack = `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`.toLowerCase();
+    const haystack = normalizeMapsQuery(`${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`).toLowerCase();
+    const mainText = normalizeMapsQuery(prediction.mainText).toLowerCase();
+    const leadingNumber = normalizedInput.match(/^\d+/)?.[0] || "";
+    const significantTokens = extractAddressTokens(normalizedInput);
     let score = 0;
 
+    if (haystack.startsWith(normalizedInput)) score += 80;
+    if (mainText.startsWith(normalizedInput)) score += 90;
+    if (haystack.includes(normalizedInput)) score += 45;
     if (haystack.includes("south africa")) score += 8;
     if (haystack.includes("gauteng")) score += 8;
     if (haystack.includes("pretoria")) score += 18;
     if (normalizedInput.includes("pretorius") && haystack.includes("pretorius")) score += 30;
-    if (/^\d+/.test(normalizedInput) && haystack.includes(normalizedInput.match(/^\d+/)?.[0] || "")) score += 10;
+    if (leadingNumber && new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) score += 25;
+    if (leadingNumber && !new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) score -= 30;
+
+    for (const token of significantTokens) {
+      if (new RegExp(`\\b${token}\\b`).test(haystack)) {
+        score += 12;
+      } else if (haystack.includes(token)) {
+        score += 5;
+      } else {
+        score -= 10;
+      }
+    }
+
     if (prediction.lat != null && prediction.lng != null) {
       const bias = lat != null && lng != null ? { lat, lng } : SA_DEFAULT_BIAS;
       const distanceKm = haversine(bias.lat, bias.lng, prediction.lat, prediction.lng);
@@ -975,17 +1062,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     predictions: { description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
   ) {
     const normalizedInput = normalizeMapsQuery(input).toLowerCase();
-    if (!/^\d+\s+/.test(normalizedInput)) return predictions;
+    const rankedPredictions = rankAddressAutocompletePredictions(input, predictions);
+    if (!/^\d+\s+/.test(normalizedInput)) return rankedPredictions;
 
-    const significantTokens = (normalizedInput.match(/[a-z]{5,}/g) || []).filter(
-      (token) => !["south", "africa"].includes(token),
-    );
-    if (significantTokens.length === 0) return predictions;
+    const leadingNumber = normalizedInput.match(/^\d+/)?.[0] || "";
+    const significantTokens = extractAddressTokens(normalizedInput);
+    if (significantTokens.length === 0) return rankedPredictions;
 
-    return predictions.filter((prediction) => {
-      const haystack = `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`.toLowerCase();
+    const filteredPredictions = rankedPredictions.filter((prediction) => {
+      const haystack = normalizeMapsQuery(`${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`).toLowerCase();
+      if (leadingNumber && !new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) {
+        return false;
+      }
       return significantTokens.every((token) => haystack.includes(token));
     });
+
+    return filteredPredictions.length > 0 ? filteredPredictions : rankedPredictions;
   }
 
   function southAfricanCityFallback(input: string, lat?: number | null, lng?: number | null) {
@@ -1028,8 +1120,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       Number.isFinite(options.lat) &&
       typeof options?.lng === "number" &&
       Number.isFinite(options.lng);
-    const biasLat = hasBias ? Number(options!.lat) : null;
-    const biasLng = hasBias ? Number(options!.lng) : null;
+    const biasLat = hasBias ? Number(options?.lat) : null;
+    const biasLng = hasBias ? Number(options?.lng) : null;
     const searchQueries = cityOnly ? [normalizedQuery] : buildAddressSearchQueries(normalizedQuery, options?.lat, options?.lng);
     const allRawResults: any[] = [];
 
@@ -1138,42 +1230,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (GOOGLE_KEY) {
         const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
-        const typeQuery = cityOnly ? "&types=(cities)" : "&types=address";
+        const typeQuery = cityOnly ? "&types=(cities)" : "";
         const zaBiasQuery = hasLocationBias
           ? `&location=${lat},${lng}&radius=${cityOnly ? 220000 : 90000}`
           : `&location=${SA_DEFAULT_BIAS.lat},${SA_DEFAULT_BIAS.lng}&radius=${cityOnly ? 450000 : 160000}`;
         const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(normalizedInput)}&components=country:za&region=za&language=en${typeQuery}${zaBiasQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
         const r = await fetchMapsJson(url);
         const mappedPredictions = Array.isArray(r.predictions)
-          ? r.predictions
-              .slice(0, 8)
-              .map((p: any) => {
-                const prediction = {
-                  placeId: p.place_id,
-                  description: p.description,
-                  mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
-                  secondaryText: p.structured_formatting?.secondary_text || "",
-                  lat: null,
-                  lng: null,
-                };
-                return {
-                  ...prediction,
-                  score: scoreMapsPrediction(prediction, normalizedInput, lat, lng),
-                };
-              })
-              .sort((a: any, b: any) => b.score - a.score)
-              .slice(0, 6)
-              .map(({ score: _score, ...prediction }: any) => prediction)
+          ? r.predictions.slice(0, 8).map((p: any) => ({
+              placeId: p.place_id,
+              description: p.description,
+              mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
+              secondaryText: p.structured_formatting?.secondary_text || "",
+              lat: null,
+              lng: null,
+            }))
           : [];
+        const rankedPredictions = cityOnly
+          ? mappedPredictions
+          : rankAddressAutocompletePredictions(normalizedInput, mappedPredictions, lat, lng);
         const filteredPredictions = cityOnly
           ? mappedPredictions
-          : filterAddressAutocompletePredictions(normalizedInput, mappedPredictions);
+          : filterAddressAutocompletePredictions(normalizedInput, rankedPredictions);
 
         if (r.status === "OK" && r.predictions.length > 0) {
           return res.json({
             predictions: cityOnly
               ? [...staticCityPredictions, ...mappedPredictions].slice(0, 8)
-              : filteredPredictions,
+              : filteredPredictions.slice(0, 6),
           });
         }
 
@@ -1187,8 +1271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   return types.includes("locality") || types.includes("postal_town") || types.includes("administrative_area_level_2");
                 })
               : geocodeResponse.results;
-            return res.json({
-              predictions: geocodeResults.slice(0, 5).map((result: any) => ({
+              const geocodePredictions = geocodeResults.slice(0, 8).map((result: any) => ({
                 placeId: result.place_id,
                 description: result.formatted_address,
                 mainText: result.address_components?.[0]?.long_name || result.formatted_address.split(",")[0],
@@ -1199,8 +1282,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   .trim(),
                 lat: result.geometry?.location?.lat ?? null,
                 lng: result.geometry?.location?.lng ?? null,
-              })),
-            });
+                }));
+              return res.json({
+                predictions: cityOnly
+                  ? geocodePredictions.slice(0, 5)
+                  : rankAddressAutocompletePredictions(normalizedInput, geocodePredictions, lat, lng).slice(0, 5),
+              });
           }
         }
 
@@ -1263,7 +1350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY}`;
         const r = await fetchMapsJson(url);
         if (r.status === "OK" && r.results.length > 0) {
-          const best = r.results[0];
+          const best = chooseBestReverseGeocodeResult(r.results) || r.results[0];
           const components = best.address_components;
           const get = (type: string) => components.find((c: any) => c.types.includes(type))?.long_name || "";
           const streetNumber = get("street_number");
@@ -1770,36 +1857,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden" });
       }
       await storage.updateChauffeur(req.params.id, { pushToken });
-      return res.json({ success: true });
-    } catch (error: any) {
-      return res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.put("/api/chauffeurs/:id/location", requireAuth, async (req: AuthedRequest, res: Response) => {
-    try {
-      const chauffeurId = String(req.params.id);
-      const chauffeur = await storage.getChauffeur(chauffeurId);
-      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
-      if (chauffeur.userId !== req.auth!.sub && req.auth!.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
-      const lat = Number(req.body?.lat);
-      const lng = Number(req.body?.lng);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        return res.status(400).json({ message: "Valid lat and lng are required" });
-      }
-      if (lat < -35 || lat > -22 || lng < 16 || lng > 33) {
-        return res.status(400).json({ message: "Location must be inside South Africa" });
-      }
-
-      await storage.updateChauffeur(chauffeurId, {
-        lat,
-        lng,
-        locationUpdatedAt: new Date(),
-      });
-      io.emit("location:update", { chauffeurId, lat, lng });
       return res.json({ success: true });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });

@@ -219,7 +219,7 @@ export default function ChauffeurRegisterScreen() {
   if (step === "vehicle") {
     return (
       <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20) }]}>
-        <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace("/")}>
+        <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace("/role-select")}>
           <Ionicons name="chevron-back" size={24} color={Colors.white} />
         </Pressable>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>

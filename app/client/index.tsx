@@ -294,6 +294,18 @@ const CURRENT_LOCATION_LABEL = "Current Location";
 const SIGNIFICANT_LOCATION_SHIFT_KM = 0.03;
 const DRIVER_MARKER_SHIFT_KM = 0.01;
 const AUTOCOMPLETE_DEBOUNCE_MS = 400;
+const ADDRESS_TERM_NORMALIZATIONS: Array<[RegExp, string]> = [
+  [/\bpretorious\b/gi, "Pretorius"],
+  [/\bpretoriaus\b/gi, "Pretorius"],
+  [/\bst\.?\b/gi, "Street"],
+  [/\bave\.?\b/gi, "Avenue"],
+  [/\brd\.?\b/gi, "Road"],
+  [/\bdr\.?\b/gi, "Drive"],
+  [/\bln\.?\b/gi, "Lane"],
+  [/\bcl\.?\b/gi, "Close"],
+  [/\bblvd\.?\b/gi, "Boulevard"],
+  [/\bcres\.?\b/gi, "Crescent"],
+];
 
 const SOUTH_AFRICA_BOUNDS = {
   minLat: -35,
@@ -388,11 +400,54 @@ async function buildNativeLocationSuggestions(query: string) {
 }
 
 function normalizeAddressSearchQuery(value: string) {
-  return value
-    .trim()
-    .replace(/\bpretorious\b/gi, "Pretorius")
-    .replace(/\bpretoriaus\b/gi, "Pretorius")
-    .replace(/\s+/g, " ");
+  return ADDRESS_TERM_NORMALIZATIONS.reduce(
+    (normalized, [pattern, replacement]) => normalized.replace(pattern, replacement),
+    value.trim(),
+  ).replace(/\s+/g, " ");
+}
+
+function scoreAddressPrediction(
+  query: string,
+  prediction: { description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null },
+) {
+  const normalizedQuery = normalizeAddressSearchQuery(query).toLowerCase();
+  const normalizedHaystack = normalizeAddressSearchQuery(
+    `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`,
+  ).toLowerCase();
+  const leadingNumber = normalizedQuery.match(/^\d+/)?.[0] || "";
+  const significantTokens = (normalizedQuery.match(/[a-z]{3,}/g) || []).filter(
+    (token) => !["south", "africa"].includes(token),
+  );
+  let score = 0;
+
+  if (normalizedHaystack.startsWith(normalizedQuery)) score += 80;
+  if (normalizedHaystack.includes(normalizedQuery)) score += 40;
+  if (leadingNumber && new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(normalizedHaystack)) score += 25;
+
+  for (const token of significantTokens) {
+    if (new RegExp(`\\b${token}\\b`).test(normalizedHaystack)) {
+      score += 12;
+    } else if (normalizedHaystack.includes(token)) {
+      score += 5;
+    } else {
+      score -= 10;
+    }
+  }
+
+  return score;
+}
+
+function scoreResolvedAddress(description?: string | null) {
+  if (!description) return -1;
+
+  const normalized = normalizeAddressSearchQuery(description).toLowerCase();
+  let score = Math.min(normalized.length, 120) / 4;
+
+  if (/^\d+\s+/.test(normalized)) score += 40;
+  if (/\b(street|avenue|road|drive|lane|close|boulevard|crescent)\b/.test(normalized)) score += 20;
+  if (normalized.split(",")[0]?.trim().split(/\s+/).length >= 2) score += 10;
+
+  return score;
 }
 
 function shouldDeferAddressAutocomplete(query: string) {
@@ -409,16 +464,30 @@ function filterAddressPredictions(
   predictions: { description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
 ) {
   const normalized = normalizeAddressSearchQuery(query).toLowerCase();
-  const significantTokens = (normalized.match(/[a-z]{5,}/g) || []).filter(
+  const leadingNumber = normalized.match(/^\d+/)?.[0] || "";
+  const significantTokens = (normalized.match(/[a-z]{3,}/g) || []).filter(
     (token) => !["south", "africa"].includes(token),
   );
 
-  if (significantTokens.length === 0) return predictions;
+  const rankedPredictions = [...predictions].sort(
+    (left, right) => scoreAddressPrediction(query, right) - scoreAddressPrediction(query, left),
+  );
 
-  return predictions.filter((prediction) => {
-    const haystack = `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`.toLowerCase();
+  if (significantTokens.length === 0 && !leadingNumber) return rankedPredictions;
+
+  const filteredPredictions = rankedPredictions.filter((prediction) => {
+    const haystack = normalizeAddressSearchQuery(
+      `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`,
+    ).toLowerCase();
+
+    if (leadingNumber && !new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) {
+      return false;
+    }
+
     return significantTokens.every((token) => haystack.includes(token));
   });
+
+  return filteredPredictions.length > 0 ? filteredPredictions : rankedPredictions;
 }
 
 
@@ -602,7 +671,16 @@ export default function ClientHomeScreen() {
         setRideStatus((prev) => (prev === "idle" ? "requested" : prev));
       }
     });
-    return () => sub.remove();
+
+    const receivedSub = Notifications.addNotificationReceivedListener(() => {
+      // Bump the badge immediately when a push arrives (foreground)
+      setUnreadCount((prev) => prev + 1);
+    });
+
+    return () => {
+      sub.remove();
+      receivedSub.remove();
+    };
   }, [isExpoGoAndroid]);
 
   // Poll unread notification count for badge
@@ -891,6 +969,7 @@ export default function ClientHomeScreen() {
     if (!force && !hasLocationShift(lastResolvedPickupRef.current, coords, 0.08)) return;
 
     let description: string | null = null;
+    let nativeDescription: string | null = null;
 
     try {
       const res = await apiRequest("GET", `/api/places/reverse?lat=${coords.lat}&lng=${coords.lng}`);
@@ -906,8 +985,12 @@ export default function ClientHomeScreen() {
           latitude: coords.lat,
           longitude: coords.lng,
         });
-        description = formatNativeReverseGeocode(results[0]);
+        nativeDescription = formatNativeReverseGeocode(results[0]);
       } catch {}
+    }
+
+    if (scoreResolvedAddress(nativeDescription) > scoreResolvedAddress(description)) {
+      description = nativeDescription;
     }
 
     if (!force && !pickupFollowsDeviceRef.current) return;
@@ -1671,70 +1754,76 @@ export default function ClientHomeScreen() {
       </View>
 
       {rideStatus === "idle" && (
-        <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset, paddingBottom: bottomPanelPadding }]}>
+        <Animated.View entering={FadeInDown.duration(400)} style={[styles.bottomSheet, { marginBottom: bottomPanelOffset }]}>
           <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Where to?</Text>
-
-          {/* Selfie nudge banner */}
-          {!user?.profilePhoto && (
-            <Pressable style={styles.selfieNudgeBanner} onPress={() => router.push("/client/profile")}>
-              <Ionicons name="person-circle-outline" size={22} color="#FFE066" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.selfieNudgeTitle}>Add your profile selfie</Text>
-                <Text style={styles.selfieNudgeBody}>Drivers see your photo before accepting. Tap to add.</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="#FFE066" />
-            </Pressable>
-          )}
-
-          {/* Location inputs */}
-          <View style={styles.locationInputsCard}>
-            <Pressable style={styles.locationInputRow} onPress={() => openLocationPicker("pickup")}>
-              <View style={styles.dotGreen} />
-              <View style={styles.locationInputInner}>
-                <Text style={styles.locationInputLabel}>Pickup</Text>
-                <Text style={styles.locationInputValue} numberOfLines={1}>
-                  {pickupAddress || "Set pickup location"}
-                </Text>
-              </View>
-              <Ionicons name="pencil-outline" size={15} color={Colors.textMuted} />
-            </Pressable>
-
-            <View style={styles.locationDivider} />
-
-            <Pressable style={styles.locationInputRow} onPress={() => openLocationPicker("dropoff")}>
-              <View style={styles.dotRed} />
-              <View style={styles.locationInputInner}>
-                <Text style={styles.locationInputLabel}>Dropoff</Text>
-                <Text
-                  style={[styles.locationInputValue, !dropoffAddress && { color: Colors.textMuted }]}
-                  numberOfLines={1}
-                >
-                  {dropoffAddress || "Where are you going?"}
-                </Text>
-              </View>
-              <Ionicons name="pencil-outline" size={15} color={Colors.textMuted} />
-            </Pressable>
-          </View>
-
-          <Pressable
-            style={styles.vehicleSelector}
-            onPress={() => setShowVehicleSheet(true)}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: bottomPanelPadding }}
           >
-            <Ionicons name={selectedVehicle.icon} size={20} color={Colors.white} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.vehicleName}>{selectedVehicle.name}</Text>
-              <Text style={styles.vehiclePrice}>R{selectedVehicle.baseFare} base + R{selectedVehicle.pricePerKm}/km</Text>
+            <Text style={styles.sheetTitle}>Where to?</Text>
+
+            {/* Selfie nudge banner */}
+            {!user?.profilePhoto && (
+              <Pressable style={styles.selfieNudgeBanner} onPress={() => router.push("/client/profile")}>
+                <Ionicons name="person-circle-outline" size={22} color="#FFE066" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.selfieNudgeTitle}>Add your profile selfie</Text>
+                  <Text style={styles.selfieNudgeBody}>Drivers see your photo before accepting. Tap to add.</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#FFE066" />
+              </Pressable>
+            )}
+
+            {/* Location inputs */}
+            <View style={styles.locationInputsCard}>
+              <Pressable style={styles.locationInputRow} onPress={() => openLocationPicker("pickup")}>
+                <View style={styles.dotGreen} />
+                <View style={styles.locationInputInner}>
+                  <Text style={styles.locationInputLabel}>Pickup</Text>
+                  <Text style={styles.locationInputValue} numberOfLines={1}>
+                    {pickupAddress || "Set pickup location"}
+                  </Text>
+                </View>
+                <Ionicons name="pencil-outline" size={15} color={Colors.textMuted} />
+              </Pressable>
+
+              <View style={styles.locationDivider} />
+
+              <Pressable style={styles.locationInputRow} onPress={() => openLocationPicker("dropoff")}>
+                <View style={styles.dotRed} />
+                <View style={styles.locationInputInner}>
+                  <Text style={styles.locationInputLabel}>Dropoff</Text>
+                  <Text
+                    style={[styles.locationInputValue, !dropoffAddress && { color: Colors.textMuted }]}
+                    numberOfLines={1}
+                  >
+                    {dropoffAddress || "Where are you going?"}
+                  </Text>
+                </View>
+                <Ionicons name="pencil-outline" size={15} color={Colors.textMuted} />
+              </Pressable>
             </View>
-            <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
-          </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [styles.confirmBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
-            onPress={getEstimate}
-          >
-            <Text style={styles.confirmBtnText}>Get Estimated Fare</Text>
-          </Pressable>
+            <Pressable
+              style={styles.vehicleSelector}
+              onPress={() => setShowVehicleSheet(true)}
+            >
+              <Ionicons name={selectedVehicle.icon} size={20} color={Colors.white} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.vehicleName}>{selectedVehicle.name}</Text>
+                <Text style={styles.vehiclePrice}>R{selectedVehicle.baseFare} base + R{selectedVehicle.pricePerKm}/km</Text>
+              </View>
+              <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.confirmBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
+              onPress={getEstimate}
+            >
+              <Text style={styles.confirmBtnText}>Get Estimated Fare</Text>
+            </Pressable>
+          </ScrollView>
         </Animated.View>
       )}
 

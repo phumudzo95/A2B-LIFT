@@ -44,6 +44,17 @@ if (Platform.OS !== "web") {
         importance: Notifications.AndroidImportance.DEFAULT,
         sound: "default",
       });
+      // Client-specific alert channel — must exist at startup so pushes
+      // can be delivered before the client screen has mounted
+      Notifications.setNotificationChannelAsync("client-alerts", {
+        name: "Client Alerts",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 200, 200, 200],
+        sound: RIDE_ALERT_SOUND,
+        bypassDnd: true,
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        showBadge: true,
+      });
     }
     // This handler controls foreground notification presentation.
     // It is set ONCE here so all screens inherit it automatically.
