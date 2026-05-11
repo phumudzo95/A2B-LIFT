@@ -10,9 +10,9 @@ const easOwner = process.env.EXPO_PUBLIC_EAS_OWNER || "pascal225";
 const easProjectId =
   process.env.EXPO_PUBLIC_EAS_PROJECT_ID ||
   (easOwner === "pascal225" ? defaultPascalProjectId : defaultPamolProjectId);
+const withReactNativeMapsAndroidKey = require("./plugins/withReactNativeMapsAndroidKey");
 
-module.exports = {
-  expo: {
+module.exports = () => withReactNativeMapsAndroidKey({
     name: "A2B LIFT",
     slug: "a2b-lift",
     owner: easOwner,
@@ -69,11 +69,6 @@ module.exports = {
         "android.permission.INTERNET",
         "android.permission.VIBRATE",
         "android.permission.RECORD_AUDIO",
-        "android.permission.POST_NOTIFICATIONS",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION",
-        "android.permission.WAKE_LOCK",
       ],
       config: {
         googleMaps: {
@@ -115,7 +110,7 @@ module.exports = {
           locationAlwaysAndWhenInUsePermission: "A2B LIFT uses your location to connect you with nearby drivers and navigate your trip.",
           locationWhenInUsePermission: "A2B LIFT needs your location to show nearby drivers and navigate to your destination.",
           isIosBackgroundLocationEnabled: false,
-          isAndroidBackgroundLocationEnabled: true,
+          isAndroidBackgroundLocationEnabled: false,
         },
       ],
       [
@@ -148,5 +143,4 @@ module.exports = {
           },
         }
       : {}),
-  },
-};
+  });
