@@ -864,13 +864,20 @@ async function saveChaufEdit(id) {
 }
 
 async function deleteChauf(id, name) {
-  if (!confirm('Are you sure you want to permanently delete driver "' + name + '"? This will also remove their application and cannot be undone.')) return;
-  try {
-    const res = await apiFetch('/api/chauffeurs/' + id, { method: 'DELETE' });
-    if (!res.ok) throw new Error(await res.text());
-    toast('🗑 Driver deleted successfully.', 'ok');
-    loadChauf();
-  } catch(e) { toast('❌ ' + e.message, 'err'); }
+  showDeleteConfirm({
+    title: 'Delete Driver',
+    subtitle: 'This permanently removes the driver and linked application.',
+    message: `Are you sure you want to permanently delete "${name || 'this driver'}"? This action cannot be undone.`,
+    confirmLabel: 'Confirm Delete',
+    onConfirm: async () => {
+      try {
+        const res = await apiFetch('/api/chauffeurs/' + id, { method: 'DELETE' });
+        if (!res.ok) throw new Error(await res.text());
+        toast('🗑 Driver deleted successfully.', 'ok');
+        loadChauf();
+      } catch(e) { toast('❌ ' + e.message, 'err'); }
+    },
+  });
 }
 
 // ── DRIVER APPLICATIONS ──
@@ -1017,13 +1024,20 @@ async function editAppNotes(id) {
 }
 
 async function deleteApp(id) {
-  if (!confirm('Permanently delete this application? This cannot be undone.')) return;
-  try {
-    const res = await apiFetch('/api/admin/driver-applications/' + id, { method: 'DELETE' });
-    if (!res.ok) throw new Error(await res.text());
-    toast('🗑 Application deleted.', 'ok');
-    loadApps();
-  } catch(e) { toast('❌ ' + e.message, 'err'); }
+  showDeleteConfirm({
+    title: 'Delete Application',
+    subtitle: 'This permanently removes the application record.',
+    message: 'Are you sure you want to permanently delete this application? This action cannot be undone.',
+    confirmLabel: 'Confirm Delete',
+    onConfirm: async () => {
+      try {
+        const res = await apiFetch('/api/admin/driver-applications/' + id, { method: 'DELETE' });
+        if (!res.ok) throw new Error(await res.text());
+        toast('🗑 Application deleted.', 'ok');
+        loadApps();
+      } catch(e) { toast('❌ ' + e.message, 'err'); }
+    },
+  });
 }
 
 function chaufDetail(id) {
@@ -1387,7 +1401,6 @@ async function loadUsers() {
 
 // ── ADMIN DELETE ──
 async function adminDelete(type, id, label) {
-  if (!confirm('Delete ' + label + '?\n\nThis is permanent and cannot be undone.')) return;
   const endpoints = {
     ride: '/api/admin/rides/' + id,
     user: '/api/admin/users/' + id,
@@ -1398,13 +1411,21 @@ async function adminDelete(type, id, label) {
   };
   const url = endpoints[type];
   if (!url) { toast('❌ Unknown type', 'err'); return; }
-  try {
-    const res = await apiFetch(url, { method: 'DELETE' });
-    if (!res.ok) throw new Error(await res.text());
-    toast('🗑 Deleted successfully', 'ok');
-    const reloaders = { ride: loadRides, user: loadUsers, withdrawal: loadWd, 'safety-report': loadSafe, payment: loadPay, document: loadChauf };
-    reloaders[type]?.();
-  } catch(e) { toast('❌ ' + e.message, 'err'); }
+  showDeleteConfirm({
+    title: 'Confirm Delete',
+    subtitle: 'This change is permanent and cannot be undone.',
+    message: `Delete ${label}?`,
+    confirmLabel: 'Confirm Delete',
+    onConfirm: async () => {
+      try {
+        const res = await apiFetch(url, { method: 'DELETE' });
+        if (!res.ok) throw new Error(await res.text());
+        toast('🗑 Deleted successfully', 'ok');
+        const reloaders = { ride: loadRides, user: loadUsers, withdrawal: loadWd, 'safety-report': loadSafe, payment: loadPay, document: loadChauf };
+        reloaders[type]?.();
+      } catch(e) { toast('❌ ' + e.message, 'err'); }
+    },
+  });
 }
 
 // ── SEARCH ──
@@ -1424,8 +1445,39 @@ function fmt(d) { return d ? new Date(d).toLocaleDateString('en-ZA', { day:'2-di
 function fmtFull(d) { return d ? new Date(d).toLocaleString('en-ZA') : '—'; }
 function spin(id) { const el = document.getElementById(id); if (el) el.innerHTML = '<div class="loading">Loading…</div>'; }
 function emptyState(icon, title, sub) { return `<div class="empty"><div class="empty-icon">${icon}</div><div class="empty-text">${title}</div><div class="empty-sub">${sub}</div></div>`; }
+let pendingDeleteAction = null;
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function showDeleteConfirm({ title, subtitle, message, confirmLabel, onConfirm }) {
+  pendingDeleteAction = onConfirm;
+  document.getElementById('m-title').textContent = title || 'Confirm Delete';
+  document.getElementById('m-sub').textContent = subtitle || 'This action cannot be undone.';
+  document.getElementById('m-body').innerHTML = `
+    <div class="notice" style="margin:0">
+      ⚠️ <span>${escapeHtml(message || 'This action cannot be undone.')}</span>
+    </div>`;
+  document.getElementById('m-foot').innerHTML = `
+    <button class="btn-lg btn-outline" onclick="closeModal()">Cancel</button>
+    <button class="btn-lg btn-red" onclick="runPendingDeleteAction()">${escapeHtml(confirmLabel || 'Confirm Delete')}</button>`;
+  openModal();
+}
+async function runPendingDeleteAction() {
+  const action = pendingDeleteAction;
+  pendingDeleteAction = null;
+  closeModal();
+  if (typeof action === 'function') await action();
+}
 function openModal() { document.getElementById('modal-wrap').classList.add('open'); }
-function closeModal() { document.getElementById('modal-wrap').classList.remove('open'); }
+function closeModal() {
+  pendingDeleteAction = null;
+  document.getElementById('modal-wrap').classList.remove('open');
+}
 document.getElementById('modal-wrap').addEventListener('click', e => { if (e.target === document.getElementById('modal-wrap')) closeModal(); });
 
 function toast(msg, type = 'ok') {
