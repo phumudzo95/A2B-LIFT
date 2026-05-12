@@ -421,9 +421,16 @@ tbody tr:hover { background:#fafaf8; }
 <div class="toast" id="toast"></div>
 
 <script>
-// Always use the same origin that served this page — avoids CORS issues on dev/staging domains.
-// The backend API is co-located with the admin HTML regardless of where it's hosted.
-const API = '';
+// Use same-origin only when the admin is served by the API host or local dev.
+// Static Netlify admin deployments must target the Railway API explicitly.
+const PROD_API = 'https://api-production-0783.up.railway.app';
+const API = (() => {
+  const host = window.location.hostname || '';
+  if (!host || host === 'localhost' || host === '127.0.0.1' || host.endsWith('.up.railway.app')) {
+    return '';
+  }
+  return localStorage.getItem('a2b_admin_api_base') || PROD_API;
+})();
 const TOKEN_KEY = 'a2b_admin_token';
 
 function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
