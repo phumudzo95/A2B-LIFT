@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable, Platform, ScrollView, ActivityIndicator, Image, Modal, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, Platform, ScrollView, ActivityIndicator, Image, Modal, Alert, Linking } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,9 +25,36 @@ interface ClientProfileDetails {
   ratings: ClientReview[];
 }
 
+const DRIVER_APP_DEEP_LINK = "a2blift://register";
+const DRIVER_ANDROID_PACKAGE = "com.a2blift";
+const DRIVER_APP_STORE_URL_IOS = process.env.EXPO_PUBLIC_IOS_APP_STORE_URL || "https://apps.apple.com/app/id982107779";
+const DRIVER_APP_STORE_URL_ANDROID_WEB = `https://play.google.com/store/apps/details?id=${DRIVER_ANDROID_PACKAGE}`;
+
+function normalizeReferralCode(value?: string | null) {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+  return normalized || null;
+}
+
+function appendQueryParam(url: string, key: string, value?: string | null) {
+  if (!value) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}${key}=${encodeURIComponent(value)}`;
+}
+
+function buildAndroidStoreUrl(referralCode?: string | null, useNativeStoreScheme = false) {
+  const baseUrl = useNativeStoreScheme
+    ? `market://details?id=${DRIVER_ANDROID_PACKAGE}`
+    : DRIVER_APP_STORE_URL_ANDROID_WEB;
+  if (!referralCode) return baseUrl;
+  return `${baseUrl}&referrer=${encodeURIComponent(`ref=${referralCode}`)}`;
+}
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout, setUser } = useAuth();
+  const { user, logout, pendingReferralCode, setUser } = useAuth();
   const [profileDetails, setProfileDetails] = useState<ClientProfileDetails | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [showSelfieUpdate, setShowSelfieUpdate] = useState(false);
@@ -86,6 +113,33 @@ export default function ProfileScreen() {
 
   async function handleLogout() {
     await logout();
+  }
+
+  async function handleBecomeDriver() {
+    const referralCode = normalizeReferralCode(pendingReferralCode);
+    const driverAppUrl = appendQueryParam(DRIVER_APP_DEEP_LINK, "ref", referralCode);
+    const platformStoreUrl = Platform.OS === "ios"
+      ? appendQueryParam(DRIVER_APP_STORE_URL_IOS, "ref", referralCode)
+      : buildAndroidStoreUrl(referralCode, true);
+    const webStoreUrl = Platform.OS === "ios"
+      ? appendQueryParam(DRIVER_APP_STORE_URL_IOS, "ref", referralCode)
+      : buildAndroidStoreUrl(referralCode, false);
+
+    try {
+      await Linking.openURL(driverAppUrl);
+      return;
+    } catch {}
+
+    try {
+      await Linking.openURL(platformStoreUrl);
+      return;
+    } catch {}
+
+    try {
+      await Linking.openURL(webStoreUrl);
+    } catch {
+      Alert.alert("Unable to open driver app", "We couldn't open the driver app or store link right now. Please try again.");
+    }
   }
 
   const averageRating = profileDetails?.clientRating ?? (user?.rating != null ? Number(user.rating) : null);
@@ -233,12 +287,12 @@ export default function ProfileScreen() {
       <View style={styles.menuGroup}>
         <Pressable
           style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
-          onPress={() => router.replace("/role-select")}
+          onPress={handleBecomeDriver}
         >
           <View style={styles.menuIconCircle}>
-            <Ionicons name="swap-horizontal" size={20} color={Colors.white} />
+            <Ionicons name="car-sport-outline" size={20} color={Colors.white} />
           </View>
-          <Text style={styles.menuText}>Switch Mode</Text>
+          <Text style={styles.menuText}>{user?.role === "chauffeur" ? "Open Driver App" : "Become a Driver"}</Text>
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </Pressable>
       </View>

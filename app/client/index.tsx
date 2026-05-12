@@ -306,6 +306,20 @@ const ADDRESS_TERM_NORMALIZATIONS: Array<[RegExp, string]> = [
   [/\bblvd\.?\b/gi, "Boulevard"],
   [/\bcres\.?\b/gi, "Crescent"],
 ];
+const NON_DISTINCT_ADDRESS_TOKENS = new Set([
+  "south",
+  "africa",
+  "street",
+  "avenue",
+  "road",
+  "drive",
+  "lane",
+  "close",
+  "boulevard",
+  "crescent",
+  "city",
+  "town",
+]);
 
 const SOUTH_AFRICA_BOUNDS = {
   minLat: -35,
@@ -406,6 +420,12 @@ function normalizeAddressSearchQuery(value: string) {
   ).replace(/\s+/g, " ");
 }
 
+function extractMeaningfulAddressTokens(value: string) {
+  return normalizeAddressSearchQuery(value)
+    .toLowerCase()
+    .match(/[a-z]{3,}/g)?.filter((token) => !NON_DISTINCT_ADDRESS_TOKENS.has(token)) || [];
+}
+
 function scoreAddressPrediction(
   query: string,
   prediction: { description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null },
@@ -415,14 +435,13 @@ function scoreAddressPrediction(
     `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`,
   ).toLowerCase();
   const leadingNumber = normalizedQuery.match(/^\d+/)?.[0] || "";
-  const significantTokens = (normalizedQuery.match(/[a-z]{3,}/g) || []).filter(
-    (token) => !["south", "africa"].includes(token),
-  );
+  const significantTokens = extractMeaningfulAddressTokens(normalizedQuery);
   let score = 0;
 
   if (normalizedHaystack.startsWith(normalizedQuery)) score += 80;
   if (normalizedHaystack.includes(normalizedQuery)) score += 40;
   if (leadingNumber && new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(normalizedHaystack)) score += 25;
+  if (/\b(ward|municipality|district municipality|administrative area)\b/.test(normalizedHaystack)) score -= 45;
 
   for (const token of significantTokens) {
     if (new RegExp(`\\b${token}\\b`).test(normalizedHaystack)) {
@@ -490,27 +509,44 @@ function filterAddressPredictions(
 ) {
   const normalized = normalizeAddressSearchQuery(query).toLowerCase();
   const leadingNumber = normalized.match(/^\d+/)?.[0] || "";
-  const significantTokens = (normalized.match(/[a-z]{3,}/g) || []).filter(
-    (token) => !["south", "africa"].includes(token),
-  );
+  const significantTokens = extractMeaningfulAddressTokens(normalized);
+  const startsWithNumber = /^\d+\s+/.test(normalized);
 
   const rankedPredictions = [...predictions].sort(
     (left, right) => scoreAddressPrediction(query, right) - scoreAddressPrediction(query, left),
   );
 
-  if (!/^\d+\s+/.test(normalized)) return rankedPredictions;
   if (significantTokens.length === 0 && !leadingNumber) return rankedPredictions;
+
+  const minimumTokenMatches = significantTokens.length > 1 ? Math.min(significantTokens.length, 2) : significantTokens.length;
 
   const filteredPredictions = rankedPredictions.filter((prediction) => {
     const haystack = normalizeAddressSearchQuery(
       `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`,
     ).toLowerCase();
 
+    if (/\b(ward|municipality|district municipality|administrative area)\b/.test(haystack)) {
+      return false;
+    }
+
     if (leadingNumber && !new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) {
       return false;
     }
 
-    return significantTokens.every((token) => haystack.includes(token));
+    if (significantTokens.length === 0) {
+      return true;
+    }
+
+    if (haystack.includes(normalized)) {
+      return true;
+    }
+
+    const tokenMatches = significantTokens.filter((token) => haystack.includes(token)).length;
+    if (startsWithNumber) {
+      return tokenMatches === significantTokens.length;
+    }
+
+    return tokenMatches >= minimumTokenMatches;
   });
 
   return filteredPredictions.length > 0 ? filteredPredictions : rankedPredictions;

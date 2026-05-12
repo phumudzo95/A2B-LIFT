@@ -932,6 +932,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     [/\bblvd\.?\b/gi, "Boulevard"],
     [/\bcres\.?\b/gi, "Crescent"],
   ];
+  const NON_DISTINCT_ADDRESS_TOKENS = new Set([
+    "south",
+    "africa",
+    "street",
+    "avenue",
+    "road",
+    "drive",
+    "lane",
+    "close",
+    "boulevard",
+    "crescent",
+    "city",
+    "town",
+  ]);
 
   function normalizeMapsQuery(value: string) {
     return ADDRESS_TERM_NORMALIZATIONS.reduce(
@@ -943,7 +957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   function extractAddressTokens(value: string) {
     return normalizeMapsQuery(value)
       .toLowerCase()
-      .match(/[a-z]{3,}/g)?.filter((token) => !["south", "africa"].includes(token)) || [];
+      .match(/[a-z]{3,}/g)?.filter((token) => !NON_DISTINCT_ADDRESS_TOKENS.has(token)) || [];
   }
 
   function chooseBestReverseGeocodeResult(results: any[]) {
@@ -1077,18 +1091,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   ) {
     const normalizedInput = normalizeMapsQuery(input).toLowerCase();
     const rankedPredictions = rankAddressAutocompletePredictions(input, predictions);
-    if (!/^\d+\s+/.test(normalizedInput)) return rankedPredictions;
-
     const leadingNumber = normalizedInput.match(/^\d+/)?.[0] || "";
     const significantTokens = extractAddressTokens(normalizedInput);
-    if (significantTokens.length === 0) return rankedPredictions;
+    const startsWithNumber = /^\d+\s+/.test(normalizedInput);
+    if (significantTokens.length === 0 && !leadingNumber) return rankedPredictions;
+
+    const minimumTokenMatches = significantTokens.length > 1 ? Math.min(significantTokens.length, 2) : significantTokens.length;
 
     const filteredPredictions = rankedPredictions.filter((prediction) => {
       const haystack = normalizeMapsQuery(`${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`).toLowerCase();
+      if (/\b(ward|municipality|district municipality|administrative area)\b/.test(haystack)) {
+        return false;
+      }
       if (leadingNumber && !new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) {
         return false;
       }
-      return significantTokens.every((token) => haystack.includes(token));
+
+      if (significantTokens.length === 0) {
+        return true;
+      }
+
+      if (haystack.includes(normalizedInput)) {
+        return true;
+      }
+
+      const tokenMatches = significantTokens.filter((token) => haystack.includes(token)).length;
+      if (startsWithNumber) {
+        return tokenMatches === significantTokens.length;
+      }
+
+      return tokenMatches >= minimumTokenMatches;
     });
 
     return filteredPredictions.length > 0 ? filteredPredictions : rankedPredictions;
@@ -1300,7 +1332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return res.json({
                 predictions: cityOnly
                   ? geocodePredictions.slice(0, 5)
-                  : rankAddressAutocompletePredictions(normalizedInput, geocodePredictions, lat, lng).slice(0, 5),
+                  : filterAddressAutocompletePredictions(normalizedInput, geocodePredictions).slice(0, 5),
               });
           }
         }
