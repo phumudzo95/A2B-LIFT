@@ -843,7 +843,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "User-Agent": MAPS_USER_AGENT,
       },
     });
-    return response.json() as Promise<any>;
+    const rawBody = await response.text();
+    if (!rawBody) return null;
+
+    try {
+      return JSON.parse(rawBody) as any;
+    } catch {
+      const provider = (() => {
+        try {
+          return new URL(url).hostname;
+        } catch {
+          return "maps-provider";
+        }
+      })();
+      const preview = rawBody.replace(/\s+/g, " ").trim().slice(0, 80);
+      throw new Error(`Invalid JSON from ${provider}: ${preview}`);
+    }
+  }
+
+  async function fetchMapsJsonSafely(url: string) {
+    try {
+      return await fetchMapsJson(url);
+    } catch (error) {
+      console.warn(
+        "[maps] Upstream maps response was not valid JSON:",
+        error instanceof Error ? error.message : String(error),
+      );
+      return null;
+    }
   }
 
   function normalizeCoordinate(raw: string | number) {
@@ -1028,6 +1055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     queries.add(normalized);
 
     const lower = normalized.toLowerCase();
+    const startsWithNumber = /^\d+\s+/.test(lower);
     const bias = lat != null && lng != null ? { lat, lng } : SA_DEFAULT_BIAS;
     const nearPretoria = haversine(bias.lat, bias.lng, -25.7479, 28.2293) < 130;
     const looksPretoriaSpecific = /\bpretorius\b/i.test(normalized) || nearPretoria;
@@ -1035,8 +1063,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!hasLocalityHint(normalized)) {
       if (looksPretoriaSpecific) {
         queries.add(`${normalized}, Pretoria, Gauteng`);
-        queries.add(`${normalized}, Arcadia, Pretoria`);
-        queries.add(`${normalized}, Pretoria Central`);
+        if (!startsWithNumber) {
+          queries.add(`${normalized}, Arcadia, Pretoria`);
+          queries.add(`${normalized}, Pretoria Central`);
+        }
       }
       queries.add(`${normalized}, South Africa`);
     }
@@ -1208,7 +1238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!GOOGLE_KEY) return [];
 
     const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(`${input}, South Africa`)}&components=country:ZA&region=za&key=${GOOGLE_KEY}`;
-    const geocodeResponse = await fetchMapsJson(geocodeUrl);
+    const geocodeResponse = await fetchMapsJsonSafely(geocodeUrl);
     if (geocodeResponse.status !== "OK" || !Array.isArray(geocodeResponse.results) || geocodeResponse.results.length === 0) {
       return [];
     }
@@ -1273,7 +1303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? `&viewbox=${biasLng! - 1.6},${biasLat! + 1.6},${biasLng! + 1.6},${biasLat! - 1.6}&bounded=0`
         : "";
       const url = `${NOMINATIM_BASE_URL}/search?format=jsonv2&addressdetails=1&limit=${Math.max(limit, 8)}&countrycodes=za${biasQuery}&q=${encodeURIComponent(searchQuery)}`;
-      const rawResults = await fetchMapsJson(url);
+      const rawResults = await fetchMapsJsonSafely(url);
       if (Array.isArray(rawResults)) allRawResults.push(...rawResults);
       if (allRawResults.length >= limit * 3) break;
     }
@@ -1312,7 +1342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   async function nominatimReverse(lat: string | number, lng: string | number) {
     const url = `${NOMINATIM_BASE_URL}/reverse?format=jsonv2&addressdetails=1&lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lng))}&zoom=18`;
-    const result = await fetchMapsJson(url);
+    const result = await fetchMapsJsonSafely(url);
     if (!result || !result.address) return null;
 
     const formatted = formatNominatimAddress(result.address, result.display_name);
@@ -1334,7 +1364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (GOOGLE_KEY) {
         const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&components=country:ZA&key=${GOOGLE_KEY}`;
-        const r = await fetchMapsJson(url);
+        const r = await fetchMapsJsonSafely(url);
         if (r.status === "OK" && r.results.length > 0) {
           const loc = r.results[0].geometry.location;
           return res.json({ lat: loc.lat, lng: loc.lng });

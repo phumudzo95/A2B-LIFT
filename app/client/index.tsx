@@ -504,6 +504,43 @@ function shouldDeferAddressAutocomplete(query: string) {
   return alphaTokens.length === 1 && alphaTokens[0].length < 6;
 }
 
+function shouldOfferTypedAddressSuggestion(query: string) {
+  const normalized = normalizeAddressSearchQuery(query).toLowerCase();
+  const significantTokens = extractMeaningfulAddressTokens(normalized);
+  const startsWithNumber = /^\d+\s+/.test(normalized);
+  const longestTokenLength = significantTokens.reduce((longest, token) => Math.max(longest, token.length), 0);
+
+  if (startsWithNumber && longestTokenLength >= 4) return true;
+  return significantTokens.length >= 2 && normalized.length >= 8;
+}
+
+function buildTypedAddressSuggestion(query: string) {
+  const trimmed = query.trim();
+  return {
+    placeId: `manual:${encodeURIComponent(trimmed)}`,
+    description: trimmed,
+    mainText: trimmed,
+    secondaryText: "Use typed address",
+    lat: null,
+    lng: null,
+  };
+}
+
+function prependTypedAddressSuggestion(
+  query: string,
+  predictions: { placeId: string; description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
+) {
+  if (!shouldOfferTypedAddressSuggestion(query)) return predictions;
+
+  const typedSuggestion = buildTypedAddressSuggestion(query);
+  const alreadyIncluded = predictions.some((prediction) =>
+    normalizeAddressSearchQuery(prediction.description).toLowerCase() ===
+    normalizeAddressSearchQuery(typedSuggestion.description).toLowerCase(),
+  );
+
+  return alreadyIncluded ? predictions : [typedSuggestion, ...predictions];
+}
+
 function filterAddressPredictions(
   query: string,
   predictions: { description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
@@ -921,28 +958,28 @@ export default function ClientHomeScreen() {
         const predictions = Array.isArray(data.predictions) ? data.predictions : [];
         const filteredPredictions = filterAddressPredictions(query, predictions);
         if (filteredPredictions.length > 0) {
-          setLocationSuggestions(filteredPredictions);
+          setLocationSuggestions(prependTypedAddressSuggestion(query, filteredPredictions));
           return;
         }
 
         if (predictions.length > 0) {
-          setLocationSuggestions(predictions);
+          setLocationSuggestions(prependTypedAddressSuggestion(query, predictions));
           return;
         }
 
         if (Platform.OS !== "web") {
           const nativeSuggestions = await buildNativeLocationSuggestions(query);
-          setLocationSuggestions(filterAddressPredictions(query, nativeSuggestions));
+          setLocationSuggestions(prependTypedAddressSuggestion(query, filterAddressPredictions(query, nativeSuggestions)));
           return;
         }
 
-        setLocationSuggestions([]);
+        setLocationSuggestions(prependTypedAddressSuggestion(query, []));
       } catch {
         if (Platform.OS !== "web") {
           const nativeSuggestions = await buildNativeLocationSuggestions(query);
-          setLocationSuggestions(filterAddressPredictions(query, nativeSuggestions));
+          setLocationSuggestions(prependTypedAddressSuggestion(query, filterAddressPredictions(query, nativeSuggestions)));
         } else {
-          setLocationSuggestions([]);
+          setLocationSuggestions(prependTypedAddressSuggestion(query, []));
         }
       } finally {
         setSuggestionsLoading(false);
@@ -954,8 +991,9 @@ export default function ClientHomeScreen() {
     try {
       setSuggestionsLoading(true);
       const sessionToken = placesSessionTokenRef.current;
+      const isManualSuggestion = suggestion.placeId.startsWith("manual:");
       let coords = (suggestion.lat && suggestion.lng) ? { lat: suggestion.lat, lng: suggestion.lng } : null;
-      if (!coords) {
+      if (!coords && !isManualSuggestion) {
         // Resolve Google place ids through the Railway backend instead of direct mobile REST.
         // Fallback: server-side details endpoint
         try {
