@@ -10,7 +10,7 @@
 - [x] Root workspace manifests added for `apps/*` and `packages/*`
 - [x] Client EAS project ID assigned and saved in build environment
 - [x] Client-specific EAS build/submit profiles finalized
-- [ ] Driver and client release flow validated end-to-end
+- [x] Driver and client release flow validated end-to-end
 
 Current production package identity remains the Driver app.
 
