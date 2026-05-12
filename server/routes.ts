@@ -947,6 +947,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "town",
   ]);
 
+  type AddressAutocompletePrediction = {
+    placeId: string;
+    description: string;
+    mainText: string;
+    secondaryText: string;
+    lat: number | null;
+    lng: number | null;
+  };
+
   function normalizeMapsQuery(value: string) {
     return ADDRESS_TERM_NORMALIZATIONS.reduce(
       (normalized, [pattern, replacement]) => normalized.replace(pattern, replacement),
@@ -998,7 +1007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   function rankAddressAutocompletePredictions(
     input: string,
-    predictions: { description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
+    predictions: AddressAutocompletePrediction[],
     lat?: number | null,
     lng?: number | null,
   ) {
@@ -1040,7 +1049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   function scoreMapsPrediction(
-    prediction: { description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null },
+    prediction: AddressAutocompletePrediction,
     input: string,
     lat?: number | null,
     lng?: number | null,
@@ -1087,10 +1096,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   function filterAddressAutocompletePredictions(
     input: string,
-    predictions: { description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
+    predictions: AddressAutocompletePrediction[],
+    lat?: number | null,
+    lng?: number | null,
   ) {
     const normalizedInput = normalizeMapsQuery(input).toLowerCase();
-    const rankedPredictions = rankAddressAutocompletePredictions(input, predictions);
+    const rankedPredictions = rankAddressAutocompletePredictions(input, predictions, lat, lng);
     const leadingNumber = normalizedInput.match(/^\d+/)?.[0] || "";
     const significantTokens = extractAddressTokens(normalizedInput);
     const startsWithNumber = /^\d+\s+/.test(normalizedInput);
@@ -1123,7 +1134,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return tokenMatches >= minimumTokenMatches;
     });
 
-    return filteredPredictions.length > 0 ? filteredPredictions : rankedPredictions;
+    return filteredPredictions.length > 0 ? filteredPredictions : leadingNumber ? [] : rankedPredictions;
+  }
+
+  function dedupeAddressAutocompletePredictions(predictions: AddressAutocompletePrediction[]) {
+    const seen = new Set<string>();
+
+    return predictions.filter((prediction) => {
+      const key = prediction.placeId || normalizeMapsQuery(
+        `${prediction.mainText}|${prediction.secondaryText}|${prediction.description}`,
+      ).toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function mapGoogleGeocodeResultToPrediction(result: any): AddressAutocompletePrediction {
+    const components = Array.isArray(result?.address_components) ? result.address_components : [];
+    const get = (type: string) => components.find((component: any) => component?.types?.includes(type))?.long_name || "";
+    const streetNumber = get("street_number");
+    const route = get("route");
+    const suburb = get("sublocality_level_1") || get("sublocality") || get("neighborhood");
+    const city = get("locality") || get("administrative_area_level_2");
+    const province = get("administrative_area_level_1");
+    const mainText = route ? `${streetNumber ? `${streetNumber} ` : ""}${route}` : result.formatted_address.split(",")[0];
+    const secondaryParts = [suburb, city, province]
+      .filter((part, index, parts) => Boolean(part) && parts.indexOf(part) === index);
+
+    return {
+      placeId: result.place_id,
+      description: [mainText, ...secondaryParts].join(", ") || result.formatted_address,
+      mainText,
+      secondaryText: secondaryParts.join(", "),
+      lat: result.geometry?.location?.lat ?? null,
+      lng: result.geometry?.location?.lng ?? null,
+    };
+  }
+
+  function shouldSupplementAddressAutocompleteWithGeocode(
+    input: string,
+    predictions: AddressAutocompletePrediction[],
+  ) {
+    const normalizedInput = normalizeMapsQuery(input).toLowerCase();
+    const leadingNumber = normalizedInput.match(/^\d+/)?.[0] || "";
+    const significantTokens = extractAddressTokens(normalizedInput);
+    const longestTokenLength = significantTokens.reduce((longest, token) => Math.max(longest, token.length), 0);
+
+    if (!leadingNumber || longestTokenLength < 4) return false;
+
+    return !predictions.some((prediction) => {
+      const haystack = normalizeMapsQuery(
+        `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`,
+      ).toLowerCase();
+      if (!new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) {
+        return false;
+      }
+
+      if (haystack.includes(normalizedInput)) {
+        return true;
+      }
+
+      const tokenMatches = significantTokens.filter((token) => haystack.includes(token)).length;
+      return tokenMatches >= significantTokens.length;
+    });
+  }
+
+  async function fetchGeocodeAutocompletePredictions(
+    input: string,
+    limit = 5,
+    options?: { cityOnly?: boolean },
+  ): Promise<AddressAutocompletePrediction[]> {
+    if (!GOOGLE_KEY) return [];
+
+    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(`${input}, South Africa`)}&components=country:ZA&region=za&key=${GOOGLE_KEY}`;
+    const geocodeResponse = await fetchMapsJson(geocodeUrl);
+    if (geocodeResponse.status !== "OK" || !Array.isArray(geocodeResponse.results) || geocodeResponse.results.length === 0) {
+      return [];
+    }
+
+    const geocodeResults = options?.cityOnly
+      ? geocodeResponse.results.filter((result: any) => {
+          const types = Array.isArray(result?.types) ? result.types : [];
+          return types.includes("locality") || types.includes("postal_town") || types.includes("administrative_area_level_2");
+        })
+      : geocodeResponse.results;
+
+    return geocodeResults.slice(0, Math.max(limit, 5)).map(mapGoogleGeocodeResultToPrediction);
   }
 
   function southAfricanCityFallback(input: string, lat?: number | null, lng?: number | null) {
@@ -1282,7 +1379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : `&location=${SA_DEFAULT_BIAS.lat},${SA_DEFAULT_BIAS.lng}&radius=${cityOnly ? 450000 : 160000}`;
         const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(normalizedInput)}&components=country:za&region=za&language=en${typeQuery}${zaBiasQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
         const r = await fetchMapsJson(url);
-        const mappedPredictions = Array.isArray(r.predictions)
+        const mappedPredictions: AddressAutocompletePrediction[] = Array.isArray(r.predictions)
           ? r.predictions.slice(0, 8).map((p: any) => ({
               placeId: p.place_id,
               description: p.description,
@@ -1292,14 +1389,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lng: null,
             }))
           : [];
-        const rankedPredictions = cityOnly
+        const geocodePredictions = !cityOnly && shouldSupplementAddressAutocompleteWithGeocode(normalizedInput, mappedPredictions)
+          ? await fetchGeocodeAutocompletePredictions(normalizedInput, 5)
+          : [];
+        const mergedPredictions = cityOnly
           ? mappedPredictions
-          : rankAddressAutocompletePredictions(normalizedInput, mappedPredictions, lat, lng);
+          : dedupeAddressAutocompletePredictions([...geocodePredictions, ...mappedPredictions]);
         const filteredPredictions = cityOnly
           ? mappedPredictions
-          : filterAddressAutocompletePredictions(normalizedInput, rankedPredictions);
+          : filterAddressAutocompletePredictions(normalizedInput, mergedPredictions, lat, lng);
 
-        if (r.status === "OK" && r.predictions.length > 0) {
+        if (r.status === "OK" && mergedPredictions.length > 0) {
           return res.json({
             predictions: cityOnly
               ? [...staticCityPredictions, ...mappedPredictions].slice(0, 8)
@@ -1308,32 +1408,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         if (normalizedInput.trim().length >= 3) {
-          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(`${normalizedInput}, South Africa`)}&components=country:ZA&region=za&key=${GOOGLE_KEY}`;
-          const geocodeResponse = await fetchMapsJson(geocodeUrl);
-          if (geocodeResponse.status === "OK" && Array.isArray(geocodeResponse.results) && geocodeResponse.results.length > 0) {
-            const geocodeResults = cityOnly
-              ? geocodeResponse.results.filter((result: any) => {
-                  const types = Array.isArray(result?.types) ? result.types : [];
-                  return types.includes("locality") || types.includes("postal_town") || types.includes("administrative_area_level_2");
-                })
-              : geocodeResponse.results;
-              const geocodePredictions = geocodeResults.slice(0, 8).map((result: any) => ({
-                placeId: result.place_id,
-                description: result.formatted_address,
-                mainText: result.address_components?.[0]?.long_name || result.formatted_address.split(",")[0],
-                secondaryText: result.formatted_address
-                  .split(",")
-                  .slice(1)
-                  .join(", ")
-                  .trim(),
-                lat: result.geometry?.location?.lat ?? null,
-                lng: result.geometry?.location?.lng ?? null,
-                }));
-              return res.json({
-                predictions: cityOnly
-                  ? geocodePredictions.slice(0, 5)
-                  : filterAddressAutocompletePredictions(normalizedInput, geocodePredictions).slice(0, 5),
-              });
+          const geocodePredictions = await fetchGeocodeAutocompletePredictions(normalizedInput, 5, { cityOnly });
+          if (geocodePredictions.length > 0) {
+            return res.json({
+              predictions: cityOnly
+                ? geocodePredictions.slice(0, 5)
+                : filterAddressAutocompletePredictions(normalizedInput, geocodePredictions, lat, lng).slice(0, 5),
+            });
           }
         }
 
@@ -1343,7 +1424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const osmPredictions = await nominatimSearch(normalizedInput, cityOnly ? 8 : 6, { cityOnly, lat, lng });
       const filteredOsmPredictions = cityOnly
         ? osmPredictions
-        : filterAddressAutocompletePredictions(normalizedInput, osmPredictions);
+        : filterAddressAutocompletePredictions(normalizedInput, osmPredictions, lat, lng);
       if (cityOnly) {
         const seenCities = new Set<string>();
         const cityPredictions = [...staticCityPredictions, ...osmPredictions].filter((prediction: any) => {

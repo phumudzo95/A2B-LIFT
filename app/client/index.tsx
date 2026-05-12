@@ -496,10 +496,11 @@ function buildResolvedAddressLabel(result?: {
 
 function shouldDeferAddressAutocomplete(query: string) {
   const normalized = normalizeAddressSearchQuery(query).toLowerCase();
-  const startsWithNumber = /^\d+\s+/.test(normalized);
+  const startsWithNumber = /^\d+(?:\s+|$)/.test(normalized);
   if (!startsWithNumber) return false;
 
   const alphaTokens = normalized.match(/[a-z]{2,}/g) || [];
+  if (alphaTokens.length === 0) return true;
   return alphaTokens.length === 1 && alphaTokens[0].length < 6;
 }
 
@@ -549,7 +550,7 @@ function filterAddressPredictions(
     return tokenMatches >= minimumTokenMatches;
   });
 
-  return filteredPredictions.length > 0 ? filteredPredictions : rankedPredictions;
+  return filteredPredictions.length > 0 ? filteredPredictions : leadingNumber ? [] : rankedPredictions;
 }
 
 

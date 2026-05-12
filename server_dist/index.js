@@ -94,6 +94,7 @@ var chauffeurs = (0, import_pg_core.pgTable)("chauffeurs", {
   userId: (0, import_pg_core.varchar)("user_id").notNull().unique().references(() => users.id),
   carMake: (0, import_pg_core.text)("car_make"),
   vehicleModel: (0, import_pg_core.text)("vehicle_model").notNull(),
+  vehicleYear: (0, import_pg_core.integer)("vehicle_year"),
   plateNumber: (0, import_pg_core.text)("plate_number").notNull(),
   vehicleType: (0, import_pg_core.text)("vehicle_type").notNull(),
   carColor: (0, import_pg_core.text)("car_color").notNull(),
@@ -741,6 +742,31 @@ var DatabaseStorage = class {
     const [enquiry] = await db.update(tripEnquiries).set({ adminReply, status: "replied", repliedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm2.eq)(tripEnquiries.id, id)).returning();
     return enquiry;
   }
+  // ── Admin hard-delete helpers ────────────────────────────────────────────────
+  async deleteRide(id) {
+    const deleted = await db.delete(rides).where((0, import_drizzle_orm2.eq)(rides.id, id)).returning();
+    return deleted.length > 0;
+  }
+  async deleteUser(id) {
+    const deleted = await db.delete(users).where((0, import_drizzle_orm2.eq)(users.id, id)).returning();
+    return deleted.length > 0;
+  }
+  async deleteWithdrawal(id) {
+    const deleted = await db.delete(withdrawals).where((0, import_drizzle_orm2.eq)(withdrawals.id, id)).returning();
+    return deleted.length > 0;
+  }
+  async deleteSafetyReport(id) {
+    const deleted = await db.delete(safetyReports).where((0, import_drizzle_orm2.eq)(safetyReports.id, id)).returning();
+    return deleted.length > 0;
+  }
+  async deletePayment(id) {
+    const deleted = await db.delete(payments).where((0, import_drizzle_orm2.eq)(payments.id, id)).returning();
+    return deleted.length > 0;
+  }
+  async deleteDocument(id) {
+    const deleted = await db.delete(documents).where((0, import_drizzle_orm2.eq)(documents.id, id)).returning();
+    return deleted.length > 0;
+  }
 };
 var storage = new DatabaseStorage();
 
@@ -1250,6 +1276,7 @@ async function runMockSelfieQualityCheck(selfieUrl, faceData, challenge) {
 async function registerRoutes(app2) {
   const httpServer = (0, import_node_http.createServer)(app2);
   await pool2.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo text");
+  await pool2.query("ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS vehicle_year integer");
   const SUPABASE_SERVICE_KEY_CONFIGURED = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
   app2.use("/api", authOptional);
   const io = new import_socket.Server(httpServer, {
@@ -1538,21 +1565,33 @@ async function registerRoutes(app2) {
         storage.getRewardTransactions(user.id),
         storage.getRewardCashoutsByUser(user.id)
       ]);
-      const referredPeople = await Promise.all(
-        (referralEvents2 || []).map(async (event) => {
-          const referredUser = event?.referredUserId ? await storage.getUser(event.referredUserId) : null;
-          return {
-            id: event.id,
-            name: referredUser?.name || "A2B User",
-            joinedAt: event.createdAt,
-            firstRewardAt: event.firstRewardAt || null,
-            lastRewardAt: event.lastRewardAt || null,
-            rewardedAt: event.status === "rewarded" ? event.lastRewardAt || event.firstRewardAt || event.updatedAt || event.createdAt : null,
-            totalRewards: Number(event.totalRewards || 0),
-            status: event.status || "registered"
-          };
-        })
-      );
+      const referredUserIds = (referralEvents2 || []).map((event) => event.referredUserId).filter(Boolean);
+      const referredUsersMap = /* @__PURE__ */ new Map();
+      if (referredUserIds.length > 0) {
+        try {
+          const result = await pool2.query(
+            "SELECT id, name FROM users WHERE id = ANY($1)",
+            [referredUserIds]
+          );
+          for (const row of result.rows) {
+            referredUsersMap.set(row.id, row);
+          }
+        } catch {
+        }
+      }
+      const referredPeople = (referralEvents2 || []).map((event) => {
+        const referredUser = event?.referredUserId ? referredUsersMap.get(event.referredUserId) : null;
+        return {
+          id: event.id,
+          name: referredUser?.name || "A2B User",
+          joinedAt: event.createdAt,
+          firstRewardAt: event.firstRewardAt || null,
+          lastRewardAt: event.lastRewardAt || null,
+          rewardedAt: event.status === "rewarded" ? event.lastRewardAt || event.firstRewardAt || event.updatedAt || event.createdAt : null,
+          totalRewards: Number(event.totalRewards || 0),
+          status: event.status || "registered"
+        };
+      });
       const totalRewardsEarned = (transactions || []).filter((tx) => Number(tx.amount || 0) > 0 && tx.status !== "failed").reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
       const pendingCashoutAmount = (cashouts || []).filter((cashout) => ["pending", "processing"].includes(String(cashout.status || "").toLowerCase())).reduce((sum, cashout) => sum + Number(cashout.amount || 0), 0);
       const rewardedReferrals = (referralEvents2 || []).filter(
@@ -1733,8 +1772,77 @@ async function registerRoutes(app2) {
     const n = Number(value);
     return Number.isFinite(n);
   }
+  const ADDRESS_TERM_NORMALIZATIONS = [
+    [/\bpretorious\b/gi, "Pretorius"],
+    [/\bpretoriaus\b/gi, "Pretorius"],
+    [/\bst\.?\b/gi, "Street"],
+    [/\bave\.?\b/gi, "Avenue"],
+    [/\brd\.?\b/gi, "Road"],
+    [/\bdr\.?\b/gi, "Drive"],
+    [/\bln\.?\b/gi, "Lane"],
+    [/\bcl\.?\b/gi, "Close"],
+    [/\bblvd\.?\b/gi, "Boulevard"],
+    [/\bcres\.?\b/gi, "Crescent"]
+  ];
+  const NON_DISTINCT_ADDRESS_TOKENS = /* @__PURE__ */ new Set([
+    "south",
+    "africa",
+    "street",
+    "avenue",
+    "road",
+    "drive",
+    "lane",
+    "close",
+    "boulevard",
+    "crescent",
+    "city",
+    "town"
+  ]);
   function normalizeMapsQuery(value) {
-    return value.trim().replace(/\bpretorious\b/gi, "Pretorius").replace(/\bpretoriaus\b/gi, "Pretorius").replace(/\s+/g, " ");
+    return ADDRESS_TERM_NORMALIZATIONS.reduce(
+      (normalized, [pattern, replacement]) => normalized.replace(pattern, replacement),
+      value.trim()
+    ).replace(/\s+/g, " ");
+  }
+  function extractAddressTokens(value) {
+    return normalizeMapsQuery(value).toLowerCase().match(/[a-z]{3,}/g)?.filter((token) => !NON_DISTINCT_ADDRESS_TOKENS.has(token)) || [];
+  }
+  function chooseBestReverseGeocodeResult(results) {
+    return [...results].sort((left, right) => {
+      const score = (result) => {
+        const types = Array.isArray(result?.types) ? result.types : [];
+        const components = Array.isArray(result?.address_components) ? result.address_components : [];
+        const formattedAddress = normalizeMapsQuery(result?.formatted_address || "").toLowerCase();
+        const hasType = (type) => types.includes(type);
+        const hasComponent = (type) => components.some((component) => component?.types?.includes(type) && component?.long_name);
+        const hasSuburbLikeComponent = hasComponent("sublocality_level_1") || hasComponent("sublocality") || hasComponent("neighborhood");
+        const hasCityLikeComponent = hasComponent("locality") || hasComponent("administrative_area_level_2");
+        let total = 0;
+        if (hasType("street_address")) total += 160;
+        if (hasType("premise")) total += 90;
+        if (hasType("establishment") || hasType("point_of_interest")) total += 70;
+        if (hasType("subpremise")) total += 70;
+        if (hasType("route")) total += 60;
+        if (hasComponent("street_number")) total += 55;
+        if (hasComponent("route")) total += 45;
+        if (hasSuburbLikeComponent) total += 28;
+        if (hasCityLikeComponent) total += 18;
+        if (hasType("plus_code")) total -= 40;
+        if (hasType("political")) total -= 25;
+        if (/\bward\b/.test(formattedAddress)) total -= 160;
+        if (/\b(municipality|district municipality|administrative area|province)\b/.test(formattedAddress)) total -= 60;
+        if (!hasComponent("street_number") && !hasComponent("route") && !hasSuburbLikeComponent && !hasCityLikeComponent) {
+          total -= 35;
+        }
+        return total;
+      };
+      return score(right) - score(left);
+    })[0];
+  }
+  function rankAddressAutocompletePredictions(input, predictions, lat, lng) {
+    return [...predictions].sort(
+      (left, right) => scoreMapsPrediction(right, input, lat, lng) - scoreMapsPrediction(left, input, lat, lng)
+    );
   }
   function hasLocalityHint(query) {
     return SOUTH_AFRICAN_CITY_SUGGESTIONS.some(
@@ -1764,13 +1872,31 @@ async function registerRoutes(app2) {
   }
   function scoreMapsPrediction(prediction, input, lat, lng) {
     const normalizedInput = normalizeMapsQuery(input).toLowerCase();
-    const haystack = `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`.toLowerCase();
+    const haystack = normalizeMapsQuery(`${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`).toLowerCase();
+    const mainText = normalizeMapsQuery(prediction.mainText).toLowerCase();
+    const leadingNumber = normalizedInput.match(/^\d+/)?.[0] || "";
+    const significantTokens = extractAddressTokens(normalizedInput);
     let score = 0;
+    if (haystack.startsWith(normalizedInput)) score += 80;
+    if (mainText.startsWith(normalizedInput)) score += 90;
+    if (haystack.includes(normalizedInput)) score += 45;
     if (haystack.includes("south africa")) score += 8;
     if (haystack.includes("gauteng")) score += 8;
     if (haystack.includes("pretoria")) score += 18;
     if (normalizedInput.includes("pretorius") && haystack.includes("pretorius")) score += 30;
-    if (/^\d+/.test(normalizedInput) && haystack.includes(normalizedInput.match(/^\d+/)?.[0] || "")) score += 10;
+    if (/\bward\b/.test(haystack)) score -= 45;
+    if (/\b(municipality|district municipality|administrative area)\b/.test(haystack)) score -= 35;
+    if (leadingNumber && new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) score += 25;
+    if (leadingNumber && !new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) score -= 30;
+    for (const token of significantTokens) {
+      if (new RegExp(`\\b${token}\\b`).test(haystack)) {
+        score += 12;
+      } else if (haystack.includes(token)) {
+        score += 5;
+      } else {
+        score -= 10;
+      }
+    }
     if (prediction.lat != null && prediction.lng != null) {
       const bias = lat != null && lng != null ? { lat, lng } : SA_DEFAULT_BIAS;
       const distanceKm = haversine(bias.lat, bias.lng, prediction.lat, prediction.lng);
@@ -1779,6 +1905,99 @@ async function registerRoutes(app2) {
     if (haystack.includes("cape town") && normalizedInput.includes("pretorius")) score -= 12;
     if (haystack.includes("buffalo city")) score -= 20;
     return score;
+  }
+  function filterAddressAutocompletePredictions(input, predictions, lat, lng) {
+    const normalizedInput = normalizeMapsQuery(input).toLowerCase();
+    const rankedPredictions = rankAddressAutocompletePredictions(input, predictions, lat, lng);
+    const leadingNumber = normalizedInput.match(/^\d+/)?.[0] || "";
+    const significantTokens = extractAddressTokens(normalizedInput);
+    const startsWithNumber = /^\d+\s+/.test(normalizedInput);
+    if (significantTokens.length === 0 && !leadingNumber) return rankedPredictions;
+    const minimumTokenMatches = significantTokens.length > 1 ? Math.min(significantTokens.length, 2) : significantTokens.length;
+    const filteredPredictions = rankedPredictions.filter((prediction) => {
+      const haystack = normalizeMapsQuery(`${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`).toLowerCase();
+      if (/\b(ward|municipality|district municipality|administrative area)\b/.test(haystack)) {
+        return false;
+      }
+      if (leadingNumber && !new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) {
+        return false;
+      }
+      if (significantTokens.length === 0) {
+        return true;
+      }
+      if (haystack.includes(normalizedInput)) {
+        return true;
+      }
+      const tokenMatches = significantTokens.filter((token) => haystack.includes(token)).length;
+      if (startsWithNumber) {
+        return tokenMatches === significantTokens.length;
+      }
+      return tokenMatches >= minimumTokenMatches;
+    });
+    return filteredPredictions.length > 0 ? filteredPredictions : leadingNumber ? [] : rankedPredictions;
+  }
+  function dedupeAddressAutocompletePredictions(predictions) {
+    const seen = /* @__PURE__ */ new Set();
+    return predictions.filter((prediction) => {
+      const key = prediction.placeId || normalizeMapsQuery(
+        `${prediction.mainText}|${prediction.secondaryText}|${prediction.description}`
+      ).toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+  function mapGoogleGeocodeResultToPrediction(result) {
+    const components = Array.isArray(result?.address_components) ? result.address_components : [];
+    const get = (type) => components.find((component) => component?.types?.includes(type))?.long_name || "";
+    const streetNumber = get("street_number");
+    const route = get("route");
+    const suburb = get("sublocality_level_1") || get("sublocality") || get("neighborhood");
+    const city = get("locality") || get("administrative_area_level_2");
+    const province = get("administrative_area_level_1");
+    const mainText = route ? `${streetNumber ? `${streetNumber} ` : ""}${route}` : result.formatted_address.split(",")[0];
+    const secondaryParts = [suburb, city, province].filter((part, index, parts) => Boolean(part) && parts.indexOf(part) === index);
+    return {
+      placeId: result.place_id,
+      description: [mainText, ...secondaryParts].join(", ") || result.formatted_address,
+      mainText,
+      secondaryText: secondaryParts.join(", "),
+      lat: result.geometry?.location?.lat ?? null,
+      lng: result.geometry?.location?.lng ?? null
+    };
+  }
+  function shouldSupplementAddressAutocompleteWithGeocode(input, predictions) {
+    const normalizedInput = normalizeMapsQuery(input).toLowerCase();
+    const leadingNumber = normalizedInput.match(/^\d+/)?.[0] || "";
+    const significantTokens = extractAddressTokens(normalizedInput);
+    const longestTokenLength = significantTokens.reduce((longest, token) => Math.max(longest, token.length), 0);
+    if (!leadingNumber || longestTokenLength < 4) return false;
+    return !predictions.some((prediction) => {
+      const haystack = normalizeMapsQuery(
+        `${prediction.description} ${prediction.mainText} ${prediction.secondaryText}`
+      ).toLowerCase();
+      if (!new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) {
+        return false;
+      }
+      if (haystack.includes(normalizedInput)) {
+        return true;
+      }
+      const tokenMatches = significantTokens.filter((token) => haystack.includes(token)).length;
+      return tokenMatches >= significantTokens.length;
+    });
+  }
+  async function fetchGeocodeAutocompletePredictions(input, limit = 5, options) {
+    if (!GOOGLE_KEY) return [];
+    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(`${input}, South Africa`)}&components=country:ZA&region=za&key=${GOOGLE_KEY}`;
+    const geocodeResponse = await fetchMapsJson(geocodeUrl);
+    if (geocodeResponse.status !== "OK" || !Array.isArray(geocodeResponse.results) || geocodeResponse.results.length === 0) {
+      return [];
+    }
+    const geocodeResults = options?.cityOnly ? geocodeResponse.results.filter((result) => {
+      const types = Array.isArray(result?.types) ? result.types : [];
+      return types.includes("locality") || types.includes("postal_town") || types.includes("administrative_area_level_2");
+    }) : geocodeResponse.results;
+    return geocodeResults.slice(0, Math.max(limit, 5)).map(mapGoogleGeocodeResultToPrediction);
   }
   function southAfricanCityFallback(input, lat, lng) {
     const query = normalizeMapsQuery(input).toLowerCase();
@@ -1805,8 +2024,8 @@ async function registerRoutes(app2) {
     const normalizedQuery = normalizeMapsQuery(query);
     const cityOnly = options?.cityOnly ?? false;
     const hasBias = typeof options?.lat === "number" && Number.isFinite(options.lat) && typeof options?.lng === "number" && Number.isFinite(options.lng);
-    const biasLat = hasBias ? Number(options.lat) : null;
-    const biasLng = hasBias ? Number(options.lng) : null;
+    const biasLat = hasBias ? Number(options?.lat) : null;
+    const biasLng = hasBias ? Number(options?.lng) : null;
     const searchQueries = cityOnly ? [normalizedQuery] : buildAddressSearchQueries(normalizedQuery, options?.lat, options?.lng);
     const allRawResults = [];
     for (const searchQuery of searchQueries) {
@@ -1891,52 +2110,38 @@ async function registerRoutes(app2) {
       const staticCityPredictions = cityOnly ? southAfricanCityFallback(normalizedInput, lat, lng) : [];
       if (GOOGLE_KEY) {
         const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
-        const typeQuery = cityOnly ? "&types=(cities)" : "&types=address";
+        const typeQuery = cityOnly ? "&types=(cities)" : "";
         const zaBiasQuery = hasLocationBias ? `&location=${lat},${lng}&radius=${cityOnly ? 22e4 : 9e4}` : `&location=${SA_DEFAULT_BIAS.lat},${SA_DEFAULT_BIAS.lng}&radius=${cityOnly ? 45e4 : 16e4}`;
         const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(normalizedInput)}&components=country:za&region=za&language=en${typeQuery}${zaBiasQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
         const r = await fetchMapsJson(url);
-        const mappedPredictions = Array.isArray(r.predictions) ? r.predictions.slice(0, 8).map((p) => {
-          const prediction = {
-            placeId: p.place_id,
-            description: p.description,
-            mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
-            secondaryText: p.structured_formatting?.secondary_text || "",
-            lat: null,
-            lng: null
-          };
-          return {
-            ...prediction,
-            score: scoreMapsPrediction(prediction, normalizedInput, lat, lng)
-          };
-        }).sort((a, b) => b.score - a.score).slice(0, 6).map(({ score: _score, ...prediction }) => prediction) : [];
-        if (r.status === "OK" && r.predictions.length > 0) {
+        const mappedPredictions = Array.isArray(r.predictions) ? r.predictions.slice(0, 8).map((p) => ({
+          placeId: p.place_id,
+          description: p.description,
+          mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
+          secondaryText: p.structured_formatting?.secondary_text || "",
+          lat: null,
+          lng: null
+        })) : [];
+        const geocodePredictions = !cityOnly && shouldSupplementAddressAutocompleteWithGeocode(normalizedInput, mappedPredictions) ? await fetchGeocodeAutocompletePredictions(normalizedInput, 5) : [];
+        const mergedPredictions = cityOnly ? mappedPredictions : dedupeAddressAutocompletePredictions([...geocodePredictions, ...mappedPredictions]);
+        const filteredPredictions = cityOnly ? mappedPredictions : filterAddressAutocompletePredictions(normalizedInput, mergedPredictions, lat, lng);
+        if (r.status === "OK" && mergedPredictions.length > 0) {
           return res.json({
-            predictions: cityOnly ? [...staticCityPredictions, ...mappedPredictions].slice(0, 8) : mappedPredictions
+            predictions: cityOnly ? [...staticCityPredictions, ...mappedPredictions].slice(0, 8) : filteredPredictions.slice(0, 6)
           });
         }
         if (normalizedInput.trim().length >= 3) {
-          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(`${normalizedInput}, South Africa`)}&components=country:ZA&region=za&key=${GOOGLE_KEY}`;
-          const geocodeResponse = await fetchMapsJson(geocodeUrl);
-          if (geocodeResponse.status === "OK" && Array.isArray(geocodeResponse.results) && geocodeResponse.results.length > 0) {
-            const geocodeResults = cityOnly ? geocodeResponse.results.filter((result) => {
-              const types = Array.isArray(result?.types) ? result.types : [];
-              return types.includes("locality") || types.includes("postal_town") || types.includes("administrative_area_level_2");
-            }) : geocodeResponse.results;
+          const geocodePredictions2 = await fetchGeocodeAutocompletePredictions(normalizedInput, 5, { cityOnly });
+          if (geocodePredictions2.length > 0) {
             return res.json({
-              predictions: geocodeResults.slice(0, 5).map((result) => ({
-                placeId: result.place_id,
-                description: result.formatted_address,
-                mainText: result.address_components?.[0]?.long_name || result.formatted_address.split(",")[0],
-                secondaryText: result.formatted_address.split(",").slice(1).join(", ").trim(),
-                lat: result.geometry?.location?.lat ?? null,
-                lng: result.geometry?.location?.lng ?? null
-              }))
+              predictions: cityOnly ? geocodePredictions2.slice(0, 5) : filterAddressAutocompletePredictions(normalizedInput, geocodePredictions2, lat, lng).slice(0, 5)
             });
           }
         }
         console.warn("[maps] Google autocomplete fallback engaged:", r.status || "unknown");
       }
       const osmPredictions = await nominatimSearch(normalizedInput, cityOnly ? 8 : 6, { cityOnly, lat, lng });
+      const filteredOsmPredictions = cityOnly ? osmPredictions : filterAddressAutocompletePredictions(normalizedInput, osmPredictions, lat, lng);
       if (cityOnly) {
         const seenCities = /* @__PURE__ */ new Set();
         const cityPredictions = [...staticCityPredictions, ...osmPredictions].filter((prediction) => {
@@ -1947,7 +2152,7 @@ async function registerRoutes(app2) {
         });
         return res.json({ predictions: cityPredictions.slice(0, 8) });
       }
-      return res.json({ predictions: osmPredictions });
+      return res.json({ predictions: filteredOsmPredictions });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }
@@ -1978,7 +2183,7 @@ async function registerRoutes(app2) {
         const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY}`;
         const r = await fetchMapsJson(url);
         if (r.status === "OK" && r.results.length > 0) {
-          const best = r.results[0];
+          const best = chooseBestReverseGeocodeResult(r.results) || r.results[0];
           const components = best.address_components;
           const get = (type) => components.find((c) => c.types.includes(type))?.long_name || "";
           const streetNumber = get("street_number");
@@ -1988,9 +2193,10 @@ async function registerRoutes(app2) {
           const province = get("administrative_area_level_1");
           const mainText = route ? `${streetNumber ? streetNumber + " " : ""}${route}` : best.formatted_address.split(",")[0];
           const secondaryParts = [suburb, city, province].filter(Boolean);
+          const composedDescription = [mainText, ...secondaryParts].filter((part, index, parts) => Boolean(part) && parts.indexOf(part) === index).join(", ");
           return res.json({
             placeId: best.place_id,
-            description: best.formatted_address,
+            description: composedDescription || best.formatted_address,
             mainText,
             secondaryText: secondaryParts.join(", "),
             lat: parseFloat(lat),
@@ -2335,6 +2541,8 @@ async function registerRoutes(app2) {
   app2.post("/api/chauffeurs", authOptional, async (req, res) => {
     try {
       const userId = req.body.userId;
+      const currentYear = (/* @__PURE__ */ new Date()).getFullYear();
+      const rawVehicleYear = req.body.vehicleYear;
       if (req.auth && req.auth.role !== "admin" && req.auth.sub !== userId) {
         return res.status(403).json({ message: "You can only register your own chauffeur profile" });
       }
@@ -2355,10 +2563,18 @@ async function registerRoutes(app2) {
       if (!userId) return res.status(400).json({ message: "userId is required" });
       let chauffeur;
       const existingChauffeur = await storage.getChauffeurByUserId(userId);
+      const normalizedVehicleYear = rawVehicleYear == null || rawVehicleYear === "" ? existingChauffeur?.vehicleYear ?? null : Number.parseInt(String(rawVehicleYear), 10);
+      if (!Number.isFinite(normalizedVehicleYear) || normalizedVehicleYear == null) {
+        return res.status(400).json({ message: "vehicleYear is required" });
+      }
+      if (normalizedVehicleYear < 2015 || normalizedVehicleYear > currentYear + 1) {
+        return res.status(400).json({ message: `vehicleYear must be between 2015 and ${currentYear + 1}` });
+      }
       if (existingChauffeur) {
         chauffeur = await storage.updateChauffeur(existingChauffeur.id, {
           carMake: req.body.carMake || existingChauffeur.carMake,
           vehicleModel: req.body.vehicleModel || existingChauffeur.vehicleModel,
+          vehicleYear: normalizedVehicleYear,
           plateNumber: req.body.plateNumber || existingChauffeur.plateNumber,
           vehicleType: req.body.vehicleType || existingChauffeur.vehicleType,
           carColor: req.body.carColor || existingChauffeur.carColor,
@@ -2368,7 +2584,10 @@ async function registerRoutes(app2) {
           profilePhoto: req.body.profilePhoto || existingChauffeur.profilePhoto
         });
       } else {
-        chauffeur = await storage.createChauffeur(req.body);
+        chauffeur = await storage.createChauffeur({
+          ...req.body,
+          vehicleYear: normalizedVehicleYear
+        });
       }
       await storage.updateUser(req.body.userId, { role: "chauffeur" });
       const existingApp = await storage.getDriverApplicationByUserId(req.body.userId);
@@ -2410,33 +2629,6 @@ async function registerRoutes(app2) {
         return res.status(403).json({ message: "Forbidden" });
       }
       await storage.updateChauffeur(req.params.id, { pushToken });
-      return res.json({ success: true });
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  });
-  app2.put("/api/chauffeurs/:id/location", requireAuth, async (req, res) => {
-    try {
-      const chauffeurId = String(req.params.id);
-      const chauffeur = await storage.getChauffeur(chauffeurId);
-      if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
-      if (chauffeur.userId !== req.auth.sub && req.auth.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-      const lat = Number(req.body?.lat);
-      const lng = Number(req.body?.lng);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        return res.status(400).json({ message: "Valid lat and lng are required" });
-      }
-      if (lat < -35 || lat > -22 || lng < 16 || lng > 33) {
-        return res.status(400).json({ message: "Location must be inside South Africa" });
-      }
-      await storage.updateChauffeur(chauffeurId, {
-        lat,
-        lng,
-        locationUpdatedAt: /* @__PURE__ */ new Date()
-      });
-      io.emit("location:update", { chauffeurId, lat, lng });
       return res.json({ success: true });
     } catch (error) {
       return res.status(500).json({ message: error.message });
@@ -5176,6 +5368,66 @@ async function registerRoutes(app2) {
     } catch (err) {
       console.error("[admin/rides/photos]", err.message);
       return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  app2.delete("/api/admin/rides/:id", requireAuth, requireRole(["admin"]), async (req, res) => {
+    try {
+      const deleted = await storage.deleteRide(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Ride not found" });
+      return res.json({ message: "Ride deleted" });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.delete("/api/admin/users/:id", requireAuth, requireRole(["admin"]), async (req, res) => {
+    try {
+      const chauffeur = await storage.getChauffeurByUserId(req.params.id);
+      if (chauffeur) {
+        const app3 = await storage.getDriverApplicationByUserId(req.params.id);
+        if (app3) await storage.deleteDriverApplication(app3.id);
+        await storage.deleteChauffeur(chauffeur.id);
+      }
+      const deleted = await storage.deleteUser(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "User not found" });
+      return res.json({ message: "User deleted" });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.delete("/api/admin/withdrawals/:id", requireAuth, requireRole(["admin"]), async (req, res) => {
+    try {
+      const deleted = await storage.deleteWithdrawal(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Withdrawal not found" });
+      return res.json({ message: "Withdrawal deleted" });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.delete("/api/admin/safety-reports/:id", requireAuth, requireRole(["admin"]), async (req, res) => {
+    try {
+      const deleted = await storage.deleteSafetyReport(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Safety report not found" });
+      return res.json({ message: "Safety report deleted" });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.delete("/api/admin/payments/:id", requireAuth, requireRole(["admin"]), async (req, res) => {
+    try {
+      const deleted = await storage.deletePayment(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Payment not found" });
+      return res.json({ message: "Payment deleted" });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.delete("/api/admin/documents/:id", requireAuth, requireRole(["admin"]), async (req, res) => {
+    try {
+      const deleted = await storage.deleteDocument(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Document not found" });
+      return res.json({ message: "Document deleted" });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
     }
   });
   return httpServer;
