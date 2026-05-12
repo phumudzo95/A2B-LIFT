@@ -3,9 +3,10 @@ import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platfo
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@/lib/auth-context";
-import { apiRequest } from "@/lib/query-client";
-import Colors from "@/constants/colors";
+import { getAppVariant, getAuthenticatedHomeRoute, usesRoleSelect } from "@mobile-core/app-variant";
+import { useAuth } from "@mobile-core/auth";
+import { apiRequest } from "@mobile-core/query";
+import { Colors } from "@mobile-ui/colors";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,10 +16,17 @@ WebBrowser.maybeCompleteAuthSession();
 const GOOGLE_OAUTH_START = "https://api.a2blift.com/api/auth/google/start";
 const NEEDS_ROLE_SELECT_KEY = "a2b_needs_role_select";
 
+function isAuthCallback(url: string) {
+  return Linking.parse(url).path === "auth";
+}
+
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ ref?: string }>();
   const { register, setUser, pendingReferralCode, setPendingReferralCode } = useAuth();
+  const appVariant = getAppVariant();
+  const shouldShowRoleSelect = usesRoleSelect(appVariant);
+  const postRegistrationRoute = getAuthenticatedHomeRoute(appVariant);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -49,7 +57,7 @@ export default function RegisterScreen() {
   // Handle the deep link callback from the backend OAuth flow
   useEffect(() => {
     const sub = Linking.addEventListener("url", ({ url }) => {
-      if (!url.startsWith("a2blift://auth")) return;
+      if (!isAuthCallback(url)) return;
       handleDeepLinkCallback(url);
     });
     return () => sub.remove();
@@ -65,7 +73,11 @@ export default function RegisterScreen() {
       const payload = JSON.parse(decodeURIComponent(payloadStr));
       await AsyncStorage.setItem("a2b_user", JSON.stringify(payload.user));
       if (payload.accessToken) await AsyncStorage.setItem("a2b_token", payload.accessToken);
-      await AsyncStorage.setItem(NEEDS_ROLE_SELECT_KEY, "1");
+      if (shouldShowRoleSelect) {
+        await AsyncStorage.setItem(NEEDS_ROLE_SELECT_KEY, "1");
+      } else {
+        await AsyncStorage.removeItem(NEEDS_ROLE_SELECT_KEY);
+      }
       // Fetch the latest user profile from the server so the role is always current
       try {
         const meRes = await apiRequest("GET", "/api/auth/me");
@@ -73,12 +85,12 @@ export default function RegisterScreen() {
           const freshUser = await meRes.json();
           await AsyncStorage.setItem("a2b_user", JSON.stringify(freshUser));
           setUser(freshUser);
-          router.replace("/role-select");
+          router.replace(postRegistrationRoute);
           return;
         }
       } catch {}
       setUser(payload.user);
-      router.replace("/role-select");
+      router.replace(postRegistrationRoute);
       // AuthGate handles navigation when user state changes
     } catch {
       setError("Google sign up failed. Please try again.");
@@ -99,7 +111,11 @@ export default function RegisterScreen() {
     if (password.length < 4) { setError("Password must be at least 4 characters"); return; }
     setLoading(true); setError("");
     try {
-      await AsyncStorage.setItem(NEEDS_ROLE_SELECT_KEY, "1");
+      if (shouldShowRoleSelect) {
+        await AsyncStorage.setItem(NEEDS_ROLE_SELECT_KEY, "1");
+      } else {
+        await AsyncStorage.removeItem(NEEDS_ROLE_SELECT_KEY);
+      }
       await register({
         username: email.trim().toLowerCase(),
         password,
@@ -108,7 +124,7 @@ export default function RegisterScreen() {
         referralCode: referralCode.trim() || undefined,
       });
       await setPendingReferralCode(null);
-      router.replace("/role-select");
+      router.replace(postRegistrationRoute);
     } catch (e: any) {
       await AsyncStorage.removeItem(NEEDS_ROLE_SELECT_KEY);
       const msg = e.message || "Registration failed.";

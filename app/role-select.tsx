@@ -1,18 +1,26 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, StyleSheet, Pressable, Platform, ScrollView } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useAuth } from "@/lib/auth-context";
-import Colors from "@/constants/colors";
-import EntranceView from "@/components/EntranceView";
+import { getAppVariant, getAuthenticatedHomeRoute, usesRoleSelect } from "@mobile-core/app-variant";
+import { useAuth } from "@mobile-core/auth";
+import { Colors } from "@mobile-ui/colors";
+import { EntranceView } from "@mobile-ui/motion";
 
 export default function RoleSelectScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
+  const appVariant = getAppVariant();
+  const shouldShowRoleSelect = usesRoleSelect(appVariant);
 
-  if (!user) return null;
+  useEffect(() => {
+    if (shouldShowRoleSelect) return;
+    router.replace(getAuthenticatedHomeRoute(appVariant));
+  }, [appVariant, shouldShowRoleSelect]);
+
+  if (!user || !shouldShowRoleSelect) return null;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 40) }]}>

@@ -1,5 +1,19 @@
 # A2B-LIFT Project Completion Checklist
 
+## 🚧 Mobile App Split Progress
+
+- [x] Driver and client app config wrappers scaffolded
+- [x] Shared `@mobile-core` and `@mobile-ui` package boundaries created
+- [x] Driver and client Expo Router shell directories created
+- [x] Root workspace scripts added for driver/client local Expo runs
+- [x] Variant-aware cloud build helper scripts added for driver/client app selection
+- [x] Root workspace manifests added for `apps/*` and `packages/*`
+- [x] Client EAS project ID assigned and saved in build environment
+- [x] Client-specific EAS build/submit profiles finalized
+- [ ] Driver and client release flow validated end-to-end
+
+Current production package identity remains the Driver app.
+
 ## ✅ Backend Infrastructure & Setup
 
 ### Authentication & Security

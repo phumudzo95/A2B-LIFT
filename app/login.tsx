@@ -6,10 +6,10 @@ import {
 import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@/lib/auth-context";
-import { apiRequest } from "@/lib/query-client";
-import Colors from "@/constants/colors";
-import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { useAuth } from "@mobile-core/auth";
+import { apiRequest } from "@mobile-core/query";
+import { Colors } from "@mobile-ui/colors";
+import { KeyboardAwareScrollViewCompat } from "@mobile-ui/scroll";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -17,6 +17,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_OAUTH_START = "https://api.a2blift.com/api/auth/google/start";
+
+function isAuthCallback(url: string) {
+  return Linking.parse(url).path === "auth";
+}
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -34,7 +38,7 @@ export default function LoginScreen() {
   // Handle the deep link callback from the backend OAuth flow
   useEffect(() => {
     const sub = Linking.addEventListener("url", ({ url }) => {
-      if (!url.startsWith("a2blift://auth")) return;
+      if (!isAuthCallback(url)) return;
       handleDeepLinkCallback(url);
     });
     return () => sub.remove();
@@ -95,7 +99,9 @@ export default function LoginScreen() {
     setGoogleLoading(true);
     setError("");
     try {
-      const result = await WebBrowser.openAuthSessionAsync(GOOGLE_OAUTH_START, "a2blift://auth", {
+      const redirectUrl = Linking.createURL("auth");
+      const authUrl = `${GOOGLE_OAUTH_START}?redirect_uri=${encodeURIComponent(redirectUrl)}`;
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl, {
         preferEphemeralSession: true,
       });
       // On web, the redirect URL comes back in result.url instead of a deep link event

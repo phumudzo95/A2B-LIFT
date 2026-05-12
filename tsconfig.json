@@ -5,6 +5,18 @@
     "ignoreDeprecations": "6.0",
     "strict": true,
     "paths": {
+      "@mobile-core": [
+        "./packages/mobile-core/src/index.ts"
+      ],
+      "@mobile-core/*": [
+        "./packages/mobile-core/src/*"
+      ],
+      "@mobile-ui": [
+        "./packages/mobile-ui/src/index.ts"
+      ],
+      "@mobile-ui/*": [
+        "./packages/mobile-ui/src/*"
+      ],
       "@/*": [
         "./*"
       ],

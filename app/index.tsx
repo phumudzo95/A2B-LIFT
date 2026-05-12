@@ -4,9 +4,9 @@ import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@/lib/auth-context";
-import Colors from "@/constants/colors";
-import EntranceView from "@/components/EntranceView";
+import { useAuth } from "@mobile-core/auth";
+import { Colors } from "@mobile-ui/colors";
+import { EntranceView } from "@mobile-ui/motion";
 
 export default function SplashLanding() {
   const insets = useSafeAreaInsets();

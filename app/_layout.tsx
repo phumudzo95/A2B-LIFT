@@ -7,11 +7,12 @@ import * as Linking from "expo-linking";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { queryClient } from "@/lib/query-client";
+import { ErrorBoundary } from "@mobile-ui/errors";
+import { getAppVariant, getAuthenticatedHomeRoute, usesRoleSelect } from "@mobile-core/app-variant";
+import { queryClient } from "@mobile-core/query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AuthProvider, useAuth } from "@/lib/auth-context";
-import { SocketProvider } from "@/lib/socket-context";
+import { AuthProvider, useAuth } from "@mobile-core/auth";
+import { SocketProvider } from "@mobile-core/socket";
 
 const RIDE_ALERT_CHANNEL_ID = "ride-alerts-v3";
 const RIDE_ALERT_SOUND = "trip_alert.wav";
@@ -100,6 +101,9 @@ function AuthGate() {
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
   const navState = useRootNavigationState();
+  const appVariant = getAppVariant();
+  const shouldShowRoleSelect = usesRoleSelect(appVariant);
+  const authenticatedHomeRoute = getAuthenticatedHomeRoute(appVariant);
 
   useEffect(() => {
     if (isLoading || !navState?.key) return;
@@ -110,9 +114,20 @@ function AuthGate() {
     const isProtected =
       pathname.startsWith("/client") ||
       pathname.startsWith("/chauffeur") ||
-      pathname === "/role-select";
+      pathname === "/role-select" ||
+      pathname === "/chauffeur-register";
+
+    if (user && !shouldShowRoleSelect && pathname === "/role-select") {
+      router.replace(authenticatedHomeRoute);
+      return;
+    }
 
     if (user && isGuestOnly) {
+      if (!shouldShowRoleSelect) {
+        router.replace(authenticatedHomeRoute);
+        return;
+      }
+
       // Restore last mode, defaulting straight to dashboard for returning users.
       // role-select remains available when users explicitly navigate there.
       Promise.all([
@@ -147,7 +162,7 @@ function AuthGate() {
       // Not logged in but trying to access app — send to landing
       router.replace("/");
     }
-  }, [user, isLoading, pathname, navState?.key]);
+  }, [user, isLoading, pathname, navState?.key, shouldShowRoleSelect, authenticatedHomeRoute]);
 
   return null;
 }
@@ -190,6 +205,11 @@ function ReferralLinkGate() {
 }
 
 function RootLayoutNav() {
+  const appVariant = getAppVariant();
+  const shouldShowRoleSelect = usesRoleSelect(appVariant);
+  const shouldIncludeClientRoutes = appVariant !== "driver";
+  const shouldIncludeDriverRoutes = appVariant !== "client";
+
   return (
     <>
       <AuthGate />
@@ -198,10 +218,10 @@ function RootLayoutNav() {
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
         <Stack.Screen name="register" />
-        <Stack.Screen name="role-select" />
-        <Stack.Screen name="client" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="chauffeur" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="chauffeur-register" />
+        {shouldShowRoleSelect ? <Stack.Screen name="role-select" /> : null}
+        {shouldIncludeClientRoutes ? <Stack.Screen name="client" options={{ gestureEnabled: false }} /> : null}
+        {shouldIncludeDriverRoutes ? <Stack.Screen name="chauffeur" options={{ gestureEnabled: false }} /> : null}
+        {shouldIncludeDriverRoutes ? <Stack.Screen name="chauffeur-register" /> : null}
       </Stack>
     </>
   );
