@@ -25,7 +25,6 @@ import * as TaskManager from "expo-task-manager";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Audio } from "expo-av";
 import { useAuth } from "@/lib/auth-context";
 import {
   HIGH_ACCURACY,
@@ -52,6 +51,21 @@ type DriverLocationTaskState = {
   chauffeurId?: string;
   isOnline?: boolean;
 };
+
+type TripAlertSound = {
+  setIsLoopingAsync: (isLooping: boolean) => Promise<void>;
+  replayAsync: () => Promise<void>;
+  playAsync: () => Promise<void>;
+  stopAsync: () => Promise<void>;
+  unloadAsync: () => Promise<void>;
+};
+
+type ExpoAudioModule = typeof import("expo-av");
+
+async function getExpoAudioModule(): Promise<ExpoAudioModule["Audio"]> {
+  const { Audio } = await import("expo-av");
+  return Audio;
+}
 
 async function postChauffeurLocation(chauffeurId: string, lat: number, lng: number) {
   const token = await AsyncStorage.getItem("a2b_token");
@@ -159,7 +173,7 @@ export default function ChauffeurDashboard() {
   const [clientRatingComment, setClientRatingComment] = useState("");
   const [submittingClientRating, setSubmittingClientRating] = useState(false);
 
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const soundRef = useRef<TripAlertSound | null>(null);
   const tripAlertTokenRef = useRef(0);
   const tripAlertEnabledRef = useRef(false);
   const seenRideIdRef = useRef<string | null>(null);
@@ -424,6 +438,7 @@ export default function ChauffeurDashboard() {
     tripAlertEnabledRef.current = true;
     try {
       if (Platform.OS === "web") return;
+      const Audio = await getExpoAudioModule();
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
         staysActiveInBackground: true,

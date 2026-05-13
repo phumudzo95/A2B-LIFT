@@ -97,7 +97,7 @@ function extractReferralCodeFromUrl(url: string): string | null {
   return null;
 }
 
-function AuthGate() {
+function useAuthGate() {
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
   const navState = useRootNavigationState();
@@ -163,11 +163,9 @@ function AuthGate() {
       router.replace("/");
     }
   }, [user, isLoading, pathname, navState?.key, shouldShowRoleSelect, authenticatedHomeRoute]);
-
-  return null;
 }
 
-function ReferralLinkGate() {
+function useReferralLinkGate() {
   const { user, setPendingReferralCode } = useAuth();
 
   useEffect(() => {
@@ -200,8 +198,6 @@ function ReferralLinkGate() {
       subscription.remove();
     };
   }, [setPendingReferralCode, user]);
-
-  return null;
 }
 
 function RootLayoutNav() {
@@ -210,20 +206,37 @@ function RootLayoutNav() {
   const shouldIncludeClientRoutes = appVariant !== "driver";
   const shouldIncludeDriverRoutes = appVariant !== "client";
 
+  useAuthGate();
+  useReferralLinkGate();
+
+  const screens: Array<{
+    name: "index" | "login" | "register" | "role-select" | "client" | "chauffeur" | "chauffeur-register";
+    options?: { gestureEnabled?: boolean };
+  }> = [
+    { name: "index" },
+    { name: "login" },
+    { name: "register" },
+  ];
+
+  if (shouldShowRoleSelect) {
+    screens.push({ name: "role-select" });
+  }
+
+  if (shouldIncludeClientRoutes) {
+    screens.push({ name: "client", options: { gestureEnabled: false } });
+  }
+
+  if (shouldIncludeDriverRoutes) {
+    screens.push({ name: "chauffeur", options: { gestureEnabled: false } });
+    screens.push({ name: "chauffeur-register" });
+  }
+
   return (
-    <>
-      <AuthGate />
-      <ReferralLinkGate />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#000000" } }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="register" />
-        {shouldShowRoleSelect ? <Stack.Screen name="role-select" /> : null}
-        {shouldIncludeClientRoutes ? <Stack.Screen name="client" options={{ gestureEnabled: false }} /> : null}
-        {shouldIncludeDriverRoutes ? <Stack.Screen name="chauffeur" options={{ gestureEnabled: false }} /> : null}
-        {shouldIncludeDriverRoutes ? <Stack.Screen name="chauffeur-register" /> : null}
-      </Stack>
-    </>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#000000" } }}>
+      {screens.map((screen) => (
+        <Stack.Screen key={screen.name} name={screen.name} options={screen.options} />
+      ))}
+    </Stack>
   );
 }
 

@@ -564,7 +564,7 @@ function shouldDeferAddressAutocomplete(query: string) {
 
   const alphaTokens = normalized.match(/[a-z]{2,}/g) || [];
   if (alphaTokens.length === 0) return true;
-  return alphaTokens.length === 1 && alphaTokens[0].length < 6;
+  return alphaTokens.length === 1 && alphaTokens[0].length < 4;
 }
 
 function shouldOfferTypedAddressSuggestion(query: string) {
@@ -1012,12 +1012,14 @@ export default function ClientHomeScreen() {
       setSuggestionsLoading(true);
       try {
         if (shouldDeferAddressAutocomplete(query)) {
+          const deferredSuggestions = prependTypedAddressSuggestion(query, []);
           logAutocompleteDebug("defer", {
             query,
             target: locationPickerTarget,
             reason: "short-number-fragment",
+            suggestionCount: deferredSuggestions.length,
           });
-          setLocationSuggestions([]);
+          setLocationSuggestions(deferredSuggestions);
           return;
         }
 
