@@ -564,7 +564,7 @@ function shouldDeferAddressAutocomplete(query: string) {
 
   const alphaTokens = normalized.match(/[a-z]{2,}/g) || [];
   if (alphaTokens.length === 0) return true;
-  return alphaTokens.length === 1 && alphaTokens[0].length < 4;
+  return alphaTokens.length === 1 && alphaTokens[0].length < 3;
 }
 
 function shouldOfferTypedAddressSuggestion(query: string) {
@@ -573,7 +573,7 @@ function shouldOfferTypedAddressSuggestion(query: string) {
   const startsWithNumber = /^\d+\s+/.test(normalized);
   const longestTokenLength = significantTokens.reduce((longest, token) => Math.max(longest, token.length), 0);
 
-  if (startsWithNumber && longestTokenLength >= 4) return true;
+  if (startsWithNumber && longestTokenLength >= 3) return true;
   return significantTokens.length >= 2 && normalized.length >= 8;
 }
 
