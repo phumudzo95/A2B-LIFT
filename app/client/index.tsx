@@ -16,6 +16,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import Constants from "expo-constants";
@@ -121,6 +122,17 @@ interface RouteChoice extends DirectionRoute {
   lateNightPremium: number;
   currency: string;
 }
+
+interface AutocompleteDebugEntry {
+  id: string;
+  createdAt: string;
+  stage: string;
+  payload: Record<string, unknown>;
+}
+
+const MAX_AUTOCOMPLETE_DEBUG_ENTRIES = 80;
+let autocompleteDebugEntries: AutocompleteDebugEntry[] = [];
+const autocompleteDebugSubscribers = new Set<(entries: AutocompleteDebugEntry[]) => void>();
 
 function getRoutePreferenceLabel(routeId?: string | null): string {
   if (routeId === "faster_route") return "Faster Route";
@@ -339,6 +351,57 @@ function isWithinSouthAfricaBounds(lat: number, lng: number) {
 
 function createPlacesSessionToken() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function summarizeAutocompletePredictions(
+  predictions: { mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
+) {
+  return predictions.slice(0, 3).map((prediction) => ({
+    mainText: prediction.mainText,
+    secondaryText: prediction.secondaryText,
+    hasCoords: prediction.lat != null && prediction.lng != null,
+  }));
+}
+
+function publishAutocompleteDebugEntries() {
+  for (const subscriber of autocompleteDebugSubscribers) {
+    subscriber(autocompleteDebugEntries);
+  }
+}
+
+function clearAutocompleteDebugEntries() {
+  autocompleteDebugEntries = [];
+  publishAutocompleteDebugEntries();
+}
+
+function subscribeAutocompleteDebugEntries(subscriber: (entries: AutocompleteDebugEntry[]) => void) {
+  autocompleteDebugSubscribers.add(subscriber);
+  subscriber(autocompleteDebugEntries);
+
+  return () => {
+    autocompleteDebugSubscribers.delete(subscriber);
+  };
+}
+
+function logAutocompleteDebug(stage: string, payload: Record<string, unknown>) {
+  if (!__DEV__) return;
+
+  autocompleteDebugEntries = [
+    {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+      stage,
+      payload,
+    },
+    ...autocompleteDebugEntries,
+  ].slice(0, MAX_AUTOCOMPLETE_DEBUG_ENTRIES);
+  publishAutocompleteDebugEntries();
+
+  try {
+    console.log(`[client-autocomplete:${stage}] ${JSON.stringify(payload)}`);
+  } catch {
+    console.log(`[client-autocomplete:${stage}]`, payload);
+  }
 }
 
 function hasLocationShift(
@@ -625,9 +688,10 @@ function carColorToHex(color: string): string {
 
 export default function ClientHomeScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { user, refreshUser } = useAuth();
   const { on, off } = useSocket();
-  const bottomPanelOffset = Platform.OS === "ios" ? 72 : 8;
+  const bottomPanelOffset = Math.max(12, tabBarHeight - insets.bottom + 12);
   const bottomPanelPadding = insets.bottom + 20;
   const idleBottomSheetPadding = Math.max(insets.bottom + (Platform.OS === "ios" ? 10 : 6), 16);
 
@@ -677,6 +741,8 @@ export default function ClientHomeScreen() {
 
   // ETA to nearest available driver (shown on map in idle/selecting state)
   const [nearestDriverEta, setNearestDriverEta] = useState<string | null>(null);
+  const [showDebugLogModal, setShowDebugLogModal] = useState(false);
+  const [debugLogEntries, setDebugLogEntries] = useState<AutocompleteDebugEntry[]>([]);
 
   // Location picker modal
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
@@ -695,6 +761,12 @@ export default function ClientHomeScreen() {
   // Keep a ref so socket callbacks always see the latest ride without stale closure
   const currentRideRef = useRef<any>(null);
   const selectedRouteChoice = routeChoices.find((choice) => choice.id === selectedRouteId) || routeChoices[0] || null;
+
+  useEffect(() => {
+    if (!__DEV__) return;
+
+    return subscribeAutocompleteDebugEntries(setDebugLogEntries);
+  }, []);
 
   useEffect(() => {
     currentRideRef.current = currentRide;
@@ -940,6 +1012,11 @@ export default function ClientHomeScreen() {
       setSuggestionsLoading(true);
       try {
         if (shouldDeferAddressAutocomplete(query)) {
+          logAutocompleteDebug("defer", {
+            query,
+            target: locationPickerTarget,
+            reason: "short-number-fragment",
+          });
           setLocationSuggestions([]);
           return;
         }
@@ -957,6 +1034,14 @@ export default function ClientHomeScreen() {
         const data = await res.json();
         const predictions = Array.isArray(data.predictions) ? data.predictions : [];
         const filteredPredictions = filterAddressPredictions(query, predictions);
+        logAutocompleteDebug("backend", {
+          query,
+          target: locationPickerTarget,
+          rawCount: predictions.length,
+          filteredCount: filteredPredictions.length,
+          rawTop: summarizeAutocompletePredictions(predictions),
+          filteredTop: summarizeAutocompletePredictions(filteredPredictions),
+        });
         if (filteredPredictions.length > 0) {
           setLocationSuggestions(prependTypedAddressSuggestion(query, filteredPredictions));
           return;
@@ -969,15 +1054,42 @@ export default function ClientHomeScreen() {
 
         if (Platform.OS !== "web") {
           const nativeSuggestions = await buildNativeLocationSuggestions(query);
-          setLocationSuggestions(prependTypedAddressSuggestion(query, filterAddressPredictions(query, nativeSuggestions)));
+          const filteredNativeSuggestions = filterAddressPredictions(query, nativeSuggestions);
+          logAutocompleteDebug("native-fallback", {
+            query,
+            target: locationPickerTarget,
+            nativeCount: nativeSuggestions.length,
+            filteredNativeCount: filteredNativeSuggestions.length,
+            nativeTop: summarizeAutocompletePredictions(nativeSuggestions),
+            filteredNativeTop: summarizeAutocompletePredictions(filteredNativeSuggestions),
+          });
+          setLocationSuggestions(prependTypedAddressSuggestion(query, filteredNativeSuggestions));
           return;
         }
 
+        logAutocompleteDebug("empty", {
+          query,
+          target: locationPickerTarget,
+        });
         setLocationSuggestions(prependTypedAddressSuggestion(query, []));
-      } catch {
+      } catch (error) {
+        logAutocompleteDebug("error", {
+          query,
+          target: locationPickerTarget,
+          message: error instanceof Error ? error.message : String(error),
+        });
         if (Platform.OS !== "web") {
           const nativeSuggestions = await buildNativeLocationSuggestions(query);
-          setLocationSuggestions(prependTypedAddressSuggestion(query, filterAddressPredictions(query, nativeSuggestions)));
+          const filteredNativeSuggestions = filterAddressPredictions(query, nativeSuggestions);
+          logAutocompleteDebug("native-after-error", {
+            query,
+            target: locationPickerTarget,
+            nativeCount: nativeSuggestions.length,
+            filteredNativeCount: filteredNativeSuggestions.length,
+            nativeTop: summarizeAutocompletePredictions(nativeSuggestions),
+            filteredNativeTop: summarizeAutocompletePredictions(filteredNativeSuggestions),
+          });
+          setLocationSuggestions(prependTypedAddressSuggestion(query, filteredNativeSuggestions));
         } else {
           setLocationSuggestions(prependTypedAddressSuggestion(query, []));
         }
@@ -993,6 +1105,7 @@ export default function ClientHomeScreen() {
       const sessionToken = placesSessionTokenRef.current;
       const isManualSuggestion = suggestion.placeId.startsWith("manual:");
       let coords = (suggestion.lat && suggestion.lng) ? { lat: suggestion.lat, lng: suggestion.lng } : null;
+      let resolutionSource = coords ? "suggestion" : "unresolved";
       if (!coords && !isManualSuggestion) {
         // Resolve Google place ids through the Railway backend instead of direct mobile REST.
         // Fallback: server-side details endpoint
@@ -1002,6 +1115,7 @@ export default function ClientHomeScreen() {
           const data = await res.json();
           if (data.lat && data.lng) {
             coords = { lat: data.lat, lng: data.lng };
+            resolutionSource = "details";
           }
         } catch {}
       }
@@ -1013,6 +1127,7 @@ export default function ClientHomeScreen() {
           const data = await res.json();
           if (data.lat && data.lng) {
             coords = { lat: data.lat, lng: data.lng };
+            resolutionSource = "geocode";
           }
         } catch {}
       }
@@ -1027,10 +1142,19 @@ export default function ClientHomeScreen() {
             );
             if (best) {
               coords = { lat: best.latitude, lng: best.longitude };
+              resolutionSource = "native-geocode";
             }
           }
         } catch {}
       }
+
+      logAutocompleteDebug("select", {
+        placeId: suggestion.placeId,
+        description: suggestion.description,
+        isManualSuggestion,
+        resolutionSource,
+        hasCoords: Boolean(coords),
+      });
 
       if (!coords) {
         Alert.alert("Location not found", "Could not resolve this address. Please try a different search.");
@@ -1728,6 +1852,11 @@ export default function ClientHomeScreen() {
           <Text style={styles.brandSlogan} numberOfLines={1}>Premium Ride Experience</Text>
         </View>
         <View style={styles.headerRight}>
+          {__DEV__ && (
+            <Pressable style={styles.debugBtn} onPress={() => setShowDebugLogModal(true)} hitSlop={8}>
+              <Ionicons name="bug-outline" size={18} color={Colors.white} />
+            </Pressable>
+          )}
           {/* Notification bell */}
           <Pressable style={styles.bellBtn} onPress={() => router.push("/client/notifications")} hitSlop={8}>
             <Ionicons name="notifications-outline" size={22} color={Colors.white} />
@@ -2666,7 +2795,13 @@ export default function ClientHomeScreen() {
             <Text style={styles.locationPickerTitle}>
               {locationPickerTarget === "pickup" ? "Set Pickup" : "Set Destination"}
             </Text>
-            <View style={{ width: 24 }} />
+            {__DEV__ ? (
+              <Pressable onPress={() => setShowDebugLogModal(true)} hitSlop={12}>
+                <Ionicons name="bug-outline" size={20} color={Colors.white} />
+              </Pressable>
+            ) : (
+              <View style={{ width: 24 }} />
+            )}
           </View>
 
           {/* Search input */}
@@ -2761,6 +2896,59 @@ export default function ClientHomeScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      <Modal visible={showDebugLogModal} transparent animationType="slide" onRequestClose={() => setShowDebugLogModal(false)}>
+        <View style={styles.profileModalOverlay}>
+          <View style={[styles.debugLogModalSheet, { paddingBottom: insets.bottom + 16 }]}> 
+            <View style={styles.sheetHandle} />
+            <View style={styles.debugLogHeader}>
+              <View style={styles.debugLogHeaderTextWrap}>
+                <Text style={styles.debugLogTitle}>Autocomplete Debug Log</Text>
+                <Text style={styles.debugLogSubtitle}>Tap the bug icon anytime to reopen this viewer while testing search.</Text>
+              </View>
+              <View style={styles.debugLogHeaderActions}>
+                <Pressable style={styles.debugLogActionBtn} onPress={clearAutocompleteDebugEntries}>
+                  <Text style={styles.debugLogActionText}>Clear</Text>
+                </Pressable>
+                <Pressable style={styles.debugLogCloseBtn} onPress={() => setShowDebugLogModal(false)}>
+                  <Ionicons name="close" size={18} color={Colors.textMuted} />
+                </Pressable>
+              </View>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.debugLogScrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              {debugLogEntries.length === 0 ? (
+                <View style={styles.debugLogEmptyState}>
+                  <Ionicons name="pulse-outline" size={24} color={Colors.textMuted} />
+                  <Text style={styles.debugLogEmptyTitle}>No events yet</Text>
+                  <Text style={styles.debugLogEmptyText}>Type into the destination search and the app will record backend results, filtered suggestions, and selection resolution here.</Text>
+                </View>
+              ) : (
+                debugLogEntries.map((entry) => (
+                  <View key={entry.id} style={styles.debugLogCard}>
+                    <View style={styles.debugLogCardHeader}>
+                      <Text style={styles.debugLogStage}>{entry.stage}</Text>
+                      <Text style={styles.debugLogTimestamp}>
+                        {new Date(entry.createdAt).toLocaleTimeString("en-ZA", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                          hour12: false,
+                        })}
+                      </Text>
+                    </View>
+                    <Text selectable style={styles.debugLogPayload}>{JSON.stringify(entry.payload, null, 2)}</Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -2803,6 +2991,14 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   bellBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  debugBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -3738,6 +3934,118 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     maxHeight: "90%",
+  },
+  debugLogModalSheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    maxHeight: "88%",
+  },
+  debugLogHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 16,
+  },
+  debugLogHeaderTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  debugLogHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  debugLogTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  debugLogSubtitle: {
+    marginTop: 4,
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+    lineHeight: 17,
+  },
+  debugLogActionBtn: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  debugLogActionText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  debugLogCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.background,
+  },
+  debugLogScrollContent: {
+    gap: 12,
+    paddingBottom: 12,
+  },
+  debugLogEmptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 36,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+  },
+  debugLogEmptyTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.white,
+  },
+  debugLogEmptyText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  debugLogCard: {
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  debugLogCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  debugLogStage: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: Colors.white,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  debugLogTimestamp: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.textMuted,
+  },
+  debugLogPayload: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: Colors.textSecondary,
+    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" }),
   },
   profileModalHeader: {
     flexDirection: "row",
