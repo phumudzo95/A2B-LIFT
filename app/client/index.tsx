@@ -26,6 +26,7 @@ import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/lib/auth-context";
+import { ensureGoogleMapsWebPlaces } from "@/lib/google-maps-web";
 import { apiRequest, queryClient } from "@/lib/query-client";
 import {
   getBestAvailablePosition,
@@ -305,7 +306,7 @@ function buildApproximateRouteChoice(
 const CURRENT_LOCATION_LABEL = "Current Location";
 const SIGNIFICANT_LOCATION_SHIFT_KM = 0.03;
 const DRIVER_MARKER_SHIFT_KM = 0.01;
-const AUTOCOMPLETE_DEBOUNCE_MS = 400;
+const AUTOCOMPLETE_DEBOUNCE_MS = 220;
 const ADDRESS_TERM_NORMALIZATIONS: Array<[RegExp, string]> = [
   [/\bpretorious\b/gi, "Pretorius"],
   [/\bpretoriaus\b/gi, "Pretorius"],
@@ -350,6 +351,9 @@ function isWithinSouthAfricaBounds(lat: number, lng: number) {
 }
 
 function createPlacesSessionToken() {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
@@ -476,6 +480,97 @@ async function buildNativeLocationSuggestions(query: string) {
   }
 }
 
+async function fetchWebGoogleAutocompletePredictions(
+  query: string,
+  biasCoords?: { lat: number; lng: number } | null,
+) {
+  const google = await ensureGoogleMapsWebPlaces();
+  if (!google?.maps?.places) return [];
+
+  const service = new google.maps.places.AutocompleteService();
+  const request: any = {
+    input: query,
+    componentRestrictions: { country: "za" },
+    language: "en",
+    offset: Array.from(query).length,
+    region: "za",
+    types: ["address"],
+  };
+
+  if (biasCoords) {
+    request.location = new google.maps.LatLng(biasCoords.lat, biasCoords.lng);
+    request.radius = /^\d/.test(query.trim()) ? 120000 : 90000;
+  }
+
+  return await new Promise<{ placeId: string; description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[]>((resolve, reject) => {
+    service.getPlacePredictions(request, (predictions: any[] | null, status: any) => {
+      if (
+        status &&
+        status !== google.maps.places.PlacesServiceStatus.OK &&
+        status !== google.maps.places.PlacesServiceStatus.ZERO_RESULTS
+      ) {
+        reject(new Error(String(status)));
+        return;
+      }
+
+      resolve((predictions || []).map((prediction: any) => ({
+        placeId: prediction.place_id,
+        description: prediction.description,
+        mainText: prediction.structured_formatting?.main_text || prediction.description?.split(",")[0] || query.trim(),
+        secondaryText: prediction.structured_formatting?.secondary_text || "",
+        lat: null,
+        lng: null,
+      })));
+    });
+  });
+}
+
+async function fetchWebGooglePlaceDetails(placeId: string) {
+  const google = await ensureGoogleMapsWebPlaces();
+  if (!google?.maps?.places) return null;
+
+  const service = new google.maps.places.PlacesService(document.createElement("div"));
+  return await new Promise<{
+    lat: number;
+    lng: number;
+    description: string | null;
+    mainText: string | null;
+    secondaryText: string | null;
+  } | null>((resolve, reject) => {
+    service.getDetails(
+      {
+        placeId,
+        fields: ["formatted_address", "geometry", "name"],
+      },
+      (result: any, status: any) => {
+        if (status !== google.maps.places.PlacesServiceStatus.OK || !result?.geometry?.location) {
+          if (
+            status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS ||
+            status === google.maps.places.PlacesServiceStatus.NOT_FOUND
+          ) {
+            resolve(null);
+            return;
+          }
+
+          reject(new Error(String(status)));
+          return;
+        }
+
+        const lat = result.geometry.location.lat();
+        const lng = result.geometry.location.lng();
+        const description = typeof result.formatted_address === "string" ? result.formatted_address : null;
+        resolve({
+          lat,
+          lng,
+          description,
+          mainText: result.name || description?.split(",")[0] || null,
+          secondaryText: description?.split(",").slice(1).join(", ").trim() || null,
+        });
+      },
+    );
+  });
+}
+
 function normalizeAddressSearchQuery(value: string) {
   return ADDRESS_TERM_NORMALIZATIONS.reduce(
     (normalized, [pattern, replacement]) => normalized.replace(pattern, replacement),
@@ -484,9 +579,11 @@ function normalizeAddressSearchQuery(value: string) {
 }
 
 function extractMeaningfulAddressTokens(value: string) {
+  const normalized = normalizeAddressSearchQuery(value).toLowerCase();
+  const minimumLength = /^\d+\s+/.test(normalized) ? 2 : 3;
   return normalizeAddressSearchQuery(value)
     .toLowerCase()
-    .match(/[a-z]{3,}/g)?.filter((token) => !NON_DISTINCT_ADDRESS_TOKENS.has(token)) || [];
+    .match(new RegExp(`[a-z]{${minimumLength},}`, "g"))?.filter((token) => !NON_DISTINCT_ADDRESS_TOKENS.has(token)) || [];
 }
 
 function scoreAddressPrediction(
@@ -558,13 +655,8 @@ function buildResolvedAddressLabel(result?: {
 }
 
 function shouldDeferAddressAutocomplete(query: string) {
-  const normalized = normalizeAddressSearchQuery(query).toLowerCase();
-  const startsWithNumber = /^\d+(?:\s+|$)/.test(normalized);
-  if (!startsWithNumber) return false;
-
-  const alphaTokens = normalized.match(/[a-z]{2,}/g) || [];
-  if (alphaTokens.length === 0) return true;
-  return alphaTokens.length === 1 && alphaTokens[0].length < 3;
+  void query;
+  return false;
 }
 
 function shouldOfferTypedAddressSuggestion(query: string) {
@@ -601,7 +693,41 @@ function prependTypedAddressSuggestion(
     normalizeAddressSearchQuery(typedSuggestion.description).toLowerCase(),
   );
 
-  return alreadyIncluded ? predictions : [typedSuggestion, ...predictions];
+  if (alreadyIncluded) return predictions;
+  return predictions.length > 0 ? [...predictions, typedSuggestion] : [typedSuggestion];
+}
+
+function dedupeLocationSuggestions(
+  predictions: { placeId: string; description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
+) {
+  const seen = new Set<string>();
+
+  return predictions.filter((prediction) => {
+    const normalizedDescription = normalizeAddressSearchQuery(prediction.description).toLowerCase();
+    const normalizedMain = normalizeAddressSearchQuery(prediction.mainText).toLowerCase();
+    const normalizedSecondary = normalizeAddressSearchQuery(prediction.secondaryText).toLowerCase();
+    const keys = [
+      normalizedDescription,
+      `${normalizedMain}|${normalizedSecondary}`,
+      prediction.placeId,
+    ].filter(Boolean);
+
+    if (keys.some((key) => seen.has(key))) {
+      return false;
+    }
+
+    keys.forEach((key) => seen.add(key));
+    return true;
+  });
+}
+
+function buildRenderedLocationSuggestions(
+  query: string,
+  predictions: { placeId: string; description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
+) {
+  const dedupedPredictions = dedupeLocationSuggestions(predictions);
+  if (dedupedPredictions.length > 0) return dedupedPredictions;
+  return dedupeLocationSuggestions(prependTypedAddressSuggestion(query, []));
 }
 
 function filterAddressPredictions(
@@ -613,9 +739,9 @@ function filterAddressPredictions(
   const significantTokens = extractMeaningfulAddressTokens(normalized);
   const startsWithNumber = /^\d+\s+/.test(normalized);
 
-  const rankedPredictions = [...predictions].sort(
+  const rankedPredictions = dedupeLocationSuggestions([...predictions].sort(
     (left, right) => scoreAddressPrediction(query, right) - scoreAddressPrediction(query, left),
-  );
+  ));
 
   if (significantTokens.length === 0 && !leadingNumber) return rankedPredictions;
 
@@ -650,7 +776,11 @@ function filterAddressPredictions(
     return tokenMatches >= minimumTokenMatches;
   });
 
-  return filteredPredictions.length > 0 ? filteredPredictions : leadingNumber ? [] : rankedPredictions;
+  return filteredPredictions.length > 0
+    ? dedupeLocationSuggestions(filteredPredictions)
+    : leadingNumber
+      ? []
+      : rankedPredictions;
 }
 
 
@@ -748,9 +878,11 @@ export default function ClientHomeScreen() {
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
   const [locationPickerTarget, setLocationPickerTarget] = useState<"pickup" | "dropoff">("dropoff");
   const [locationPickerQuery, setLocationPickerQuery] = useState("");
-  const [locationSuggestions, setLocationSuggestions] = useState<{ placeId: string; description: string; mainText: string; secondaryText: string; lat: number; lng: number }[]>([]);
+  const [locationSuggestions, setLocationSuggestions] = useState<{ placeId: string; description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const autocompleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autocompleteRequestIdRef = useRef(0);
+  const latestAutocompleteQueryRef = useRef("");
   const locationWatchRef = useRef<Location.LocationSubscription | null>(null);
   const pickupFollowsDeviceRef = useRef(true);
   const lastResolvedPickupRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -990,7 +1122,42 @@ export default function ClientHomeScreen() {
     setLocationPickerQuery(current === CURRENT_LOCATION_LABEL ? "" : current);
     setLocationSuggestions([]);
     placesSessionTokenRef.current = null;
+    latestAutocompleteQueryRef.current = "";
+    autocompleteRequestIdRef.current += 1;
     setLocationPickerVisible(true);
+  }
+
+  function isActiveAutocompleteRequest(requestId: number, query: string) {
+    return autocompleteRequestIdRef.current === requestId && latestAutocompleteQueryRef.current === query;
+  }
+
+  function applyLocationSuggestions(
+    requestId: number,
+    query: string,
+    target: "pickup" | "dropoff",
+    source: string,
+    suggestions: { placeId: string; description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null }[],
+  ) {
+    if (!isActiveAutocompleteRequest(requestId, query)) {
+      logAutocompleteDebug("stale-drop", {
+        query,
+        target,
+        source,
+        count: suggestions.length,
+        top: summarizeAutocompletePredictions(suggestions),
+      });
+      return false;
+    }
+
+    setLocationSuggestions(suggestions);
+    logAutocompleteDebug("render", {
+      query,
+      target,
+      source,
+      count: suggestions.length,
+      top: summarizeAutocompletePredictions(suggestions),
+    });
+    return true;
   }
 
   function onLocationQueryChange(text: string) {
@@ -999,6 +1166,9 @@ export default function ClientHomeScreen() {
     if (locationPickerTarget === "dropoff") setDropoffCoords(null);
     if (autocompleteTimerRef.current) clearTimeout(autocompleteTimerRef.current);
     const query = text.trim();
+    latestAutocompleteQueryRef.current = query;
+    const requestId = ++autocompleteRequestIdRef.current;
+    const target = locationPickerTarget;
     if (query.length < 2) {
       if (query.length === 0) {
         placesSessionTokenRef.current = null;
@@ -1009,21 +1179,22 @@ export default function ClientHomeScreen() {
     const sessionToken = placesSessionTokenRef.current || createPlacesSessionToken();
     placesSessionTokenRef.current = sessionToken;
     autocompleteTimerRef.current = setTimeout(async () => {
+      if (!isActiveAutocompleteRequest(requestId, query)) return;
       setSuggestionsLoading(true);
       try {
         if (shouldDeferAddressAutocomplete(query)) {
-          const deferredSuggestions = prependTypedAddressSuggestion(query, []);
+          const deferredSuggestions = buildRenderedLocationSuggestions(query, []);
           logAutocompleteDebug("defer", {
             query,
-            target: locationPickerTarget,
+            target,
             reason: "short-number-fragment",
             suggestionCount: deferredSuggestions.length,
           });
-          setLocationSuggestions(deferredSuggestions);
+          applyLocationSuggestions(requestId, query, target, "defer", deferredSuggestions);
           return;
         }
 
-        const biasCoords = locationPickerTarget === "pickup"
+        const biasCoords = target === "pickup"
           ? location
           : dropoffCoords || location;
 
@@ -1036,67 +1207,91 @@ export default function ClientHomeScreen() {
         const data = await res.json();
         const predictions = Array.isArray(data.predictions) ? data.predictions : [];
         const filteredPredictions = filterAddressPredictions(query, predictions);
+        const renderedFilteredPredictions = buildRenderedLocationSuggestions(query, filteredPredictions);
+        const renderedRawPredictions = buildRenderedLocationSuggestions(query, predictions);
         logAutocompleteDebug("backend", {
           query,
-          target: locationPickerTarget,
+          target,
           rawCount: predictions.length,
           filteredCount: filteredPredictions.length,
+          renderedFilteredCount: renderedFilteredPredictions.length,
+          renderedRawCount: renderedRawPredictions.length,
           rawTop: summarizeAutocompletePredictions(predictions),
           filteredTop: summarizeAutocompletePredictions(filteredPredictions),
+          renderedFilteredTop: summarizeAutocompletePredictions(renderedFilteredPredictions),
+          renderedRawTop: summarizeAutocompletePredictions(renderedRawPredictions),
         });
         if (filteredPredictions.length > 0) {
-          setLocationSuggestions(prependTypedAddressSuggestion(query, filteredPredictions));
+          applyLocationSuggestions(requestId, query, target, "backend-filtered", renderedFilteredPredictions);
           return;
         }
 
         if (predictions.length > 0) {
-          setLocationSuggestions(prependTypedAddressSuggestion(query, predictions));
-          return;
+          logAutocompleteDebug("backend-no-token-match", {
+            query,
+            target,
+            rawCount: predictions.length,
+            rawTop: summarizeAutocompletePredictions(predictions),
+          });
         }
 
-        if (Platform.OS !== "web") {
-          const nativeSuggestions = await buildNativeLocationSuggestions(query);
-          const filteredNativeSuggestions = filterAddressPredictions(query, nativeSuggestions);
-          logAutocompleteDebug("native-fallback", {
-            query,
-            target: locationPickerTarget,
-            nativeCount: nativeSuggestions.length,
-            filteredNativeCount: filteredNativeSuggestions.length,
-            nativeTop: summarizeAutocompletePredictions(nativeSuggestions),
-            filteredNativeTop: summarizeAutocompletePredictions(filteredNativeSuggestions),
-          });
-          setLocationSuggestions(prependTypedAddressSuggestion(query, filteredNativeSuggestions));
-          return;
+        if (Platform.OS === "web") {
+          try {
+            const webPredictions = await fetchWebGoogleAutocompletePredictions(query, biasCoords);
+            const filteredWebPredictions = filterAddressPredictions(query, webPredictions);
+            const renderedFilteredWebPredictions = buildRenderedLocationSuggestions(query, filteredWebPredictions);
+            const renderedRawWebPredictions = buildRenderedLocationSuggestions(query, webPredictions);
+            logAutocompleteDebug("web-google-fallback", {
+              query,
+              target,
+              rawCount: webPredictions.length,
+              filteredCount: filteredWebPredictions.length,
+              renderedFilteredCount: renderedFilteredWebPredictions.length,
+              renderedRawCount: renderedRawWebPredictions.length,
+              rawTop: summarizeAutocompletePredictions(webPredictions),
+              filteredTop: summarizeAutocompletePredictions(filteredWebPredictions),
+              renderedFilteredTop: summarizeAutocompletePredictions(renderedFilteredWebPredictions),
+              renderedRawTop: summarizeAutocompletePredictions(renderedRawWebPredictions),
+            });
+
+            if (filteredWebPredictions.length > 0) {
+              applyLocationSuggestions(requestId, query, target, "web-google-fallback-filtered", renderedFilteredWebPredictions);
+              return;
+            }
+
+            if (webPredictions.length > 0) {
+              logAutocompleteDebug("web-google-fallback-no-token-match", {
+                query,
+                target,
+                rawCount: webPredictions.length,
+                rawTop: summarizeAutocompletePredictions(webPredictions),
+              });
+            }
+          } catch (error) {
+            logAutocompleteDebug("web-google-fallback-error", {
+              query,
+              target,
+              message: error instanceof Error ? error.message : String(error),
+            });
+          }
         }
 
         logAutocompleteDebug("empty", {
           query,
-          target: locationPickerTarget,
+          target,
         });
-        setLocationSuggestions(prependTypedAddressSuggestion(query, []));
+        applyLocationSuggestions(requestId, query, target, "empty", buildRenderedLocationSuggestions(query, []));
       } catch (error) {
         logAutocompleteDebug("error", {
           query,
-          target: locationPickerTarget,
+          target,
           message: error instanceof Error ? error.message : String(error),
         });
-        if (Platform.OS !== "web") {
-          const nativeSuggestions = await buildNativeLocationSuggestions(query);
-          const filteredNativeSuggestions = filterAddressPredictions(query, nativeSuggestions);
-          logAutocompleteDebug("native-after-error", {
-            query,
-            target: locationPickerTarget,
-            nativeCount: nativeSuggestions.length,
-            filteredNativeCount: filteredNativeSuggestions.length,
-            nativeTop: summarizeAutocompletePredictions(nativeSuggestions),
-            filteredNativeTop: summarizeAutocompletePredictions(filteredNativeSuggestions),
-          });
-          setLocationSuggestions(prependTypedAddressSuggestion(query, filteredNativeSuggestions));
-        } else {
-          setLocationSuggestions(prependTypedAddressSuggestion(query, []));
-        }
+        applyLocationSuggestions(requestId, query, target, "error", buildRenderedLocationSuggestions(query, []));
       } finally {
-        setSuggestionsLoading(false);
+        if (isActiveAutocompleteRequest(requestId, query)) {
+          setSuggestionsLoading(false);
+        }
       }
     }, AUTOCOMPLETE_DEBOUNCE_MS);
   }
@@ -1105,9 +1300,11 @@ export default function ClientHomeScreen() {
     try {
       setSuggestionsLoading(true);
       const sessionToken = placesSessionTokenRef.current;
-      const isManualSuggestion = suggestion.placeId.startsWith("manual:");
+      const isManualSuggestion = suggestion.placeId.startsWith("manual:") || suggestion.placeId.startsWith("synthetic:");
       let coords = (suggestion.lat && suggestion.lng) ? { lat: suggestion.lat, lng: suggestion.lng } : null;
       let resolutionSource = coords ? "suggestion" : "unresolved";
+      let resolvedAddress = buildResolvedAddressLabel(suggestion) || suggestion.description;
+
       if (!coords && !isManualSuggestion) {
         // Resolve Google place ids through the Railway backend instead of direct mobile REST.
         // Fallback: server-side details endpoint
@@ -1118,6 +1315,21 @@ export default function ClientHomeScreen() {
           if (data.lat && data.lng) {
             coords = { lat: data.lat, lng: data.lng };
             resolutionSource = "details";
+          }
+        } catch {}
+      }
+
+      if (!coords && !isManualSuggestion && Platform.OS === "web") {
+        try {
+          const webPlaceDetails = await fetchWebGooglePlaceDetails(suggestion.placeId);
+          if (webPlaceDetails?.lat != null && webPlaceDetails?.lng != null) {
+            coords = { lat: webPlaceDetails.lat, lng: webPlaceDetails.lng };
+            resolutionSource = "web-details";
+            resolvedAddress = buildResolvedAddressLabel({
+              description: webPlaceDetails.description,
+              mainText: webPlaceDetails.mainText,
+              secondaryText: webPlaceDetails.secondaryText,
+            }) || resolvedAddress;
           }
         } catch {}
       }
@@ -1163,7 +1375,7 @@ export default function ClientHomeScreen() {
         return;
       }
 
-      const address = buildResolvedAddressLabel(suggestion) || suggestion.description;
+      const address = resolvedAddress;
       if (locationPickerTarget === "pickup") {
         pickupFollowsDeviceRef.current = false;
         locationWatchRef.current?.remove();

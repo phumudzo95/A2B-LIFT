@@ -1275,8 +1275,12 @@ async function runMockSelfieQualityCheck(selfieUrl, faceData, challenge) {
 }
 async function registerRoutes(app2) {
   const httpServer = (0, import_node_http.createServer)(app2);
-  await pool2.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo text");
-  await pool2.query("ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS vehicle_year integer");
+  try {
+    await pool2.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo text");
+    await pool2.query("ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS vehicle_year integer");
+  } catch (error) {
+    console.warn("[routes] startup schema checks skipped:", error instanceof Error ? error.message : error);
+  }
   const SUPABASE_SERVICE_KEY_CONFIGURED = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
   app2.use("/api", authOptional);
   const io = new import_socket.Server(httpServer, {
@@ -1658,7 +1662,22 @@ async function registerRoutes(app2) {
   });
   const GOOGLE_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY || "";
   const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
+  const PHOTON_BASE_URL = "https://photon.komoot.io/api";
   const MAPS_USER_AGENT = "A2B-LIFT/1.0 (support@a2blift.app)";
+  const GOOGLE_AUTOCOMPLETE_FIELD_MASK = [
+    "suggestions.placePrediction.placeId",
+    "suggestions.placePrediction.text.text",
+    "suggestions.placePrediction.structuredFormat.mainText.text",
+    "suggestions.placePrediction.structuredFormat.secondaryText.text",
+    "suggestions.placePrediction.types"
+  ].join(",");
+  const GOOGLE_PLACE_DETAILS_FIELD_MASK = [
+    "id",
+    "displayName.text",
+    "formattedAddress",
+    "location.latitude",
+    "location.longitude"
+  ].join(",");
   const DIRECTIONS_CACHE_TTL_MS = 5 * 60 * 1e3;
   const DIRECTIONS_CACHE_MAX_ENTRIES = 250;
   const directionsCache = /* @__PURE__ */ new Map();
@@ -1737,6 +1756,45 @@ async function registerRoutes(app2) {
       return null;
     }
   }
+  async function fetchMapsJsonPost(url, body, headers) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "en-ZA,en;q=0.9",
+        "Content-Type": "application/json",
+        "User-Agent": MAPS_USER_AGENT,
+        ...headers
+      },
+      body: JSON.stringify(body)
+    });
+    const rawBody = await response.text();
+    if (!rawBody) return null;
+    try {
+      return JSON.parse(rawBody);
+    } catch {
+      const provider = (() => {
+        try {
+          return new URL(url).hostname;
+        } catch {
+          return "maps-provider";
+        }
+      })();
+      const preview = rawBody.replace(/\s+/g, " ").trim().slice(0, 80);
+      throw new Error(`Invalid JSON from ${provider}: ${preview}`);
+    }
+  }
+  async function fetchMapsJsonPostSafely(url, body, headers) {
+    try {
+      return await fetchMapsJsonPost(url, body, headers);
+    } catch (error) {
+      console.warn(
+        "[maps] Upstream maps response was not valid JSON:",
+        error instanceof Error ? error.message : String(error)
+      );
+      return null;
+    }
+  }
   function normalizeCoordinate(raw) {
     const value = Number(raw);
     if (!Number.isFinite(value)) return null;
@@ -1773,13 +1831,26 @@ async function registerRoutes(app2) {
       directionsCache.delete(oldestKey);
     }
   }
+  function sanitizeAddressAutocompleteParts(parts) {
+    return parts.reduce((cleaned, part) => {
+      if (typeof part !== "string") return cleaned;
+      const trimmedPart = part.trim();
+      if (!trimmedPart) return cleaned;
+      if (/\b(ward\b|municipality|district municipality|administrative area)\b/i.test(trimmedPart)) {
+        return cleaned;
+      }
+      if (cleaned.includes(trimmedPart)) return cleaned;
+      cleaned.push(trimmedPart);
+      return cleaned;
+    }, []);
+  }
   function formatNominatimAddress(address, fallbackDisplayName) {
     const primary = [address?.house_number, address?.road].filter(Boolean).join(" ").trim();
-    const locality = [
+    const locality = sanitizeAddressAutocompleteParts([
       address?.suburb,
       address?.city || address?.town || address?.village,
       address?.state
-    ].filter(Boolean).join(", ").trim();
+    ]).join(", ").trim();
     const description = [primary, locality].filter(Boolean).join(", ") || fallbackDisplayName || "";
     return {
       description,
@@ -1823,14 +1894,22 @@ async function registerRoutes(app2) {
     "city",
     "town"
   ]);
+  const ADDRESS_SEARCH_TYPE_HINTS = ["Street", "Avenue", "Road", "Drive", "Lane", "Close"];
   function normalizeMapsQuery(value) {
     return ADDRESS_TERM_NORMALIZATIONS.reduce(
       (normalized, [pattern, replacement]) => normalized.replace(pattern, replacement),
       value.trim()
     ).replace(/\s+/g, " ");
   }
-  function extractAddressTokens(value) {
-    return normalizeMapsQuery(value).toLowerCase().match(/[a-z]{3,}/g)?.filter((token) => !NON_DISTINCT_ADDRESS_TOKENS.has(token)) || [];
+  function extractAddressTokens(value, minimumLength = 3) {
+    return normalizeMapsQuery(value).toLowerCase().match(new RegExp(`[a-z]{${minimumLength},}`, "g"))?.filter((token) => !NON_DISTINCT_ADDRESS_TOKENS.has(token)) || [];
+  }
+  function predictionMatchesAddressPrefixes(prediction, prefixes) {
+    if (prefixes.length === 0) return true;
+    const primaryWords = normalizeMapsQuery(
+      `${prediction.mainText} ${prediction.description.split(",")[0] || ""}`
+    ).toLowerCase().match(/[a-z]{1,}/g) || [];
+    return prefixes.every((prefix) => primaryWords.some((word) => word.startsWith(prefix)));
   }
   function chooseBestReverseGeocodeResult(results) {
     return [...results].sort((left, right) => {
@@ -1895,6 +1974,26 @@ async function registerRoutes(app2) {
     }
     if (lower !== input.toLowerCase()) {
       queries.add(`${normalized}, South Africa`);
+    }
+    return Array.from(queries);
+  }
+  function buildExpandedAddressFallbackQueries(input) {
+    const normalized = normalizeMapsQuery(input);
+    const queries = /* @__PURE__ */ new Set();
+    const hasStreetType = /\b(street|avenue|road|drive|lane|close|boulevard|crescent)\b/i.test(normalized);
+    const numberOnlyMatch = normalized.match(/^(\d+)$/);
+    if (numberOnlyMatch) {
+      for (const suffix of ADDRESS_SEARCH_TYPE_HINTS) {
+        queries.add(`${numberOnlyMatch[1]} ${suffix}`);
+      }
+      return Array.from(queries);
+    }
+    const shortStemMatch = normalized.match(/^(\d+)\s+([a-z]{3,5})$/i);
+    if (shortStemMatch && !hasStreetType) {
+      const [, leadingNumber, streetStem] = shortStemMatch;
+      for (const suffix of ADDRESS_SEARCH_TYPE_HINTS) {
+        queries.add(`${leadingNumber} ${streetStem} ${suffix}`);
+      }
     }
     return Array.from(queries);
   }
@@ -1967,13 +2066,141 @@ async function registerRoutes(app2) {
   function dedupeAddressAutocompletePredictions(predictions) {
     const seen = /* @__PURE__ */ new Set();
     return predictions.filter((prediction) => {
-      const key = prediction.placeId || normalizeMapsQuery(
-        `${prediction.mainText}|${prediction.secondaryText}|${prediction.description}`
-      ).toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
+      const normalizedMain = normalizeMapsQuery(prediction.mainText).toLowerCase();
+      const normalizedSecondary = normalizeMapsQuery(prediction.secondaryText).toLowerCase();
+      const normalizedDescription = normalizeMapsQuery(prediction.description).toLowerCase();
+      const keys = [
+        normalizedDescription,
+        `${normalizedMain}|${normalizedSecondary}`,
+        prediction.placeId
+      ].filter(Boolean);
+      if (keys.some((key) => seen.has(key))) return false;
+      keys.forEach((key) => seen.add(key));
       return true;
     });
+  }
+  function mapPhotonFeatureToPrediction(feature) {
+    const properties = feature?.properties || {};
+    const countryCode = String(properties.countrycode || "").toLowerCase();
+    if (countryCode && countryCode !== "za") return null;
+    const type = String(properties.type || "").toLowerCase();
+    const houseNumber = String(properties.housenumber || "").trim();
+    const street = String(properties.street || "").trim();
+    const name = String(properties.name || "").trim();
+    const addressLike = type === "street" || Boolean(street) || Boolean(houseNumber);
+    if (!addressLike) return null;
+    const coordinates = Array.isArray(feature?.geometry?.coordinates) ? feature.geometry.coordinates : [];
+    const lng = typeof coordinates[0] === "number" ? coordinates[0] : null;
+    const lat = typeof coordinates[1] === "number" ? coordinates[1] : null;
+    const mainText = [houseNumber, street || name].filter(Boolean).join(" ").trim() || street || name;
+    const secondaryParts = sanitizeAddressAutocompleteParts([
+      properties.locality,
+      properties.district,
+      properties.city,
+      properties.state
+    ]);
+    const secondaryText = secondaryParts.join(", ") || String(properties.country || "South Africa");
+    const description = [mainText, secondaryText].filter(Boolean).join(", ") || name;
+    if (!description) return null;
+    const stableKey = [
+      properties.osm_type || feature?.id || "feature",
+      properties.osm_id || mainText || description
+    ].filter(Boolean).join(":");
+    return {
+      placeId: `photon:${stableKey}`,
+      description,
+      mainText: mainText || description.split(",")[0] || "Pinned location",
+      secondaryText,
+      lat,
+      lng
+    };
+  }
+  async function photonSearch(query, limit = 6, options) {
+    const normalizedQuery = normalizeMapsQuery(query);
+    const minQueryLength = Math.max(1, options?.minQueryLength ?? 2);
+    if (normalizedQuery.length < minQueryLength) return [];
+    const hasBias = typeof options?.lat === "number" && Number.isFinite(options.lat) && typeof options?.lng === "number" && Number.isFinite(options.lng);
+    const biasLat = hasBias ? Number(options?.lat) : SA_DEFAULT_BIAS.lat;
+    const biasLng = hasBias ? Number(options?.lng) : SA_DEFAULT_BIAS.lng;
+    const searchQueries = buildAddressSearchQueries(normalizedQuery, options?.lat, options?.lng);
+    const rawFeatures = [];
+    for (const searchQuery of searchQueries) {
+      const url = `${PHOTON_BASE_URL}/?q=${encodeURIComponent(searchQuery)}&limit=${Math.max(limit, 8)}&lang=en&lat=${biasLat}&lon=${biasLng}`;
+      const response = await fetchMapsJsonSafely(url);
+      const features = Array.isArray(response?.features) ? response.features : [];
+      rawFeatures.push(...features);
+      if (rawFeatures.length >= limit * 3) break;
+    }
+    if (rawFeatures.length === 0) return [];
+    const searchTokens = extractAddressTokens(normalizedQuery.replace(/^\d+\s*/, ""));
+    return dedupeAddressAutocompletePredictions(
+      rawFeatures.map(mapPhotonFeatureToPrediction).filter((prediction) => Boolean(prediction)).filter((prediction) => {
+        if (searchTokens.length === 0) return true;
+        const primaryText = normalizeMapsQuery(`${prediction.mainText} ${prediction.description.split(",")[0] || ""}`).toLowerCase();
+        return searchTokens.some((token) => primaryText.includes(token));
+      })
+    ).map((prediction) => ({
+      ...prediction,
+      score: scoreMapsPrediction(prediction, normalizedQuery, options?.lat, options?.lng)
+    })).sort((a, b) => b.score - a.score).slice(0, limit).map(({ score: _score, ...prediction }) => prediction);
+  }
+  async function fetchNumberedStreetAutocompletePredictions(input, limit = 5, options) {
+    const normalizedInput = normalizeMapsQuery(input);
+    const leadingNumber = normalizedInput.match(/^\d+/)?.[0] || "";
+    if (!leadingNumber) return [];
+    const streetFragment = normalizedInput.replace(/^\d+\s*/, "").trim();
+    const prefixTokens = extractAddressTokens(streetFragment, 1);
+    const significantTokens = extractAddressTokens(streetFragment, 3);
+    const usePrefixMatching = significantTokens.length === 0 && prefixTokens.length > 0;
+    const activeTokens = usePrefixMatching ? prefixTokens : significantTokens;
+    const longestTokenLength = prefixTokens.reduce((longest, token) => Math.max(longest, token.length), 0);
+    const hasStreetType = /\b(street|avenue|road|drive|lane|close|boulevard|crescent)\b/i.test(streetFragment);
+    if (!streetFragment || activeTokens.length === 0) {
+      return [];
+    }
+    const providerLimit = usePrefixMatching && !hasStreetType ? Math.max(limit * 6, 30) : limit * 2;
+    const useNominatim = !usePrefixMatching || hasStreetType;
+    const [photonPredictions, nominatimPredictions] = await Promise.all([
+      photonSearch(streetFragment, providerLimit, { ...options, minQueryLength: 1 }),
+      useNominatim ? nominatimSearch(streetFragment, providerLimit, options) : Promise.resolve([])
+    ]);
+    const syntheticPredictions = dedupeAddressAutocompletePredictions([
+      ...photonPredictions,
+      ...nominatimPredictions
+    ]).filter((prediction) => {
+      if (usePrefixMatching) {
+        return predictionMatchesAddressPrefixes(prediction, activeTokens);
+      }
+      const primaryText = normalizeMapsQuery(`${prediction.mainText} ${prediction.description.split(",")[0] || ""}`).toLowerCase();
+      return activeTokens.some((token) => primaryText.includes(token));
+    }).map((prediction) => {
+      const mainText = `${leadingNumber} ${prediction.mainText}`.replace(/\s+/g, " ").trim();
+      return {
+        placeId: `synthetic:${leadingNumber}:${prediction.placeId}`,
+        description: [mainText, prediction.secondaryText].filter(Boolean).join(", "),
+        mainText,
+        secondaryText: prediction.secondaryText,
+        lat: prediction.lat,
+        lng: prediction.lng
+      };
+    });
+    return rankAddressAutocompletePredictions(normalizedInput, syntheticPredictions, options?.lat, options?.lng).slice(0, limit);
+  }
+  async function searchExpandedAddressFallbackQueries(input, limit = 6, options) {
+    const expandedQueries = buildExpandedAddressFallbackQueries(input);
+    if (expandedQueries.length === 0) return [];
+    const batches = await Promise.all(
+      expandedQueries.flatMap((expandedQuery) => [
+        photonSearch(expandedQuery, Math.max(limit, 6), { ...options, minQueryLength: 1 }),
+        nominatimSearch(expandedQuery, Math.max(limit, 6), options)
+      ])
+    );
+    return rankAddressAutocompletePredictions(
+      input,
+      dedupeAddressAutocompletePredictions(batches.flat()),
+      options?.lat,
+      options?.lng
+    ).slice(0, limit);
   }
   function mapGoogleGeocodeResultToPrediction(result) {
     const components = Array.isArray(result?.address_components) ? result.address_components : [];
@@ -1984,7 +2211,7 @@ async function registerRoutes(app2) {
     const city = get("locality") || get("administrative_area_level_2");
     const province = get("administrative_area_level_1");
     const mainText = route ? `${streetNumber ? `${streetNumber} ` : ""}${route}` : result.formatted_address.split(",")[0];
-    const secondaryParts = [suburb, city, province].filter((part, index, parts) => Boolean(part) && parts.indexOf(part) === index);
+    const secondaryParts = sanitizeAddressAutocompleteParts([suburb, city, province]);
     return {
       placeId: result.place_id,
       description: [mainText, ...secondaryParts].join(", ") || result.formatted_address,
@@ -1997,7 +2224,7 @@ async function registerRoutes(app2) {
   function shouldSupplementAddressAutocompleteWithGeocode(input, predictions) {
     const normalizedInput = normalizeMapsQuery(input).toLowerCase();
     const leadingNumber = normalizedInput.match(/^\d+/)?.[0] || "";
-    const significantTokens = extractAddressTokens(normalizedInput);
+    const significantTokens = extractAddressTokens(normalizedInput, /^\d+\s+/.test(normalizedInput) ? 2 : 3);
     const longestTokenLength = significantTokens.reduce((longest, token) => Math.max(longest, token.length), 0);
     if (!leadingNumber || longestTokenLength < 4) return false;
     return !predictions.some((prediction) => {
@@ -2013,6 +2240,122 @@ async function registerRoutes(app2) {
       const tokenMatches = significantTokens.filter((token) => haystack.includes(token)).length;
       return tokenMatches >= significantTokens.length;
     });
+  }
+  function mapGoogleAutocompleteNewSuggestionToPrediction(suggestion) {
+    const placePrediction = suggestion?.placePrediction;
+    if (!placePrediction?.placeId) return null;
+    const description = String(placePrediction.text?.text || "").trim();
+    const mainText = String(
+      placePrediction.structuredFormat?.mainText?.text || description.split(",")[0] || ""
+    ).trim();
+    const secondaryText = String(
+      placePrediction.structuredFormat?.secondaryText?.text || description.split(",").slice(1).join(", ").trim() || ""
+    ).trim();
+    return {
+      placeId: placePrediction.placeId,
+      description: description || [mainText, secondaryText].filter(Boolean).join(", "),
+      mainText: mainText || description.split(",")[0] || "Pinned location",
+      secondaryText,
+      lat: null,
+      lng: null
+    };
+  }
+  async function fetchGoogleAutocompleteNewPredictions(options) {
+    const bias = options.hasLocationBias && options.lat !== null && options.lng !== null ? { lat: options.lat, lng: options.lng } : SA_DEFAULT_BIAS;
+    const radius = options.hasLocationBias ? options.cityOnly ? 22e4 : 9e4 : options.cityOnly ? 45e4 : 16e4;
+    const body = {
+      input: options.input,
+      includedRegionCodes: ["za"],
+      inputOffset: Array.from(options.input).length,
+      languageCode: "en",
+      regionCode: "za",
+      locationBias: {
+        circle: {
+          center: {
+            latitude: bias.lat,
+            longitude: bias.lng
+          },
+          radius
+        }
+      }
+    };
+    if (options.cityOnly) {
+      body.includedPrimaryTypes = ["(cities)"];
+    }
+    if (options.sessionToken) {
+      body.sessionToken = options.sessionToken;
+    }
+    const response = await fetchMapsJsonPostSafely(
+      "https://places.googleapis.com/v1/places:autocomplete",
+      body,
+      {
+        "X-Goog-Api-Key": GOOGLE_KEY,
+        "X-Goog-FieldMask": GOOGLE_AUTOCOMPLETE_FIELD_MASK
+      }
+    );
+    const predictions = Array.isArray(response?.suggestions) ? response.suggestions.map(mapGoogleAutocompleteNewSuggestionToPrediction).filter((prediction) => Boolean(prediction)) : [];
+    return {
+      predictions,
+      status: predictions.length > 0 ? "OK" : response?.error?.status || "ZERO_RESULTS"
+    };
+  }
+  async function fetchGoogleAutocompleteLegacyPredictions(options) {
+    const tokenQuery = options.sessionToken ? `&sessiontoken=${encodeURIComponent(options.sessionToken)}` : "";
+    const typeQuery = options.cityOnly ? "&types=(cities)" : "&types=address";
+    const zaBiasQuery = options.hasLocationBias ? `&location=${options.lat},${options.lng}&radius=${options.cityOnly ? 22e4 : 9e4}` : `&location=${SA_DEFAULT_BIAS.lat},${SA_DEFAULT_BIAS.lng}&radius=${options.cityOnly ? 45e4 : 16e4}`;
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(options.input)}&components=country:za&region=za&language=en${typeQuery}${zaBiasQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
+    const response = await fetchMapsJson(url);
+    const predictions = Array.isArray(response?.predictions) ? response.predictions.slice(0, 8).map((p) => ({
+      placeId: p.place_id,
+      description: p.description,
+      mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
+      secondaryText: p.structured_formatting?.secondary_text || "",
+      lat: null,
+      lng: null
+    })) : [];
+    return {
+      predictions,
+      status: response?.status || (predictions.length > 0 ? "OK" : "ZERO_RESULTS")
+    };
+  }
+  async function fetchGooglePlaceDetailsNew(placeId, sessionToken) {
+    const placeName = placeId.startsWith("places/") ? placeId : `places/${placeId}`;
+    const encodedPlaceName = placeName.split("/").map(encodeURIComponent).join("/");
+    const params = new URLSearchParams({
+      languageCode: "en",
+      regionCode: "za"
+    });
+    if (sessionToken) params.set("sessionToken", sessionToken);
+    const response = await fetch(`https://places.googleapis.com/v1/${encodedPlaceName}?${params.toString()}`, {
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "en-ZA,en;q=0.9",
+        "User-Agent": MAPS_USER_AGENT,
+        "X-Goog-Api-Key": GOOGLE_KEY,
+        "X-Goog-FieldMask": GOOGLE_PLACE_DETAILS_FIELD_MASK
+      }
+    });
+    const rawBody = await response.text();
+    if (!rawBody) return null;
+    let result;
+    try {
+      result = JSON.parse(rawBody);
+    } catch {
+      return null;
+    }
+    const latitude = result?.location?.latitude;
+    const longitude = result?.location?.longitude;
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      if (result?.error?.status) {
+        console.warn("[maps] Google place details new fallback engaged:", result.error.status);
+      }
+      return null;
+    }
+    return {
+      lat: latitude,
+      lng: longitude,
+      address: result.formattedAddress || result.displayName?.text || null
+    };
   }
   async function fetchGeocodeAutocompletePredictions(input, limit = 5, options) {
     if (!GOOGLE_KEY) return [];
@@ -2137,36 +2480,76 @@ async function registerRoutes(app2) {
       const normalizedInput = normalizeMapsQuery(input);
       const staticCityPredictions = cityOnly ? southAfricanCityFallback(normalizedInput, lat, lng) : [];
       if (GOOGLE_KEY) {
-        const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
-        const typeQuery = cityOnly ? "&types=(cities)" : "";
-        const zaBiasQuery = hasLocationBias ? `&location=${lat},${lng}&radius=${cityOnly ? 22e4 : 9e4}` : `&location=${SA_DEFAULT_BIAS.lat},${SA_DEFAULT_BIAS.lng}&radius=${cityOnly ? 45e4 : 16e4}`;
-        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(normalizedInput)}&components=country:za&region=za&language=en${typeQuery}${zaBiasQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
-        const r = await fetchMapsJson(url);
-        const mappedPredictions = Array.isArray(r.predictions) ? r.predictions.slice(0, 8).map((p) => ({
-          placeId: p.place_id,
-          description: p.description,
-          mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
-          secondaryText: p.structured_formatting?.secondary_text || "",
-          lat: null,
-          lng: null
-        })) : [];
+        let googleResult = await fetchGoogleAutocompleteNewPredictions({
+          input: normalizedInput,
+          cityOnly,
+          hasLocationBias,
+          lat,
+          lng,
+          sessionToken
+        });
+        if (googleResult.predictions.length === 0 && googleResult.status !== "OK") {
+          googleResult = await fetchGoogleAutocompleteLegacyPredictions({
+            input: normalizedInput,
+            cityOnly,
+            hasLocationBias,
+            lat,
+            lng,
+            sessionToken
+          });
+        }
+        const mappedPredictions = googleResult.predictions;
         const geocodePredictions = !cityOnly && shouldSupplementAddressAutocompleteWithGeocode(normalizedInput, mappedPredictions) ? await fetchGeocodeAutocompletePredictions(normalizedInput, 5) : [];
         const mergedPredictions = cityOnly ? mappedPredictions : dedupeAddressAutocompletePredictions([...geocodePredictions, ...mappedPredictions]);
         const filteredPredictions = cityOnly ? mappedPredictions : filterAddressAutocompletePredictions(normalizedInput, mergedPredictions, lat, lng);
-        if (r.status === "OK" && mergedPredictions.length > 0) {
+        if (cityOnly && (staticCityPredictions.length > 0 || mappedPredictions.length > 0)) {
           return res.json({
-            predictions: cityOnly ? [...staticCityPredictions, ...mappedPredictions].slice(0, 8) : filteredPredictions.slice(0, 6)
+            predictions: [...staticCityPredictions, ...mappedPredictions].slice(0, 8)
           });
+        }
+        if (filteredPredictions.length > 0) {
+          return res.json({ predictions: filteredPredictions.slice(0, 6) });
         }
         if (normalizedInput.trim().length >= 3) {
           const geocodePredictions2 = await fetchGeocodeAutocompletePredictions(normalizedInput, 5, { cityOnly });
           if (geocodePredictions2.length > 0) {
-            return res.json({
-              predictions: cityOnly ? geocodePredictions2.slice(0, 5) : filterAddressAutocompletePredictions(normalizedInput, geocodePredictions2, lat, lng).slice(0, 5)
-            });
+            const filteredGeocodePredictions = cityOnly ? geocodePredictions2 : filterAddressAutocompletePredictions(normalizedInput, geocodePredictions2, lat, lng);
+            if (filteredGeocodePredictions.length === 0) {
+              console.warn("[maps] Google geocode autocomplete fallback had no token-matching predictions");
+            } else {
+              return res.json({
+                predictions: filteredGeocodePredictions.slice(0, 5)
+              });
+            }
           }
         }
-        console.warn("[maps] Google autocomplete fallback engaged:", r.status || "unknown");
+        if (googleResult.status !== "ZERO_RESULTS") {
+          console.warn("[maps] Google autocomplete fallback engaged:", googleResult.status || "unknown");
+        }
+      }
+      if (!cityOnly) {
+        const [photonPredictions, numberedStreetPredictions] = await Promise.all([
+          photonSearch(normalizedInput, 6, { lat, lng }),
+          fetchNumberedStreetAutocompletePredictions(normalizedInput, 5, { lat, lng })
+        ]);
+        const providerPredictions = filterAddressAutocompletePredictions(
+          normalizedInput,
+          dedupeAddressAutocompletePredictions([...numberedStreetPredictions, ...photonPredictions]),
+          lat,
+          lng
+        );
+        if (providerPredictions.length > 0) {
+          return res.json({ predictions: providerPredictions.slice(0, 6) });
+        }
+        const expandedProviderPredictions = filterAddressAutocompletePredictions(
+          normalizedInput,
+          await searchExpandedAddressFallbackQueries(normalizedInput, 6, { lat, lng }),
+          lat,
+          lng
+        );
+        if (expandedProviderPredictions.length > 0) {
+          return res.json({ predictions: expandedProviderPredictions.slice(0, 6) });
+        }
       }
       const osmPredictions = await nominatimSearch(normalizedInput, cityOnly ? 8 : 6, { cityOnly, lat, lng });
       const filteredOsmPredictions = cityOnly ? osmPredictions : filterAddressAutocompletePredictions(normalizedInput, osmPredictions, lat, lng);
@@ -2191,6 +2574,10 @@ async function registerRoutes(app2) {
       const sessionToken = typeof req.query.sessionToken === "string" ? req.query.sessionToken : typeof req.query.sessiontoken === "string" ? req.query.sessiontoken : "";
       if (!placeId) return res.status(400).json({ message: "placeId is required" });
       if (!GOOGLE_KEY) return res.status(500).json({ message: "Google Maps API key not configured" });
+      const newDetails = await fetchGooglePlaceDetailsNew(placeId, sessionToken);
+      if (newDetails) {
+        return res.json(newDetails);
+      }
       const tokenQuery = sessionToken ? `&sessiontoken=${encodeURIComponent(sessionToken)}` : "";
       const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address,name${tokenQuery}&key=${GOOGLE_KEY}`;
       const r = await (await fetch(url)).json();
