@@ -586,6 +586,28 @@ function extractMeaningfulAddressTokens(value: string) {
     .match(new RegExp(`[a-z]{${minimumLength},}`, "g"))?.filter((token) => !NON_DISTINCT_ADDRESS_TOKENS.has(token)) || [];
 }
 
+function getLeadingAddressNumber(value: string) {
+  return normalizeAddressSearchQuery(value).match(/^\d+\b/)?.[0] || "";
+}
+
+function getSuggestionPrimaryLine(prediction: { description: string; mainText: string }) {
+  const mainText = normalizeAddressSearchQuery(prediction.mainText || "");
+  const descriptionPrimary = normalizeAddressSearchQuery(prediction.description.split(",")[0] || "");
+  return getLeadingAddressNumber(mainText) ? mainText : descriptionPrimary || mainText;
+}
+
+function hasBadPrimaryAddressNumber(
+  query: string,
+  prediction: { description: string; mainText: string },
+) {
+  const expectedNumber = getLeadingAddressNumber(query);
+  if (!expectedNumber) return false;
+
+  const primaryLine = getSuggestionPrimaryLine(prediction);
+  const primaryNumber = getLeadingAddressNumber(primaryLine);
+  return /^\d+\s+\d+\b/.test(primaryLine) || Boolean(primaryNumber && primaryNumber !== expectedNumber);
+}
+
 function scoreAddressPrediction(
   query: string,
   prediction: { description: string; mainText: string; secondaryText: string; lat: number | null; lng: number | null },
@@ -753,6 +775,10 @@ function filterAddressPredictions(
     ).toLowerCase();
 
     if (/\b(ward|municipality|district municipality|administrative area)\b/.test(haystack)) {
+      return false;
+    }
+
+    if (hasBadPrimaryAddressNumber(query, prediction)) {
       return false;
     }
 
@@ -3047,6 +3073,8 @@ export default function ClientHomeScreen() {
             data={locationSuggestions}
             keyExtractor={(item) => item.placeId}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            initialNumToRender={10}
             contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
             ItemSeparatorComponent={() => <View style={styles.suggestionDivider} />}
             ListEmptyComponent={

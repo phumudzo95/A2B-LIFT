@@ -1050,6 +1050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "town",
   ]);
   const ADDRESS_SEARCH_TYPE_HINTS = ["Street", "Avenue", "Road", "Drive", "Lane", "Close"] as const;
+  const ADDRESS_AUTOCOMPLETE_RESULT_LIMIT = 10;
 
   type AddressAutocompletePrediction = {
     placeId: string;
@@ -1071,6 +1072,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return normalizeMapsQuery(value)
       .toLowerCase()
       .match(new RegExp(`[a-z]{${minimumLength},}`, "g"))?.filter((token) => !NON_DISTINCT_ADDRESS_TOKENS.has(token)) || [];
+  }
+
+  function getLeadingAddressNumber(value: string) {
+    return normalizeMapsQuery(value).match(/^\d+\b/)?.[0] || "";
+  }
+
+  function stripLeadingAddressNumber(value: string) {
+    return normalizeMapsQuery(value).replace(/^\d+\s+/, "").trim();
+  }
+
+  function getPredictionPrimaryLine(prediction: Pick<AddressAutocompletePrediction, "mainText" | "description">) {
+    const mainText = normalizeMapsQuery(prediction.mainText || "");
+    const descriptionPrimary = normalizeMapsQuery(prediction.description.split(",")[0] || "");
+    return getLeadingAddressNumber(mainText) ? mainText : descriptionPrimary || mainText;
+  }
+
+  function hasMismatchedPrimaryAddressNumber(
+    prediction: Pick<AddressAutocompletePrediction, "mainText" | "description">,
+    expectedNumber: string,
+  ) {
+    if (!expectedNumber) return false;
+
+    const primaryNumber = getLeadingAddressNumber(getPredictionPrimaryLine(prediction));
+    return Boolean(primaryNumber && primaryNumber !== expectedNumber);
+  }
+
+  function hasStackedPrimaryAddressNumbers(prediction: Pick<AddressAutocompletePrediction, "mainText" | "description">) {
+    return /^\d+\s+\d+\b/.test(getPredictionPrimaryLine(prediction));
   }
 
   function predictionMatchesAddressPrefixes(
@@ -1258,6 +1287,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (/\b(ward|municipality|district municipality|administrative area)\b/.test(haystack)) {
         return false;
       }
+      if (hasStackedPrimaryAddressNumbers(prediction)) {
+        return false;
+      }
+      if (hasMismatchedPrimaryAddressNumber(prediction, leadingNumber)) {
+        return false;
+      }
       if (leadingNumber && !new RegExp(`(^|\\D)${leadingNumber}(\\D|$)`).test(haystack)) {
         return false;
       }
@@ -1424,16 +1459,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ...photonPredictions,
       ...nominatimPredictions,
     ])
-      .filter((prediction) => {
+      .map((prediction) => {
+        if (hasStackedPrimaryAddressNumbers(prediction)) return null;
+        if (hasMismatchedPrimaryAddressNumber(prediction, leadingNumber)) return null;
+
         if (usePrefixMatching) {
-          return predictionMatchesAddressPrefixes(prediction, activeTokens);
+          if (!predictionMatchesAddressPrefixes(prediction, activeTokens)) return null;
+        } else {
+          const primaryText = normalizeMapsQuery(`${prediction.mainText} ${prediction.description.split(",")[0] || ""}`).toLowerCase();
+          if (!activeTokens.some((token) => primaryText.includes(token))) return null;
         }
 
-        const primaryText = normalizeMapsQuery(`${prediction.mainText} ${prediction.description.split(",")[0] || ""}`).toLowerCase();
-        return activeTokens.some((token) => primaryText.includes(token));
-      })
-      .map((prediction) => {
-        const mainText = `${leadingNumber} ${prediction.mainText}`.replace(/\s+/g, " ").trim();
+        const existingNumber = getLeadingAddressNumber(prediction.mainText);
+        const streetText = existingNumber === leadingNumber
+          ? stripLeadingAddressNumber(prediction.mainText)
+          : prediction.mainText;
+        const mainText = existingNumber === leadingNumber
+          ? prediction.mainText
+          : `${leadingNumber} ${streetText}`.replace(/\s+/g, " ").trim();
+
         return {
           placeId: `synthetic:${leadingNumber}:${prediction.placeId}`,
           description: [mainText, prediction.secondaryText].filter(Boolean).join(", "),
@@ -1442,7 +1486,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lat: prediction.lat,
           lng: prediction.lng,
         };
-      });
+      })
+      .filter((prediction): prediction is AddressAutocompletePrediction => Boolean(prediction));
 
     return rankAddressAutocompletePredictions(normalizedInput, syntheticPredictions, options?.lat, options?.lng).slice(0, limit);
   }
@@ -1621,7 +1666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(options.input)}&components=country:za&region=za&language=en${typeQuery}${zaBiasQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
     const response = await fetchMapsJson(url);
     const predictions: AddressAutocompletePrediction[] = Array.isArray(response?.predictions)
-      ? response.predictions.slice(0, 8).map((p: any) => ({
+      ? response.predictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT).map((p: any) => ({
           placeId: p.place_id,
           description: p.description,
           mainText: p.structured_formatting?.main_text || p.description.split(",")[0],
@@ -1728,7 +1773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })
       .filter(Boolean)
       .sort((a: any, b: any) => b.score - a.score)
-      .slice(0, 8)
+      .slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT)
       .map(({ score: _score, ...prediction }: any) => prediction);
   }
 
@@ -1886,12 +1931,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (cityOnly && (staticCityPredictions.length > 0 || mappedPredictions.length > 0)) {
           return res.json({
-            predictions: [...staticCityPredictions, ...mappedPredictions].slice(0, 8),
+            predictions: [...staticCityPredictions, ...mappedPredictions].slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
           });
         }
 
         if (filteredPredictions.length > 0) {
-          return res.json({ predictions: filteredPredictions.slice(0, 6) });
+          return res.json({ predictions: filteredPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT) });
         }
 
         if (normalizedInput.trim().length >= 3) {
@@ -1904,7 +1949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.warn("[maps] Google geocode autocomplete fallback had no token-matching predictions");
             } else {
               return res.json({
-                predictions: filteredGeocodePredictions.slice(0, 5),
+                predictions: filteredGeocodePredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
               });
             }
           }
@@ -1917,8 +1962,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!cityOnly) {
         const [photonPredictions, numberedStreetPredictions] = await Promise.all([
-          photonSearch(normalizedInput, 6, { lat, lng }),
-          fetchNumberedStreetAutocompletePredictions(normalizedInput, 5, { lat, lng }),
+          photonSearch(normalizedInput, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT, { lat, lng }),
+          fetchNumberedStreetAutocompletePredictions(normalizedInput, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT, { lat, lng }),
         ]);
         const providerPredictions = filterAddressAutocompletePredictions(
           normalizedInput,
@@ -1927,21 +1972,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lng,
         );
         if (providerPredictions.length > 0) {
-          return res.json({ predictions: providerPredictions.slice(0, 6) });
+          return res.json({ predictions: providerPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT) });
         }
 
         const expandedProviderPredictions = filterAddressAutocompletePredictions(
           normalizedInput,
-          await searchExpandedAddressFallbackQueries(normalizedInput, 6, { lat, lng }),
+          await searchExpandedAddressFallbackQueries(normalizedInput, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT, { lat, lng }),
           lat,
           lng,
         );
         if (expandedProviderPredictions.length > 0) {
-          return res.json({ predictions: expandedProviderPredictions.slice(0, 6) });
+          return res.json({ predictions: expandedProviderPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT) });
         }
       }
 
-      const osmPredictions = await nominatimSearch(normalizedInput, cityOnly ? 8 : 6, { cityOnly, lat, lng });
+      const osmPredictions = await nominatimSearch(normalizedInput, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT, { cityOnly, lat, lng });
       const filteredOsmPredictions = cityOnly
         ? osmPredictions
         : filterAddressAutocompletePredictions(normalizedInput, osmPredictions, lat, lng);
@@ -1953,7 +1998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           seenCities.add(key);
           return true;
         });
-        return res.json({ predictions: cityPredictions.slice(0, 8) });
+        return res.json({ predictions: cityPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT) });
       }
 
       return res.json({ predictions: filteredOsmPredictions });
