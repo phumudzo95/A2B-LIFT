@@ -1478,8 +1478,12 @@ async function registerRoutes(app2) {
   app2.post("/api/auth/register", async (req, res) => {
     try {
       const { username, password, name, phone, role, referralCode } = req.body;
+      const normalizedPhone = typeof phone === "string" ? phone.trim() : "";
       if (!username || !password || !name) {
-        return res.status(400).json({ message: "Email, password, and name are required" });
+        return res.status(400).json({ message: "Email, password, name, and phone number are required" });
+      }
+      if (!normalizedPhone) {
+        return res.status(400).json({ message: "Phone number is required" });
       }
       const email = username.trim().toLowerCase();
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1500,7 +1504,7 @@ async function registerRoutes(app2) {
         username: email,
         password: hashedPassword,
         name: name.trim(),
-        phone: phone ? phone.trim() : null,
+        phone: normalizedPhone,
         role: role || "client",
         ...referrerUser ? { referredByUserId: referrerUser.id } : {}
       });

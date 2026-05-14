@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Alert, Image } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -39,16 +39,47 @@ const CAR_DOCS = [
 ];
 
 const ALL_DOCS = [...DRIVER_DOCS, ...CAR_DOCS];
-const OPTIONAL_DOC_IDS = new Set(["pdrp_certificate", "passenger_liability_insurance", "dekra_report"]);
+const OPTIONAL_DOC_IDS = new Set(["pdrp_certificate", "driver_evaluation", "passenger_liability_insurance", "dekra_report"]);
 const MIN_VEHICLE_YEAR = 2015;
 const MAX_VEHICLE_YEAR = new Date().getFullYear() + 1;
+const CHAUFFEUR_REGISTRATION_DRAFT_VERSION = 1;
 
 type Step = "vehicle" | "documents" | "photo";
+type DraftFile = { uri: string; name: string };
+type DraftDocuments = Record<string, DraftFile | null>;
+type ChauffeurRegistrationDraft = {
+  version: number;
+  step: Step;
+  carMake: string;
+  vehicleModel: string;
+  vehicleYear: string;
+  plateNumber: string;
+  phone: string;
+  vehicleType: string;
+  carColor: string;
+  passengerCapacity: string;
+  luggageCapacity: string;
+  documents: DraftDocuments;
+  driverPhoto: DraftFile | null;
+};
+
+function createEmptyDocuments(): DraftDocuments {
+  return Object.fromEntries(ALL_DOCS.map((doc) => [doc.id, null])) as DraftDocuments;
+}
+
+function getDraftKey(userId?: string | null) {
+  return userId ? `a2b_chauffeur_registration_draft_${userId}` : null;
+}
+
+function isStep(value: unknown): value is Step {
+  return value === "vehicle" || value === "documents" || value === "photo";
+}
 
 export default function ChauffeurRegisterScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [step, setStep] = useState<Step>("vehicle");
+  const [draftLoaded, setDraftLoaded] = useState(false);
 
   // Vehicle fields
   const [carMake, setCarMake] = useState("");
@@ -62,15 +93,92 @@ export default function ChauffeurRegisterScreen() {
   const [luggageCapacity, setLuggageCapacity] = useState("2");
 
   // Document uploads
-  const [documents, setDocuments] = useState<Record<string, { uri: string; name: string } | null>>(
-    Object.fromEntries(ALL_DOCS.map(d => [d.id, null]))
-  );
+  const [documents, setDocuments] = useState<DraftDocuments>(createEmptyDocuments);
 
   // Driver photo
-  const [driverPhoto, setDriverPhoto] = useState<{ uri: string; name: string } | null>(null);
+  const [driverPhoto, setDriverPhoto] = useState<DraftFile | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const draftKey = getDraftKey(user?.id);
+    if (!draftKey) {
+      setDraftLoaded(true);
+      return;
+    }
+
+    AsyncStorage.getItem(draftKey)
+      .then((rawDraft) => {
+        if (cancelled || !rawDraft) return;
+        const draft = JSON.parse(rawDraft) as Partial<ChauffeurRegistrationDraft>;
+        if (draft.version !== CHAUFFEUR_REGISTRATION_DRAFT_VERSION) return;
+
+        if (isStep(draft.step)) setStep(draft.step);
+        if (typeof draft.carMake === "string") setCarMake(draft.carMake);
+        if (typeof draft.vehicleModel === "string") setVehicleModel(draft.vehicleModel);
+        if (typeof draft.vehicleYear === "string") setVehicleYear(draft.vehicleYear);
+        if (typeof draft.plateNumber === "string") setPlateNumber(draft.plateNumber);
+        if (typeof draft.phone === "string") setPhone(draft.phone);
+        if (typeof draft.vehicleType === "string") setVehicleType(draft.vehicleType);
+        if (typeof draft.carColor === "string") setCarColor(draft.carColor);
+        if (typeof draft.passengerCapacity === "string") setPassengerCapacity(draft.passengerCapacity);
+        if (typeof draft.luggageCapacity === "string") setLuggageCapacity(draft.luggageCapacity);
+        if (draft.documents && typeof draft.documents === "object") {
+          setDocuments({ ...createEmptyDocuments(), ...draft.documents });
+        }
+        if (draft.driverPhoto && typeof draft.driverPhoto.uri === "string") {
+          setDriverPhoto(draft.driverPhoto);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setDraftLoaded(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    const draftKey = getDraftKey(user?.id);
+    if (!draftKey || !draftLoaded) return;
+
+    const draft: ChauffeurRegistrationDraft = {
+      version: CHAUFFEUR_REGISTRATION_DRAFT_VERSION,
+      step,
+      carMake,
+      vehicleModel,
+      vehicleYear,
+      plateNumber,
+      phone,
+      vehicleType,
+      carColor,
+      passengerCapacity,
+      luggageCapacity,
+      documents,
+      driverPhoto,
+    };
+
+    AsyncStorage.setItem(draftKey, JSON.stringify(draft)).catch(() => {});
+  }, [
+    carColor,
+    carMake,
+    documents,
+    draftLoaded,
+    driverPhoto,
+    luggageCapacity,
+    passengerCapacity,
+    phone,
+    plateNumber,
+    step,
+    user?.id,
+    vehicleModel,
+    vehicleType,
+    vehicleYear,
+  ]);
 
   async function pickImage(docId: string, useCamera = false) {
     try {
@@ -83,10 +191,11 @@ export default function ChauffeurRegisterScreen() {
         const result = await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true, aspect: [1, 1] });
         if (!result.canceled && result.assets?.[0]) {
           const asset = result.assets[0];
+          const nextFile = { uri: asset.uri, name: asset.fileName || (docId === "driver_photo" ? "driver_photo.jpg" : `${docId}.jpg`) };
           if (docId === "driver_photo") {
-            setDriverPhoto({ uri: asset.uri, name: asset.fileName || "driver_photo.jpg" });
+            setDriverPhoto(nextFile);
           } else {
-            setDocuments(prev => ({ ...prev, [docId]: { uri: asset.uri, name: asset.fileName || `${docId}.jpg` } }));
+            setDocuments(prev => ({ ...prev, [docId]: nextFile }));
           }
         }
         return;
@@ -106,10 +215,11 @@ export default function ChauffeurRegisterScreen() {
       });
       if (!result.canceled && result.assets?.[0]) {
         const asset = result.assets[0];
+        const nextFile = { uri: asset.uri, name: asset.fileName || (docId === "driver_photo" ? "driver_photo.jpg" : `${docId}.jpg`) };
         if (docId === "driver_photo") {
-          setDriverPhoto({ uri: asset.uri, name: asset.fileName || "driver_photo.jpg" });
+          setDriverPhoto(nextFile);
         } else {
-          setDocuments(prev => ({ ...prev, [docId]: { uri: asset.uri, name: asset.fileName || `${docId}.jpg` } }));
+          setDocuments(prev => ({ ...prev, [docId]: nextFile }));
         }
       }
     } catch {
@@ -210,6 +320,10 @@ export default function ChauffeurRegisterScreen() {
         );
       }
 
+      const draftKey = getDraftKey(user.id);
+      if (draftKey) {
+        await AsyncStorage.removeItem(draftKey);
+      }
       router.replace("/chauffeur");
     } catch (e: any) {
       setError(e.message || "Registration failed. Please try again.");

@@ -107,6 +107,7 @@ export default function RegisterScreen() {
     if (!name.trim()) { setError("Full name is required"); return; }
     if (!email.trim()) { setError("Email is required"); return; }
     if (!isValidEmail(email)) { setError("Please enter a valid email address"); return; }
+    if (!phone.trim()) { setError("Phone number is required"); return; }
     if (!password.trim()) { setError("Password is required"); return; }
     if (password.length < 4) { setError("Password must be at least 4 characters"); return; }
     setLoading(true); setError("");
@@ -175,10 +176,10 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone Number</Text>
+            <Text style={styles.label}>Phone Number <Text style={styles.required}>*</Text></Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="call-outline" size={18} color={Colors.textMuted} />
-              <TextInput style={styles.input} placeholder="Optional" placeholderTextColor={Colors.textMuted}
+              <TextInput style={styles.input} placeholder="Enter your phone number" placeholderTextColor={Colors.textMuted}
                 value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
             </View>
           </View>

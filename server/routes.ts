@@ -565,9 +565,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       const { username, password, name, phone, role, referralCode } = req.body;
+      const normalizedPhone = typeof phone === "string" ? phone.trim() : "";
 
       if (!username || !password || !name) {
-        return res.status(400).json({ message: "Email, password, and name are required" });
+        return res.status(400).json({ message: "Email, password, name, and phone number are required" });
+      }
+      if (!normalizedPhone) {
+        return res.status(400).json({ message: "Phone number is required" });
       }
 
       // Normalise email — username field now stores email address
@@ -595,7 +599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username: email,
         password: hashedPassword,
         name: name.trim(),
-        phone: phone ? phone.trim() : null,
+        phone: normalizedPhone,
         role: (role || "client") as UserRole,
         ...(referrerUser ? { referredByUserId: referrerUser.id } : {}),
       });
