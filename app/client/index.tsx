@@ -494,7 +494,6 @@ async function fetchWebGoogleAutocompletePredictions(
     language: "en",
     offset: Array.from(query).length,
     region: "za",
-    types: ["address"],
   };
 
   if (biasCoords) {

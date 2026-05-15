@@ -50,7 +50,7 @@ function getVariantConfig(variant) {
     variant: "driver",
     owner,
     projectId: getDriverProjectId(owner),
-    name: "A2B LIFT",
+    name: "A2B LIFT DRIVER",
     slug: "a2b-lift",
     scheme: "a2blift",
     iosBundleIdentifier: "com.a2blift",

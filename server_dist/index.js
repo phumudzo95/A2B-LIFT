@@ -2335,7 +2335,7 @@ async function registerRoutes(app2) {
   }
   async function fetchGoogleAutocompleteLegacyPredictions(options) {
     const tokenQuery = options.sessionToken ? `&sessiontoken=${encodeURIComponent(options.sessionToken)}` : "";
-    const typeQuery = options.cityOnly ? "&types=(cities)" : "&types=address";
+    const typeQuery = options.cityOnly ? "&types=(cities)" : "";
     const zaBiasQuery = options.hasLocationBias ? `&location=${options.lat},${options.lng}&radius=${options.cityOnly ? 22e4 : 9e4}` : `&location=${SA_DEFAULT_BIAS.lat},${SA_DEFAULT_BIAS.lng}&radius=${options.cityOnly ? 45e4 : 16e4}`;
     const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(options.input)}&components=country:za&region=za&language=en${typeQuery}${zaBiasQuery}${tokenQuery}&key=${GOOGLE_KEY}`;
     const response = await fetchMapsJson(url);

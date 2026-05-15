@@ -1663,7 +1663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sessionToken: string;
   }) {
     const tokenQuery = options.sessionToken ? `&sessiontoken=${encodeURIComponent(options.sessionToken)}` : "";
-    const typeQuery = options.cityOnly ? "&types=(cities)" : "&types=address";
+    const typeQuery = options.cityOnly ? "&types=(cities)" : "";
     const zaBiasQuery = options.hasLocationBias
       ? `&location=${options.lat},${options.lng}&radius=${options.cityOnly ? 220000 : 90000}`
       : `&location=${SA_DEFAULT_BIAS.lat},${SA_DEFAULT_BIAS.lng}&radius=${options.cityOnly ? 450000 : 160000}`;
