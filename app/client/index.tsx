@@ -1245,6 +1245,7 @@ export default function ClientHomeScreen() {
           filteredTop: summarizeAutocompletePredictions(filteredPredictions),
           renderedFilteredTop: summarizeAutocompletePredictions(renderedFilteredPredictions),
           renderedRawTop: summarizeAutocompletePredictions(renderedRawPredictions),
+          provider: data.debug || null,
         });
         if (filteredPredictions.length > 0) {
           applyLocationSuggestions(requestId, query, target, "backend-filtered", renderedFilteredPredictions);
@@ -1325,7 +1326,7 @@ export default function ClientHomeScreen() {
     try {
       setSuggestionsLoading(true);
       const sessionToken = placesSessionTokenRef.current;
-      const isManualSuggestion = suggestion.placeId.startsWith("manual:") || suggestion.placeId.startsWith("synthetic:");
+      const isManualSuggestion = suggestion.placeId.startsWith("manual:") || suggestion.placeId.startsWith("synthetic:") || suggestion.placeId.startsWith("query:");
       let coords = (suggestion.lat && suggestion.lng) ? { lat: suggestion.lat, lng: suggestion.lng } : null;
       let resolutionSource = coords ? "suggestion" : "unresolved";
       let resolvedAddress = buildResolvedAddressLabel(suggestion) || suggestion.description;

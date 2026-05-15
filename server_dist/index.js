@@ -1664,7 +1664,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ message: error.message || "Failed to submit cash-out request" });
     }
   });
-  const GOOGLE_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY || "";
+  const GOOGLE_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_WEB_SERVICE_API_KEY || process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY || "";
   const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
   const PHOTON_BASE_URL = "https://photon.komoot.io/api";
   const MAPS_USER_AGENT = "A2B-LIFT/1.0 (support@a2blift.app)";
@@ -1673,7 +1673,8 @@ async function registerRoutes(app2) {
     "suggestions.placePrediction.text.text",
     "suggestions.placePrediction.structuredFormat.mainText.text",
     "suggestions.placePrediction.structuredFormat.secondaryText.text",
-    "suggestions.placePrediction.types"
+    "suggestions.placePrediction.types",
+    "suggestions.queryPrediction.text.text"
   ].join(",");
   const GOOGLE_PLACE_DETAILS_FIELD_MASK = [
     "id",
@@ -2277,7 +2278,19 @@ async function registerRoutes(app2) {
   }
   function mapGoogleAutocompleteNewSuggestionToPrediction(suggestion) {
     const placePrediction = suggestion?.placePrediction;
-    if (!placePrediction?.placeId) return null;
+    if (!placePrediction?.placeId) {
+      const queryText = String(suggestion?.queryPrediction?.text?.text || "").trim();
+      if (!queryText) return null;
+      const [mainText2, ...secondaryParts] = queryText.split(",").map((part) => part.trim()).filter(Boolean);
+      return {
+        placeId: `query:${encodeURIComponent(queryText)}`,
+        description: queryText,
+        mainText: mainText2 || queryText,
+        secondaryText: secondaryParts.join(", "),
+        lat: null,
+        lng: null
+      };
+    }
     const description = String(placePrediction.text?.text || "").trim();
     const mainText = String(
       placePrediction.structuredFormat?.mainText?.text || description.split(",")[0] || ""
@@ -2303,6 +2316,7 @@ async function registerRoutes(app2) {
       inputOffset: Array.from(options.input).length,
       languageCode: "en",
       regionCode: "za",
+      includeQueryPredictions: !options.cityOnly,
       locationBias: {
         circle: {
           center: {
@@ -2330,7 +2344,8 @@ async function registerRoutes(app2) {
     const predictions = Array.isArray(response?.suggestions) ? response.suggestions.map(mapGoogleAutocompleteNewSuggestionToPrediction).filter((prediction) => Boolean(prediction)) : [];
     return {
       predictions,
-      status: predictions.length > 0 ? "OK" : response?.error?.status || "ZERO_RESULTS"
+      status: predictions.length > 0 ? "OK" : response?.error?.status || "ZERO_RESULTS",
+      errorMessage: response?.error?.message || ""
     };
   }
   async function fetchGoogleAutocompleteLegacyPredictions(options) {
@@ -2349,7 +2364,8 @@ async function registerRoutes(app2) {
     })) : [];
     return {
       predictions,
-      status: response?.status || (predictions.length > 0 ? "OK" : "ZERO_RESULTS")
+      status: response?.status || (predictions.length > 0 ? "OK" : "ZERO_RESULTS"),
+      errorMessage: response?.error_message || ""
     };
   }
   async function fetchGooglePlaceDetailsNew(placeId, sessionToken) {
@@ -2395,7 +2411,7 @@ async function registerRoutes(app2) {
     if (!GOOGLE_KEY) return [];
     const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(`${input}, South Africa`)}&components=country:ZA&region=za&key=${GOOGLE_KEY}`;
     const geocodeResponse = await fetchMapsJsonSafely(geocodeUrl);
-    if (geocodeResponse.status !== "OK" || !Array.isArray(geocodeResponse.results) || geocodeResponse.results.length === 0) {
+    if (geocodeResponse?.status !== "OK" || !Array.isArray(geocodeResponse.results) || geocodeResponse.results.length === 0) {
       return [];
     }
     const geocodeResults = options?.cityOnly ? geocodeResponse.results.filter((result) => {
@@ -2513,6 +2529,9 @@ async function registerRoutes(app2) {
       if (!input || input.trim().length < 2) return res.json({ predictions: [] });
       const normalizedInput = normalizeMapsQuery(input);
       const staticCityPredictions = cityOnly ? southAfricanCityFallback(normalizedInput, lat, lng) : [];
+      const providerDebug = {
+        googleConfigured: Boolean(GOOGLE_KEY)
+      };
       if (GOOGLE_KEY) {
         let googleResult = await fetchGoogleAutocompleteNewPredictions({
           input: normalizedInput,
@@ -2522,6 +2541,9 @@ async function registerRoutes(app2) {
           lng,
           sessionToken
         });
+        providerDebug.googleNewStatus = googleResult.status;
+        providerDebug.googleNewCount = googleResult.predictions.length;
+        if (googleResult.errorMessage) providerDebug.googleNewError = googleResult.errorMessage;
         if (googleResult.predictions.length === 0 && googleResult.status !== "OK") {
           googleResult = await fetchGoogleAutocompleteLegacyPredictions({
             input: normalizedInput,
@@ -2531,28 +2553,41 @@ async function registerRoutes(app2) {
             lng,
             sessionToken
           });
+          providerDebug.googleLegacyStatus = googleResult.status;
+          providerDebug.googleLegacyCount = googleResult.predictions.length;
+          if (googleResult.errorMessage) providerDebug.googleLegacyError = googleResult.errorMessage;
         }
         const mappedPredictions = googleResult.predictions;
         const geocodePredictions = !cityOnly && shouldSupplementAddressAutocompleteWithGeocode(normalizedInput, mappedPredictions) ? await fetchGeocodeAutocompletePredictions(normalizedInput, 5) : [];
+        providerDebug.googleMappedCount = mappedPredictions.length;
+        providerDebug.googleGeocodeSupplementCount = geocodePredictions.length;
         const mergedPredictions = cityOnly ? mappedPredictions : dedupeAddressAutocompletePredictions([...geocodePredictions, ...mappedPredictions]);
         const filteredPredictions = cityOnly ? mappedPredictions : filterAddressAutocompletePredictions(normalizedInput, mergedPredictions, lat, lng);
+        providerDebug.googleFilteredCount = filteredPredictions.length;
         if (cityOnly && (staticCityPredictions.length > 0 || mappedPredictions.length > 0)) {
           return res.json({
-            predictions: [...staticCityPredictions, ...mappedPredictions].slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT)
+            predictions: [...staticCityPredictions, ...mappedPredictions].slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
+            debug: providerDebug
           });
         }
         if (filteredPredictions.length > 0) {
-          return res.json({ predictions: filteredPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT) });
+          return res.json({
+            predictions: filteredPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
+            debug: providerDebug
+          });
         }
         if (normalizedInput.trim().length >= 3) {
           const geocodePredictions2 = await fetchGeocodeAutocompletePredictions(normalizedInput, 5, { cityOnly });
+          providerDebug.googleGeocodeFallbackCount = geocodePredictions2.length;
           if (geocodePredictions2.length > 0) {
             const filteredGeocodePredictions = cityOnly ? geocodePredictions2 : filterAddressAutocompletePredictions(normalizedInput, geocodePredictions2, lat, lng);
+            providerDebug.googleGeocodeFallbackFilteredCount = filteredGeocodePredictions.length;
             if (filteredGeocodePredictions.length === 0) {
               console.warn("[maps] Google geocode autocomplete fallback had no token-matching predictions");
             } else {
               return res.json({
-                predictions: filteredGeocodePredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT)
+                predictions: filteredGeocodePredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
+                debug: providerDebug
               });
             }
           }
@@ -2572,21 +2607,35 @@ async function registerRoutes(app2) {
           lat,
           lng
         );
+        providerDebug.photonCount = photonPredictions.length;
+        providerDebug.numberedStreetCount = numberedStreetPredictions.length;
+        providerDebug.providerFilteredCount = providerPredictions.length;
         if (providerPredictions.length > 0) {
-          return res.json({ predictions: providerPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT) });
+          return res.json({
+            predictions: providerPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
+            debug: providerDebug
+          });
         }
+        const expandedRawPredictions = await searchExpandedAddressFallbackQueries(normalizedInput, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT, { lat, lng });
         const expandedProviderPredictions = filterAddressAutocompletePredictions(
           normalizedInput,
-          await searchExpandedAddressFallbackQueries(normalizedInput, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT, { lat, lng }),
+          expandedRawPredictions,
           lat,
           lng
         );
+        providerDebug.expandedProviderCount = expandedRawPredictions.length;
+        providerDebug.expandedProviderFilteredCount = expandedProviderPredictions.length;
         if (expandedProviderPredictions.length > 0) {
-          return res.json({ predictions: expandedProviderPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT) });
+          return res.json({
+            predictions: expandedProviderPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
+            debug: providerDebug
+          });
         }
       }
       const osmPredictions = await nominatimSearch(normalizedInput, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT, { cityOnly, lat, lng });
+      providerDebug.osmCount = osmPredictions.length;
       const filteredOsmPredictions = cityOnly ? osmPredictions : filterAddressAutocompletePredictions(normalizedInput, osmPredictions, lat, lng);
+      providerDebug.osmFilteredCount = filteredOsmPredictions.length;
       if (cityOnly) {
         const seenCities = /* @__PURE__ */ new Set();
         const cityPredictions = [...staticCityPredictions, ...osmPredictions].filter((prediction) => {
@@ -2595,9 +2644,15 @@ async function registerRoutes(app2) {
           seenCities.add(key);
           return true;
         });
-        return res.json({ predictions: cityPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT) });
+        return res.json({
+          predictions: cityPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
+          debug: providerDebug
+        });
       }
-      return res.json({ predictions: filteredOsmPredictions });
+      return res.json({
+        predictions: filteredOsmPredictions,
+        debug: providerDebug
+      });
     } catch (error) {
       return res.status(500).json({ message: error.message });
     }

@@ -796,7 +796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Maps helpers — Google Places API only
   // -----------------------------
 
-  const GOOGLE_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY || "";
+  const GOOGLE_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_WEB_SERVICE_API_KEY || process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_API_KEY || "";
   const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
   const PHOTON_BASE_URL = "https://photon.komoot.io/api";
   const MAPS_USER_AGENT = "A2B-LIFT/1.0 (support@a2blift.app)";
@@ -806,6 +806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "suggestions.placePrediction.structuredFormat.mainText.text",
     "suggestions.placePrediction.structuredFormat.secondaryText.text",
     "suggestions.placePrediction.types",
+    "suggestions.queryPrediction.text.text",
   ].join(",");
   const GOOGLE_PLACE_DETAILS_FIELD_MASK = [
     "id",
@@ -1570,7 +1571,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   function mapGoogleAutocompleteNewSuggestionToPrediction(suggestion: any): AddressAutocompletePrediction | null {
     const placePrediction = suggestion?.placePrediction;
-    if (!placePrediction?.placeId) return null;
+    if (!placePrediction?.placeId) {
+      const queryText = String(suggestion?.queryPrediction?.text?.text || "").trim();
+      if (!queryText) return null;
+      const [mainText, ...secondaryParts] = queryText.split(",").map((part: string) => part.trim()).filter(Boolean);
+
+      return {
+        placeId: `query:${encodeURIComponent(queryText)}`,
+        description: queryText,
+        mainText: mainText || queryText,
+        secondaryText: secondaryParts.join(", "),
+        lat: null,
+        lng: null,
+      };
+    }
 
     const description = String(placePrediction.text?.text || "").trim();
     const mainText = String(
@@ -1614,6 +1628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       inputOffset: Array.from(options.input).length,
       languageCode: "en",
       regionCode: "za",
+      includeQueryPredictions: !options.cityOnly,
       locationBias: {
         circle: {
           center: {
@@ -1651,6 +1666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return {
       predictions,
       status: predictions.length > 0 ? "OK" : response?.error?.status || "ZERO_RESULTS",
+      errorMessage: response?.error?.message || "",
     };
   }
 
@@ -1683,6 +1699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return {
       predictions,
       status: response?.status || (predictions.length > 0 ? "OK" : "ZERO_RESULTS"),
+      errorMessage: response?.error_message || "",
     };
   }
 
@@ -1739,7 +1756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(`${input}, South Africa`)}&components=country:ZA&region=za&key=${GOOGLE_KEY}`;
     const geocodeResponse = await fetchMapsJsonSafely(geocodeUrl);
-    if (geocodeResponse.status !== "OK" || !Array.isArray(geocodeResponse.results) || geocodeResponse.results.length === 0) {
+    if (geocodeResponse?.status !== "OK" || !Array.isArray(geocodeResponse.results) || geocodeResponse.results.length === 0) {
       return [];
     }
 
@@ -1900,6 +1917,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!input || input.trim().length < 2) return res.json({ predictions: [] });
       const normalizedInput = normalizeMapsQuery(input);
       const staticCityPredictions = cityOnly ? southAfricanCityFallback(normalizedInput, lat, lng) : [];
+      const providerDebug: Record<string, any> = {
+        googleConfigured: Boolean(GOOGLE_KEY),
+      };
 
       if (GOOGLE_KEY) {
         let googleResult = await fetchGoogleAutocompleteNewPredictions({
@@ -1910,6 +1930,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lng,
           sessionToken,
         });
+        providerDebug.googleNewStatus = googleResult.status;
+        providerDebug.googleNewCount = googleResult.predictions.length;
+        if (googleResult.errorMessage) providerDebug.googleNewError = googleResult.errorMessage;
 
         if (googleResult.predictions.length === 0 && googleResult.status !== "OK") {
           googleResult = await fetchGoogleAutocompleteLegacyPredictions({
@@ -1920,40 +1943,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lng,
             sessionToken,
           });
+          providerDebug.googleLegacyStatus = googleResult.status;
+          providerDebug.googleLegacyCount = googleResult.predictions.length;
+          if (googleResult.errorMessage) providerDebug.googleLegacyError = googleResult.errorMessage;
         }
 
         const mappedPredictions = googleResult.predictions;
         const geocodePredictions = !cityOnly && shouldSupplementAddressAutocompleteWithGeocode(normalizedInput, mappedPredictions)
           ? await fetchGeocodeAutocompletePredictions(normalizedInput, 5)
           : [];
+        providerDebug.googleMappedCount = mappedPredictions.length;
+        providerDebug.googleGeocodeSupplementCount = geocodePredictions.length;
         const mergedPredictions = cityOnly
           ? mappedPredictions
           : dedupeAddressAutocompletePredictions([...geocodePredictions, ...mappedPredictions]);
         const filteredPredictions = cityOnly
           ? mappedPredictions
           : filterAddressAutocompletePredictions(normalizedInput, mergedPredictions, lat, lng);
+        providerDebug.googleFilteredCount = filteredPredictions.length;
 
         if (cityOnly && (staticCityPredictions.length > 0 || mappedPredictions.length > 0)) {
           return res.json({
             predictions: [...staticCityPredictions, ...mappedPredictions].slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
+            debug: providerDebug,
           });
         }
 
         if (filteredPredictions.length > 0) {
-          return res.json({ predictions: filteredPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT) });
+          return res.json({
+            predictions: filteredPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
+            debug: providerDebug,
+          });
         }
 
         if (normalizedInput.trim().length >= 3) {
           const geocodePredictions = await fetchGeocodeAutocompletePredictions(normalizedInput, 5, { cityOnly });
+          providerDebug.googleGeocodeFallbackCount = geocodePredictions.length;
           if (geocodePredictions.length > 0) {
             const filteredGeocodePredictions = cityOnly
               ? geocodePredictions
               : filterAddressAutocompletePredictions(normalizedInput, geocodePredictions, lat, lng);
+            providerDebug.googleGeocodeFallbackFilteredCount = filteredGeocodePredictions.length;
             if (filteredGeocodePredictions.length === 0) {
               console.warn("[maps] Google geocode autocomplete fallback had no token-matching predictions");
             } else {
               return res.json({
                 predictions: filteredGeocodePredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
+                debug: providerDebug,
               });
             }
           }
@@ -1975,25 +2011,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lat,
           lng,
         );
+        providerDebug.photonCount = photonPredictions.length;
+        providerDebug.numberedStreetCount = numberedStreetPredictions.length;
+        providerDebug.providerFilteredCount = providerPredictions.length;
         if (providerPredictions.length > 0) {
-          return res.json({ predictions: providerPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT) });
+          return res.json({
+            predictions: providerPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
+            debug: providerDebug,
+          });
         }
 
+        const expandedRawPredictions = await searchExpandedAddressFallbackQueries(normalizedInput, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT, { lat, lng });
         const expandedProviderPredictions = filterAddressAutocompletePredictions(
           normalizedInput,
-          await searchExpandedAddressFallbackQueries(normalizedInput, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT, { lat, lng }),
+          expandedRawPredictions,
           lat,
           lng,
         );
+        providerDebug.expandedProviderCount = expandedRawPredictions.length;
+        providerDebug.expandedProviderFilteredCount = expandedProviderPredictions.length;
         if (expandedProviderPredictions.length > 0) {
-          return res.json({ predictions: expandedProviderPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT) });
+          return res.json({
+            predictions: expandedProviderPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
+            debug: providerDebug,
+          });
         }
       }
 
       const osmPredictions = await nominatimSearch(normalizedInput, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT, { cityOnly, lat, lng });
+      providerDebug.osmCount = osmPredictions.length;
       const filteredOsmPredictions = cityOnly
         ? osmPredictions
         : filterAddressAutocompletePredictions(normalizedInput, osmPredictions, lat, lng);
+      providerDebug.osmFilteredCount = filteredOsmPredictions.length;
       if (cityOnly) {
         const seenCities = new Set<string>();
         const cityPredictions = [...staticCityPredictions, ...osmPredictions].filter((prediction: any) => {
@@ -2002,10 +2052,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           seenCities.add(key);
           return true;
         });
-        return res.json({ predictions: cityPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT) });
+        return res.json({
+          predictions: cityPredictions.slice(0, ADDRESS_AUTOCOMPLETE_RESULT_LIMIT),
+          debug: providerDebug,
+        });
       }
 
-      return res.json({ predictions: filteredOsmPredictions });
+      return res.json({
+        predictions: filteredOsmPredictions,
+        debug: providerDebug,
+      });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
