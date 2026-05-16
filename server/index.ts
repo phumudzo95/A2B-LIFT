@@ -364,6 +364,10 @@ function setupErrorHandler(app: express.Application) {
   // Run startup migrations — idempotent, safe to run on every deploy
   try {
     await pool.query(`
+      ALTER TABLE chauffeurs ALTER COLUMN vehicle_model DROP NOT NULL;
+      ALTER TABLE chauffeurs ALTER COLUMN plate_number DROP NOT NULL;
+      ALTER TABLE chauffeurs ALTER COLUMN vehicle_type DROP NOT NULL;
+      ALTER TABLE chauffeurs ALTER COLUMN car_color DROP NOT NULL;
       ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS available_for_long_distance boolean DEFAULT false;
       ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_from text;
       ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_to text;

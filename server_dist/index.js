@@ -101,11 +101,11 @@ var chauffeurs = (0, import_pg_core.pgTable)("chauffeurs", {
   id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
   userId: (0, import_pg_core.varchar)("user_id").notNull().unique().references(() => users.id),
   carMake: (0, import_pg_core.text)("car_make"),
-  vehicleModel: (0, import_pg_core.text)("vehicle_model").notNull(),
+  vehicleModel: (0, import_pg_core.text)("vehicle_model"),
   vehicleYear: (0, import_pg_core.integer)("vehicle_year"),
-  plateNumber: (0, import_pg_core.text)("plate_number").notNull(),
-  vehicleType: (0, import_pg_core.text)("vehicle_type").notNull(),
-  carColor: (0, import_pg_core.text)("car_color").notNull(),
+  plateNumber: (0, import_pg_core.text)("plate_number"),
+  vehicleType: (0, import_pg_core.text)("vehicle_type"),
+  carColor: (0, import_pg_core.text)("car_color"),
   phone: (0, import_pg_core.text)("phone"),
   passengerCapacity: (0, import_pg_core.integer)("passenger_capacity").default(4),
   luggageCapacity: (0, import_pg_core.integer)("luggage_capacity").default(2),
@@ -6386,6 +6386,10 @@ function setupErrorHandler(app2) {
 (async () => {
   try {
     await pool2.query(`
+      ALTER TABLE chauffeurs ALTER COLUMN vehicle_model DROP NOT NULL;
+      ALTER TABLE chauffeurs ALTER COLUMN plate_number DROP NOT NULL;
+      ALTER TABLE chauffeurs ALTER COLUMN vehicle_type DROP NOT NULL;
+      ALTER TABLE chauffeurs ALTER COLUMN car_color DROP NOT NULL;
       ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS available_for_long_distance boolean DEFAULT false;
       ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_from text;
       ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS long_distance_to text;
