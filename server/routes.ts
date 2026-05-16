@@ -4230,6 +4230,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  app.get(
+    "/api/admin/documents/user/:userId",
+    requireAuth,
+    requireRole(["admin"]),
+    async (req: AuthedRequest, res: Response) => {
+      const docs = await storage.getDocumentsByUser(req.params.userId);
+      return res.json(docs);
+    },
+  );
+
   app.put(
     "/api/admin/documents/:id",
     requireAuth,

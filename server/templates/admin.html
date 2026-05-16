@@ -256,8 +256,20 @@ tbody tr:hover { background:#fafaf8; }
       <span class="nav-icon">🚗</span> Chauffeurs
       <span class="nav-badge" id="nb-pending" style="display:none">0</span>
     </div>
+    <div class="nav-item" onclick="go('applications',this);closeSidebar()">
+      <span class="nav-icon">📋</span> Driver Applications
+      <span class="nav-badge" id="nb-apps" style="display:none">0</span>
+    </div>
+    <div class="nav-item" onclick="go('partners',this);closeSidebar()">
+      <span class="nav-icon">🏢</span> Partner Applications
+      <span class="nav-badge" id="nb-partners" style="display:none">0</span>
+    </div>
 
     <div class="nav-section">Operations</div>
+    <div class="nav-item" onclick="go('vehicles',this);closeSidebar()">
+      <span class="nav-icon">🚘</span> Vehicle Approvals
+      <span class="nav-badge" id="nb-vehicles" style="display:none">0</span>
+    </div>
     <div class="nav-item" onclick="go('rides',this);closeSidebar()">
       <span class="nav-icon">🗺</span> Rides
     </div>
@@ -329,6 +341,48 @@ tbody tr:hover { background:#fafaf8; }
         </div>
       </div>
       <div class="table-card" id="chauf-table"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- DRIVER APPLICATIONS -->
+    <div class="view" id="view-applications">
+      <div class="sec-head">
+        <div class="sec-title">Driver Applications</div>
+        <div class="filter-group">
+          <button class="ftab active" onclick="fApps('all',this)">All</button>
+          <button class="ftab" onclick="fApps('pending',this)">Pending</button>
+          <button class="ftab" onclick="fApps('approved',this)">Approved</button>
+          <button class="ftab" onclick="fApps('rejected',this)">Rejected</button>
+        </div>
+      </div>
+      <div class="table-card" id="apps-table"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- PARTNER APPLICATIONS -->
+    <div class="view" id="view-partners">
+      <div class="sec-head">
+        <div class="sec-title">Partner Applications</div>
+        <div class="filter-group">
+          <button class="ftab active" onclick="fPartners('all',this)">All</button>
+          <button class="ftab" onclick="fPartners('pending',this)">Pending</button>
+          <button class="ftab" onclick="fPartners('approved',this)">Approved</button>
+          <button class="ftab" onclick="fPartners('rejected',this)">Rejected</button>
+        </div>
+      </div>
+      <div class="table-card" id="partners-table"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- VEHICLE APPROVALS -->
+    <div class="view" id="view-vehicles">
+      <div class="sec-head">
+        <div class="sec-title">Vehicle Approvals</div>
+        <div class="filter-group">
+          <button class="ftab active" onclick="fVehicles('all',this)">All</button>
+          <button class="ftab" onclick="fVehicles('pending',this)">Pending</button>
+          <button class="ftab" onclick="fVehicles('approved',this)">Approved</button>
+          <button class="ftab" onclick="fVehicles('rejected',this)">Rejected</button>
+        </div>
+      </div>
+      <div class="table-card" id="vehicles-table"><div class="loading">Loading…</div></div>
     </div>
 
     <!-- RIDES -->
@@ -505,8 +559,8 @@ async function doLogout() {
 
 // ── NAV ──
 let curView = 'overview';
-let allChauf = [], allWd = [], allSafe = [], allApps = [], allSelfies = [], chaufFilter = 'all', wdFilter = 'all', safeFilter = 'all', appsFilter = 'all';
-const VIEW_TITLES = { overview:'Dashboard', chauffeurs:'Chauffeurs', rides:'Rides', payments:'Payments', selfies:'Liveness Selfies', withdrawals:'Withdrawals', safety:'Safety Reports', users:'All Users' };
+let allChauf = [], allWd = [], allSafe = [], allApps = [], allPartners = [], allVehicles = [], allSelfies = [], chaufFilter = 'all', wdFilter = 'all', safeFilter = 'all', appsFilter = 'all', partnersFilter = 'all', vehiclesFilter = 'all';
+const VIEW_TITLES = { overview:'Dashboard', chauffeurs:'Chauffeurs', applications:'Driver Applications', partners:'Partner Applications', vehicles:'Vehicle Approvals', rides:'Rides', payments:'Payments', selfies:'Liveness Selfies', withdrawals:'Withdrawals', safety:'Safety Reports', users:'All Users' };
 
 function go(view, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -520,12 +574,15 @@ function go(view, el) {
 }
 
 function loadView() {
-  ({ overview:loadOverview, chauffeurs:loadChauf, rides:loadRides, payments:loadPay, selfies:loadSelfies, withdrawals:loadWd, safety:loadSafe, users:loadUsers })[curView]?.();
+  ({ overview:loadOverview, chauffeurs:loadChauf, applications:loadApps, partners:loadPartners, vehicles:loadVehicles, rides:loadRides, payments:loadPay, selfies:loadSelfies, withdrawals:loadWd, safety:loadSafe, users:loadUsers })[curView]?.();
 }
 
 function loadAll() {
   loadOverview();
   loadChauf();
+  loadApps();
+  loadPartners();
+  loadVehicles();
   loadRides();
   loadPay();
   loadSelfies();
@@ -1038,6 +1095,174 @@ async function deleteApp(id) {
       } catch(e) { toast('❌ ' + e.message, 'err'); }
     },
   });
+}
+
+// ── PARTNER APPLICATIONS ──
+async function loadPartners() {
+  try {
+    const res = await apiFetch('/api/admin/operator-profiles?type=partner');
+    if (!res.ok) throw new Error(res.status);
+    allPartners = await res.json();
+    if (!Array.isArray(allPartners)) allPartners = [];
+    const pending = allPartners.filter(p => p.status === 'pending').length;
+    const badge = document.getElementById('nb-partners');
+    if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
+    else { badge.style.display = 'none'; }
+    renderFilteredPartners();
+  } catch(e) {
+    document.getElementById('partners-table').innerHTML = emptyState('❌', 'Failed to load', e.message);
+  }
+}
+
+function fPartners(f, el) {
+  document.querySelectorAll('#view-partners .ftab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active'); partnersFilter = f; renderFilteredPartners();
+}
+
+function renderFilteredPartners() {
+  let list = allPartners;
+  if (partnersFilter !== 'all') list = allPartners.filter(p => p.status === partnersFilter);
+  const w = document.getElementById('partners-table');
+  if (!list.length) { w.innerHTML = emptyState('🏢', 'No partner applications', 'Partner company applications will appear here'); return; }
+  w.innerHTML = `<table>
+    <thead><tr><th>Company</th><th>Contact</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead>
+    <tbody>${list.map(p => {
+      const company = p.partnerProfile?.companyName || 'Partner';
+      const contact = p.partnerProfile?.contactPersonName || p.user?.name || '—';
+      return `<tr>
+        <td><strong>${company}</strong><div style="font-size:11px;color:var(--muted)">${p.partnerProfile?.registrationNumber || p.user?.username || '—'}</div></td>
+        <td>${contact}<div style="font-size:11px;color:var(--muted)">${p.partnerProfile?.contactPhone || p.user?.phone || '—'}</div></td>
+        <td><span class="badge ${p.status==='approved'?'b-approved':p.status==='rejected'?'b-rejected':'b-pending'}">${p.status || 'pending'}</span></td>
+        <td style="font-size:12px">${fmt(p.submittedAt || p.createdAt)}</td>
+        <td><div class="action-cell">
+          ${p.status==='pending' ? `<button class="btn-sm btn-approve" onclick="setOperatorStatus('${p.id}','approved')">✓ Approve</button>` : ''}
+          ${p.status==='pending' ? `<button class="btn-sm btn-reject" onclick="rejectOperator('${p.id}')">✕ Reject</button>` : ''}
+          <button class="btn-sm btn-detail" onclick="viewOperatorDocs('${p.userId}','${company.replace(/'/g,"\\'")}')">📂 Docs</button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+async function setOperatorStatus(id, status, reason) {
+  try {
+    const res = await apiFetch('/api/admin/operator-profiles/' + id + '/status', {
+      method:'PUT',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ status, reason }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast(status === 'approved' ? '✅ Partner approved and notified.' : '🚫 Partner rejected and notified.', status === 'approved' ? 'ok' : 'err');
+    loadPartners();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+function rejectOperator(id) {
+  const reason = prompt('Reason for rejecting this partner application:');
+  if (reason === null) return;
+  setOperatorStatus(id, 'rejected', reason.trim());
+}
+
+function renderDocsModal(docs) {
+  const list = Array.isArray(docs) ? docs : [];
+  if (!list.length) {
+    document.getElementById('m-body').innerHTML = emptyState('📂', 'No documents uploaded', 'No documents are attached yet.');
+    return;
+  }
+  document.getElementById('m-body').innerHTML = `<div class="docs-grid">
+    ${list.map(d => `<div class="doc-card">
+      <div class="doc-label">${d.type || 'Document'}</div>
+      ${d.url ? `<img src="${d.url}" class="doc-img" onerror="this.style.display='none'"/>` : ''}
+      ${d.url ? `<a href="${d.url}" target="_blank" class="doc-link">Open full document</a>` : '<div class="empty-sub">No file URL</div>'}
+      <div style="margin-top:8px"><span class="badge ${d.status==='approved'?'b-approved':d.status==='rejected'?'b-rejected':'b-pending'}">${d.status || 'pending'}</span></div>
+    </div>`).join('')}
+  </div>`;
+}
+
+async function viewOperatorDocs(userId, name) {
+  document.getElementById('m-title').textContent = name || 'Documents';
+  document.getElementById('m-sub').textContent = 'Uploaded operator documents';
+  document.getElementById('m-body').innerHTML = '<div class="loading">Loading documents…</div>';
+  document.getElementById('m-foot').innerHTML = '<button class="btn-lg btn-outline" onclick="closeModal()">Close</button>';
+  openModal();
+  try {
+    const res = await apiFetch('/api/admin/documents/user/' + userId);
+    if (!res.ok) throw new Error(await res.text());
+    const docs = await res.json();
+    renderDocsModal(docs);
+  } catch(e) {
+    document.getElementById('m-body').innerHTML = `<div class="notice">❌ Failed to load documents: ${e.message}</div>`;
+  }
+}
+
+// ── VEHICLE APPROVALS ──
+async function loadVehicles() {
+  try {
+    const res = await apiFetch('/api/admin/vehicles');
+    if (!res.ok) throw new Error(res.status);
+    allVehicles = await res.json();
+    if (!Array.isArray(allVehicles)) allVehicles = [];
+    const pending = allVehicles.filter(v => v.status === 'pending').length;
+    const badge = document.getElementById('nb-vehicles');
+    if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
+    else { badge.style.display = 'none'; }
+    renderFilteredVehicles();
+  } catch(e) {
+    document.getElementById('vehicles-table').innerHTML = emptyState('❌', 'Failed to load', e.message);
+  }
+}
+
+function fVehicles(f, el) {
+  document.querySelectorAll('#view-vehicles .ftab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active'); vehiclesFilter = f; renderFilteredVehicles();
+}
+
+function renderFilteredVehicles() {
+  let list = allVehicles;
+  if (vehiclesFilter !== 'all') list = allVehicles.filter(v => v.status === vehiclesFilter);
+  const w = document.getElementById('vehicles-table');
+  if (!list.length) { w.innerHTML = emptyState('🚘', 'No vehicles', 'Submitted vehicles will appear here'); return; }
+  w.innerHTML = `<table>
+    <thead><tr><th>Vehicle</th><th>Owner</th><th>Status</th><th>Submitted</th><th>Docs</th><th>Actions</th></tr></thead>
+    <tbody>${list.map(v => `<tr>
+      <td><strong>${v.carMake || ''} ${v.vehicleModel || ''}</strong><div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${v.plateNumber || '—'} · ${v.vehicleYear || '—'}</div></td>
+      <td>${v.owner?.partnerProfile?.companyName || v.owner?.user?.name || '—'}<div style="font-size:11px;color:var(--muted)">${v.owner?.type || 'owner'}</div></td>
+      <td><span class="badge ${v.status==='approved'?'b-approved':v.status==='rejected'?'b-rejected':'b-pending'}">${v.status || 'pending'}</span></td>
+      <td style="font-size:12px">${fmt(v.submittedAt || v.createdAt)}</td>
+      <td style="font-size:12px">${(v.documents || []).length}</td>
+      <td><div class="action-cell">
+        ${v.status==='pending' ? `<button class="btn-sm btn-approve" onclick="setVehicleStatus('${v.id}','approved')">✓ Approve</button>` : ''}
+        ${v.status==='pending' ? `<button class="btn-sm btn-reject" onclick="rejectVehicle('${v.id}')">✕ Reject</button>` : ''}
+        <button class="btn-sm btn-detail" onclick="renderDocsModalForVehicle('${v.id}')">📂 Docs</button>
+      </div></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+async function setVehicleStatus(id, status, reason) {
+  try {
+    const res = await apiFetch('/api/admin/vehicles/' + id + '/status', {
+      method:'PUT',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ status, reason }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast(status === 'approved' ? '✅ Vehicle approved and owner notified.' : '🚫 Vehicle rejected and owner notified.', status === 'approved' ? 'ok' : 'err');
+    loadVehicles();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+function rejectVehicle(id) {
+  const reason = prompt('Reason for rejecting this vehicle:');
+  if (reason === null) return;
+  setVehicleStatus(id, 'rejected', reason.trim());
+}
+
+async function renderDocsModalForVehicle(id) {
+  const vehicle = allVehicles.find(v => v.id === id);
+  document.getElementById('m-title').textContent = 'Vehicle Documents';
+  document.getElementById('m-sub').textContent = vehicle ? `${vehicle.carMake || ''} ${vehicle.vehicleModel || ''} · ${vehicle.plateNumber || ''}` : '';
+  document.getElementById('m-foot').innerHTML = '<button class="btn-lg btn-outline" onclick="closeModal()">Close</button>';
+  renderDocsModal(vehicle?.documents || []);
+  openModal();
 }
 
 function chaufDetail(id) {

@@ -4712,6 +4712,15 @@ async function registerRoutes(app2) {
       return res.json(docs);
     }
   );
+  app2.get(
+    "/api/admin/documents/user/:userId",
+    requireAuth,
+    requireRole(["admin"]),
+    async (req, res) => {
+      const docs = await storage.getDocumentsByUser(req.params.userId);
+      return res.json(docs);
+    }
+  );
   app2.put(
     "/api/admin/documents/:id",
     requireAuth,
