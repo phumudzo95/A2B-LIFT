@@ -2676,6 +2676,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
+  async function serializeOperatorProfile(profile: any) {
+    const [user, chauffeur, partnerProfile] = await Promise.all([
+      storage.getUser(profile.userId).catch(() => undefined),
+      profile.type === "driver" ? storage.getChauffeurByUserId(profile.userId).catch(() => undefined) : Promise.resolve(null),
+      profile.type === "partner" ? storage.getPartnerProfileByOperatorId(profile.id).catch(() => undefined) : Promise.resolve(null),
+    ]);
+    return { ...profile, user: user || null, chauffeur: chauffeur || null, partnerProfile: partnerProfile || null };
+  }
+
+  async function serializeVehicle(vehicle: any) {
+    const [ownerProfile, documents, assignments] = await Promise.all([
+      storage.getOperatorProfile(vehicle.ownerOperatorProfileId).catch(() => undefined),
+      storage.getDocumentsByVehicle(vehicle.id).catch(() => []),
+      storage.getVehicleAssignments({ vehicleId: vehicle.id }).catch(() => []),
+    ]);
+    const owner = ownerProfile ? await serializeOperatorProfile(ownerProfile) : null;
+    const enrichedAssignments = await Promise.all(assignments.map(async (assignment) => {
+      const driverProfile = await storage.getOperatorProfile(assignment.driverOperatorProfileId).catch(() => undefined);
+      return {
+        ...assignment,
+        driver: driverProfile ? await serializeOperatorProfile(driverProfile) : null,
+      };
+    }));
+    return { ...vehicle, owner, documents, assignments: enrichedAssignments };
+  }
+
   app.get("/api/operator-profile/me", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
       let profile = await storage.getOperatorProfileByUserId(req.auth!.sub);
@@ -2994,6 +3020,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const updated = await storage.updateChauffeur(chauffeur.id, { activeVehicleId: vehicle.id });
       return res.json({ activeVehicleId: vehicle.id, chauffeur: updated });
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/fleet/approved-drivers", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const profile = await storage.getOperatorProfileByUserId(req.auth!.sub);
+      if (!profile) return res.status(404).json({ message: "Operator profile not found" });
+      if (profile.status !== "approved") {
+        return res.status(403).json({ message: "Your operator profile must be approved first." });
+      }
+      const query = String(req.query.q || "").trim().toLowerCase();
+      const driverProfiles = await storage.getOperatorProfiles({ type: "driver", status: "approved" });
+      const drivers = await Promise.all(driverProfiles.map(serializeOperatorProfile));
+      const filtered = drivers
+        .filter((driver: any) => driver.id !== profile.id)
+        .filter((driver: any) => {
+          if (!query) return true;
+          const haystack = [
+            driver.user?.name,
+            driver.user?.username,
+            driver.user?.phone,
+            driver.chauffeur?.phone,
+          ].filter(Boolean).join(" ").toLowerCase();
+          return haystack.includes(query);
+        })
+        .slice(0, 25);
+      return res.json({ drivers: filtered });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/fleet/assignments", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const profile = await storage.getOperatorProfileByUserId(req.auth!.sub);
+      if (!profile) return res.status(404).json({ message: "Operator profile not found" });
+      const assignments = await storage.getVehicleAssignments(
+        profile.type === "driver"
+          ? { driverOperatorProfileId: profile.id }
+          : { assignedByOperatorProfileId: profile.id },
+      );
+      const enriched = await Promise.all(assignments.map(async (assignment) => {
+        const [vehicle, driverProfile] = await Promise.all([
+          storage.getVehicle(assignment.vehicleId),
+          storage.getOperatorProfile(assignment.driverOperatorProfileId),
+        ]);
+        return {
+          ...assignment,
+          vehicle: vehicle || null,
+          driver: driverProfile ? await serializeOperatorProfile(driverProfile) : null,
+        };
+      }));
+      return res.json({ assignments: enriched });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/fleet/assignments", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const profile = await storage.getOperatorProfileByUserId(req.auth!.sub);
+      if (!profile) return res.status(404).json({ message: "Operator profile not found" });
+      if (profile.status !== "approved") {
+        return res.status(403).json({ message: "Your operator profile must be approved first." });
+      }
+      const vehicleId = requireStringField(req.body, "vehicleId");
+      const driverOperatorProfileId = requireStringField(req.body, "driverOperatorProfileId");
+      const [vehicle, driverProfile] = await Promise.all([
+        storage.getVehicle(vehicleId),
+        storage.getOperatorProfile(driverOperatorProfileId),
+      ]);
+      if (!vehicle) return res.status(404).json({ message: "Vehicle not found" });
+      if (!driverProfile || driverProfile.type !== "driver" || driverProfile.status !== "approved") {
+        return res.status(400).json({ message: "Only approved A2B drivers can be assigned to vehicles." });
+      }
+      if (vehicle.ownerOperatorProfileId !== profile.id) {
+        return res.status(403).json({ message: "You can only assign drivers to vehicles you own." });
+      }
+      if (vehicle.status !== "approved") {
+        return res.status(400).json({ message: "Vehicle must be approved before assigning a driver." });
+      }
+      const existing = await storage.getActiveVehicleAssignment(vehicle.id, driverProfile.id);
+      if (existing) return res.status(409).json({ message: "This driver is already assigned to this vehicle." });
+
+      const assignment = await storage.createVehicleAssignment({
+        vehicleId: vehicle.id,
+        driverOperatorProfileId: driverProfile.id,
+        assignedByOperatorProfileId: profile.id,
+        status: "active",
+      });
+      const ownerLabel = profile.type === "partner" ? "A fleet partner" : "A2B LIFT";
+      await notifyUserEvent({
+        userId: driverProfile.userId,
+        type: "vehicle_assignment",
+        title: "Vehicle assigned",
+        body: `${ownerLabel} assigned you to ${vehicle.carMake} ${vehicle.vehicleModel} (${vehicle.plateNumber}).`,
+        data: { vehicleId: vehicle.id, assignmentId: assignment.id },
+      });
+      if (driverProfile.userId !== profile.userId) {
+        await notifyUserEvent({
+          userId: profile.userId,
+          type: "vehicle_assignment",
+          title: "Driver assigned",
+          body: "The driver has been linked to your vehicle.",
+          data: { vehicleId: vehicle.id, assignmentId: assignment.id },
+        });
+      }
+      return res.status(201).json(assignment);
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/fleet/assignments/:id", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const profile = await storage.getOperatorProfileByUserId(req.auth!.sub);
+      if (!profile) return res.status(404).json({ message: "Operator profile not found" });
+      const [assignment] = await storage.getVehicleAssignments({ status: "active" })
+        .then((rows) => rows.filter((row) => row.id === req.params.id));
+      if (!assignment) return res.status(404).json({ message: "Assignment not found" });
+      if (assignment.assignedByOperatorProfileId !== profile.id && req.auth!.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const [updated, vehicle, driverProfile] = await Promise.all([
+        storage.updateVehicleAssignment(assignment.id, { status: "removed", removedAt: new Date() }),
+        storage.getVehicle(assignment.vehicleId),
+        storage.getOperatorProfile(assignment.driverOperatorProfileId),
+      ]);
+      if (driverProfile) {
+        const chauffeur = await storage.getChauffeurByUserId(driverProfile.userId).catch(() => undefined);
+        if (chauffeur?.activeVehicleId === assignment.vehicleId) {
+          await storage.updateChauffeur(chauffeur.id, { activeVehicleId: null, isOnline: false });
+        }
+        await notifyUserEvent({
+          userId: driverProfile.userId,
+          type: "vehicle_assignment_removed",
+          title: "Vehicle assignment removed",
+          body: vehicle ? `You are no longer assigned to ${vehicle.carMake} ${vehicle.vehicleModel} (${vehicle.plateNumber}).` : "A vehicle assignment was removed.",
+          data: { vehicleId: assignment.vehicleId, assignmentId: assignment.id },
+        });
+      }
+      return res.json(updated);
     } catch (error: any) {
       return res.status(400).json({ message: error.message });
     }
@@ -3732,6 +3902,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  app.get("/api/admin/operator-profiles", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const type = typeof req.query.type === "string" ? req.query.type : undefined;
+      const status = typeof req.query.status === "string" ? req.query.status : undefined;
+      const profiles = await storage.getOperatorProfiles({ type, status });
+      return res.json(await Promise.all(profiles.map(serializeOperatorProfile)));
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put("/api/admin/operator-profiles/:id/status", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const status = requireStringField(req.body, "status");
+      if (!["approved", "rejected", "pending"].includes(status)) {
+        return res.status(400).json({ message: "Invalid operator profile status" });
+      }
+      const profile = await storage.getOperatorProfile(req.params.id);
+      if (!profile) return res.status(404).json({ message: "Operator profile not found" });
+      const reason = String(req.body.reason || "").trim();
+      const updated = await storage.updateOperatorProfile(profile.id, {
+        status,
+        rejectionReason: status === "rejected" ? reason : null,
+        reviewedAt: new Date(),
+        reviewerAdminId: req.auth!.sub,
+      });
+      if (profile.type === "driver") {
+        const chauffeur = await storage.getChauffeurByUserId(profile.userId).catch(() => undefined);
+        if (chauffeur) {
+          await storage.updateChauffeur(chauffeur.id, {
+            isApproved: status === "approved",
+            ...(status === "rejected" ? { isOnline: false, activeVehicleId: null } : {}),
+          });
+        }
+        const application = await storage.getDriverApplicationByUserId(profile.userId).catch(() => undefined);
+        if (application) {
+          await storage.updateDriverApplication(application.id, {
+            status,
+            notes: reason || application.notes,
+            reviewedAt: new Date(),
+            reviewerAdminId: req.auth!.sub,
+          });
+        }
+      }
+      await notifyUserEvent({
+        userId: profile.userId,
+        type: `operator_${status}`,
+        title: status === "approved" ? "Application approved" : status === "rejected" ? "Application not approved" : "Application updated",
+        body: status === "approved"
+          ? profile.type === "partner"
+            ? "Your partner profile has been approved. You can now add vehicles and assign approved drivers."
+            : "Your driver profile has been approved. Add or select an approved vehicle before going online."
+          : status === "rejected"
+            ? `Your ${profile.type} application was not approved.${reason ? ` Reason: ${reason}.` : ""}`
+            : "Your application is back under review.",
+        data: { operatorProfileId: profile.id },
+      });
+      return res.json(await serializeOperatorProfile(updated));
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/admin/vehicles", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const status = typeof req.query.status === "string" ? req.query.status : undefined;
+      const vehicles = await storage.getVehicles({ status });
+      return res.json(await Promise.all(vehicles.map(serializeVehicle)));
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put("/api/admin/vehicles/:id/status", requireAuth, requireRole(["admin"]), async (req: AuthedRequest, res: Response) => {
+    try {
+      const status = requireStringField(req.body, "status");
+      if (!["approved", "rejected", "suspended", "pending"].includes(status)) {
+        return res.status(400).json({ message: "Invalid vehicle status" });
+      }
+      const vehicle = await storage.getVehicle(req.params.id);
+      if (!vehicle) return res.status(404).json({ message: "Vehicle not found" });
+      const ownerProfile = await storage.getOperatorProfile(vehicle.ownerOperatorProfileId);
+      if (!ownerProfile) return res.status(404).json({ message: "Vehicle owner profile not found" });
+      const reason = String(req.body.reason || "").trim();
+      const updated = await storage.updateVehicle(vehicle.id, {
+        status,
+        rejectionReason: status === "rejected" || status === "suspended" ? reason : null,
+        reviewedAt: new Date(),
+        reviewerAdminId: req.auth!.sub,
+      });
+      if (status === "approved" && ownerProfile.type === "driver") {
+        const existing = await storage.getActiveVehicleAssignment(vehicle.id, ownerProfile.id);
+        if (!existing) {
+          await storage.createVehicleAssignment({
+            vehicleId: vehicle.id,
+            driverOperatorProfileId: ownerProfile.id,
+            assignedByOperatorProfileId: ownerProfile.id,
+            status: "active",
+          });
+        }
+      }
+      if (status !== "approved") {
+        const activeAssignments = await storage.getVehicleAssignments({ vehicleId: vehicle.id, status: "active" });
+        for (const assignment of activeAssignments) {
+          await storage.updateVehicleAssignment(assignment.id, { status: "removed", removedAt: new Date() });
+          const driverProfile = await storage.getOperatorProfile(assignment.driverOperatorProfileId).catch(() => undefined);
+          if (driverProfile) {
+            const chauffeur = await storage.getChauffeurByUserId(driverProfile.userId).catch(() => undefined);
+            if (chauffeur?.activeVehicleId === vehicle.id) {
+              await storage.updateChauffeur(chauffeur.id, { activeVehicleId: null, isOnline: false });
+            }
+            if (driverProfile.userId !== ownerProfile.userId) {
+              await notifyUserEvent({
+                userId: driverProfile.userId,
+                type: "vehicle_assignment_removed",
+                title: "Vehicle unavailable",
+                body: `${vehicle.carMake} ${vehicle.vehicleModel} (${vehicle.plateNumber}) is no longer available for trips.`,
+                data: { vehicleId: vehicle.id },
+              });
+            }
+          }
+        }
+      }
+      await notifyUserEvent({
+        userId: ownerProfile.userId,
+        type: `vehicle_${status}`,
+        title: status === "approved" ? "Vehicle approved" : status === "rejected" ? "Vehicle not approved" : "Vehicle status updated",
+        body: status === "approved"
+          ? `${vehicle.carMake} ${vehicle.vehicleModel} (${vehicle.plateNumber}) has been approved.`
+          : status === "rejected"
+            ? `${vehicle.carMake} ${vehicle.vehicleModel} (${vehicle.plateNumber}) was not approved.${reason ? ` Reason: ${reason}.` : ""}`
+            : `${vehicle.carMake} ${vehicle.vehicleModel} (${vehicle.plateNumber}) status is now ${status}.`,
+        data: { vehicleId: vehicle.id },
+      });
+      return res.json(await serializeVehicle(updated));
+    } catch (error: any) {
+      return res.status(400).json({ message: error.message });
+    }
+  });
+
   app.put(
     "/api/admin/driver-applications/:id",
     requireAuth,
@@ -3751,8 +4061,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateChauffeur(updated.chauffeurId, { isApproved: true });
         }
         if (status === "rejected") {
-          await storage.updateChauffeur(updated.chauffeurId, { isApproved: false });
+          await storage.updateChauffeur(updated.chauffeurId, { isApproved: false, isOnline: false, activeVehicleId: null });
         }
+      }
+      const profile = await storage.getOperatorProfileByUserId(updated.userId).catch(() => undefined);
+      if (profile?.type === "driver") {
+        await storage.updateOperatorProfile(profile.id, {
+          status,
+          rejectionReason: status === "rejected" ? String(notes || "").trim() : null,
+          reviewedAt: new Date(),
+          reviewerAdminId: req.auth!.sub,
+        });
+      }
+      if (status === "approved" || status === "rejected") {
+        await notifyUserEvent({
+          userId: updated.userId,
+          type: status === "approved" ? "operator_approved" : "operator_rejected",
+          title: status === "approved" ? "Application approved" : "Application not approved",
+          body: status === "approved"
+            ? "Your driver profile has been approved. Add or select an approved vehicle before going online."
+            : `Your driver application was not approved.${notes ? ` Reason: ${String(notes).trim()}.` : ""}`,
+          data: { driverApplicationId: updated.id, operatorProfileId: profile?.id },
+        });
       }
 
       return res.json(updated);
