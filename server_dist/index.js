@@ -587,6 +587,97 @@ var DatabaseStorage = class {
     const deleted = await db.delete(driverApplications).where((0, import_drizzle_orm2.eq)(driverApplications.id, id)).returning();
     return deleted.length > 0;
   }
+  async getOperatorProfile(id) {
+    const [profile] = await db.select().from(operatorProfiles).where((0, import_drizzle_orm2.eq)(operatorProfiles.id, id));
+    return profile;
+  }
+  async getOperatorProfileByUserId(userId) {
+    const [profile] = await db.select().from(operatorProfiles).where((0, import_drizzle_orm2.eq)(operatorProfiles.userId, userId));
+    return profile;
+  }
+  async getOperatorProfiles(filters = {}) {
+    const conditions = [
+      filters.type ? (0, import_drizzle_orm2.eq)(operatorProfiles.type, filters.type) : void 0,
+      filters.status ? (0, import_drizzle_orm2.eq)(operatorProfiles.status, filters.status) : void 0
+    ].filter(Boolean);
+    if (conditions.length > 0) {
+      return db.select().from(operatorProfiles).where((0, import_drizzle_orm2.and)(...conditions)).orderBy((0, import_drizzle_orm2.desc)(operatorProfiles.submittedAt));
+    }
+    return db.select().from(operatorProfiles).orderBy((0, import_drizzle_orm2.desc)(operatorProfiles.submittedAt));
+  }
+  async createOperatorProfile(data) {
+    const [profile] = await db.insert(operatorProfiles).values(data).returning();
+    return profile;
+  }
+  async updateOperatorProfile(id, data) {
+    const [profile] = await db.update(operatorProfiles).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm2.eq)(operatorProfiles.id, id)).returning();
+    return profile;
+  }
+  async getPartnerProfileByOperatorId(operatorProfileId) {
+    const [profile] = await db.select().from(partnerProfiles).where((0, import_drizzle_orm2.eq)(partnerProfiles.operatorProfileId, operatorProfileId));
+    return profile;
+  }
+  async createPartnerProfile(data) {
+    const [profile] = await db.insert(partnerProfiles).values(data).returning();
+    return profile;
+  }
+  async updatePartnerProfile(id, data) {
+    const [profile] = await db.update(partnerProfiles).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm2.eq)(partnerProfiles.id, id)).returning();
+    return profile;
+  }
+  async getVehicle(id) {
+    const [vehicle] = await db.select().from(vehicles).where((0, import_drizzle_orm2.eq)(vehicles.id, id));
+    return vehicle;
+  }
+  async getVehiclesByOwnerOperator(ownerOperatorProfileId) {
+    return db.select().from(vehicles).where((0, import_drizzle_orm2.eq)(vehicles.ownerOperatorProfileId, ownerOperatorProfileId)).orderBy((0, import_drizzle_orm2.desc)(vehicles.createdAt));
+  }
+  async getVehicles(filters = {}) {
+    const conditions = [
+      filters.status ? (0, import_drizzle_orm2.eq)(vehicles.status, filters.status) : void 0,
+      filters.ownerOperatorProfileId ? (0, import_drizzle_orm2.eq)(vehicles.ownerOperatorProfileId, filters.ownerOperatorProfileId) : void 0
+    ].filter(Boolean);
+    if (conditions.length > 0) {
+      return db.select().from(vehicles).where((0, import_drizzle_orm2.and)(...conditions)).orderBy((0, import_drizzle_orm2.desc)(vehicles.createdAt));
+    }
+    return db.select().from(vehicles).orderBy((0, import_drizzle_orm2.desc)(vehicles.createdAt));
+  }
+  async createVehicle(data) {
+    const [vehicle] = await db.insert(vehicles).values(data).returning();
+    return vehicle;
+  }
+  async updateVehicle(id, data) {
+    const [vehicle] = await db.update(vehicles).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm2.eq)(vehicles.id, id)).returning();
+    return vehicle;
+  }
+  async getActiveVehicleAssignment(vehicleId, driverOperatorProfileId) {
+    const [assignment] = await db.select().from(vehicleAssignments).where((0, import_drizzle_orm2.and)(
+      (0, import_drizzle_orm2.eq)(vehicleAssignments.vehicleId, vehicleId),
+      (0, import_drizzle_orm2.eq)(vehicleAssignments.driverOperatorProfileId, driverOperatorProfileId),
+      (0, import_drizzle_orm2.eq)(vehicleAssignments.status, "active")
+    ));
+    return assignment;
+  }
+  async getVehicleAssignments(filters = {}) {
+    const conditions = [
+      filters.vehicleId ? (0, import_drizzle_orm2.eq)(vehicleAssignments.vehicleId, filters.vehicleId) : void 0,
+      filters.driverOperatorProfileId ? (0, import_drizzle_orm2.eq)(vehicleAssignments.driverOperatorProfileId, filters.driverOperatorProfileId) : void 0,
+      filters.assignedByOperatorProfileId ? (0, import_drizzle_orm2.eq)(vehicleAssignments.assignedByOperatorProfileId, filters.assignedByOperatorProfileId) : void 0,
+      filters.status ? (0, import_drizzle_orm2.eq)(vehicleAssignments.status, filters.status) : void 0
+    ].filter(Boolean);
+    if (conditions.length > 0) {
+      return db.select().from(vehicleAssignments).where((0, import_drizzle_orm2.and)(...conditions)).orderBy((0, import_drizzle_orm2.desc)(vehicleAssignments.createdAt));
+    }
+    return db.select().from(vehicleAssignments).orderBy((0, import_drizzle_orm2.desc)(vehicleAssignments.createdAt));
+  }
+  async createVehicleAssignment(data) {
+    const [assignment] = await db.insert(vehicleAssignments).values(data).returning();
+    return assignment;
+  }
+  async updateVehicleAssignment(id, data) {
+    const [assignment] = await db.update(vehicleAssignments).set(data).where((0, import_drizzle_orm2.eq)(vehicleAssignments.id, id)).returning();
+    return assignment;
+  }
   async createDocument(data) {
     const [doc] = await db.insert(documents).values(data).returning();
     return doc;
@@ -596,6 +687,9 @@ var DatabaseStorage = class {
   }
   async getDocumentsByUser(userId) {
     return db.select().from(documents).where((0, import_drizzle_orm2.eq)(documents.userId, userId)).orderBy((0, import_drizzle_orm2.desc)(documents.uploadedAt));
+  }
+  async getDocumentsByVehicle(vehicleId) {
+    return db.select().from(documents).where((0, import_drizzle_orm2.eq)(documents.vehicleId, vehicleId)).orderBy((0, import_drizzle_orm2.desc)(documents.uploadedAt));
   }
   async getAllDocuments() {
     return db.select().from(documents).orderBy((0, import_drizzle_orm2.desc)(documents.uploadedAt));

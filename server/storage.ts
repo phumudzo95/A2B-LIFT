@@ -7,6 +7,10 @@ import {
   rides,
   payments,
   driverApplications,
+  operatorProfiles,
+  partnerProfiles,
+  vehicles,
+  vehicleAssignments,
   documents,
   rideRatings,
   earnings,
@@ -28,6 +32,10 @@ import {
   type Ride,
   type Payment,
   type DriverApplication,
+  type OperatorProfile,
+  type PartnerProfile,
+  type Vehicle,
+  type VehicleAssignment,
   type Document,
   type RideRating,
   type Earning,
@@ -86,9 +94,37 @@ export interface IStorage {
   ): Promise<DriverApplication | undefined>;
   deleteDriverApplication(id: string): Promise<boolean>;
 
+  // Operator Profiles + Fleet
+  getOperatorProfile(id: string): Promise<OperatorProfile | undefined>;
+  getOperatorProfileByUserId(userId: string): Promise<OperatorProfile | undefined>;
+  getOperatorProfiles(filters?: { type?: string; status?: string }): Promise<OperatorProfile[]>;
+  createOperatorProfile(data: any): Promise<OperatorProfile>;
+  updateOperatorProfile(id: string, data: Partial<OperatorProfile>): Promise<OperatorProfile | undefined>;
+
+  getPartnerProfileByOperatorId(operatorProfileId: string): Promise<PartnerProfile | undefined>;
+  createPartnerProfile(data: any): Promise<PartnerProfile>;
+  updatePartnerProfile(id: string, data: Partial<PartnerProfile>): Promise<PartnerProfile | undefined>;
+
+  getVehicle(id: string): Promise<Vehicle | undefined>;
+  getVehiclesByOwnerOperator(ownerOperatorProfileId: string): Promise<Vehicle[]>;
+  getVehicles(filters?: { status?: string; ownerOperatorProfileId?: string }): Promise<Vehicle[]>;
+  createVehicle(data: any): Promise<Vehicle>;
+  updateVehicle(id: string, data: Partial<Vehicle>): Promise<Vehicle | undefined>;
+
+  getActiveVehicleAssignment(vehicleId: string, driverOperatorProfileId: string): Promise<VehicleAssignment | undefined>;
+  getVehicleAssignments(filters?: {
+    vehicleId?: string;
+    driverOperatorProfileId?: string;
+    assignedByOperatorProfileId?: string;
+    status?: string;
+  }): Promise<VehicleAssignment[]>;
+  createVehicleAssignment(data: any): Promise<VehicleAssignment>;
+  updateVehicleAssignment(id: string, data: Partial<VehicleAssignment>): Promise<VehicleAssignment | undefined>;
+
   createDocument(data: any): Promise<Document>;
   getDocumentsByApplication(applicationId: string): Promise<Document[]>;
   getDocumentsByUser(userId: string): Promise<Document[]>;
+  getDocumentsByVehicle(vehicleId: string): Promise<Document[]>;
   getAllDocuments(): Promise<Document[]>;
   updateDocument(id: string, data: Partial<Document>): Promise<Document | undefined>;
 
@@ -330,6 +366,187 @@ export class DatabaseStorage implements IStorage {
     return deleted.length > 0;
   }
 
+  async getOperatorProfile(id: string): Promise<OperatorProfile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(operatorProfiles)
+      .where(eq(operatorProfiles.id, id));
+    return profile;
+  }
+
+  async getOperatorProfileByUserId(userId: string): Promise<OperatorProfile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(operatorProfiles)
+      .where(eq(operatorProfiles.userId, userId));
+    return profile;
+  }
+
+  async getOperatorProfiles(filters: { type?: string; status?: string } = {}): Promise<OperatorProfile[]> {
+    const conditions = [
+      filters.type ? eq(operatorProfiles.type, filters.type) : undefined,
+      filters.status ? eq(operatorProfiles.status, filters.status) : undefined,
+    ].filter(Boolean) as any[];
+
+    if (conditions.length > 0) {
+      return db
+        .select()
+        .from(operatorProfiles)
+        .where(and(...conditions))
+        .orderBy(desc(operatorProfiles.submittedAt));
+    }
+
+    return db.select().from(operatorProfiles).orderBy(desc(operatorProfiles.submittedAt));
+  }
+
+  async createOperatorProfile(data: any): Promise<OperatorProfile> {
+    const [profile] = await db.insert(operatorProfiles).values(data).returning();
+    return profile;
+  }
+
+  async updateOperatorProfile(
+    id: string,
+    data: Partial<OperatorProfile>,
+  ): Promise<OperatorProfile | undefined> {
+    const [profile] = await db
+      .update(operatorProfiles)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(operatorProfiles.id, id))
+      .returning();
+    return profile;
+  }
+
+  async getPartnerProfileByOperatorId(operatorProfileId: string): Promise<PartnerProfile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(partnerProfiles)
+      .where(eq(partnerProfiles.operatorProfileId, operatorProfileId));
+    return profile;
+  }
+
+  async createPartnerProfile(data: any): Promise<PartnerProfile> {
+    const [profile] = await db.insert(partnerProfiles).values(data).returning();
+    return profile;
+  }
+
+  async updatePartnerProfile(
+    id: string,
+    data: Partial<PartnerProfile>,
+  ): Promise<PartnerProfile | undefined> {
+    const [profile] = await db
+      .update(partnerProfiles)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(partnerProfiles.id, id))
+      .returning();
+    return profile;
+  }
+
+  async getVehicle(id: string): Promise<Vehicle | undefined> {
+    const [vehicle] = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.id, id));
+    return vehicle;
+  }
+
+  async getVehiclesByOwnerOperator(ownerOperatorProfileId: string): Promise<Vehicle[]> {
+    return db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.ownerOperatorProfileId, ownerOperatorProfileId))
+      .orderBy(desc(vehicles.createdAt));
+  }
+
+  async getVehicles(filters: { status?: string; ownerOperatorProfileId?: string } = {}): Promise<Vehicle[]> {
+    const conditions = [
+      filters.status ? eq(vehicles.status, filters.status) : undefined,
+      filters.ownerOperatorProfileId ? eq(vehicles.ownerOperatorProfileId, filters.ownerOperatorProfileId) : undefined,
+    ].filter(Boolean) as any[];
+
+    if (conditions.length > 0) {
+      return db
+        .select()
+        .from(vehicles)
+        .where(and(...conditions))
+        .orderBy(desc(vehicles.createdAt));
+    }
+
+    return db.select().from(vehicles).orderBy(desc(vehicles.createdAt));
+  }
+
+  async createVehicle(data: any): Promise<Vehicle> {
+    const [vehicle] = await db.insert(vehicles).values(data).returning();
+    return vehicle;
+  }
+
+  async updateVehicle(
+    id: string,
+    data: Partial<Vehicle>,
+  ): Promise<Vehicle | undefined> {
+    const [vehicle] = await db
+      .update(vehicles)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(vehicles.id, id))
+      .returning();
+    return vehicle;
+  }
+
+  async getActiveVehicleAssignment(
+    vehicleId: string,
+    driverOperatorProfileId: string,
+  ): Promise<VehicleAssignment | undefined> {
+    const [assignment] = await db
+      .select()
+      .from(vehicleAssignments)
+      .where(and(
+        eq(vehicleAssignments.vehicleId, vehicleId),
+        eq(vehicleAssignments.driverOperatorProfileId, driverOperatorProfileId),
+        eq(vehicleAssignments.status, "active"),
+      ));
+    return assignment;
+  }
+
+  async getVehicleAssignments(filters: {
+    vehicleId?: string;
+    driverOperatorProfileId?: string;
+    assignedByOperatorProfileId?: string;
+    status?: string;
+  } = {}): Promise<VehicleAssignment[]> {
+    const conditions = [
+      filters.vehicleId ? eq(vehicleAssignments.vehicleId, filters.vehicleId) : undefined,
+      filters.driverOperatorProfileId ? eq(vehicleAssignments.driverOperatorProfileId, filters.driverOperatorProfileId) : undefined,
+      filters.assignedByOperatorProfileId ? eq(vehicleAssignments.assignedByOperatorProfileId, filters.assignedByOperatorProfileId) : undefined,
+      filters.status ? eq(vehicleAssignments.status, filters.status) : undefined,
+    ].filter(Boolean) as any[];
+
+    if (conditions.length > 0) {
+      return db
+        .select()
+        .from(vehicleAssignments)
+        .where(and(...conditions))
+        .orderBy(desc(vehicleAssignments.createdAt));
+    }
+
+    return db.select().from(vehicleAssignments).orderBy(desc(vehicleAssignments.createdAt));
+  }
+
+  async createVehicleAssignment(data: any): Promise<VehicleAssignment> {
+    const [assignment] = await db.insert(vehicleAssignments).values(data).returning();
+    return assignment;
+  }
+
+  async updateVehicleAssignment(
+    id: string,
+    data: Partial<VehicleAssignment>,
+  ): Promise<VehicleAssignment | undefined> {
+    const [assignment] = await db
+      .update(vehicleAssignments)
+      .set(data)
+      .where(eq(vehicleAssignments.id, id))
+      .returning();
+    return assignment;
+  }
+
   async createDocument(data: any): Promise<Document> {
     const [doc] = await db.insert(documents).values(data).returning();
     return doc;
@@ -348,6 +565,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(documents)
       .where(eq(documents.userId, userId))
+      .orderBy(desc(documents.uploadedAt));
+  }
+
+  async getDocumentsByVehicle(vehicleId: string): Promise<Document[]> {
+    return db
+      .select()
+      .from(documents)
+      .where(eq(documents.vehicleId, vehicleId))
       .orderBy(desc(documents.uploadedAt));
   }
 
@@ -835,4 +1060,3 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
-
