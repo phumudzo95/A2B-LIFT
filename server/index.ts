@@ -376,6 +376,78 @@ function setupErrorHandler(app: express.Application) {
     console.error("[MIGRATION] Warning: could not apply long-distance migration:", err.message);
   }
 
+  try {
+    await pool.query(`ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS active_vehicle_id varchar`);
+    await pool.query(`ALTER TABLE rides ADD COLUMN IF NOT EXISTS vehicle_id varchar`);
+    await pool.query(`ALTER TABLE documents ADD COLUMN IF NOT EXISTS vehicle_id varchar`);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS operator_profiles (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id varchar NOT NULL UNIQUE REFERENCES users(id),
+        type text NOT NULL,
+        status text NOT NULL DEFAULT 'draft',
+        rejection_reason text,
+        submitted_at timestamp,
+        reviewed_at timestamp,
+        reviewer_admin_id varchar REFERENCES users(id),
+        created_at timestamp DEFAULT now(),
+        updated_at timestamp DEFAULT now()
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS partner_profiles (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        operator_profile_id varchar NOT NULL UNIQUE REFERENCES operator_profiles(id),
+        company_name text NOT NULL,
+        registration_number text NOT NULL,
+        contact_person_name text NOT NULL,
+        contact_phone text NOT NULL,
+        contact_email text NOT NULL,
+        bank_name text NOT NULL,
+        account_holder text NOT NULL,
+        account_number text NOT NULL,
+        created_at timestamp DEFAULT now(),
+        updated_at timestamp DEFAULT now()
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS vehicles (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        owner_operator_profile_id varchar NOT NULL REFERENCES operator_profiles(id),
+        status text NOT NULL DEFAULT 'draft',
+        car_make text NOT NULL,
+        vehicle_model text NOT NULL,
+        vehicle_year integer NOT NULL,
+        plate_number text NOT NULL,
+        vehicle_type text NOT NULL,
+        car_color text NOT NULL,
+        passenger_capacity integer DEFAULT 4,
+        luggage_capacity integer DEFAULT 2,
+        rejection_reason text,
+        submitted_at timestamp,
+        reviewed_at timestamp,
+        reviewer_admin_id varchar REFERENCES users(id),
+        created_at timestamp DEFAULT now(),
+        updated_at timestamp DEFAULT now()
+      )
+    `);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS vehicles_active_plate_unique ON vehicles (upper(plate_number)) WHERE status <> 'rejected'`);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS vehicle_assignments (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        vehicle_id varchar NOT NULL REFERENCES vehicles(id),
+        driver_operator_profile_id varchar NOT NULL REFERENCES operator_profiles(id),
+        assigned_by_operator_profile_id varchar NOT NULL REFERENCES operator_profiles(id),
+        status text NOT NULL DEFAULT 'active',
+        created_at timestamp DEFAULT now(),
+        removed_at timestamp
+      )
+    `);
+    console.log("[MIGRATION] Fleet onboarding tables ensured ✅");
+  } catch (err: any) {
+    console.error("[MIGRATION] Warning: could not apply fleet onboarding migration:", err.message);
+  }
+
   setupCors(app);
   setupSecurity(app);
   setupBodyParsing(app);
@@ -403,4 +475,3 @@ function setupErrorHandler(app: express.Application) {
     },
   );
 })();
-

@@ -51,11 +51,17 @@ __export(schema_exports, {
   earnings: () => earnings,
   insertChauffeurSchema: () => insertChauffeurSchema,
   insertLivenessSessionSchema: () => insertLivenessSessionSchema,
+  insertOperatorProfileSchema: () => insertOperatorProfileSchema,
+  insertPartnerProfileSchema: () => insertPartnerProfileSchema,
   insertRideSchema: () => insertRideSchema,
   insertUserSchema: () => insertUserSchema,
+  insertVehicleAssignmentSchema: () => insertVehicleAssignmentSchema,
+  insertVehicleSchema: () => insertVehicleSchema,
   livenessSessions: () => livenessSessions,
   messages: () => messages,
   notifications: () => notifications,
+  operatorProfiles: () => operatorProfiles,
+  partnerProfiles: () => partnerProfiles,
   payments: () => payments,
   referralEvents: () => referralEvents,
   rewardCashouts: () => rewardCashouts,
@@ -66,6 +72,8 @@ __export(schema_exports, {
   savedCards: () => savedCards,
   tripEnquiries: () => tripEnquiries,
   users: () => users,
+  vehicleAssignments: () => vehicleAssignments,
+  vehicles: () => vehicles,
   walletTransactions: () => walletTransactions,
   withdrawals: () => withdrawals
 });
@@ -115,12 +123,14 @@ var chauffeurs = (0, import_pg_core.pgTable)("chauffeurs", {
   lng: (0, import_pg_core.real)("lng"),
   locationUpdatedAt: (0, import_pg_core.timestamp)("location_updated_at"),
   pushToken: (0, import_pg_core.text)("push_token"),
+  activeVehicleId: (0, import_pg_core.varchar)("active_vehicle_id").references(() => vehicles.id),
   createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow()
 });
 var rides = (0, import_pg_core.pgTable)("rides", {
   id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
   clientId: (0, import_pg_core.varchar)("client_id").notNull().references(() => users.id),
   chauffeurId: (0, import_pg_core.varchar)("chauffeur_id").references(() => chauffeurs.id),
+  vehicleId: (0, import_pg_core.varchar)("vehicle_id").references(() => vehicles.id),
   pickupLat: (0, import_pg_core.real)("pickup_lat").notNull(),
   pickupLng: (0, import_pg_core.real)("pickup_lng").notNull(),
   pickupAddress: (0, import_pg_core.text)("pickup_address"),
@@ -200,11 +210,66 @@ var driverApplications = (0, import_pg_core.pgTable)("driver_applications", {
   reviewedAt: (0, import_pg_core.timestamp)("reviewed_at"),
   reviewerAdminId: (0, import_pg_core.varchar)("reviewer_admin_id").references(() => users.id)
 });
+var operatorProfiles = (0, import_pg_core.pgTable)("operator_profiles", {
+  id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
+  userId: (0, import_pg_core.varchar)("user_id").notNull().unique().references(() => users.id),
+  type: (0, import_pg_core.text)("type").notNull(),
+  status: (0, import_pg_core.text)("status").notNull().default("draft"),
+  rejectionReason: (0, import_pg_core.text)("rejection_reason"),
+  submittedAt: (0, import_pg_core.timestamp)("submitted_at"),
+  reviewedAt: (0, import_pg_core.timestamp)("reviewed_at"),
+  reviewerAdminId: (0, import_pg_core.varchar)("reviewer_admin_id").references(() => users.id),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow(),
+  updatedAt: (0, import_pg_core.timestamp)("updated_at").defaultNow()
+});
+var partnerProfiles = (0, import_pg_core.pgTable)("partner_profiles", {
+  id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
+  operatorProfileId: (0, import_pg_core.varchar)("operator_profile_id").notNull().unique().references(() => operatorProfiles.id),
+  companyName: (0, import_pg_core.text)("company_name").notNull(),
+  registrationNumber: (0, import_pg_core.text)("registration_number").notNull(),
+  contactPersonName: (0, import_pg_core.text)("contact_person_name").notNull(),
+  contactPhone: (0, import_pg_core.text)("contact_phone").notNull(),
+  contactEmail: (0, import_pg_core.text)("contact_email").notNull(),
+  bankName: (0, import_pg_core.text)("bank_name").notNull(),
+  accountHolder: (0, import_pg_core.text)("account_holder").notNull(),
+  accountNumber: (0, import_pg_core.text)("account_number").notNull(),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow(),
+  updatedAt: (0, import_pg_core.timestamp)("updated_at").defaultNow()
+});
+var vehicles = (0, import_pg_core.pgTable)("vehicles", {
+  id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
+  ownerOperatorProfileId: (0, import_pg_core.varchar)("owner_operator_profile_id").notNull().references(() => operatorProfiles.id),
+  status: (0, import_pg_core.text)("status").notNull().default("draft"),
+  carMake: (0, import_pg_core.text)("car_make").notNull(),
+  vehicleModel: (0, import_pg_core.text)("vehicle_model").notNull(),
+  vehicleYear: (0, import_pg_core.integer)("vehicle_year").notNull(),
+  plateNumber: (0, import_pg_core.text)("plate_number").notNull(),
+  vehicleType: (0, import_pg_core.text)("vehicle_type").notNull(),
+  carColor: (0, import_pg_core.text)("car_color").notNull(),
+  passengerCapacity: (0, import_pg_core.integer)("passenger_capacity").default(4),
+  luggageCapacity: (0, import_pg_core.integer)("luggage_capacity").default(2),
+  rejectionReason: (0, import_pg_core.text)("rejection_reason"),
+  submittedAt: (0, import_pg_core.timestamp)("submitted_at"),
+  reviewedAt: (0, import_pg_core.timestamp)("reviewed_at"),
+  reviewerAdminId: (0, import_pg_core.varchar)("reviewer_admin_id").references(() => users.id),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow(),
+  updatedAt: (0, import_pg_core.timestamp)("updated_at").defaultNow()
+});
+var vehicleAssignments = (0, import_pg_core.pgTable)("vehicle_assignments", {
+  id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
+  vehicleId: (0, import_pg_core.varchar)("vehicle_id").notNull().references(() => vehicles.id),
+  driverOperatorProfileId: (0, import_pg_core.varchar)("driver_operator_profile_id").notNull().references(() => operatorProfiles.id),
+  assignedByOperatorProfileId: (0, import_pg_core.varchar)("assigned_by_operator_profile_id").notNull().references(() => operatorProfiles.id),
+  status: (0, import_pg_core.text)("status").notNull().default("active"),
+  createdAt: (0, import_pg_core.timestamp)("created_at").defaultNow(),
+  removedAt: (0, import_pg_core.timestamp)("removed_at")
+});
 var documents = (0, import_pg_core.pgTable)("documents", {
   id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
   userId: (0, import_pg_core.varchar)("user_id").notNull().references(() => users.id),
   applicationId: (0, import_pg_core.varchar)("application_id").references(() => driverApplications.id),
   chauffeurId: (0, import_pg_core.varchar)("chauffeur_id").references(() => chauffeurs.id),
+  vehicleId: (0, import_pg_core.varchar)("vehicle_id").references(() => vehicles.id),
   type: (0, import_pg_core.text)("type").notNull(),
   url: (0, import_pg_core.text)("url").notNull(),
   status: (0, import_pg_core.text)("status").notNull().default("pending"),
@@ -353,6 +418,42 @@ var insertLivenessSessionSchema = (0, import_drizzle_zod.createInsertSchema)(liv
   errorReason: true,
   expiresAt: true,
   verifiedAt: true
+});
+var insertOperatorProfileSchema = (0, import_drizzle_zod.createInsertSchema)(operatorProfiles).pick({
+  userId: true,
+  type: true,
+  status: true,
+  rejectionReason: true,
+  submittedAt: true
+});
+var insertPartnerProfileSchema = (0, import_drizzle_zod.createInsertSchema)(partnerProfiles).pick({
+  operatorProfileId: true,
+  companyName: true,
+  registrationNumber: true,
+  contactPersonName: true,
+  contactPhone: true,
+  contactEmail: true,
+  bankName: true,
+  accountHolder: true,
+  accountNumber: true
+});
+var insertVehicleSchema = (0, import_drizzle_zod.createInsertSchema)(vehicles).pick({
+  ownerOperatorProfileId: true,
+  status: true,
+  carMake: true,
+  vehicleModel: true,
+  vehicleYear: true,
+  plateNumber: true,
+  vehicleType: true,
+  carColor: true,
+  passengerCapacity: true,
+  luggageCapacity: true
+});
+var insertVehicleAssignmentSchema = (0, import_drizzle_zod.createInsertSchema)(vehicleAssignments).pick({
+  vehicleId: true,
+  driverOperatorProfileId: true,
+  assignedByOperatorProfileId: true,
+  status: true
 });
 var referralEvents = (0, import_pg_core.pgTable)("referral_events", {
   id: (0, import_pg_core.varchar)("id").primaryKey().default(import_drizzle_orm.sql`gen_random_uuid()`),
@@ -6189,6 +6290,77 @@ function setupErrorHandler(app2) {
     console.log("[MIGRATION] Long-distance columns ensured \u2705");
   } catch (err) {
     console.error("[MIGRATION] Warning: could not apply long-distance migration:", err.message);
+  }
+  try {
+    await pool2.query(`ALTER TABLE chauffeurs ADD COLUMN IF NOT EXISTS active_vehicle_id varchar`);
+    await pool2.query(`ALTER TABLE rides ADD COLUMN IF NOT EXISTS vehicle_id varchar`);
+    await pool2.query(`ALTER TABLE documents ADD COLUMN IF NOT EXISTS vehicle_id varchar`);
+    await pool2.query(`
+      CREATE TABLE IF NOT EXISTS operator_profiles (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id varchar NOT NULL UNIQUE REFERENCES users(id),
+        type text NOT NULL,
+        status text NOT NULL DEFAULT 'draft',
+        rejection_reason text,
+        submitted_at timestamp,
+        reviewed_at timestamp,
+        reviewer_admin_id varchar REFERENCES users(id),
+        created_at timestamp DEFAULT now(),
+        updated_at timestamp DEFAULT now()
+      )
+    `);
+    await pool2.query(`
+      CREATE TABLE IF NOT EXISTS partner_profiles (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        operator_profile_id varchar NOT NULL UNIQUE REFERENCES operator_profiles(id),
+        company_name text NOT NULL,
+        registration_number text NOT NULL,
+        contact_person_name text NOT NULL,
+        contact_phone text NOT NULL,
+        contact_email text NOT NULL,
+        bank_name text NOT NULL,
+        account_holder text NOT NULL,
+        account_number text NOT NULL,
+        created_at timestamp DEFAULT now(),
+        updated_at timestamp DEFAULT now()
+      )
+    `);
+    await pool2.query(`
+      CREATE TABLE IF NOT EXISTS vehicles (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        owner_operator_profile_id varchar NOT NULL REFERENCES operator_profiles(id),
+        status text NOT NULL DEFAULT 'draft',
+        car_make text NOT NULL,
+        vehicle_model text NOT NULL,
+        vehicle_year integer NOT NULL,
+        plate_number text NOT NULL,
+        vehicle_type text NOT NULL,
+        car_color text NOT NULL,
+        passenger_capacity integer DEFAULT 4,
+        luggage_capacity integer DEFAULT 2,
+        rejection_reason text,
+        submitted_at timestamp,
+        reviewed_at timestamp,
+        reviewer_admin_id varchar REFERENCES users(id),
+        created_at timestamp DEFAULT now(),
+        updated_at timestamp DEFAULT now()
+      )
+    `);
+    await pool2.query(`CREATE UNIQUE INDEX IF NOT EXISTS vehicles_active_plate_unique ON vehicles (upper(plate_number)) WHERE status <> 'rejected'`);
+    await pool2.query(`
+      CREATE TABLE IF NOT EXISTS vehicle_assignments (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        vehicle_id varchar NOT NULL REFERENCES vehicles(id),
+        driver_operator_profile_id varchar NOT NULL REFERENCES operator_profiles(id),
+        assigned_by_operator_profile_id varchar NOT NULL REFERENCES operator_profiles(id),
+        status text NOT NULL DEFAULT 'active',
+        created_at timestamp DEFAULT now(),
+        removed_at timestamp
+      )
+    `);
+    console.log("[MIGRATION] Fleet onboarding tables ensured \u2705");
+  } catch (err) {
+    console.error("[MIGRATION] Warning: could not apply fleet onboarding migration:", err.message);
   }
   setupCors(app);
   setupSecurity(app);

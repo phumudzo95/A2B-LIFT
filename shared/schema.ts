@@ -62,6 +62,7 @@ export const chauffeurs = pgTable("chauffeurs", {
   lng: real("lng"),
   locationUpdatedAt: timestamp("location_updated_at"),
   pushToken: text("push_token"),
+  activeVehicleId: varchar("active_vehicle_id").references(() => vehicles.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -73,6 +74,7 @@ export const rides = pgTable("rides", {
     .notNull()
     .references(() => users.id),
   chauffeurId: varchar("chauffeur_id").references(() => chauffeurs.id),
+  vehicleId: varchar("vehicle_id").references(() => vehicles.id),
   pickupLat: real("pickup_lat").notNull(),
   pickupLng: real("pickup_lng").notNull(),
   pickupAddress: text("pickup_address"),
@@ -165,6 +167,86 @@ export const driverApplications = pgTable("driver_applications", {
   reviewerAdminId: varchar("reviewer_admin_id").references(() => users.id),
 });
 
+export const operatorProfiles = pgTable("operator_profiles", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .unique()
+    .references(() => users.id),
+  type: text("type").notNull(),
+  status: text("status").notNull().default("draft"),
+  rejectionReason: text("rejection_reason"),
+  submittedAt: timestamp("submitted_at"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewerAdminId: varchar("reviewer_admin_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const partnerProfiles = pgTable("partner_profiles", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  operatorProfileId: varchar("operator_profile_id")
+    .notNull()
+    .unique()
+    .references(() => operatorProfiles.id),
+  companyName: text("company_name").notNull(),
+  registrationNumber: text("registration_number").notNull(),
+  contactPersonName: text("contact_person_name").notNull(),
+  contactPhone: text("contact_phone").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  bankName: text("bank_name").notNull(),
+  accountHolder: text("account_holder").notNull(),
+  accountNumber: text("account_number").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const vehicles = pgTable("vehicles", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  ownerOperatorProfileId: varchar("owner_operator_profile_id")
+    .notNull()
+    .references(() => operatorProfiles.id),
+  status: text("status").notNull().default("draft"),
+  carMake: text("car_make").notNull(),
+  vehicleModel: text("vehicle_model").notNull(),
+  vehicleYear: integer("vehicle_year").notNull(),
+  plateNumber: text("plate_number").notNull(),
+  vehicleType: text("vehicle_type").notNull(),
+  carColor: text("car_color").notNull(),
+  passengerCapacity: integer("passenger_capacity").default(4),
+  luggageCapacity: integer("luggage_capacity").default(2),
+  rejectionReason: text("rejection_reason"),
+  submittedAt: timestamp("submitted_at"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewerAdminId: varchar("reviewer_admin_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const vehicleAssignments = pgTable("vehicle_assignments", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  vehicleId: varchar("vehicle_id")
+    .notNull()
+    .references(() => vehicles.id),
+  driverOperatorProfileId: varchar("driver_operator_profile_id")
+    .notNull()
+    .references(() => operatorProfiles.id),
+  assignedByOperatorProfileId: varchar("assigned_by_operator_profile_id")
+    .notNull()
+    .references(() => operatorProfiles.id),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  removedAt: timestamp("removed_at"),
+});
+
 export const documents = pgTable("documents", {
   id: varchar("id")
     .primaryKey()
@@ -174,6 +256,7 @@ export const documents = pgTable("documents", {
     .references(() => users.id),
   applicationId: varchar("application_id").references(() => driverApplications.id),
   chauffeurId: varchar("chauffeur_id").references(() => chauffeurs.id),
+  vehicleId: varchar("vehicle_id").references(() => vehicles.id),
   type: text("type").notNull(),
   url: text("url").notNull(),
   status: text("status").notNull().default("pending"),
@@ -375,6 +458,46 @@ export const insertLivenessSessionSchema = createInsertSchema(livenessSessions).
   verifiedAt: true,
 });
 
+export const insertOperatorProfileSchema = createInsertSchema(operatorProfiles).pick({
+  userId: true,
+  type: true,
+  status: true,
+  rejectionReason: true,
+  submittedAt: true,
+});
+
+export const insertPartnerProfileSchema = createInsertSchema(partnerProfiles).pick({
+  operatorProfileId: true,
+  companyName: true,
+  registrationNumber: true,
+  contactPersonName: true,
+  contactPhone: true,
+  contactEmail: true,
+  bankName: true,
+  accountHolder: true,
+  accountNumber: true,
+});
+
+export const insertVehicleSchema = createInsertSchema(vehicles).pick({
+  ownerOperatorProfileId: true,
+  status: true,
+  carMake: true,
+  vehicleModel: true,
+  vehicleYear: true,
+  plateNumber: true,
+  vehicleType: true,
+  carColor: true,
+  passengerCapacity: true,
+  luggageCapacity: true,
+});
+
+export const insertVehicleAssignmentSchema = createInsertSchema(vehicleAssignments).pick({
+  vehicleId: true,
+  driverOperatorProfileId: true,
+  assignedByOperatorProfileId: true,
+  status: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Chauffeur = typeof chauffeurs.$inferSelect;
@@ -382,6 +505,10 @@ export type Ride = typeof rides.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type LivenessSession = typeof livenessSessions.$inferSelect;
 export type DriverApplication = typeof driverApplications.$inferSelect;
+export type OperatorProfile = typeof operatorProfiles.$inferSelect;
+export type PartnerProfile = typeof partnerProfiles.$inferSelect;
+export type Vehicle = typeof vehicles.$inferSelect;
+export type VehicleAssignment = typeof vehicleAssignments.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type RideRating = typeof rideRatings.$inferSelect;
 export type Earning = typeof earnings.$inferSelect;
@@ -442,4 +569,3 @@ export const rewardCashouts = pgTable("reward_cashouts", {
 export type ReferralEvent = typeof referralEvents.$inferSelect;
 export type RewardTransaction = typeof rewardTransactions.$inferSelect;
 export type RewardCashout = typeof rewardCashouts.$inferSelect;
-
