@@ -85,6 +85,31 @@ async function sendExpoPushNotification(
   }
 }
 
+async function notifyUserEvent(options: {
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  data?: object;
+}) {
+  await storage.createNotification({
+    userId: options.userId,
+    type: options.type,
+    title: options.title,
+    body: options.body,
+    isRead: false,
+  });
+
+  const [user, chauffeur] = await Promise.all([
+    storage.getUser(options.userId).catch(() => undefined),
+    storage.getChauffeurByUserId(options.userId).catch(() => undefined),
+  ]);
+  const pushToken = user?.pushToken || chauffeur?.pushToken;
+  if (pushToken) {
+    await sendExpoPushNotification([pushToken], options.title, options.body, options.data);
+  }
+}
+
 function generateAIResponse(type: string, description: string): string {
   const responses: Record<string, string[]> = {
     safety: [
@@ -2862,12 +2887,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
       await storage.updateChauffeur(req.params.id, { isApproved: true });
       if (chauffeur.userId) {
-        await storage.createNotification({
+        await notifyUserEvent({
           userId: chauffeur.userId,
           type: "approval",
-          title: "🎉 Application Approved!",
-          body: "Congratulations! Your driver application has been approved. You can now go online and start accepting rides.",
-          isRead: false,
+          title: "Application approved",
+          body: "Your driver profile has been approved. Add or select an approved vehicle before going online.",
         });
         try {
           const app = await storage.getDriverApplicationByUserId(chauffeur.userId);
@@ -2889,9 +2913,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (e: any) {
           console.error("[approve] document update failed:", e.message);
         }
-        if (chauffeur.pushToken) {
-          sendExpoPushNotification([chauffeur.pushToken], "Application Approved 🎉", "You're approved! Go online to start accepting rides.");
-        }
       }
       return res.json({ success: true });
     } catch (error: any) {
@@ -2907,12 +2928,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
       await storage.updateChauffeur(req.params.id, { isApproved: false });
       if (chauffeur.userId) {
-        await storage.createNotification({
+        await notifyUserEvent({
           userId: chauffeur.userId,
           type: "rejection",
           title: "Application Not Approved",
           body: `Your driver application was not approved. Reason: ${reason.trim()}. Please contact support if you have questions.`,
-          isRead: false,
         });
         try {
           const app = await storage.getDriverApplicationByUserId(chauffeur.userId);
