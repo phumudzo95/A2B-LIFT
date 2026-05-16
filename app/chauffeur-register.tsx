@@ -1,601 +1,194 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Platform, ScrollView, Alert, Image } from "react-native";
-import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/query-client";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import Colors from "@/constants/colors";
-import * as ImagePicker from "expo-image-picker";
 import { uploadDocument } from "@/lib/supabase-storage";
-
-const VEHICLE_CATEGORIES = [
-  { id: "budget", name: "Budget", examples: "Toyota Corolla, Toyota Quest" },
-  { id: "luxury", name: "Luxury", examples: "BMW 3 Series, Mercedes C Class" },
-  { id: "business", name: "Business Class", examples: "BMW 5 Series, Mercedes E Class" },
-  { id: "van", name: "Van", examples: "Hyundai H1, Mercedes Vito, Staria" },
-  { id: "luxury_van", name: "Luxury Van", examples: "Mercedes V Class" },
-];
-
-const CAR_COLORS = ["Black", "White", "Silver", "Grey", "Navy", "Burgundy", "Midnight Blue", "Champagne"];
-
-const COLOR_SWATCHES: Record<string, string> = {
-  Black: "#000000", White: "#FFFFFF", Silver: "#C0C0C0", Grey: "#808080",
-  Navy: "#1B2A4A", Burgundy: "#6B1C2A", "Midnight Blue": "#191970", Champagne: "#F7E7CE",
-};
+import Colors from "@/constants/colors";
 
 const DRIVER_DOCS = [
-  { id: "pdrp_certificate", label: "PDRP Certificate", icon: "ribbon-outline" as const, hint: "Professional Driving Permit (e-hailing category)" },
-  { id: "drivers_license", label: "Valid Driver's License", icon: "car-outline" as const, hint: "Front and back of your driver's license" },
-  { id: "driver_evaluation", label: "Driver Evaluation", icon: "clipboard-outline" as const, hint: "Official driver evaluation / assessment certificate" },
-  { id: "criminal_background_check", label: "Criminal Background Check", icon: "shield-checkmark-outline" as const, hint: "Police clearance certificate (not older than 6 months)" },
+  { id: "driver:pdrp_certificate", label: "PDRP Certificate", optional: false },
+  { id: "driver:drivers_license", label: "Valid Driver's License", optional: false },
+  { id: "driver:driver_evaluation", label: "Driver Evaluation", optional: true },
+  { id: "driver:criminal_background_check", label: "Criminal Background Check", optional: false },
 ];
 
-const CAR_DOCS = [
-  { id: "double_license_disk", label: "Double License Disk", icon: "disc-outline" as const, hint: "Both license disks displayed in the vehicle" },
-  { id: "passenger_liability_insurance", label: "Passenger Liability Insurance", icon: "umbrella-outline" as const, hint: "Valid passenger liability insurance certificate" },
-  { id: "dekra_report", label: "Dekra Report", icon: "document-text-outline" as const, hint: "Current Dekra vehicle inspection / roadworthy report" },
-];
-
-const ALL_DOCS = [...DRIVER_DOCS, ...CAR_DOCS];
-const OPTIONAL_DOC_IDS = new Set(["pdrp_certificate", "driver_evaluation", "passenger_liability_insurance", "dekra_report"]);
-const MIN_VEHICLE_YEAR = 2015;
-const MAX_VEHICLE_YEAR = new Date().getFullYear() + 1;
-const CHAUFFEUR_REGISTRATION_DRAFT_VERSION = 1;
-
-type Step = "vehicle" | "documents" | "photo";
 type DraftFile = { uri: string; name: string };
 type DraftDocuments = Record<string, DraftFile | null>;
-type ChauffeurRegistrationDraft = {
-  version: number;
-  step: Step;
-  carMake: string;
-  vehicleModel: string;
-  vehicleYear: string;
-  plateNumber: string;
-  phone: string;
-  vehicleType: string;
-  carColor: string;
-  passengerCapacity: string;
-  luggageCapacity: string;
-  documents: DraftDocuments;
-  driverPhoto: DraftFile | null;
-};
 
-function createEmptyDocuments(): DraftDocuments {
-  return Object.fromEntries(ALL_DOCS.map((doc) => [doc.id, null])) as DraftDocuments;
-}
-
-function getDraftKey(userId?: string | null) {
-  return userId ? `a2b_chauffeur_registration_draft_${userId}` : null;
-}
-
-function isStep(value: unknown): value is Step {
-  return value === "vehicle" || value === "documents" || value === "photo";
+function emptyDocs(): DraftDocuments {
+  return Object.fromEntries(DRIVER_DOCS.map((doc) => [doc.id, null])) as DraftDocuments;
 }
 
 export default function ChauffeurRegisterScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const [step, setStep] = useState<Step>("vehicle");
-  const [draftLoaded, setDraftLoaded] = useState(false);
-
-  // Vehicle fields
-  const [carMake, setCarMake] = useState("");
-  const [vehicleModel, setVehicleModel] = useState("");
-  const [vehicleYear, setVehicleYear] = useState("");
-  const [plateNumber, setPlateNumber] = useState("");
   const [phone, setPhone] = useState(user?.phone || "");
-  const [vehicleType, setVehicleType] = useState(VEHICLE_CATEGORIES[0].id);
-  const [carColor, setCarColor] = useState(CAR_COLORS[0]);
-  const [passengerCapacity, setPassengerCapacity] = useState("4");
-  const [luggageCapacity, setLuggageCapacity] = useState("2");
-
-  // Document uploads
-  const [documents, setDocuments] = useState<DraftDocuments>(createEmptyDocuments);
-
-  // Driver photo
+  const [documents, setDocuments] = useState<DraftDocuments>(emptyDocs);
   const [driverPhoto, setDriverPhoto] = useState<DraftFile | null>(null);
-
+  const [draftLoaded, setDraftLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const draftKey = user?.id ? `a2b_driver_registration_draft_${user.id}` : null;
 
   useEffect(() => {
     let cancelled = false;
-    const draftKey = getDraftKey(user?.id);
-    if (!draftKey) {
-      setDraftLoaded(true);
-      return;
-    }
-
+    if (!draftKey) { setDraftLoaded(true); return; }
     AsyncStorage.getItem(draftKey)
-      .then((rawDraft) => {
-        if (cancelled || !rawDraft) return;
-        const draft = JSON.parse(rawDraft) as Partial<ChauffeurRegistrationDraft>;
-        if (draft.version !== CHAUFFEUR_REGISTRATION_DRAFT_VERSION) return;
-
-        if (isStep(draft.step)) setStep(draft.step);
-        if (typeof draft.carMake === "string") setCarMake(draft.carMake);
-        if (typeof draft.vehicleModel === "string") setVehicleModel(draft.vehicleModel);
-        if (typeof draft.vehicleYear === "string") setVehicleYear(draft.vehicleYear);
-        if (typeof draft.plateNumber === "string") setPlateNumber(draft.plateNumber);
-        if (typeof draft.phone === "string") setPhone(draft.phone);
-        if (typeof draft.vehicleType === "string") setVehicleType(draft.vehicleType);
-        if (typeof draft.carColor === "string") setCarColor(draft.carColor);
-        if (typeof draft.passengerCapacity === "string") setPassengerCapacity(draft.passengerCapacity);
-        if (typeof draft.luggageCapacity === "string") setLuggageCapacity(draft.luggageCapacity);
-        if (draft.documents && typeof draft.documents === "object") {
-          setDocuments({ ...createEmptyDocuments(), ...draft.documents });
-        }
-        if (draft.driverPhoto && typeof draft.driverPhoto.uri === "string") {
-          setDriverPhoto(draft.driverPhoto);
-        }
+      .then((raw) => {
+        if (cancelled || !raw) return;
+        const draft = JSON.parse(raw);
+        if (typeof draft?.phone === "string") setPhone(draft.phone);
+        if (draft?.documents) setDocuments({ ...emptyDocs(), ...draft.documents });
+        if (draft?.driverPhoto?.uri) setDriverPhoto(draft.driverPhoto);
       })
       .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setDraftLoaded(true);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
+      .finally(() => { if (!cancelled) setDraftLoaded(true); });
+    return () => { cancelled = true; };
+  }, [draftKey]);
 
   useEffect(() => {
-    const draftKey = getDraftKey(user?.id);
     if (!draftKey || !draftLoaded) return;
+    AsyncStorage.setItem(draftKey, JSON.stringify({ phone, documents, driverPhoto })).catch(() => {});
+  }, [documents, draftKey, draftLoaded, driverPhoto, phone]);
 
-    const draft: ChauffeurRegistrationDraft = {
-      version: CHAUFFEUR_REGISTRATION_DRAFT_VERSION,
-      step,
-      carMake,
-      vehicleModel,
-      vehicleYear,
-      plateNumber,
-      phone,
-      vehicleType,
-      carColor,
-      passengerCapacity,
-      luggageCapacity,
-      documents,
-      driverPhoto,
-    };
-
-    AsyncStorage.setItem(draftKey, JSON.stringify(draft)).catch(() => {});
-  }, [
-    carColor,
-    carMake,
-    documents,
-    draftLoaded,
-    driverPhoto,
-    luggageCapacity,
-    passengerCapacity,
-    phone,
-    plateNumber,
-    step,
-    user?.id,
-    vehicleModel,
-    vehicleType,
-    vehicleYear,
-  ]);
-
-  async function pickImage(docId: string, useCamera = false) {
+  async function pickImage(docId: string, camera = false) {
     try {
-      if (useCamera && Platform.OS !== "web") {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== "granted") {
-          Alert.alert("Permission needed", "Please allow camera access.");
-          return;
-        }
-        const result = await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true, aspect: [1, 1] });
-        if (!result.canceled && result.assets?.[0]) {
-          const asset = result.assets[0];
-          const nextFile = { uri: asset.uri, name: asset.fileName || (docId === "driver_photo" ? "driver_photo.jpg" : `${docId}.jpg`) };
-          if (docId === "driver_photo") {
-            setDriverPhoto(nextFile);
-          } else {
-            setDocuments(prev => ({ ...prev, [docId]: nextFile }));
-          }
-        }
-        return;
-      }
       if (Platform.OS !== "web") {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") {
-          Alert.alert("Permission needed", "Please allow photo library access.");
+        const permission = camera
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (permission.status !== "granted") {
+          Alert.alert("Permission needed", "Please allow camera or photo access.");
           return;
         }
       }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.6,
-        allowsEditing: docId === "driver_photo",
-        aspect: docId === "driver_photo" ? [1, 1] : undefined,
-      });
+      const result = camera && Platform.OS !== "web"
+        ? await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: docId === "driver_photo", aspect: docId === "driver_photo" ? [1, 1] : undefined })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.65, allowsEditing: docId === "driver_photo", aspect: docId === "driver_photo" ? [1, 1] : undefined });
       if (!result.canceled && result.assets?.[0]) {
         const asset = result.assets[0];
-        const nextFile = { uri: asset.uri, name: asset.fileName || (docId === "driver_photo" ? "driver_photo.jpg" : `${docId}.jpg`) };
-        if (docId === "driver_photo") {
-          setDriverPhoto(nextFile);
-        } else {
-          setDocuments(prev => ({ ...prev, [docId]: nextFile }));
-        }
+        const file = { uri: asset.uri, name: asset.fileName || `${docId}.jpg` };
+        if (docId === "driver_photo") setDriverPhoto(file);
+        else setDocuments((prev) => ({ ...prev, [docId]: file }));
       }
     } catch {
-      Alert.alert("Error", "Could not open image picker. Please try again.");
+      Alert.alert("Error", "Could not open image picker.");
     }
   }
 
-  function promptPhotoSource(docId: string) {
-    if (Platform.OS === "web") { pickImage(docId); return; }
-    Alert.alert("Upload Photo", "Choose a source", [
-      { text: "Take Photo", onPress: () => pickImage(docId, true) },
-      { text: "Gallery", onPress: () => pickImage(docId, false) },
-      { text: "Cancel", style: "cancel" },
-    ]);
+  function validate() {
+    if (!phone.trim()) {
+      setError("Phone number is required.");
+      return false;
+    }
+    if (!driverPhoto) {
+      setError("Please upload a clear driver profile photo.");
+      return false;
+    }
+    const missingDocs = DRIVER_DOCS.filter((doc) => !doc.optional && !documents[doc.id]);
+    if (missingDocs.length > 0) {
+      setError(`Please upload: ${missingDocs.map((doc) => doc.label).join(", ")}`);
+      return false;
+    }
+    setError("");
+    return true;
   }
 
-  function validateVehicle(): boolean {
-    const parsedVehicleYear = Number.parseInt(vehicleYear.trim(), 10);
-    if (!carMake.trim() || !vehicleModel.trim() || !vehicleYear.trim() || !plateNumber.trim() || !phone.trim()) {
-      setError("Please fill in all required vehicle fields");
-      return false;
-    }
-    if (!Number.isFinite(parsedVehicleYear)) {
-      setError("Please enter a valid car model year");
-      return false;
-    }
-    if (parsedVehicleYear < MIN_VEHICLE_YEAR || parsedVehicleYear > MAX_VEHICLE_YEAR) {
-      setError(`Vehicle model year must be between ${MIN_VEHICLE_YEAR} and ${MAX_VEHICLE_YEAR}`);
-      return false;
-    }
-    setError(""); return true;
-  }
-
-  function validateDocuments(): boolean {
-    const missing = ALL_DOCS.filter(d => !OPTIONAL_DOC_IDS.has(d.id) && !documents[d.id]);
-    if (missing.length > 0) {
-      setError(`Please upload: ${missing.map(d => d.label).join(", ")}`);
-      return false;
-    }
-    setError(""); return true;
-  }
-
-  async function handleSubmit() {
-    if (!driverPhoto) { setError("Please upload or take your driver profile photo."); return; }
-    if (!user) return;
+  async function submit() {
+    if (!user || !validate()) return;
     setLoading(true);
     setError("");
     try {
-      const res = await apiRequest("POST", "/api/chauffeurs", {
-        userId: user.id,
-        carMake: carMake.trim(),
-        vehicleModel: vehicleModel.trim(),
-        vehicleYear: Number.parseInt(vehicleYear.trim(), 10),
-        plateNumber: plateNumber.trim().toUpperCase(),
-        vehicleType,
-        carColor,
-        phone: phone.trim(),
-        passengerCapacity: parseInt(passengerCapacity) || 4,
-        luggageCapacity: parseInt(luggageCapacity) || 2,
-      });
-      const chauffeur = await res.json();
-      await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(chauffeur));
-
-      const appRes = await apiRequest("GET", `/api/driver/applications/me?userId=${user.id}`);
-      const application = await appRes.json().catch(() => null);
-      const applicationId = application?.id || null;
-
-      const failedUploads: string[] = [];
-
-      const uploadOne = async (docId: string, uri: string) => {
-        let publicUrl = "";
+      for (const doc of DRIVER_DOCS) {
+        const file = documents[doc.id];
+        if (!file) continue;
+        let url = file.uri;
         try {
-          publicUrl = await uploadDocument(uri, user.id, docId);
-        } catch (e: any) {
-          console.error(`[upload] ${docId} failed:`, e?.message);
-          failedUploads.push(docId);
-          publicUrl = uri;
-        }
-        await apiRequest("POST", "/api/driver/documents", {
-          userId: user.id, applicationId, chauffeurId: chauffeur.id,
-          type: docId, url: publicUrl,
-        });
-      };
-
-      await Promise.allSettled([
-        ...ALL_DOCS.map(doc => {
-          const file = documents[doc.id];
-          if (!file) return Promise.resolve();
-          return uploadOne(doc.id, file.uri);
-        }),
-        uploadOne("driver_photo", driverPhoto.uri),
-      ]);
-
-      if (failedUploads.length > 0) {
-        Alert.alert(
-          "Some documents failed to upload",
-          `The following could not be uploaded to storage and may need to be re-submitted: ${failedUploads.join(", ")}. Your application has been saved — please contact support if this keeps happening.`
-        );
+          url = await uploadDocument(file.uri, user.id, doc.id.replace("driver:", "driver_"));
+        } catch {}
+        await apiRequest("POST", "/api/operator-profile/documents", { type: doc.id, url });
       }
-
-      const draftKey = getDraftKey(user.id);
-      if (draftKey) {
-        await AsyncStorage.removeItem(draftKey);
+      if (driverPhoto) {
+        let photoUrl = driverPhoto.uri;
+        try {
+          photoUrl = await uploadDocument(driverPhoto.uri, user.id, "driver_photo");
+        } catch {}
+        await apiRequest("POST", "/api/operator-profile/documents", { type: "driver:driver_photo", url: photoUrl });
       }
+      const res = await apiRequest("POST", "/api/operator-profile/driver", { phone: phone.trim(), profilePhoto: driverPhoto?.uri || null });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || "Driver registration failed");
+      }
+      if (draftKey) await AsyncStorage.removeItem(draftKey);
       router.replace("/chauffeur");
     } catch (e: any) {
-      setError(e.message || "Registration failed. Please try again.");
+      setError(e.message || "Driver registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
-  const StepIndicator = ({ current }: { current: number }) => (
-    <View style={styles.stepIndicator}>
-      {[1, 2, 3].map((n, i) => (
-        <React.Fragment key={n}>
-          <View style={[styles.stepDot, current >= n && styles.stepDotActive]} />
-          {i < 2 && <View style={[styles.stepLine, current > n && styles.stepLineActive]} />}
-        </React.Fragment>
-      ))}
-    </View>
-  );
-
-  // ── STEP 1: Vehicle Details ──
-  if (step === "vehicle") {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20) }]}>
-        <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace("/role-select")}>
-          <Ionicons name="chevron-back" size={24} color={Colors.white} />
-        </Pressable>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.header}>
-            <StepIndicator current={1} />
-            <Text style={styles.title}>Vehicle Details</Text>
-            <Text style={styles.subtitle}>Step 1 of 3 — Tell us about your vehicle</Text>
-          </View>
-
-          {!!error && <View style={styles.errorBox}><Ionicons name="alert-circle" size={16} color={Colors.error} /><Text style={styles.errorText}>{error}</Text></View>}
-
-          <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phone Number *</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="call-outline" size={18} color={Colors.textMuted} />
-                <TextInput style={styles.inputWithIcon} placeholder="e.g. +27 61 234 5678" placeholderTextColor={Colors.textMuted} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Car Make *</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput style={styles.input} placeholder="e.g. Toyota, BMW, Mercedes" placeholderTextColor={Colors.textMuted} value={carMake} onChangeText={setCarMake} />
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Car Model *</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput style={styles.input} placeholder="e.g. Corolla, 3 Series, V Class" placeholderTextColor={Colors.textMuted} value={vehicleModel} onChangeText={setVehicleModel} />
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Model Year * (2015 or newer)</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 2018"
-                  placeholderTextColor={Colors.textMuted}
-                  value={vehicleYear}
-                  onChangeText={setVehicleYear}
-                  keyboardType="number-pad"
-                  maxLength={4}
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Plate Number *</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput style={styles.input} placeholder="e.g. CA 123 456" placeholderTextColor={Colors.textMuted} value={plateNumber} onChangeText={setPlateNumber} autoCapitalize="characters" />
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Vehicle Category</Text>
-              <View style={styles.chipRow}>
-                {VEHICLE_CATEGORIES.map((vc) => (
-                  <Pressable key={vc.id} style={[styles.chip, vehicleType === vc.id && styles.chipActive]} onPress={() => setVehicleType(vc.id)}>
-                    <Text style={[styles.chipText, vehicleType === vc.id && styles.chipTextActive]}>{vc.name}</Text>
-                  </Pressable>
-                ))}
-              </View>
-              <Text style={styles.categoryHint}>{VEHICLE_CATEGORIES.find(c => c.id === vehicleType)?.examples}</Text>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Car Color</Text>
-              <View style={styles.colorRow}>
-                {CAR_COLORS.map((c) => (
-                  <Pressable key={c} style={[styles.colorChip, carColor === c && styles.colorChipActive]} onPress={() => setCarColor(c)}>
-                    <View style={[styles.colorSwatch, { backgroundColor: COLOR_SWATCHES[c] }, c === "White" && { borderWidth: 1, borderColor: Colors.textMuted }]} />
-                    <Text style={[styles.colorText, carColor === c && styles.colorTextActive]}>{c}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.rowInputs}>
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.label}>Passengers</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput style={styles.input} value={passengerCapacity} onChangeText={setPassengerCapacity} keyboardType="number-pad" />
-                </View>
-              </View>
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.label}>Luggage</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput style={styles.input} value={luggageCapacity} onChangeText={setLuggageCapacity} keyboardType="number-pad" />
-                </View>
-              </View>
-            </View>
-          </View>
-
-          <Pressable style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.9 }]} onPress={() => { if (validateVehicle()) setStep("documents"); }}>
-            <Text style={styles.submitBtnText}>Next: Upload Documents</Text>
-            <Ionicons name="arrow-forward" size={18} color={Colors.primary} />
-          </Pressable>
-          <View style={{ height: insets.bottom + 24 }} />
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ── STEP 2: Documents ──
-  if (step === "documents") {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20) }]}>
-        <Pressable style={styles.backBtn} onPress={() => setStep("vehicle")}>
-          <Ionicons name="chevron-back" size={24} color={Colors.white} />
-        </Pressable>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.header}>
-            <StepIndicator current={2} />
-            <Text style={styles.title}>Upload Documents</Text>
-            <Text style={styles.subtitle}>Step 2 of 3 — Required items must be uploaded; optional items can be added later</Text>
-          </View>
-
-          {!!error && <View style={styles.errorBox}><Ionicons name="alert-circle" size={16} color={Colors.error} /><Text style={styles.errorText}>{error}</Text></View>}
-
-          <View style={styles.docInfoBox}>
-            <Ionicons name="lock-closed-outline" size={18} color={Colors.textSecondary} />
-            <Text style={styles.docInfoText}>Your documents are encrypted and only visible to A2B LIFT admins for verification.</Text>
-          </View>
-
-          {/* Driver Documents */}
-          <Text style={styles.docSectionTitle}>Driver Documents</Text>
-          <View style={styles.form}>
-            {DRIVER_DOCS.map((doc) => {
-              const uploaded = documents[doc.id];
-              return (
-                <Pressable key={doc.id} style={[styles.docRow, uploaded && styles.docRowUploaded]} onPress={() => promptPhotoSource(doc.id)}>
-                  <View style={[styles.docIconWrap, uploaded && styles.docIconWrapUploaded]}>
-                    <Ionicons name={uploaded ? "checkmark" : doc.icon} size={20} color={uploaded ? Colors.success : Colors.textSecondary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.docLabel}>{doc.label}{OPTIONAL_DOC_IDS.has(doc.id) ? " (Optional)" : ""}</Text>
-                    <Text style={styles.docHint}>{uploaded ? `✓ ${uploaded.name}` : doc.hint}</Text>
-                  </View>
-                  <Ionicons name={uploaded ? "checkmark-circle" : "cloud-upload-outline"} size={20} color={uploaded ? Colors.success : Colors.textMuted} />
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* Car Documents */}
-          <Text style={[styles.docSectionTitle, { marginTop: 20 }]}>Vehicle Documents</Text>
-          <View style={styles.form}>
-            {CAR_DOCS.map((doc) => {
-              const uploaded = documents[doc.id];
-              return (
-                <Pressable key={doc.id} style={[styles.docRow, uploaded && styles.docRowUploaded]} onPress={() => promptPhotoSource(doc.id)}>
-                  <View style={[styles.docIconWrap, uploaded && styles.docIconWrapUploaded]}>
-                    <Ionicons name={uploaded ? "checkmark" : doc.icon} size={20} color={uploaded ? Colors.success : Colors.textSecondary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.docLabel}>{doc.label}{OPTIONAL_DOC_IDS.has(doc.id) ? " (Optional)" : ""}</Text>
-                    <Text style={styles.docHint}>{uploaded ? `✓ ${uploaded.name}` : doc.hint}</Text>
-                  </View>
-                  <Ionicons name={uploaded ? "checkmark-circle" : "cloud-upload-outline"} size={20} color={uploaded ? Colors.success : Colors.textMuted} />
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Pressable style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.9 }]} onPress={() => { if (validateDocuments()) setStep("photo"); }}>
-            <Text style={styles.submitBtnText}>Next: Profile Photo</Text>
-            <Ionicons name="arrow-forward" size={18} color={Colors.primary} />
-          </Pressable>
-          <View style={{ height: insets.bottom + 24 }} />
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ── STEP 3: Driver Profile Photo ──
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 20) }]}>
-      <Pressable style={styles.backBtn} onPress={() => setStep("documents")}>
+      <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace("/chauffeur-onboarding")}>
         <Ionicons name="chevron-back" size={24} color={Colors.white} />
       </Pressable>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 28 }]}>
         <View style={styles.header}>
-          <StepIndicator current={3} />
-          <Text style={styles.title}>Profile Photo</Text>
-          <Text style={styles.subtitle}>Step 3 of 3 — Upload a clear photo of yourself</Text>
+          <Text style={styles.title}>Driver Registration</Text>
+          <Text style={styles.subtitle}>Submit your driver profile first. Vehicles are added after A2B approves your driver account. Your progress is saved automatically.</Text>
         </View>
-
         {!!error && <View style={styles.errorBox}><Ionicons name="alert-circle" size={16} color={Colors.error} /><Text style={styles.errorText}>{error}</Text></View>}
 
-        {/* Photo preview */}
-        <View style={styles.photoPreviewWrap}>
-          {driverPhoto ? (
-            <Image source={{ uri: driverPhoto.uri }} style={styles.photoPreview} />
-          ) : (
-            <View style={styles.photoPlaceholder}>
-              <Ionicons name="person" size={56} color={Colors.textMuted} />
-            </View>
-          )}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Phone Number *</Text>
+          <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+27 61 234 5678" placeholderTextColor={Colors.textMuted} keyboardType="phone-pad" />
         </View>
 
-        {/* Photo instructions */}
-        <View style={styles.photoInstructions}>
-          <Text style={styles.photoInstructionsTitle}>Photo guidelines</Text>
-          {[
-            { icon: "sunny-outline", text: "Take the photo in good, natural lighting" },
-            { icon: "person-circle-outline", text: "Face the camera directly — eyes clearly visible" },
-            { icon: "remove-circle-outline", text: "No sunglasses, hats, or obstructions" },
-            { icon: "scan-outline", text: "Plain background preferred (white or light-coloured)" },
-            { icon: "expand-outline", text: "Head and shoulders must be fully in frame" },
-          ].map((tip, i) => (
-            <View key={i} style={styles.photoTipRow}>
-              <Ionicons name={tip.icon as any} size={16} color={Colors.accent === "#2A2A2A" ? "#888" : Colors.accent} />
-              <Text style={styles.photoTipText}>{tip.text}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.photoActions}>
-          {Platform.OS !== "web" && (
-            <Pressable style={styles.photoActionBtn} onPress={() => pickImage("driver_photo", true)}>
-              <Ionicons name="camera-outline" size={20} color={Colors.white} />
-              <Text style={styles.photoActionBtnText}>Take Photo</Text>
+        <Text style={styles.sectionTitle}>Driver Photo</Text>
+        <View style={styles.photoRow}>
+          <View style={styles.photoPreview}>
+            {driverPhoto ? <Image source={{ uri: driverPhoto.uri }} style={styles.photoImage} /> : <Ionicons name="person" size={42} color={Colors.textMuted} />}
+          </View>
+          <View style={styles.photoActions}>
+            {Platform.OS !== "web" && (
+              <Pressable style={styles.secondaryBtn} onPress={() => pickImage("driver_photo", true)}>
+                <Ionicons name="camera-outline" size={18} color={Colors.white} />
+                <Text style={styles.secondaryBtnText}>Camera</Text>
+              </Pressable>
+            )}
+            <Pressable style={styles.secondaryBtn} onPress={() => pickImage("driver_photo", false)}>
+              <Ionicons name="images-outline" size={18} color={Colors.white} />
+              <Text style={styles.secondaryBtnText}>Gallery</Text>
             </Pressable>
-          )}
-          <Pressable style={[styles.photoActionBtn, { backgroundColor: Colors.surface }]} onPress={() => pickImage("driver_photo", false)}>
-            <Ionicons name="images-outline" size={20} color={Colors.white} />
-            <Text style={styles.photoActionBtnText}>Gallery</Text>
-          </Pressable>
+          </View>
         </View>
 
-        <Pressable
-          style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.9 }, loading && { opacity: 0.7 }]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? <ActivityIndicator color={Colors.primary} /> : (
-            <>
-              <Text style={styles.submitBtnText}>Submit Application</Text>
-              <Ionicons name="checkmark" size={18} color={Colors.primary} />
-            </>
-          )}
-        </Pressable>
+        <Text style={styles.sectionTitle}>Driver Documents</Text>
+        <View style={styles.docs}>
+          {DRIVER_DOCS.map((doc) => {
+            const file = documents[doc.id];
+            return (
+              <Pressable key={doc.id} style={[styles.docRow, file && styles.docUploaded]} onPress={() => pickImage(doc.id)}>
+                <Ionicons name={file ? "checkmark-circle" : "cloud-upload-outline"} size={22} color={file ? Colors.success : Colors.textMuted} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.docTitle}>{doc.label}{doc.optional ? " (Optional)" : ""}</Text>
+                  <Text style={styles.docMeta}>{file ? file.name : "Tap to upload"}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
 
-        <Text style={styles.submitNote}>Your application will be reviewed by our team within 24–48 hours.</Text>
-        <View style={{ height: insets.bottom + 24 }} />
+        <Pressable style={[styles.submitBtn, loading && { opacity: 0.7 }]} onPress={submit} disabled={loading}>
+          {loading ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.submitText}>Submit Driver Application</Text>}
+        </Pressable>
       </ScrollView>
     </View>
   );
@@ -604,56 +197,27 @@ export default function ChauffeurRegisterScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.primary, paddingHorizontal: 24 },
   backBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center", marginLeft: -8 },
-  scrollContent: { flexGrow: 1 },
+  content: { flexGrow: 1 },
   header: { marginTop: 12, marginBottom: 20, gap: 8 },
-  stepIndicator: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
-  stepDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.border },
-  stepDotActive: { backgroundColor: Colors.white },
-  stepLine: { flex: 1, height: 2, backgroundColor: Colors.border, marginHorizontal: 6 },
-  stepLineActive: { backgroundColor: Colors.white },
-  title: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.white },
-  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
-  errorBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,77,77,0.1)", padding: 12, borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,77,77,0.2)", marginBottom: 12 },
-  errorText: { fontSize: 13, fontFamily: "Inter_400Regular", color: Colors.error, flex: 1 },
-  docInfoBox: { flexDirection: "row", alignItems: "flex-start", gap: 10, backgroundColor: Colors.surface, padding: 12, borderRadius: 10, marginBottom: 16 },
-  docInfoText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, lineHeight: 18 },
-  docSectionTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 },
-  form: { gap: 10 },
-  inputGroup: { gap: 6 },
-  label: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 1 },
-  inputWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.card, borderRadius: 12, paddingHorizontal: 16, borderWidth: 1, borderColor: Colors.border, gap: 10 },
-  input: { flex: 1, paddingVertical: 13, fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.white },
-  inputWithIcon: { flex: 1, paddingVertical: 13, fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.white },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
-  chipActive: { backgroundColor: Colors.white, borderColor: Colors.white },
-  chipText: { fontSize: 12, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
-  chipTextActive: { color: Colors.primary },
-  categoryHint: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
-  colorRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  colorChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
-  colorChipActive: { borderColor: Colors.white, backgroundColor: "#1A2540" },
-  colorSwatch: { width: 14, height: 14, borderRadius: 7 },
-  colorText: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textSecondary },
-  colorTextActive: { color: Colors.white },
-  rowInputs: { flexDirection: "row", gap: 12 },
-  docRow: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: Colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.border },
-  docRowUploaded: { borderColor: Colors.success, backgroundColor: "rgba(34,197,94,0.06)" },
-  docIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.card, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: Colors.border },
-  docIconWrapUploaded: { backgroundColor: "rgba(34,197,94,0.1)", borderColor: Colors.success },
-  docLabel: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.white, marginBottom: 2 },
-  docHint: { fontSize: 11, fontFamily: "Inter_400Regular", color: Colors.textMuted },
-  photoPreviewWrap: { alignItems: "center", marginBottom: 20 },
-  photoPreview: { width: 160, height: 160, borderRadius: 80, borderWidth: 3, borderColor: Colors.white },
-  photoPlaceholder: { width: 160, height: 160, borderRadius: 80, backgroundColor: Colors.surface, borderWidth: 2, borderColor: Colors.border, alignItems: "center", justifyContent: "center" },
-  photoInstructions: { backgroundColor: Colors.surface, borderRadius: 14, padding: 16, marginBottom: 20, gap: 10 },
-  photoInstructionsTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.white, marginBottom: 4 },
-  photoTipRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  photoTipText: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textSecondary, flex: 1, lineHeight: 18 },
-  photoActions: { flexDirection: "row", gap: 12, marginBottom: 20 },
-  photoActionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: Colors.card, paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: Colors.border },
-  photoActionBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: Colors.white },
-  submitBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: Colors.white, paddingVertical: 15, borderRadius: 14, marginTop: 4 },
-  submitBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: Colors.primary },
-  submitNote: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", marginTop: 12 },
+  title: { fontSize: 24, fontFamily: "Inter_700Bold", color: Colors.white },
+  subtitle: { fontSize: 13, lineHeight: 19, fontFamily: "Inter_400Regular", color: Colors.textSecondary },
+  inputGroup: { gap: 8, marginBottom: 20 },
+  label: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  input: { minHeight: 50, borderRadius: 12, paddingHorizontal: 14, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, color: Colors.white, fontFamily: "Inter_400Regular" },
+  sectionTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.textSecondary, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 },
+  photoRow: { flexDirection: "row", gap: 14, alignItems: "center", marginBottom: 22 },
+  photoPreview: { width: 92, height: 92, borderRadius: 46, alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border },
+  photoImage: { width: "100%", height: "100%" },
+  photoActions: { flex: 1, gap: 10 },
+  secondaryBtn: { minHeight: 42, borderRadius: 12, backgroundColor: Colors.surface, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  secondaryBtnText: { color: Colors.white, fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  docs: { gap: 10 },
+  docRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.card },
+  docUploaded: { borderColor: "rgba(76,175,80,0.35)" },
+  docTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  docMeta: { fontSize: 12, fontFamily: "Inter_400Regular", color: Colors.textMuted, marginTop: 2 },
+  errorBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,77,77,0.1)", padding: 12, borderRadius: 10, marginBottom: 12 },
+  errorText: { flex: 1, fontSize: 13, color: Colors.error, fontFamily: "Inter_400Regular" },
+  submitBtn: { minHeight: 52, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: Colors.white, marginTop: 20 },
+  submitText: { fontSize: 15, fontFamily: "Inter_700Bold", color: Colors.primary },
 });

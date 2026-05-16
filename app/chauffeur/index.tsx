@@ -145,6 +145,7 @@ export default function ChauffeurDashboard() {
   const { on, off, emit } = useSocket();
 
   const [chauffeur, setChauffeur] = useState<any>(null);
+  const [operatorProfile, setOperatorProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
   const [incomingRide, setIncomingRide] = useState<any>(null);
@@ -949,6 +950,12 @@ export default function ChauffeurDashboard() {
   async function loadChauffeur() {
     if (!user) return;
     try {
+      const profileRes = await apiRequest("GET", "/api/operator-profile/me");
+      const profileData = profileRes.ok ? await profileRes.json() : null;
+      if (profileData?.profile) {
+        setOperatorProfile(profileData.profile);
+        if (profileData.profile.type === "partner") return;
+      }
       const stored = await AsyncStorage.getItem("a2b_chauffeur");
       if (stored) {
         const cached = JSON.parse(stored);
@@ -963,7 +970,7 @@ export default function ChauffeurDashboard() {
       if (!c) throw new Error("not found");
       restoreActiveRide();
     } catch {
-      router.replace("/chauffeur-register");
+      router.replace("/chauffeur-onboarding");
     } finally {
       setLoading(false);
     }
@@ -1445,6 +1452,41 @@ export default function ChauffeurDashboard() {
     );
   }
 
+  if (operatorProfile?.type === "partner") {
+    const isApprovedPartner = operatorProfile.status === "approved";
+    return (
+      <View style={[styles.pendingContainer, { paddingTop: insets.top + 20 }]}>
+        <View style={styles.pendingInner}>
+          <Ionicons name={isApprovedPartner ? "business-outline" : "hourglass"} size={60} color={isApprovedPartner ? Colors.success : Colors.warning} />
+          <Text style={styles.pendingTitle}>{isApprovedPartner ? "Partner Dashboard" : "Partner Approval Pending"}</Text>
+          <Text style={styles.pendingDesc}>
+            {isApprovedPartner
+              ? "Manage your fleet vehicles, assign approved drivers, and track your A2B LIFT partner account."
+              : "Your partner application is under review. You will be notified once A2B approves your account."}
+          </Text>
+          <View style={styles.partnerActions}>
+            {isApprovedPartner && (
+              <>
+                <Pressable style={styles.pendingBtn} onPress={() => router.push("/chauffeur/vehicles" as never)}>
+                  <Ionicons name="car-sport-outline" size={16} color={Colors.white} />
+                  <Text style={styles.pendingBtnText}>Vehicles</Text>
+                </Pressable>
+                <Pressable style={styles.pendingBtn} onPress={() => router.push("/chauffeur/fleet" as never)}>
+                  <Ionicons name="people-outline" size={16} color={Colors.white} />
+                  <Text style={styles.pendingBtnText}>Fleet</Text>
+                </Pressable>
+              </>
+            )}
+            <Pressable style={styles.pendingBtn} onPress={() => router.push("/chauffeur/notifications")}>
+              <Ionicons name="notifications-outline" size={16} color={Colors.white} />
+              <Text style={styles.pendingBtnText}>Notifications</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   if (!chauffeur) return null;
 
   // ─── Pending approval ─────────────────────────────────────────────────────
@@ -1471,6 +1513,7 @@ export default function ChauffeurDashboard() {
   // ─── Menu items ───────────────────────────────────────────────────────────
   const menuItems = [
     { icon: isOnline ? "stop-circle-outline" : "play-circle-outline", label: isOnline ? "Go Offline" : "Go Online", onPress: toggleOnline, color: isOnline ? "#ff6b6b" : Colors.success },
+    { icon: "car-outline", label: "Vehicles", onPress: () => { router.push("/chauffeur/vehicles" as never); closeMenu(); }, color: Colors.white },
     { icon: "car-sport-outline", label: "My Rides", onPress: () => { router.push("/chauffeur/rides"); closeMenu(); }, color: Colors.white },
     { icon: "map-outline", label: "Long Distance", onPress: () => { router.push("/chauffeur/long-distance" as never); closeMenu(); }, color: Colors.white },
     { icon: "bar-chart-outline", label: "Earnings", onPress: () => { router.push("/chauffeur/earnings"); closeMenu(); }, color: Colors.white },
@@ -2091,6 +2134,7 @@ const styles = StyleSheet.create({
   pendingInner: { alignItems: "center", gap: 16 },
   pendingTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: Colors.white, marginTop: 8 },
   pendingDesc: { fontSize: 14, fontFamily: "Inter_400Regular", color: Colors.textMuted, textAlign: "center", lineHeight: 22 },
+  partnerActions: { width: "100%", gap: 10, alignItems: "center" },
   pendingBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
   pendingBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
 

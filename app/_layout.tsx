@@ -210,7 +210,7 @@ function RootLayoutNav() {
   useReferralLinkGate();
 
   const screens: Array<{
-    name: "index" | "login" | "register" | "role-select" | "client" | "chauffeur" | "chauffeur-register";
+    name: "index" | "login" | "register" | "role-select" | "client" | "chauffeur" | "chauffeur-onboarding" | "chauffeur-register" | "partner-register";
     options?: { gestureEnabled?: boolean };
   }> = [
     { name: "index" },
@@ -228,7 +228,9 @@ function RootLayoutNav() {
 
   if (shouldIncludeDriverRoutes) {
     screens.push({ name: "chauffeur", options: { gestureEnabled: false } });
+    screens.push({ name: "chauffeur-onboarding" });
     screens.push({ name: "chauffeur-register" });
+    screens.push({ name: "partner-register" });
   }
 
   return (

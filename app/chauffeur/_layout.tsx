@@ -98,6 +98,20 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="vehicles"
+        options={{
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="fleet"
+        options={{
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
         name="notifications"
         options={{
           href: null,

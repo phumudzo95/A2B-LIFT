@@ -80,7 +80,16 @@ export default function ChauffeurNotificationsScreen() {
       case "long_distance:booking":
         return "map";
       case "approval": return "checkmark-circle";
+      case "operator_approved":
+      case "vehicle_approved":
+      case "vehicle_assignment":
+        return "checkmark-circle";
       case "rejection": return "close-circle";
+      case "operator_rejected":
+      case "vehicle_rejected":
+      case "vehicle_suspended":
+      case "vehicle_assignment_removed":
+        return "close-circle";
       case "earning": return "cash";
       case "withdrawal": return "arrow-down-circle";
       default: return "notifications";
@@ -93,7 +102,16 @@ export default function ChauffeurNotificationsScreen() {
       case "long_distance:booking":
         return Colors.warning;
       case "approval": return Colors.success;
+      case "operator_approved":
+      case "vehicle_approved":
+      case "vehicle_assignment":
+        return Colors.success;
       case "rejection": return Colors.error;
+      case "operator_rejected":
+      case "vehicle_rejected":
+      case "vehicle_suspended":
+      case "vehicle_assignment_removed":
+        return Colors.error;
       case "earning": return Colors.success;
       default: return Colors.white;
     }
