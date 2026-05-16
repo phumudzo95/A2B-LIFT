@@ -318,6 +318,25 @@ Approval behavior:
 - Approving a vehicle makes it assignable/selectable.
 - Rejecting any application stores a reason and notifies the user.
 
+## Notifications
+
+Every approval, rejection, assignment, and assignment removal must notify the affected parties through the existing notification system.
+
+Notification rules:
+
+- Driver application approved: notify the driver that they can add/select approved vehicles and drive once ready.
+- Driver application rejected: notify the driver with the rejection reason.
+- Partner application approved: notify the partner that they can add vehicles and assign approved drivers.
+- Partner application rejected: notify the partner with the rejection reason.
+- Vehicle approved: notify the vehicle owner. If the owner is a driver, tell them the vehicle can be selected before going online. If the owner is a partner, tell them the vehicle can be assigned to approved drivers.
+- Vehicle rejected: notify the vehicle owner with the rejection reason.
+- Driver assigned to vehicle: notify the assigned driver and the vehicle owner/partner.
+- Driver removed from vehicle: notify the removed driver and the vehicle owner/partner.
+- Driver selects active vehicle: notify only in-app state; do not create a persistent notification unless selection fails or the vehicle is no longer approved.
+- Partner attempts to assign an unavailable or unapproved driver: show an in-app error, but do not create a persistent notification.
+
+Push notifications must be sent when a target user has a push token. In-app notification records must always be created so users can see the event later inside the app.
+
 ## API Surface
 
 New backend routes must be added under clear namespaces:
@@ -389,6 +408,7 @@ Server tests must cover:
 - Driver cannot go online without selected approved vehicle.
 - Partner cannot toggle online.
 - Ride acceptance stores active vehicle id.
+- Notifications are created for approvals, rejections, vehicle assignments, and assignment removals.
 
 Client testing must cover:
 
@@ -399,6 +419,7 @@ Client testing must cover:
 - Partner dashboard hides referrals and online controls.
 - Driver vehicle selector blocks online until a vehicle is selected.
 - Partner can search approved drivers and assign them to approved vehicles.
+- Driver and partner notification screens show approval, rejection, vehicle, and assignment events.
 
 ## Rollout Order
 
@@ -422,3 +443,4 @@ Client testing must cover:
 - Partner documents listed in this spec are all required.
 - Admin remains one dashboard with separate approval menus.
 - Implementation must use the hybrid migration so active ride dispatch is not rewritten in the first pass.
+- All affected parties must receive in-app notifications for approvals, rejections, assignments, and assignment removals, with push sent when available.
