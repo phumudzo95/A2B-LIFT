@@ -3321,6 +3321,168 @@ async function registerRoutes(app2) {
       return res.status(500).json({ message: error.message });
     }
   });
+  const PARTNER_REQUIRED_DOCS = /* @__PURE__ */ new Set([
+    "partner:company_registration",
+    "partner:director_id",
+    "partner:proof_of_address",
+    "partner:operating_permit",
+    "partner:bank_account_details"
+  ]);
+  function requireStringField(body, field) {
+    const value = String(body?.[field] || "").trim();
+    if (!value) throw new Error(`${field} is required`);
+    return value;
+  }
+  async function getOrCreateOperatorProfile(options) {
+    const existing = await storage.getOperatorProfileByUserId(options.userId);
+    if (existing) {
+      if (existing.type !== options.type) {
+        throw new Error(`This account is already registered as a ${existing.type}`);
+      }
+      return storage.updateOperatorProfile(existing.id, {
+        status: options.status || existing.status,
+        submittedAt: /* @__PURE__ */ new Date()
+      });
+    }
+    return storage.createOperatorProfile({
+      userId: options.userId,
+      type: options.type,
+      status: options.status || "pending",
+      submittedAt: /* @__PURE__ */ new Date()
+    });
+  }
+  app2.get("/api/operator-profile/me", requireAuth, async (req, res) => {
+    try {
+      let profile = await storage.getOperatorProfileByUserId(req.auth.sub);
+      const chauffeur = await storage.getChauffeurByUserId(req.auth.sub).catch(() => void 0);
+      if (!profile && chauffeur) {
+        profile = await storage.createOperatorProfile({
+          userId: req.auth.sub,
+          type: "driver",
+          status: chauffeur.isApproved ? "approved" : "pending",
+          submittedAt: chauffeur.createdAt || /* @__PURE__ */ new Date()
+        });
+      }
+      if (!profile) return res.status(404).json({ message: "Operator profile not found" });
+      const partnerProfile = profile.type === "partner" ? await storage.getPartnerProfileByOperatorId(profile.id) : null;
+      return res.json({ profile, partnerProfile, chauffeur: chauffeur || null });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.get("/api/operator-profile/me/documents", requireAuth, async (req, res) => {
+    try {
+      const docs = await storage.getDocumentsByUser(req.auth.sub);
+      return res.json(docs.filter((doc) => String(doc.type || "").startsWith("driver:") || String(doc.type || "").startsWith("partner:")));
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  app2.post("/api/operator-profile/documents", requireAuth, async (req, res) => {
+    try {
+      const type = requireStringField(req.body, "type");
+      const url = requireStringField(req.body, "url");
+      if (!type.startsWith("driver:") && !type.startsWith("partner:")) {
+        return res.status(400).json({ message: "Document type must start with driver: or partner:" });
+      }
+      const doc = await storage.createDocument({
+        userId: req.auth.sub,
+        applicationId: null,
+        chauffeurId: null,
+        vehicleId: null,
+        type,
+        url,
+        status: "pending"
+      });
+      return res.status(201).json(doc);
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+  });
+  app2.post("/api/operator-profile/driver", requireAuth, async (req, res) => {
+    try {
+      const phone = requireStringField(req.body, "phone");
+      const profile = await getOrCreateOperatorProfile({
+        userId: req.auth.sub,
+        type: "driver",
+        status: "pending"
+      });
+      if (!profile) return res.status(500).json({ message: "Could not create driver profile" });
+      let chauffeur = await storage.getChauffeurByUserId(req.auth.sub);
+      if (chauffeur) {
+        chauffeur = await storage.updateChauffeur(chauffeur.id, {
+          phone,
+          profilePhoto: req.body.profilePhoto || chauffeur.profilePhoto,
+          isApproved: profile.status === "approved" ? true : chauffeur.isApproved
+        });
+      } else {
+        chauffeur = await storage.createChauffeur({
+          userId: req.auth.sub,
+          phone,
+          profilePhoto: req.body.profilePhoto || null,
+          isApproved: false
+        });
+      }
+      await storage.updateUser(req.auth.sub, { role: "chauffeur", phone });
+      let application = await storage.getDriverApplicationByUserId(req.auth.sub);
+      if (application) {
+        application = await storage.updateDriverApplication(application.id, {
+          chauffeurId: chauffeur.id,
+          status: "pending",
+          submittedAt: /* @__PURE__ */ new Date()
+        });
+      } else {
+        application = await storage.createDriverApplication({
+          userId: req.auth.sub,
+          chauffeurId: chauffeur.id,
+          status: "pending",
+          submittedAt: /* @__PURE__ */ new Date()
+        });
+      }
+      return res.status(201).json({ profile, chauffeur, application });
+    } catch (error) {
+      const message = error.message || "Failed to submit driver profile";
+      return res.status(message.includes("already registered") ? 409 : 400).json({ message });
+    }
+  });
+  app2.post("/api/operator-profile/partner", requireAuth, async (req, res) => {
+    try {
+      const partnerData = {
+        companyName: requireStringField(req.body, "companyName"),
+        registrationNumber: requireStringField(req.body, "registrationNumber"),
+        contactPersonName: requireStringField(req.body, "contactPersonName"),
+        contactPhone: requireStringField(req.body, "contactPhone"),
+        contactEmail: requireStringField(req.body, "contactEmail"),
+        bankName: requireStringField(req.body, "bankName"),
+        accountHolder: requireStringField(req.body, "accountHolder"),
+        accountNumber: requireStringField(req.body, "accountNumber")
+      };
+      const docs = await storage.getDocumentsByUser(req.auth.sub);
+      const uploadedTypes = new Set(docs.map((doc) => doc.type));
+      const missingDocs = [...PARTNER_REQUIRED_DOCS].filter((type) => !uploadedTypes.has(type));
+      if (missingDocs.length > 0) {
+        return res.status(400).json({
+          message: `Please upload all required partner documents: ${missingDocs.map((type) => type.replace("partner:", "")).join(", ")}`
+        });
+      }
+      const profile = await getOrCreateOperatorProfile({
+        userId: req.auth.sub,
+        type: "partner",
+        status: "pending"
+      });
+      if (!profile) return res.status(500).json({ message: "Could not create partner profile" });
+      const existingPartnerProfile = await storage.getPartnerProfileByOperatorId(profile.id);
+      const partnerProfile = existingPartnerProfile ? await storage.updatePartnerProfile(existingPartnerProfile.id, partnerData) : await storage.createPartnerProfile({
+        operatorProfileId: profile.id,
+        ...partnerData
+      });
+      await storage.updateUser(req.auth.sub, { role: "chauffeur", phone: partnerData.contactPhone });
+      return res.status(201).json({ profile, partnerProfile });
+    } catch (error) {
+      const message = error.message || "Failed to submit partner profile";
+      return res.status(message.includes("already registered") ? 409 : 400).json({ message });
+    }
+  });
   app2.get("/api/chauffeurs/user/:userId", async (req, res) => {
     try {
       const chauffeur = await storage.getChauffeurByUserId(req.params.userId);
