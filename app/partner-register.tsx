@@ -18,7 +18,7 @@ const PARTNER_DOCS = [
   { id: "partner:bank_account_details", label: "Bank Account Details" },
 ];
 
-type DraftFile = { uri: string; name: string };
+type DraftFile = { uri: string; name: string; uploadedUrl?: string };
 type DraftDocuments = Record<string, DraftFile | null>;
 
 function emptyDocs(): DraftDocuments {
@@ -39,6 +39,7 @@ export default function PartnerRegisterScreen() {
     accountNumber: "",
   });
   const [documents, setDocuments] = useState<DraftDocuments>(emptyDocs);
+  const [uploadingDocs, setUploadingDocs] = useState<Record<string, boolean>>({});
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -47,12 +48,33 @@ export default function PartnerRegisterScreen() {
   useEffect(() => {
     let cancelled = false;
     if (!draftKey) { setDraftLoaded(true); return; }
-    AsyncStorage.getItem(draftKey)
-      .then((raw) => {
-        if (cancelled || !raw) return;
-        const draft = JSON.parse(raw);
-        if (draft?.form) setForm((prev) => ({ ...prev, ...draft.form }));
-        if (draft?.documents) setDocuments({ ...emptyDocs(), ...draft.documents });
+    Promise.all([
+      AsyncStorage.getItem(draftKey),
+      apiRequest("GET", "/api/operator-profile/me/documents").then((res) => res.json()).catch(() => []),
+    ])
+      .then(([raw, serverDocs]) => {
+        if (cancelled) return;
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (draft?.form) setForm((prev) => ({ ...prev, ...draft.form }));
+          if (draft?.documents) setDocuments({ ...emptyDocs(), ...draft.documents });
+        }
+        if (Array.isArray(serverDocs)) {
+          const restoredDocs = emptyDocs();
+          serverDocs.forEach((doc: any) => {
+            const type = String(doc?.type || "");
+            const url = String(doc?.url || "");
+            if (!url || !(type in restoredDocs)) return;
+            restoredDocs[type] = { uri: url, uploadedUrl: url, name: type.replace("partner:", "").replace(/_/g, " ") };
+          });
+          setDocuments((prev) => {
+            const next = { ...prev };
+            Object.entries(restoredDocs).forEach(([type, file]) => {
+              if (file && !next[type]) next[type] = file;
+            });
+            return next;
+          });
+        }
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setDraftLoaded(true); });
@@ -80,10 +102,26 @@ export default function PartnerRegisterScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.65 });
       if (!result.canceled && result.assets?.[0]) {
         const asset = result.assets[0];
-        setDocuments((prev) => ({ ...prev, [type]: { uri: asset.uri, name: asset.fileName || `${type}.jpg` } }));
+        const file = { uri: asset.uri, name: asset.fileName || `${type}.jpg` };
+        setDocuments((prev) => ({ ...prev, [type]: file }));
+        void autosaveDocumentUpload(type, file);
       }
     } catch {
       Alert.alert("Error", "Could not open image picker.");
+    }
+  }
+
+  async function autosaveDocumentUpload(type: string, file: DraftFile) {
+    if (!user) return;
+    setUploadingDocs((prev) => ({ ...prev, [type]: true }));
+    try {
+      const url = file.uploadedUrl || await uploadDocument(file.uri, user.id, type.replace("partner:", "partner_"));
+      await apiRequest("POST", "/api/operator-profile/documents", { type, url });
+      setDocuments((prev) => ({ ...prev, [type]: { ...file, uri: url, uploadedUrl: url } }));
+    } catch {
+      setError("Saved locally. We will retry this upload when you submit.");
+    } finally {
+      setUploadingDocs((prev) => ({ ...prev, [type]: false }));
     }
   }
 
@@ -110,11 +148,13 @@ export default function PartnerRegisterScreen() {
       for (const doc of PARTNER_DOCS) {
         const file = documents[doc.id];
         if (!file) continue;
-        let url = file.uri;
-        try {
-          url = await uploadDocument(file.uri, user.id, doc.id.replace("partner:", "partner_"));
-        } catch {}
-        await apiRequest("POST", "/api/operator-profile/documents", { type: doc.id, url });
+        if (!file.uploadedUrl) {
+          let url = file.uri;
+          try {
+            url = await uploadDocument(file.uri, user.id, doc.id.replace("partner:", "partner_"));
+          } catch {}
+          await apiRequest("POST", "/api/operator-profile/documents", { type: doc.id, url });
+        }
       }
       const res = await apiRequest("POST", "/api/operator-profile/partner", form);
       if (!res.ok) {
@@ -175,7 +215,7 @@ export default function PartnerRegisterScreen() {
                 <Ionicons name={file ? "checkmark-circle" : "cloud-upload-outline"} size={22} color={file ? Colors.success : Colors.textMuted} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.docTitle}>{doc.label}</Text>
-                  <Text style={styles.docMeta}>{file ? file.name : "Tap to upload"}</Text>
+                  <Text style={styles.docMeta}>{uploadingDocs[doc.id] ? "Saving upload..." : file ? file.name : "Tap to upload"}</Text>
                 </View>
               </Pressable>
             );

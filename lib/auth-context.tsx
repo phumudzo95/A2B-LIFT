@@ -239,6 +239,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.removeItem("a2b_last_mode");
     await AsyncStorage.removeItem("a2b_current_ride");
     await AsyncStorage.removeItem("a2b_token");
+    await AsyncStorage.removeItem("a2b_needs_role_select");
+    await AsyncStorage.removeItem("a2b_needs_operator_choice");
     // Best-effort server logout (clears cookie on web)
     apiRequest("POST", "/api/auth/logout").catch(() => {});
   }
@@ -300,4 +302,3 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
-

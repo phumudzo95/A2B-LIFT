@@ -2781,6 +2781,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Document type must start with driver: or partner:" });
       }
 
+      const existingDocs = await storage.getDocumentsByUser(req.auth!.sub);
+      const existing = existingDocs.find((doc) =>
+        doc.type === type &&
+        !doc.applicationId &&
+        !doc.chauffeurId &&
+        !doc.vehicleId
+      );
+      if (existing) {
+        const updated = await storage.updateDocument(existing.id, {
+          url,
+          status: "pending",
+          reviewedAt: null,
+          reviewerAdminId: null,
+        });
+        return res.json(updated);
+      }
+
       const doc = await storage.createDocument({
         userId: req.auth!.sub,
         applicationId: null,

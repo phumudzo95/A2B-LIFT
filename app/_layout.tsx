@@ -17,6 +17,7 @@ import { SocketProvider } from "@mobile-core/socket";
 const RIDE_ALERT_CHANNEL_ID = "ride-alerts-v3";
 const RIDE_ALERT_SOUND = "trip_alert.wav";
 const NEEDS_ROLE_SELECT_KEY = "a2b_needs_role_select";
+const NEEDS_OPERATOR_CHOICE_KEY = "a2b_needs_operator_choice";
 
 // ─── Global notification handler (runs before any screen mounts) ─────────────
 // Set ONCE at module level. The chauffeur dashboard no longer re-sets this,
@@ -114,6 +115,7 @@ function useAuthGate() {
     const isProtected =
       pathname.startsWith("/client") ||
       pathname.startsWith("/chauffeur") ||
+      pathname === "/partner-register" ||
       pathname === "/role-select" ||
       pathname === "/chauffeur-register";
 
@@ -132,8 +134,15 @@ function useAuthGate() {
       // role-select remains available when users explicitly navigate there.
       Promise.all([
         AsyncStorage.getItem(NEEDS_ROLE_SELECT_KEY),
+        AsyncStorage.getItem(NEEDS_OPERATOR_CHOICE_KEY),
         AsyncStorage.getItem("a2b_last_mode"),
-      ]).then(async ([needsRoleSelect, lastMode]) => {
+      ]).then(async ([needsRoleSelect, needsOperatorChoice, lastMode]) => {
+        if (needsOperatorChoice === "1") {
+          await AsyncStorage.removeItem(NEEDS_OPERATOR_CHOICE_KEY);
+          router.replace("/chauffeur-onboarding");
+          return;
+        }
+
         if (needsRoleSelect === "1") {
           await AsyncStorage.removeItem(NEEDS_ROLE_SELECT_KEY);
           router.replace("/role-select");

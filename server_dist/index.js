@@ -3449,6 +3449,19 @@ async function registerRoutes(app2) {
       if (!type.startsWith("driver:") && !type.startsWith("partner:")) {
         return res.status(400).json({ message: "Document type must start with driver: or partner:" });
       }
+      const existingDocs = await storage.getDocumentsByUser(req.auth.sub);
+      const existing = existingDocs.find(
+        (doc2) => doc2.type === type && !doc2.applicationId && !doc2.chauffeurId && !doc2.vehicleId
+      );
+      if (existing) {
+        const updated = await storage.updateDocument(existing.id, {
+          url,
+          status: "pending",
+          reviewedAt: null,
+          reviewerAdminId: null
+        });
+        return res.json(updated);
+      }
       const doc = await storage.createDocument({
         userId: req.auth.sub,
         applicationId: null,

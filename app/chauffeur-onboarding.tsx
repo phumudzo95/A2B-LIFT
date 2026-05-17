@@ -3,17 +3,40 @@ import { View, Text, StyleSheet, Pressable, Platform, ScrollView } from "react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useAuth } from "@/lib/auth-context";
+import { getAppVariant, usesRoleSelect } from "@mobile-core/app-variant";
 import Colors from "@/constants/colors";
 
 export default function ChauffeurOnboardingChoiceScreen() {
   const insets = useSafeAreaInsets();
+  const { logout } = useAuth();
+  const shouldShowRoleSelect = usesRoleSelect(getAppVariant());
+
+  async function handleLogout() {
+    await logout();
+    router.replace("/");
+  }
+
+  async function handleBack() {
+    if (shouldShowRoleSelect) {
+      router.replace("/role-select");
+      return;
+    }
+    await handleLogout();
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 24) }]}>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
-        <Pressable style={styles.backBtn} onPress={() => router.replace("/role-select")}>
-          <Ionicons name="chevron-back" size={24} color={Colors.white} />
-        </Pressable>
+        <View style={styles.topRow}>
+          <Pressable style={styles.backBtn} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color={Colors.white} />
+          </Pressable>
+          <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={19} color={Colors.textSecondary} />
+            <Text style={styles.logoutText}>Logout</Text>
+          </Pressable>
+        </View>
 
         <View style={styles.header}>
           <Text style={styles.title}>Choose your A2B LIFT account</Text>
@@ -51,7 +74,10 @@ export default function ChauffeurOnboardingChoiceScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.primary, paddingHorizontal: 24 },
   content: { flexGrow: 1 },
+  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   backBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center", marginLeft: -8 },
+  logoutBtn: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border },
+  logoutText: { color: Colors.textSecondary, fontFamily: "Inter_600SemiBold", fontSize: 12 },
   header: { marginTop: 22, marginBottom: 28, gap: 10 },
   title: { fontSize: 28, lineHeight: 34, fontFamily: "Inter_700Bold", color: Colors.white },
   subtitle: { fontSize: 14, lineHeight: 21, fontFamily: "Inter_400Regular", color: Colors.textSecondary },

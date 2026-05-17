@@ -17,7 +17,7 @@ const DRIVER_DOCS = [
   { id: "driver:criminal_background_check", label: "Criminal Background Check", optional: false },
 ];
 
-type DraftFile = { uri: string; name: string };
+type DraftFile = { uri: string; name: string; uploadedUrl?: string };
 type DraftDocuments = Record<string, DraftFile | null>;
 
 function emptyDocs(): DraftDocuments {
@@ -30,6 +30,7 @@ export default function ChauffeurRegisterScreen() {
   const [phone, setPhone] = useState(user?.phone || "");
   const [documents, setDocuments] = useState<DraftDocuments>(emptyDocs);
   const [driverPhoto, setDriverPhoto] = useState<DraftFile | null>(null);
+  const [uploadingDocs, setUploadingDocs] = useState<Record<string, boolean>>({});
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -38,13 +39,38 @@ export default function ChauffeurRegisterScreen() {
   useEffect(() => {
     let cancelled = false;
     if (!draftKey) { setDraftLoaded(true); return; }
-    AsyncStorage.getItem(draftKey)
-      .then((raw) => {
-        if (cancelled || !raw) return;
-        const draft = JSON.parse(raw);
-        if (typeof draft?.phone === "string") setPhone(draft.phone);
-        if (draft?.documents) setDocuments({ ...emptyDocs(), ...draft.documents });
-        if (draft?.driverPhoto?.uri) setDriverPhoto(draft.driverPhoto);
+    Promise.all([
+      AsyncStorage.getItem(draftKey),
+      apiRequest("GET", "/api/operator-profile/me/documents").then((res) => res.json()).catch(() => []),
+    ])
+      .then(([raw, serverDocs]) => {
+        if (cancelled) return;
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (typeof draft?.phone === "string") setPhone(draft.phone);
+          if (draft?.documents) setDocuments({ ...emptyDocs(), ...draft.documents });
+          if (draft?.driverPhoto?.uri) setDriverPhoto(draft.driverPhoto);
+        }
+        if (Array.isArray(serverDocs)) {
+          const restoredDocs = emptyDocs();
+          let restoredPhoto: DraftFile | null = null;
+          serverDocs.forEach((doc: any) => {
+            const type = String(doc?.type || "");
+            const url = String(doc?.url || "");
+            if (!url) return;
+            const file = { uri: url, uploadedUrl: url, name: type.replace("driver:", "").replace(/_/g, " ") };
+            if (type === "driver:driver_photo") restoredPhoto = file;
+            else if (type in restoredDocs) restoredDocs[type] = file;
+          });
+          setDocuments((prev) => {
+            const next = { ...prev };
+            Object.entries(restoredDocs).forEach(([type, file]) => {
+              if (file && !next[type]) next[type] = file;
+            });
+            return next;
+          });
+          if (restoredPhoto) setDriverPhoto((prev) => prev || restoredPhoto);
+        }
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setDraftLoaded(true); });
@@ -75,9 +101,28 @@ export default function ChauffeurRegisterScreen() {
         const file = { uri: asset.uri, name: asset.fileName || `${docId}.jpg` };
         if (docId === "driver_photo") setDriverPhoto(file);
         else setDocuments((prev) => ({ ...prev, [docId]: file }));
+        void autosaveDocumentUpload(docId, file);
       }
     } catch {
       Alert.alert("Error", "Could not open image picker.");
+    }
+  }
+
+  async function autosaveDocumentUpload(docId: string, file: DraftFile) {
+    if (!user) return;
+    setUploadingDocs((prev) => ({ ...prev, [docId]: true }));
+    try {
+      const type = docId === "driver_photo" ? "driver:driver_photo" : docId;
+      const storageType = type.replace("driver:", "driver_");
+      const url = file.uploadedUrl || await uploadDocument(file.uri, user.id, storageType);
+      await apiRequest("POST", "/api/operator-profile/documents", { type, url });
+      const savedFile = { ...file, uri: url, uploadedUrl: url };
+      if (docId === "driver_photo") setDriverPhoto(savedFile);
+      else setDocuments((prev) => ({ ...prev, [docId]: savedFile }));
+    } catch {
+      setError("Saved locally. We will retry this upload when you submit.");
+    } finally {
+      setUploadingDocs((prev) => ({ ...prev, [docId]: false }));
     }
   }
 
@@ -107,20 +152,24 @@ export default function ChauffeurRegisterScreen() {
       for (const doc of DRIVER_DOCS) {
         const file = documents[doc.id];
         if (!file) continue;
-        let url = file.uri;
-        try {
-          url = await uploadDocument(file.uri, user.id, doc.id.replace("driver:", "driver_"));
-        } catch {}
-        await apiRequest("POST", "/api/operator-profile/documents", { type: doc.id, url });
+        if (!file.uploadedUrl) {
+          let url = file.uri;
+          try {
+            url = await uploadDocument(file.uri, user.id, doc.id.replace("driver:", "driver_"));
+          } catch {}
+          await apiRequest("POST", "/api/operator-profile/documents", { type: doc.id, url });
+        }
       }
       if (driverPhoto) {
-        let photoUrl = driverPhoto.uri;
-        try {
-          photoUrl = await uploadDocument(driverPhoto.uri, user.id, "driver_photo");
-        } catch {}
-        await apiRequest("POST", "/api/operator-profile/documents", { type: "driver:driver_photo", url: photoUrl });
+        if (!driverPhoto.uploadedUrl) {
+          let photoUrl = driverPhoto.uri;
+          try {
+            photoUrl = await uploadDocument(driverPhoto.uri, user.id, "driver_photo");
+          } catch {}
+          await apiRequest("POST", "/api/operator-profile/documents", { type: "driver:driver_photo", url: photoUrl });
+        }
       }
-      const res = await apiRequest("POST", "/api/operator-profile/driver", { phone: phone.trim(), profilePhoto: driverPhoto?.uri || null });
+      const res = await apiRequest("POST", "/api/operator-profile/driver", { phone: phone.trim(), profilePhoto: driverPhoto?.uploadedUrl || driverPhoto?.uri || null });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message || "Driver registration failed");
@@ -179,7 +228,7 @@ export default function ChauffeurRegisterScreen() {
                 <Ionicons name={file ? "checkmark-circle" : "cloud-upload-outline"} size={22} color={file ? Colors.success : Colors.textMuted} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.docTitle}>{doc.label}{doc.optional ? " (Optional)" : ""}</Text>
-                  <Text style={styles.docMeta}>{file ? file.name : "Tap to upload"}</Text>
+                  <Text style={styles.docMeta}>{uploadingDocs[doc.id] ? "Saving upload..." : file ? file.name : "Tap to upload"}</Text>
                 </View>
               </Pressable>
             );

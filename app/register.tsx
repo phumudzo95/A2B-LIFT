@@ -15,6 +15,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_OAUTH_START = "https://api.a2blift.com/api/auth/google/start";
 const NEEDS_ROLE_SELECT_KEY = "a2b_needs_role_select";
+const NEEDS_OPERATOR_CHOICE_KEY = "a2b_needs_operator_choice";
 
 function isAuthCallback(url: string) {
   return Linking.parse(url).path === "auth";
@@ -26,7 +27,7 @@ export default function RegisterScreen() {
   const { register, setUser, pendingReferralCode, setPendingReferralCode } = useAuth();
   const appVariant = getAppVariant();
   const shouldShowRoleSelect = usesRoleSelect(appVariant);
-  const postRegistrationRoute = getAuthenticatedHomeRoute(appVariant);
+  const postRegistrationRoute = appVariant === "driver" ? "/chauffeur-onboarding" : getAuthenticatedHomeRoute(appVariant);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -75,8 +76,13 @@ export default function RegisterScreen() {
       if (payload.accessToken) await AsyncStorage.setItem("a2b_token", payload.accessToken);
       if (shouldShowRoleSelect) {
         await AsyncStorage.setItem(NEEDS_ROLE_SELECT_KEY, "1");
+        await AsyncStorage.removeItem(NEEDS_OPERATOR_CHOICE_KEY);
+      } else if (appVariant === "driver") {
+        await AsyncStorage.setItem(NEEDS_OPERATOR_CHOICE_KEY, "1");
+        await AsyncStorage.removeItem(NEEDS_ROLE_SELECT_KEY);
       } else {
         await AsyncStorage.removeItem(NEEDS_ROLE_SELECT_KEY);
+        await AsyncStorage.removeItem(NEEDS_OPERATOR_CHOICE_KEY);
       }
       // Fetch the latest user profile from the server so the role is always current
       try {
@@ -114,8 +120,13 @@ export default function RegisterScreen() {
     try {
       if (shouldShowRoleSelect) {
         await AsyncStorage.setItem(NEEDS_ROLE_SELECT_KEY, "1");
+        await AsyncStorage.removeItem(NEEDS_OPERATOR_CHOICE_KEY);
+      } else if (appVariant === "driver") {
+        await AsyncStorage.setItem(NEEDS_OPERATOR_CHOICE_KEY, "1");
+        await AsyncStorage.removeItem(NEEDS_ROLE_SELECT_KEY);
       } else {
         await AsyncStorage.removeItem(NEEDS_ROLE_SELECT_KEY);
+        await AsyncStorage.removeItem(NEEDS_OPERATOR_CHOICE_KEY);
       }
       await register({
         username: email.trim().toLowerCase(),
@@ -128,6 +139,7 @@ export default function RegisterScreen() {
       router.replace(postRegistrationRoute);
     } catch (e: any) {
       await AsyncStorage.removeItem(NEEDS_ROLE_SELECT_KEY);
+      await AsyncStorage.removeItem(NEEDS_OPERATOR_CHOICE_KEY);
       const msg = e.message || "Registration failed.";
       if (msg.includes("already exists") || msg.includes("400")) setError("An account with this email already exists");
       else if (msg.includes("500") || msg.includes("Database")) setError("Server error. Please try again.");
