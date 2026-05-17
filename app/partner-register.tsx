@@ -25,6 +25,18 @@ function emptyDocs(): DraftDocuments {
   return Object.fromEntries(PARTNER_DOCS.map((doc) => [doc.id, null])) as DraftDocuments;
 }
 
+function getPartnerRegistrationErrorMessage(error: any) {
+  const message = String(error?.message || "");
+  if (
+    message.includes("/api/operator-profile") ||
+    message.includes("Cannot POST /api/operator-profile") ||
+    message.includes("Cannot GET /api/operator-profile")
+  ) {
+    return "Partner registration is waiting for the latest backend deployment. Your progress is saved on this device. Please update the backend and try again.";
+  }
+  return message || "Partner registration failed. Please try again.";
+}
+
 export default function PartnerRegisterScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -119,7 +131,7 @@ export default function PartnerRegisterScreen() {
       await apiRequest("POST", "/api/operator-profile/documents", { type, url });
       setDocuments((prev) => ({ ...prev, [type]: { ...file, uri: url, uploadedUrl: url } }));
     } catch {
-      setError("Saved locally. We will retry this upload when you submit.");
+      // Keep the selected file in the local draft. Submission will surface any backend issue.
     } finally {
       setUploadingDocs((prev) => ({ ...prev, [type]: false }));
     }
@@ -164,7 +176,7 @@ export default function PartnerRegisterScreen() {
       if (draftKey) await AsyncStorage.removeItem(draftKey);
       router.replace("/chauffeur");
     } catch (e: any) {
-      setError(e.message || "Partner registration failed. Please try again.");
+      setError(getPartnerRegistrationErrorMessage(e));
     } finally {
       setLoading(false);
     }

@@ -24,6 +24,18 @@ function emptyDocs(): DraftDocuments {
   return Object.fromEntries(DRIVER_DOCS.map((doc) => [doc.id, null])) as DraftDocuments;
 }
 
+function getDriverRegistrationErrorMessage(error: any) {
+  const message = String(error?.message || "");
+  if (
+    message.includes("/api/operator-profile") ||
+    message.includes("Cannot POST /api/operator-profile") ||
+    message.includes("Cannot GET /api/operator-profile")
+  ) {
+    return "Driver registration is waiting for the latest backend deployment. Your progress is saved on this device. Please update the backend and try again.";
+  }
+  return message || "Driver registration failed. Please try again.";
+}
+
 export default function ChauffeurRegisterScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -120,7 +132,7 @@ export default function ChauffeurRegisterScreen() {
       if (docId === "driver_photo") setDriverPhoto(savedFile);
       else setDocuments((prev) => ({ ...prev, [docId]: savedFile }));
     } catch {
-      setError("Saved locally. We will retry this upload when you submit.");
+      // Keep the selected file in the local draft. Submission will surface any backend issue.
     } finally {
       setUploadingDocs((prev) => ({ ...prev, [docId]: false }));
     }
@@ -177,7 +189,7 @@ export default function ChauffeurRegisterScreen() {
       if (draftKey) await AsyncStorage.removeItem(draftKey);
       router.replace("/chauffeur");
     } catch (e: any) {
-      setError(e.message || "Driver registration failed. Please try again.");
+      setError(getDriverRegistrationErrorMessage(e));
     } finally {
       setLoading(false);
     }

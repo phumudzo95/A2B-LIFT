@@ -36,8 +36,18 @@ async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     // Clone the response before reading to avoid consuming the body
     const clonedRes = res.clone();
-    const text = (await clonedRes.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    const contentType = clonedRes.headers.get("content-type") || "";
+    let text = "";
+    if (contentType.includes("application/json")) {
+      const body = await clonedRes.json().catch(() => null);
+      text = body?.message || body?.error || JSON.stringify(body || {});
+    } else {
+      text = (await clonedRes.text()) || res.statusText;
+      const preMatch = text.match(/<pre>(.*?)<\/pre>/is);
+      if (preMatch?.[1]) text = preMatch[1];
+      text = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    }
+    throw new Error(`${res.status}: ${text || res.statusText}`);
   }
 }
 
@@ -135,4 +145,3 @@ export const queryClient = new QueryClient({
     },
   },
 });
-
