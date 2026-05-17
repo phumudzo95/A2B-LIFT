@@ -146,6 +146,13 @@ export default function ChauffeurDashboard() {
 
   const [chauffeur, setChauffeur] = useState<any>(null);
   const [operatorProfile, setOperatorProfile] = useState<any>(null);
+  const [driverVehicles, setDriverVehicles] = useState<any[]>([]);
+  const [fleetOverview, setFleetOverview] = useState({
+    vehicles: 0,
+    assignedDrivers: 0,
+    activeTrips: 0,
+    pendingApprovals: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
   const [incomingRide, setIncomingRide] = useState<any>(null);
@@ -954,13 +961,17 @@ export default function ChauffeurDashboard() {
       const profileData = profileRes.ok ? await profileRes.json() : null;
       if (profileData?.profile) {
         setOperatorProfile(profileData.profile);
-        if (profileData.profile.type === "partner") return;
+        if (profileData.profile.type === "partner") {
+          await loadFleetOverview();
+          return;
+        }
       }
       const stored = await AsyncStorage.getItem("a2b_chauffeur");
       if (stored) {
         const cached = JSON.parse(stored);
         const refreshed = cached?.id ? await refreshChauffeur(cached.id) : null;
         if (refreshed) {
+          await loadDriverVehicles();
           restoreActiveRide();
           return;
         }
@@ -968,6 +979,7 @@ export default function ChauffeurDashboard() {
       }
       const c = await fetchChauffeurForUser(user.id);
       if (!c) throw new Error("not found");
+      await loadDriverVehicles();
       restoreActiveRide();
     } catch {
       router.replace("/chauffeur-onboarding");
@@ -988,6 +1000,29 @@ export default function ChauffeurDashboard() {
     } catch {
       return null;
     }
+  }
+
+  async function loadDriverVehicles() {
+    try {
+      const res = await apiRequest("GET", "/api/vehicles");
+      const data = await res.json();
+      setDriverVehicles(Array.isArray(data.vehicles) ? data.vehicles : []);
+    } catch {
+      setDriverVehicles([]);
+    }
+  }
+
+  async function loadFleetOverview() {
+    try {
+      const res = await apiRequest("GET", "/api/fleet/overview");
+      const data = await res.json();
+      setFleetOverview({
+        vehicles: data?.overview?.vehicles || 0,
+        assignedDrivers: data?.overview?.assignedDrivers || 0,
+        activeTrips: data?.overview?.activeTrips || 0,
+        pendingApprovals: data?.overview?.pendingApprovals || 0,
+      });
+    } catch {}
   }
 
   async function refreshChauffeur(id: string) {
@@ -1021,6 +1056,12 @@ export default function ChauffeurDashboard() {
       closeMenu();
       return;
     }
+    if (!activeChauffeur.isOnline && !activeChauffeur.activeVehicleId) {
+      Alert.alert("Select vehicle", "Choose an approved assigned vehicle before going online.");
+      router.push("/chauffeur/vehicles" as never);
+      closeMenu();
+      return;
+    }
     try {
       const res = await apiRequest("PUT", `/api/chauffeurs/${activeChauffeur.id}/toggle-online`);
       const updated = await res.json();
@@ -1028,7 +1069,7 @@ export default function ChauffeurDashboard() {
       setIsOnline(updated.isOnline);
       await AsyncStorage.setItem("a2b_chauffeur", JSON.stringify(updated));
       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch {
+    } catch (e: any) {
       const recovered = user?.id ? await fetchChauffeurForUser(user.id) : null;
       if (recovered?.id) {
         try {
@@ -1040,9 +1081,13 @@ export default function ChauffeurDashboard() {
           if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           closeMenu();
           return;
-        } catch {}
+        } catch (retryError: any) {
+          Alert.alert("Error", retryError.message || e.message || "Failed to update status");
+          closeMenu();
+          return;
+        }
       }
-      Alert.alert("Error", "Failed to update status");
+      Alert.alert("Error", e.message || "Failed to update status");
     }
     closeMenu();
   }
@@ -1464,6 +1509,21 @@ export default function ChauffeurDashboard() {
               ? "Manage your fleet vehicles, assign approved drivers, and track your A2B LIFT partner account."
               : "Your partner application is under review. You will be notified once A2B approves your account."}
           </Text>
+          {isApprovedPartner && (
+            <View style={styles.overviewGrid}>
+              {[
+                ["Vehicles", fleetOverview.vehicles],
+                ["Drivers", fleetOverview.assignedDrivers],
+                ["Active trips", fleetOverview.activeTrips],
+                ["Pending", fleetOverview.pendingApprovals],
+              ].map(([label, value]) => (
+                <View key={label} style={styles.overviewCard}>
+                  <Text style={styles.overviewValue}>{value}</Text>
+                  <Text style={styles.overviewLabel}>{label}</Text>
+                </View>
+              ))}
+            </View>
+          )}
           <View style={styles.partnerActions}>
             {isApprovedPartner && (
               <>
@@ -1473,7 +1533,15 @@ export default function ChauffeurDashboard() {
                 </Pressable>
                 <Pressable style={styles.pendingBtn} onPress={() => router.push("/chauffeur/fleet" as never)}>
                   <Ionicons name="people-outline" size={16} color={Colors.white} />
-                  <Text style={styles.pendingBtnText}>Fleet</Text>
+                  <Text style={styles.pendingBtnText}>Drivers</Text>
+                </Pressable>
+                <Pressable style={styles.pendingBtn} onPress={() => router.push("/chauffeur/rides" as never)}>
+                  <Ionicons name="receipt-outline" size={16} color={Colors.white} />
+                  <Text style={styles.pendingBtnText}>Trips</Text>
+                </Pressable>
+                <Pressable style={styles.pendingBtn} onPress={() => router.push("/chauffeur/settings" as never)}>
+                  <Ionicons name="settings-outline" size={16} color={Colors.white} />
+                  <Text style={styles.pendingBtnText}>Settings</Text>
                 </Pressable>
               </>
             )}
@@ -1488,6 +1556,7 @@ export default function ChauffeurDashboard() {
   }
 
   if (!chauffeur) return null;
+  const activeVehicle = driverVehicles.find((vehicle) => vehicle.id === chauffeur.activeVehicleId);
 
   // ─── Pending approval ─────────────────────────────────────────────────────
   if (!chauffeur.isApproved) {
@@ -1677,6 +1746,20 @@ export default function ChauffeurDashboard() {
       >
         <View style={[styles.pillDot, { backgroundColor: isOnline ? Colors.success : "#555" }]} />
         <Text style={styles.pillText}>{isOnline ? "Online" : "Offline"}</Text>
+      </Pressable>
+
+      <Pressable
+        style={[styles.activeVehiclePill, { top: insets.top + 66 }]}
+        onPress={() => router.push("/chauffeur/vehicles" as never)}
+      >
+        <Ionicons name={chauffeur.activeVehicleId ? "car-sport-outline" : "alert-circle-outline"} size={15} color={chauffeur.activeVehicleId ? Colors.success : Colors.warning} />
+        <Text style={styles.activeVehicleText} numberOfLines={1}>
+          {activeVehicle
+            ? `${activeVehicle.carMake} ${activeVehicle.vehicleModel} · ${activeVehicle.plateNumber}`
+            : chauffeur.activeVehicleId
+              ? "Selected vehicle"
+              : "Select vehicle before going online"}
+        </Text>
       </Pressable>
 
       {/* ─── Today's earnings (top-right, taps to wallet) ─── */}
@@ -2137,6 +2220,10 @@ const styles = StyleSheet.create({
   partnerActions: { width: "100%", gap: 10, alignItems: "center" },
   pendingBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
   pendingBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  overviewGrid: { width: "100%", flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
+  overviewCard: { width: "47%", minHeight: 72, borderRadius: 14, borderWidth: 1, borderColor: GLASS_BORDER, backgroundColor: GLASS, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  overviewValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: Colors.white },
+  overviewLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: Colors.textMuted, marginTop: 2, textTransform: "uppercase" },
 
   // Floating overlays
   onlinePill: { position: "absolute", left: 16, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 24, borderWidth: 1, zIndex: 5 },
@@ -2144,6 +2231,8 @@ const styles = StyleSheet.create({
   onlinePillOff: { backgroundColor: GLASS, borderColor: GLASS_BORDER },
   pillDot: { width: 8, height: 8, borderRadius: 4 },
   pillText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: Colors.white },
+  activeVehiclePill: { position: "absolute", left: 16, right: 120, flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_BORDER, zIndex: 5 },
+  activeVehicleText: { flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: Colors.white },
 
   floatBell: { position: "absolute", right: 76, width: 44, height: 44, borderRadius: 22, backgroundColor: GLASS, borderWidth: 1, borderColor: GLASS_BORDER, alignItems: "center", justifyContent: "center", zIndex: 5 },
   bellBadge: { position: "absolute", top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.error, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },

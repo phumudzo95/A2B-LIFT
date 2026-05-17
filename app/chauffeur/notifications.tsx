@@ -81,15 +81,23 @@ export default function ChauffeurNotificationsScreen() {
         return "map";
       case "approval": return "checkmark-circle";
       case "operator_approved":
+        return "person-circle-outline";
       case "vehicle_approved":
+        return "car-sport-outline";
       case "vehicle_assignment":
-        return "checkmark-circle";
+        return "git-compare-outline";
       case "rejection": return "close-circle";
       case "operator_rejected":
+        return "person-circle-outline";
       case "vehicle_rejected":
+        return "alert-circle-outline";
       case "vehicle_suspended":
+        return "alert-circle-outline";
       case "vehicle_assignment_removed":
-        return "close-circle";
+        return "remove-circle-outline";
+      case "partner_approval":
+      case "partner_rejection":
+        return "business-outline";
       case "earning": return "cash";
       case "withdrawal": return "arrow-down-circle";
       default: return "notifications";
@@ -105,12 +113,14 @@ export default function ChauffeurNotificationsScreen() {
       case "operator_approved":
       case "vehicle_approved":
       case "vehicle_assignment":
+      case "partner_approval":
         return Colors.success;
       case "rejection": return Colors.error;
       case "operator_rejected":
       case "vehicle_rejected":
       case "vehicle_suspended":
       case "vehicle_assignment_removed":
+      case "partner_rejection":
         return Colors.error;
       case "earning": return Colors.success;
       default: return Colors.white;

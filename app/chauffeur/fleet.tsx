@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, ActivityIndicator, Alert, RefreshControl, Platform } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, ActivityIndicator, Alert, RefreshControl, Platform, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -11,6 +11,7 @@ export default function FleetScreen() {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
+  const [overview, setOverview] = useState({ vehicles: 0, assignedDrivers: 0, activeTrips: 0, pendingApprovals: 0 });
   const [query, setQuery] = useState("");
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [selectedDriverId, setSelectedDriverId] = useState("");
@@ -20,14 +21,22 @@ export default function FleetScreen() {
 
   const load = useCallback(async () => {
     try {
-      const [vehicleRes, assignmentRes] = await Promise.all([
+      const [vehicleRes, assignmentRes, overviewRes] = await Promise.all([
         apiRequest("GET", "/api/vehicles"),
         apiRequest("GET", "/api/fleet/assignments"),
+        apiRequest("GET", "/api/fleet/overview"),
       ]);
       const vehicleData = await vehicleRes.json();
       const assignmentData = await assignmentRes.json();
+      const overviewData = await overviewRes.json();
       setVehicles((vehicleData.vehicles || []).filter((vehicle: any) => vehicle.status === "approved"));
       setAssignments(assignmentData.assignments || []);
+      setOverview({
+        vehicles: overviewData?.overview?.vehicles || 0,
+        assignedDrivers: overviewData?.overview?.assignedDrivers || 0,
+        activeTrips: overviewData?.overview?.activeTrips || 0,
+        pendingApprovals: overviewData?.overview?.pendingApprovals || 0,
+      });
     } catch {
       Alert.alert("Error", "Could not load fleet.");
     } finally {
@@ -38,7 +47,7 @@ export default function FleetScreen() {
 
   const searchDrivers = useCallback(async () => {
     try {
-      const res = await apiRequest("GET", `/api/fleet/approved-drivers?q=${encodeURIComponent(query)}`);
+      const res = await apiRequest("GET", `/api/fleet/drivers/search?q=${encodeURIComponent(query)}`);
       const data = await res.json();
       setDrivers(data.drivers || []);
     } catch {}
@@ -71,6 +80,24 @@ export default function FleetScreen() {
     }
   }
 
+  async function removeAssignment(assignmentId: string) {
+    try {
+      await apiRequest("DELETE", `/api/fleet/assignments/${assignmentId}`);
+      await load();
+      Alert.alert("Assignment removed", "The driver has been notified.");
+    } catch (e: any) {
+      Alert.alert("Could not remove assignment", e.message || "Please try again.");
+    }
+  }
+
+  function callDriver(phone?: string | null) {
+    if (!phone) {
+      Alert.alert("No phone number", "This driver does not have a phone number on file.");
+      return;
+    }
+    Linking.openURL(`tel:${phone}`).catch(() => Alert.alert("Could not start call", phone));
+  }
+
   if (loading) return <View style={[styles.container, styles.center]}><ActivityIndicator color={Colors.white} /></View>;
 
   return (
@@ -84,6 +111,20 @@ export default function FleetScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={Colors.white} />}
       >
+        <View style={styles.overviewGrid}>
+          {[
+            ["Vehicles", overview.vehicles],
+            ["Drivers", overview.assignedDrivers],
+            ["Active trips", overview.activeTrips],
+            ["Pending", overview.pendingApprovals],
+          ].map(([label, value]) => (
+            <View key={label} style={styles.overviewCard}>
+              <Text style={styles.overviewValue}>{value}</Text>
+              <Text style={styles.overviewLabel}>{label}</Text>
+            </View>
+          ))}
+        </View>
+
         <Text style={styles.sectionTitle}>Assign driver to vehicle</Text>
         <View style={styles.form}>
           <TextInput style={styles.input} value={query} onChangeText={setQuery} placeholder="Search approved drivers" placeholderTextColor={Colors.textMuted} />
@@ -99,7 +140,9 @@ export default function FleetScreen() {
             {drivers.map((driver) => (
               <Pressable key={driver.id} style={[styles.choice, selectedDriverId === driver.id && styles.choiceActive]} onPress={() => setSelectedDriverId(driver.id)}>
                 <Text style={styles.choiceTitle}>{driver.user?.name || "Approved driver"}</Text>
-                <Text style={styles.choiceMeta}>{driver.user?.phone || driver.chauffeur?.phone || driver.user?.username}</Text>
+                <Pressable onPress={() => callDriver(driver.user?.phone || driver.chauffeur?.phone)}>
+                  <Text style={styles.choiceMeta}>{driver.user?.phone || driver.chauffeur?.phone || driver.user?.username}</Text>
+                </Pressable>
               </Pressable>
             ))}
           </View>
@@ -117,7 +160,15 @@ export default function FleetScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.assignmentTitle}>{assignment.vehicle?.carMake} {assignment.vehicle?.vehicleModel}</Text>
               <Text style={styles.assignmentMeta}>{assignment.driver?.user?.name || "Driver"} · {assignment.status}</Text>
+              <Pressable onPress={() => callDriver(assignment.driver?.user?.phone || assignment.driver?.chauffeur?.phone)}>
+                <Text style={styles.assignmentPhone}>{assignment.driver?.user?.phone || assignment.driver?.chauffeur?.phone || "No phone number"}</Text>
+              </Pressable>
             </View>
+            {assignment.status === "active" && (
+              <Pressable style={styles.removeBtn} onPress={() => removeAssignment(assignment.id)}>
+                <Ionicons name="remove-circle-outline" size={20} color={Colors.error} />
+              </Pressable>
+            )}
           </View>
         ))}
       </ScrollView>
@@ -132,6 +183,10 @@ const styles = StyleSheet.create({
   backBtn: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
   title: { fontSize: 18, fontFamily: "Inter_700Bold", color: Colors.white },
   content: { paddingHorizontal: 20 },
+  overviewGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
+  overviewCard: { width: "48%", minHeight: 74, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.card, alignItems: "center", justifyContent: "center" },
+  overviewValue: { color: Colors.white, fontFamily: "Inter_700Bold", fontSize: 20 },
+  overviewLabel: { color: Colors.textMuted, fontFamily: "Inter_500Medium", fontSize: 11, textTransform: "uppercase", marginTop: 2 },
   sectionTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: Colors.textSecondary, textTransform: "uppercase", marginTop: 14, marginBottom: 10 },
   form: { gap: 10, marginBottom: 18 },
   input: { minHeight: 46, borderRadius: 12, paddingHorizontal: 14, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, color: Colors.white },
@@ -146,4 +201,6 @@ const styles = StyleSheet.create({
   assignmentCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 12, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, marginBottom: 10 },
   assignmentTitle: { color: Colors.white, fontFamily: "Inter_700Bold", fontSize: 14 },
   assignmentMeta: { color: Colors.textMuted, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 3 },
+  assignmentPhone: { color: Colors.accent, fontFamily: "Inter_600SemiBold", fontSize: 12, marginTop: 5 },
+  removeBtn: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,77,77,0.1)" },
 });

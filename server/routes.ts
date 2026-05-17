@@ -2702,18 +2702,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { ...vehicle, owner, documents, assignments: enrichedAssignments };
   }
 
+  async function ensureDriverOperatorForChauffeur(userId: string) {
+    let profile = await storage.getOperatorProfileByUserId(userId);
+    const chauffeur = await storage.getChauffeurByUserId(userId).catch(() => undefined);
+    if (!chauffeur) return profile || null;
+
+    if (!profile) {
+      profile = await storage.createOperatorProfile({
+        userId,
+        type: "driver",
+        status: chauffeur.isApproved ? "approved" : "pending",
+        submittedAt: chauffeur.createdAt || new Date(),
+      });
+    }
+
+    if (profile.type !== "driver") return profile;
+
+    const ownedVehicles = await storage.getVehiclesByOwnerOperator(profile.id).catch(() => []);
+    const hasLegacyVehicle = !!(chauffeur.carMake || chauffeur.vehicleModel || chauffeur.plateNumber);
+    if (ownedVehicles.length === 0 && hasLegacyVehicle) {
+      const currentYear = new Date().getFullYear();
+      const vehicleYear = Number(chauffeur.vehicleYear) || currentYear;
+      const vehicle = await storage.createVehicle({
+        ownerOperatorProfileId: profile.id,
+        status: chauffeur.isApproved ? "approved" : "pending",
+        submittedAt: chauffeur.createdAt || new Date(),
+        carMake: String(chauffeur.carMake || "A2B").trim(),
+        vehicleModel: String(chauffeur.vehicleModel || "Vehicle").trim(),
+        vehicleYear,
+        plateNumber: String(chauffeur.plateNumber || `LEGACY-${chauffeur.id.slice(0, 6)}`).trim().toUpperCase(),
+        vehicleType: String(chauffeur.vehicleType || "budget").trim(),
+        carColor: String(chauffeur.carColor || "Unknown").trim(),
+        passengerCapacity: chauffeur.passengerCapacity || 4,
+        luggageCapacity: chauffeur.luggageCapacity || 2,
+      });
+      await storage.createVehicleAssignment({
+        vehicleId: vehicle.id,
+        driverOperatorProfileId: profile.id,
+        assignedByOperatorProfileId: profile.id,
+        status: "active",
+      });
+      if (chauffeur.isApproved) {
+        await storage.updateChauffeur(chauffeur.id, { activeVehicleId: vehicle.id });
+      }
+    }
+
+    return profile;
+  }
+
   app.get("/api/operator-profile/me", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
-      let profile = await storage.getOperatorProfileByUserId(req.auth!.sub);
+      const profile = await ensureDriverOperatorForChauffeur(req.auth!.sub);
       const chauffeur = await storage.getChauffeurByUserId(req.auth!.sub).catch(() => undefined);
-      if (!profile && chauffeur) {
-        profile = await storage.createOperatorProfile({
-          userId: req.auth!.sub,
-          type: "driver",
-          status: chauffeur.isApproved ? "approved" : "pending",
-          submittedAt: chauffeur.createdAt || new Date(),
-        });
-      }
       if (!profile) return res.status(404).json({ message: "Operator profile not found" });
       const partnerProfile = profile.type === "partner"
         ? await storage.getPartnerProfileByOperatorId(profile.id)
@@ -2851,7 +2891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/vehicles", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
-      const profile = await storage.getOperatorProfileByUserId(req.auth!.sub);
+      const profile = await ensureDriverOperatorForChauffeur(req.auth!.sub);
       if (!profile) return res.status(404).json({ message: "Operator profile not found" });
       const ownedVehicles = await storage.getVehiclesByOwnerOperator(profile.id);
       const assignments = profile.type === "driver"
@@ -3000,7 +3040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/vehicles/:id/select-active", requireAuth, async (req: AuthedRequest, res: Response) => {
     try {
-      const profile = await storage.getOperatorProfileByUserId(req.auth!.sub);
+      const profile = await ensureDriverOperatorForChauffeur(req.auth!.sub);
       if (!profile) return res.status(404).json({ message: "Operator profile not found" });
       if (profile.type !== "driver" || profile.status !== "approved") {
         return res.status(403).json({ message: "Only approved drivers can select a driving vehicle." });
@@ -3049,6 +3089,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .slice(0, 25);
       return res.json({ drivers: filtered });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/fleet/drivers/search", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const profile = await storage.getOperatorProfileByUserId(req.auth!.sub);
+      if (!profile) return res.status(404).json({ message: "Operator profile not found" });
+      if (profile.status !== "approved") {
+        return res.status(403).json({ message: "Your operator profile must be approved first." });
+      }
+      const query = String(req.query.q || "").trim().toLowerCase();
+      const driverProfiles = await storage.getOperatorProfiles({ type: "driver", status: "approved" });
+      const drivers = await Promise.all(driverProfiles.map(serializeOperatorProfile));
+      const filtered = drivers
+        .filter((driver: any) => driver.id !== profile.id)
+        .filter((driver: any) => {
+          if (!query) return true;
+          const haystack = [
+            driver.user?.name,
+            driver.user?.username,
+            driver.user?.phone,
+            driver.chauffeur?.phone,
+          ].filter(Boolean).join(" ").toLowerCase();
+          return haystack.includes(query);
+        })
+        .slice(0, 25);
+      return res.json({ drivers: filtered });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/fleet/overview", requireAuth, async (req: AuthedRequest, res: Response) => {
+    try {
+      const profile = await ensureDriverOperatorForChauffeur(req.auth!.sub);
+      if (!profile) return res.status(404).json({ message: "Operator profile not found" });
+      const vehicles = await storage.getVehiclesByOwnerOperator(profile.id);
+      const vehicleIds = new Set(vehicles.map((vehicle) => vehicle.id));
+      const assignments = await storage.getVehicleAssignments(
+        profile.type === "driver"
+          ? { driverOperatorProfileId: profile.id, status: "active" }
+          : { assignedByOperatorProfileId: profile.id, status: "active" },
+      );
+      assignments.forEach((assignment) => vehicleIds.add(assignment.vehicleId));
+      const activeStatuses = new Set(["chauffeur_assigned", "chauffeur_arriving", "trip_started"]);
+      const activeTrips = (await storage.getAllRides())
+        .filter((ride: any) => ride.vehicleId && vehicleIds.has(ride.vehicleId) && activeStatuses.has(ride.status));
+      return res.json({
+        overview: {
+          vehicles: vehicles.length,
+          approvedVehicles: vehicles.filter((vehicle) => vehicle.status === "approved").length,
+          pendingApprovals: vehicles.filter((vehicle) => vehicle.status === "pending").length,
+          assignedDrivers: new Set(assignments.map((assignment) => assignment.driverOperatorProfileId)).size,
+          activeTrips: activeTrips.length,
+        },
+      });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }
@@ -3506,7 +3604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!chauffeur) return res.status(404).json({ message: "Chauffeur not found" });
       const nextOnline = !chauffeur.isOnline;
       if (nextOnline) {
-        const profile = await storage.getOperatorProfileByUserId(chauffeur.userId);
+        const profile = await ensureDriverOperatorForChauffeur(chauffeur.userId);
         if (profile?.type === "partner") {
           return res.status(403).json({ message: "Partners cannot go online as drivers." });
         }

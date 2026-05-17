@@ -3,15 +3,23 @@ import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, ActivityIndic
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import { apiRequest } from "@/lib/query-client";
+import { uploadDocument } from "@/lib/supabase-storage";
 import Colors from "@/constants/colors";
 
 const emptyForm = { carMake: "", vehicleModel: "", vehicleYear: "", plateNumber: "", vehicleType: "budget", carColor: "", passengerCapacity: "4", luggageCapacity: "2" };
+const VEHICLE_DOCS = [
+  { id: "vehicle:double_license_disk", label: "Double License Disk" },
+  { id: "vehicle:passenger_liability_insurance", label: "Passenger Liability Insurance" },
+  { id: "vehicle:dekra_report", label: "Dekra Report" },
+];
 
 export default function VehiclesScreen() {
   const insets = useSafeAreaInsets();
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
+  const [operatorProfile, setOperatorProfile] = useState<any>(null);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -19,9 +27,23 @@ export default function VehiclesScreen() {
 
   const load = useCallback(async () => {
     try {
-      const res = await apiRequest("GET", "/api/vehicles");
-      const data = await res.json();
-      setVehicles(Array.isArray(data.vehicles) ? data.vehicles : []);
+      const [profileRes, vehicleRes] = await Promise.all([
+        apiRequest("GET", "/api/operator-profile/me"),
+        apiRequest("GET", "/api/vehicles"),
+      ]);
+      const profileData = await profileRes.json();
+      const data = await vehicleRes.json();
+      setOperatorProfile(profileData.profile || null);
+      const baseVehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
+      const enriched = await Promise.all(baseVehicles.map(async (vehicle) => {
+        try {
+          const detailRes = await apiRequest("GET", `/api/vehicles/${vehicle.id}`);
+          return { ...vehicle, ...(await detailRes.json()) };
+        } catch {
+          return vehicle;
+        }
+      }));
+      setVehicles(enriched);
       setAssignments(Array.isArray(data.assignments) ? data.assignments : []);
     } catch {
       Alert.alert("Error", "Could not load vehicles.");
@@ -66,6 +88,39 @@ export default function VehiclesScreen() {
       await load();
     } catch (e: any) {
       Alert.alert("Cannot select vehicle", e.message || "Vehicle must be approved and assigned to you.");
+    }
+  }
+
+  async function pickAndUploadDocument(vehicleId: string, type: string) {
+    try {
+      if (Platform.OS !== "web") {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission needed", "Please allow photo access.");
+          return;
+        }
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.65 });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      let url = asset.uri;
+      try {
+        url = await uploadDocument(asset.uri, vehicleId, type.replace("vehicle:", "vehicle_"));
+      } catch {}
+      await apiRequest("POST", `/api/vehicles/${vehicleId}/documents`, { type, url });
+      await load();
+    } catch (e: any) {
+      Alert.alert("Upload failed", e.message || "Could not upload this document.");
+    }
+  }
+
+  async function submitVehicle(vehicleId: string) {
+    try {
+      await apiRequest("POST", `/api/vehicles/${vehicleId}/submit`);
+      Alert.alert("Vehicle submitted", "A2B will review the vehicle documents.");
+      await load();
+    } catch (e: any) {
+      Alert.alert("Cannot submit vehicle", e.message || "Please upload all required documents.");
     }
   }
 
@@ -117,16 +172,49 @@ export default function VehiclesScreen() {
           <Text style={styles.emptyText}>No vehicles yet.</Text>
         ) : vehicles.map((vehicle) => {
           const assigned = assignments.some((assignment) => assignment.vehicleId === vehicle.id && assignment.status === "active");
+          const vehicleData = vehicle.vehicle || vehicle;
+          const docs = Array.isArray(vehicle.documents) ? vehicle.documents : [];
+          const uploadedTypes = new Set(docs.map((doc: any) => doc.type));
+          const missingDocs = VEHICLE_DOCS.filter((doc) => !uploadedTypes.has(doc.id));
           return (
             <View key={vehicle.id} style={styles.vehicleCard}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.vehicleTitle}>{vehicle.carMake} {vehicle.vehicleModel}</Text>
-                <Text style={styles.vehicleMeta}>{vehicle.plateNumber} · {vehicle.vehicleYear} · {vehicle.status}</Text>
+              <View style={styles.vehicleTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.vehicleTitle}>{vehicleData.carMake} {vehicleData.vehicleModel}</Text>
+                  <Text style={styles.vehicleMeta}>{vehicleData.plateNumber} · {vehicleData.vehicleYear}</Text>
+                </View>
+                <View style={[styles.statusChip, styles[`status_${vehicleData.status}` as keyof typeof styles] as any]}>
+                  <Text style={styles.statusText}>{vehicleData.status}</Text>
+                </View>
               </View>
-              {vehicle.status === "approved" && assigned && (
-                <Pressable style={styles.selectBtn} onPress={() => selectVehicle(vehicle.id)}>
-                  <Text style={styles.selectText}>Select</Text>
-                </Pressable>
+
+              {vehicleData.status !== "approved" && (
+                <View style={styles.docsBlock}>
+                  {VEHICLE_DOCS.map((doc) => (
+                    <Pressable key={doc.id} style={styles.docRow} onPress={() => pickAndUploadDocument(vehicleData.id, doc.id)}>
+                      <Ionicons name={uploadedTypes.has(doc.id) ? "checkmark-circle" : "cloud-upload-outline"} size={18} color={uploadedTypes.has(doc.id) ? Colors.success : Colors.textMuted} />
+                      <Text style={styles.docText}>{doc.label}</Text>
+                    </Pressable>
+                  ))}
+                  <Pressable style={[styles.submitBtn, missingDocs.length > 0 && styles.submitBtnMuted]} onPress={() => submitVehicle(vehicleData.id)}>
+                    <Text style={styles.submitText}>Submit for Approval</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {vehicleData.status === "approved" && (
+                <View style={styles.actionRow}>
+                  {operatorProfile?.type === "driver" && assigned && (
+                    <Pressable style={styles.selectBtn} onPress={() => selectVehicle(vehicleData.id)}>
+                      <Text style={styles.selectText}>Select for Driving</Text>
+                    </Pressable>
+                  )}
+                  {operatorProfile?.type === "partner" && (
+                    <Pressable style={styles.selectBtn} onPress={() => router.push("/chauffeur/fleet" as never)}>
+                      <Text style={styles.selectText}>Assign Driver</Text>
+                    </Pressable>
+                  )}
+                </View>
               )}
             </View>
           );
@@ -149,9 +237,22 @@ const styles = StyleSheet.create({
   submitBtn: { minHeight: 48, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: Colors.white },
   submitText: { color: Colors.primary, fontFamily: "Inter_700Bold" },
   emptyText: { color: Colors.textMuted, fontFamily: "Inter_400Regular" },
-  vehicleCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: Colors.card, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.border, marginBottom: 10 },
+  vehicleCard: { gap: 12, backgroundColor: Colors.card, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.border, marginBottom: 10 },
+  vehicleTop: { flexDirection: "row", alignItems: "center", gap: 12 },
   vehicleTitle: { color: Colors.white, fontFamily: "Inter_700Bold", fontSize: 15 },
   vehicleMeta: { color: Colors.textMuted, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 4 },
+  statusChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: Colors.surface },
+  status_draft: { backgroundColor: Colors.surface },
+  status_pending: { backgroundColor: "rgba(255,193,7,0.16)" },
+  status_approved: { backgroundColor: "rgba(76,175,80,0.16)" },
+  status_rejected: { backgroundColor: "rgba(255,77,77,0.16)" },
+  status_suspended: { backgroundColor: "rgba(255,77,77,0.16)" },
+  statusText: { color: Colors.white, fontFamily: "Inter_700Bold", fontSize: 11, textTransform: "uppercase" },
+  docsBlock: { gap: 8 },
+  docRow: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: Colors.border, borderRadius: 10, paddingHorizontal: 12 },
+  docText: { color: Colors.white, fontFamily: "Inter_600SemiBold", fontSize: 12, flex: 1 },
+  actionRow: { flexDirection: "row", justifyContent: "flex-end" },
   selectBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: Colors.accent },
   selectText: { color: Colors.white, fontFamily: "Inter_700Bold", fontSize: 12 },
+  submitBtnMuted: { opacity: 0.85 },
 });
