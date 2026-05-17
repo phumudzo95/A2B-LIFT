@@ -11,7 +11,7 @@ export default function ChauffeurOnboardingChoiceScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 24) }]}>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
-        <Pressable style={styles.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace("/role-select")}>
+        <Pressable style={styles.backBtn} onPress={() => router.replace("/role-select")}>
           <Ionicons name="chevron-back" size={24} color={Colors.white} />
         </Pressable>
 
